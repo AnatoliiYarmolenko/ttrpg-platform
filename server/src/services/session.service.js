@@ -17,6 +17,12 @@ class SessionService {
     }
   }
 
+  _isSameUtcDay(firstDate, secondDate) {
+    return firstDate.getUTCFullYear() === secondDate.getUTCFullYear()
+      && firstDate.getUTCMonth() === secondDate.getUTCMonth()
+      && firstDate.getUTCDate() === secondDate.getUTCDate();
+  }
+
   // ============== CRUD Сесії ==============
 
   /**
@@ -546,6 +552,18 @@ class SessionService {
     const session = await this.getSessionById(sessionId, creatorId);
 
     this._requireSessionCreator(session, creatorId, 'Тільки GM може оновлювати сесію');
+
+    const nextStatus = updateData.status;
+    const isPlannedToActiveTransition = session.status === 'PLANNED' && nextStatus === 'ACTIVE';
+
+    if (isPlannedToActiveTransition) {
+      const now = new Date();
+      const sessionDate = new Date(session.date);
+
+      if (!this._isSameUtcDay(now, sessionDate)) {
+        throw new AppError(ERROR_CODES.SESSION_START_ONLY_ON_SCHEDULED_DAY);
+      }
+    }
 
     const updated = await prisma.session.update({
       where: { id: parseInt(sessionId) },

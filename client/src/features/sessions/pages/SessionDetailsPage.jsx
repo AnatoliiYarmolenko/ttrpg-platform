@@ -14,6 +14,7 @@ import {
 import Data from '@/components/ui/icons/Data';
 import Timer from '@/components/ui/icons/Timer';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
+import { getSessionStartState } from '../utils/sessionStartRules';
 
 /**
  * Сторінка деталей сесії
@@ -72,6 +73,7 @@ export default function SessionDetailsPage() {
   const isGM = myRole === 'GM';
   const canManage = isOwner || isGM;
   const amParticipant = isParticipant();
+  const sessionStartState = getSessionStartState(currentSession?.date, currentSession?.duration);
 
   const closeConfirmModal = useCallback(() => {
     setConfirmModal(prev => ({ ...prev, isOpen: false }));
@@ -116,12 +118,33 @@ export default function SessionDetailsPage() {
   };
 
   const handleStatusChange = async (newStatus) => {
+    let result;
     if (newStatus === 'CANCELED') {
-      await cancelSessionAction(id);
+      result = await cancelSessionAction(id);
     } else {
-      await updateSessionStatusAction(id, newStatus);
+      result = await updateSessionStatusAction(id, newStatus);
     }
-    fetchSessionById(id);
+
+    if (result?.success) {
+      fetchSessionById(id);
+    }
+  };
+
+  const handleStartSession = () => {
+    const message = sessionStartState.warningMessage
+      ? `${sessionStartState.warningMessage} Підтвердити запуск сесії?`
+      : 'Ви впевнені, що хочете розпочати сесію?';
+
+    setConfirmModal({
+      isOpen: true,
+      title: 'Змінити статус?',
+      message,
+      variant: 'primary',
+      onConfirm: async () => {
+        closeConfirmModal();
+        await handleStatusChange('ACTIVE');
+      },
+    });
   };
 
   // Кількість вільних місць
@@ -304,9 +327,9 @@ export default function SessionDetailsPage() {
                 <div className="pt-4 border-t">
                   <h4 className="font-medium text-[#164A41] mb-2">Управління статусом</h4>
                   <div className="flex gap-2 flex-wrap">
-                    {currentSession.status !== 'ACTIVE' && currentSession.status !== 'FINISHED' && currentSession.status !== 'CANCELED' && (
+                    {currentSession.status === 'PLANNED' && sessionStartState.canShowStartButton && (
                       <button
-                        onClick={() => handleStatusChange('ACTIVE')}
+                        onClick={handleStartSession}
                         className="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
                       >
                         Розпочати

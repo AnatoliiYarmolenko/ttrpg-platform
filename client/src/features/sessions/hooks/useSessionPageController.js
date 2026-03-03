@@ -127,8 +127,11 @@ export default function useSessionPageController() {
 
   const handleStatusChange = useCallback(
     async (newStatus) => {
-      await updateSessionData(id, { status: newStatus });
-      await fetchSessionById(id);
+      const result = await updateSessionData(id, { status: newStatus });
+      if (result?.success) {
+        await fetchSessionById(id);
+      }
+      return result;
     },
     [id, updateSessionData, fetchSessionById]
   );

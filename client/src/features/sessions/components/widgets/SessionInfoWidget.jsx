@@ -12,6 +12,7 @@ import Data from '@/components/ui/icons/Data';
 import Timer from '@/components/ui/icons/Timer';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
 import Dice20 from '@/components/ui/icons/Dice20';
+import { getSessionStartState } from '../../utils/sessionStartRules';
 
 /**
  * SessionInfoWidget — лівий віджет у Full Mode (для учасників).
@@ -92,10 +93,16 @@ export default function SessionInfoWidget({
       FINISHED: 'завершити',
       CANCELED: 'скасувати',
     };
+
+    const isStartAction = newStatus === 'ACTIVE';
+    const message = isStartAction && startState.warningMessage
+      ? `${startState.warningMessage} Підтвердити запуск сесії?`
+      : `Ви впевнені, що хочете ${statusLabels[newStatus] || 'змінити статус'} сесії?`;
+
     setConfirmModal({
       isOpen: true,
       title: `Змінити статус?`,
-      message: `Ви впевнені, що хочете ${statusLabels[newStatus] || 'змінити статус'} сесії?`,
+      message,
       variant: newStatus === 'CANCELED' ? 'danger' : 'primary',
       onConfirm: () => {
         closeConfirmModal();
@@ -105,6 +112,8 @@ export default function SessionInfoWidget({
   };
 
   if (!session) return null;
+
+  const startState = getSessionStartState(session?.date, session?.duration);
 
   return (
     <DashboardCard title="Інформація про сесію">
@@ -246,7 +255,7 @@ export default function SessionInfoWidget({
                 Управління статусом
               </h4>
               <div className="flex gap-2 flex-wrap">
-                {session.status !== 'ACTIVE' && session.status !== 'FINISHED' && session.status !== 'CANCELED' && (
+                {session.status === 'PLANNED' && startState.canShowStartButton && (
                   <button
                     onClick={() => handleStatusChange('ACTIVE')}
                     className="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
