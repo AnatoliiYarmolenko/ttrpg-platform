@@ -38,6 +38,7 @@ export default function SessionInfoWidget({
   canManage = false,
   onLeave,
   onStatusChange,
+  onMarkAsFinished,
   isLoading = false,
 }) {
   const navigate = useNavigate();
@@ -114,6 +115,23 @@ export default function SessionInfoWidget({
   if (!session) return null;
 
   const startState = getSessionStartState(session?.date, session?.duration);
+
+  const handleMarkAsFinished = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Позначити як проведену?',
+      message: 'Сесія буде позначена як проведена без запуску через кнопку "Розпочати". Продовжити?',
+      variant: 'primary',
+      onConfirm: () => {
+        closeConfirmModal();
+        if (onMarkAsFinished) {
+          onMarkAsFinished();
+          return;
+        }
+        onStatusChange?.('FINISHED');
+      },
+    });
+  };
 
   return (
     <DashboardCard title="Інформація про сесію">
@@ -277,6 +295,14 @@ export default function SessionInfoWidget({
                     className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm"
                   >
                     Скасувати
+                  </button>
+                )}
+                {session.status === 'PLANNED' && startState.canMarkAsFinished && (
+                  <button
+                    onClick={handleMarkAsFinished}
+                    className="px-3 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm"
+                  >
+                    Позначити як проведену
                   </button>
                 )}
               </div>

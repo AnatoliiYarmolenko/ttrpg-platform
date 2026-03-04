@@ -29,6 +29,7 @@ export default function useSessionPageController() {
     joinSessionAction,
     leaveSessionAction,
     updateSessionData,
+    markSessionAsFinishedAction,
     deleteSessionById,
     isLoading,
     error,
@@ -145,6 +146,14 @@ export default function useSessionPageController() {
     [id, updateSessionData, fetchSessionById]
   );
 
+  const handleMarkAsFinished = useCallback(async () => {
+    const result = await markSessionAsFinishedAction(id);
+    if (result?.success) {
+      await fetchSessionById(id);
+    }
+    return result;
+  }, [id, markSessionAsFinishedAction, fetchSessionById]);
+
   const handleDelete = useCallback(async () => {
     await deleteSessionById(id);
     navigate('/');
@@ -198,6 +207,7 @@ export default function useSessionPageController() {
     handleJoin,
     handleLeave,
     handleStatusChange,
+    handleMarkAsFinished,
     handleSaveSettings,
     handleDelete,
     handleViewProfile,

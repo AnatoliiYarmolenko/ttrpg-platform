@@ -8,6 +8,7 @@ export function getSessionStartState(sessionDateValue, durationMinutes, now = ne
   if (!sessionDateValue) {
     return {
       canShowStartButton: false,
+      canMarkAsFinished: false,
       warningType: null,
       warningMessage: '',
     };
@@ -17,6 +18,7 @@ export function getSessionStartState(sessionDateValue, durationMinutes, now = ne
   if (Number.isNaN(sessionDate.getTime())) {
     return {
       canShowStartButton: false,
+      canMarkAsFinished: false,
       warningType: null,
       warningMessage: '',
     };
@@ -29,6 +31,13 @@ export function getSessionStartState(sessionDateValue, durationMinutes, now = ne
   const lateThreshold = Number.isFinite(normalizedDuration) && normalizedDuration > 0
     ? normalizedDuration / 2
     : Infinity;
+
+  const sessionEndWithGrace = new Date(
+    sessionDate.getTime()
+    + Math.max(0, Number.isFinite(normalizedDuration) ? normalizedDuration : 0) * 60 * 1000
+    + 2 * 60 * 60 * 1000
+  );
+  const canMarkAsFinished = now.getTime() >= sessionEndWithGrace.getTime();
 
   let warningType = null;
   let warningMessage = '';
@@ -43,6 +52,7 @@ export function getSessionStartState(sessionDateValue, durationMinutes, now = ne
 
   return {
     canShowStartButton,
+    canMarkAsFinished,
     warningType,
     warningMessage,
   };

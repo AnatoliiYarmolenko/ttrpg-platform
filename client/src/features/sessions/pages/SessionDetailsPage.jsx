@@ -32,6 +32,7 @@ export default function SessionDetailsPage() {
     leaveSessionAction,
     updateSessionStatusAction,
     cancelSessionAction,
+    markSessionAsFinishedAction,
     removeParticipantAction,
     error,
     clearCurrentSession,
@@ -143,6 +144,22 @@ export default function SessionDetailsPage() {
       onConfirm: async () => {
         closeConfirmModal();
         await handleStatusChange('ACTIVE');
+      },
+    });
+  };
+
+  const handleMarkAsFinished = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Позначити як проведену?',
+      message: 'Сесія буде переведена в стан проведеної без запуску через кнопку "Розпочати". Продовжити?',
+      variant: 'primary',
+      onConfirm: async () => {
+        closeConfirmModal();
+        const result = await markSessionAsFinishedAction(id);
+        if (result?.success) {
+          fetchSessionById(id);
+        }
       },
     });
   };
@@ -349,6 +366,14 @@ export default function SessionDetailsPage() {
                         className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm"
                       >
                         Скасувати
+                      </button>
+                    )}
+                    {currentSession.status === 'PLANNED' && sessionStartState.canMarkAsFinished && (
+                      <button
+                        onClick={handleMarkAsFinished}
+                        className="px-3 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm"
+                      >
+                        Позначити як проведену
                       </button>
                     )}
                   </div>

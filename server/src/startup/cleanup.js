@@ -5,6 +5,7 @@
  */
 
 const tokenCleanupService = require('../services/tokenCleanup.service');
+const sessionCleanupService = require('../services/sessionCleanup.service');
 const { cleanupRateLimits } = require('../services/rateLimit.service');
 
 // Інтервали для cleanup jobs
@@ -31,6 +32,17 @@ function initTokenCleanup(schedule) {
 }
 
 /**
+ * Ініціалізує session cleanup job
+ * - Автоскасовує PLANNED сесії старше 30 днів
+ * - Готує hook для майбутніх нагадувань GM
+ * @param {string} schedule - Cron schedule (за замовчуванням: '0 3 * * *' - 03:00 щодня)
+ */
+function initSessionCleanup(schedule) {
+  const cleanupSchedule = schedule || process.env.SESSION_CLEANUP_SCHEDULE || '0 3 * * *';
+  sessionCleanupService.startCleanupJob(cleanupSchedule);
+}
+
+/**
  * Ініціалізує rate limit cleanup job
  * Очищує застарілі rate limit записи
  */
@@ -49,6 +61,7 @@ function initRateLimitCleanup() {
  */
 function initAllCleanupJobs(options = {}) {
   initTokenCleanup(options.tokenCleanupSchedule);
+  initSessionCleanup(options.sessionCleanupSchedule);
   initRateLimitCleanup();
 }
 
@@ -72,10 +85,12 @@ function stopAllCleanupJobs() {
 async function shutdownCleanupJobs() {
   stopAllCleanupJobs();
   await tokenCleanupService.disconnect();
+  await sessionCleanupService.disconnect();
 }
 
 module.exports = {
   initTokenCleanup,
+  initSessionCleanup,
   initRateLimitCleanup,
   initAllCleanupJobs,
   stopAllCleanupJobs,

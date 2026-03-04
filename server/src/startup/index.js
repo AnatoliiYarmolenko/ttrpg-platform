@@ -8,6 +8,7 @@ const { createCorsMiddleware } = require('./cors');
 const { 
   initAllCleanupJobs, 
   initTokenCleanup, 
+  initSessionCleanup,
   initRateLimitCleanup,
   stopAllCleanupJobs,
   shutdownCleanupJobs,
@@ -25,6 +26,7 @@ module.exports = {
   // Cleanup jobs
   initAllCleanupJobs,
   initTokenCleanup,
+  initSessionCleanup,
   initRateLimitCleanup,
   stopAllCleanupJobs,
   shutdownCleanupJobs,

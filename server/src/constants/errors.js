@@ -60,6 +60,7 @@ const ERROR_CODES = {
 
   // ========== SESSION ERRORS ==========
   SESSION_START_ONLY_ON_SCHEDULED_DAY: 'SESSION_START_ONLY_ON_SCHEDULED_DAY',
+  SESSION_MARK_FINISHED_TOO_EARLY: 'SESSION_MARK_FINISHED_TOO_EARLY',
   
   // ========== FILE UPLOAD ERRORS ==========
   FILE_INVALID_FORMAT: 'FILE_INVALID_FORMAT',
@@ -125,6 +126,7 @@ const ERROR_MESSAGES = {
 
   // Session
   [ERROR_CODES.SESSION_START_ONLY_ON_SCHEDULED_DAY]: 'Сесію можна розпочати тільки в день, на який вона запланована',
+  [ERROR_CODES.SESSION_MARK_FINISHED_TOO_EARLY]: 'Позначити сесію як проведену можна лише після завершення сесії та 2 годин очікування',
   
   // File
   [ERROR_CODES.FILE_INVALID_FORMAT]: 'Недопустимий формат файлу',
@@ -190,6 +192,7 @@ const ERROR_STATUS = {
 
   // Session - 400
   [ERROR_CODES.SESSION_START_ONLY_ON_SCHEDULED_DAY]: HTTP_STATUS.BAD_REQUEST,
+  [ERROR_CODES.SESSION_MARK_FINISHED_TOO_EARLY]: HTTP_STATUS.BAD_REQUEST,
   
   // File - 400
   [ERROR_CODES.FILE_INVALID_FORMAT]: HTTP_STATUS.BAD_REQUEST,

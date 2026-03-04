@@ -92,6 +92,13 @@ router.post(
   (req, res, next) => sessionController.cancelSession(req, res, next)
 );
 
+// POST /api/sessions/:id/mark-finished - Позначити як проведену
+router.post(
+  '/:id/mark-finished',
+  [authenticateToken, ...validateSessionId],
+  (req, res, next) => sessionController.markSessionAsFinished(req, res, next)
+);
+
 // ============== Управління учасниками ==============
 
 // GET /api/sessions/:id/participants - Отримати всіх учасників

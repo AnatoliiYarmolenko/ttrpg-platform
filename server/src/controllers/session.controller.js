@@ -555,6 +555,27 @@ class SessionController {
       next(error);
     }
   }
+
+  /**
+   * Позначити сесію як проведену
+   * POST /api/sessions/:id/mark-finished
+   */
+  async markSessionAsFinished(req, res, next) {
+    try {
+      const { id: sessionId } = req.params;
+      const userId = req.user.id;
+
+      const session = await sessionService.markSessionAsFinished(sessionId, userId);
+
+      res.json({
+        success: true,
+        message: 'Сесію позначено як проведену',
+        data: session,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new SessionController();

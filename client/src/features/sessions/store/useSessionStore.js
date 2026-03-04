@@ -7,6 +7,7 @@ import {
   updateSession,
   deleteSession,
   cancelSession,
+  markSessionAsFinished,
   getCampaignSessions,
   getSessionParticipants,
   joinSession,
@@ -137,6 +138,27 @@ const useSessionStore = create((set, get) => ({
       defaultError: 'Помилка при скасуванні сесії',
       toastOnSuccess: true,
       successMessage: 'Сесію скасовано',
+    }),
+
+  /**
+   * Позначити сесію як проведену (для минулих PLANNED сесій)
+   */
+  markSessionAsFinishedAction: async (sessionId) =>
+    apiAction(set, {
+      apiCall: () => markSessionAsFinished(sessionId),
+      onSuccess: (data) =>
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? data : s
+          ),
+          currentSession:
+            state.currentSession?.id === sessionId
+              ? data
+              : state.currentSession,
+        })),
+      defaultError: 'Помилка при позначенні сесії як проведеної',
+      toastOnSuccess: true,
+      successMessage: 'Сесію позначено як проведену',
     }),
 
   fetchCampaignSessions: async (campaignId, params = {}) =>

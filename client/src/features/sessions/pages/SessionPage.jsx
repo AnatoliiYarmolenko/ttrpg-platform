@@ -43,6 +43,7 @@ export default function SessionPage() {
     handleJoin,
     handleLeave,
     handleStatusChange,
+    handleMarkAsFinished,
     handleSaveSettings,
     handleDelete,
     handleViewProfile,
@@ -108,6 +109,7 @@ export default function SessionPage() {
             canManage={canManage}
             onLeave={handleLeave}
             onStatusChange={handleStatusChange}
+            onMarkAsFinished={handleMarkAsFinished}
             isLoading={isLoading}
           />
         );
@@ -121,6 +123,7 @@ export default function SessionPage() {
             canManage={canManage}
             onLeave={handleLeave}
             onStatusChange={handleStatusChange}
+            onMarkAsFinished={handleMarkAsFinished}
             isLoading={isLoading}
           />
         );

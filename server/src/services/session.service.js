@@ -23,6 +23,19 @@ class SessionService {
       && firstDate.getUTCDate() === secondDate.getUTCDate();
   }
 
+  _getSessionEndWithGrace(sessionDateValue, durationMinutes = 0, graceHours = 2) {
+    const sessionStart = new Date(sessionDateValue);
+    const safeDurationMinutes = Number.isFinite(Number(durationMinutes))
+      ? Number(durationMinutes)
+      : 0;
+
+    return new Date(
+      sessionStart.getTime()
+      + safeDurationMinutes * 60 * 1000
+      + graceHours * 60 * 60 * 1000
+    );
+  }
+
   // ============== CRUD Сесії ==============
 
   /**
@@ -555,6 +568,7 @@ class SessionService {
 
     const nextStatus = updateData.status;
     const isPlannedToActiveTransition = session.status === 'PLANNED' && nextStatus === 'ACTIVE';
+    const isPlannedToFinishedTransition = session.status === 'PLANNED' && nextStatus === 'FINISHED';
 
     if (isPlannedToActiveTransition) {
       const now = new Date();
@@ -562,6 +576,15 @@ class SessionService {
 
       if (!this._isSameUtcDay(now, sessionDate)) {
         throw new AppError(ERROR_CODES.SESSION_START_ONLY_ON_SCHEDULED_DAY);
+      }
+    }
+
+    if (isPlannedToFinishedTransition) {
+      const now = new Date();
+      const finishAllowedAt = this._getSessionEndWithGrace(session.date, session.duration, 2);
+
+      if (now < finishAllowedAt) {
+        throw new AppError(ERROR_CODES.SESSION_MARK_FINISHED_TOO_EARLY);
       }
     }
 
@@ -999,6 +1022,13 @@ class SessionService {
     // TODO: Якщо session.price > 0, тут викликати walletService.refundParticipants(...);
 
     return updatedSession;
+  }
+
+  /**
+   * Позначити сесію як проведену (альтернатива кнопці "Розпочати")
+   */
+  async markSessionAsFinished(sessionId, userId) {
+    return this.updateSession(sessionId, userId, { status: 'FINISHED' });
   }
   
 }

@@ -61,6 +61,15 @@ export const cancelSession = async (sessionId) => {
   return response.data;
 };
 
+/**
+ * Позначити сесію як проведену
+ * @param {number} sessionId
+ */
+export const markSessionAsFinished = async (sessionId) => {
+  const response = await api.post(`/sessions/${sessionId}/mark-finished`);
+  return response.data;
+};
+
 // === Календар ===
 
 /**
