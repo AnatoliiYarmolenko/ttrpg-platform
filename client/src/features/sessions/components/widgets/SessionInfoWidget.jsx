@@ -289,7 +289,7 @@ export default function SessionInfoWidget({
                     Завершити
                   </button>
                 )}
-                {session.status === 'PLANNED' && (
+                {(session.status === 'PLANNED' || session.status === 'ACTIVE') && (
                   <button
                     onClick={() => handleStatusChange('CANCELED')}
                     className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm"

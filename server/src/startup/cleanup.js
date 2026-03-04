@@ -34,11 +34,11 @@ function initTokenCleanup(schedule) {
 /**
  * Ініціалізує session cleanup job
  * - Автоскасовує PLANNED сесії старше 30 днів
- * - Готує hook для майбутніх нагадувань GM
- * @param {string} schedule - Cron schedule (за замовчуванням: '0 3 * * *' - 03:00 щодня)
+ * - Soft Auto-Finish для "зомбі" ACTIVE сесій
+ * @param {string} schedule - Cron schedule (за замовчуванням: '0,15,30,45 * * * *' - кожні 15 хвилин)
  */
 function initSessionCleanup(schedule) {
-  const cleanupSchedule = schedule || process.env.SESSION_CLEANUP_SCHEDULE || '0 3 * * *';
+  const cleanupSchedule = schedule || process.env.SESSION_CLEANUP_SCHEDULE || '*/15 * * * *';
   sessionCleanupService.startCleanupJob(cleanupSchedule);
 }
 

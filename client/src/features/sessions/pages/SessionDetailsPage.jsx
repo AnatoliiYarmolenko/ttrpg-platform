@@ -360,7 +360,7 @@ export default function SessionDetailsPage() {
                         Завершити
                       </button>
                     )}
-                    {currentSession.status === 'PLANNED' && (
+                    {(currentSession.status === 'PLANNED' || currentSession.status === 'ACTIVE') && (
                       <button
                         onClick={() => handleStatusChange('CANCELED')}
                         className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm"

@@ -7,6 +7,24 @@ class SessionCleanupService {
     this.isRunning = false;
   }
 
+  _getSessionAutoFinishAt(sessionDateValue, durationMinutes = 0) {
+    const sessionStart = new Date(sessionDateValue);
+    const safeDurationMinutes = Number.isFinite(Number(durationMinutes))
+      ? Number(durationMinutes)
+      : 0;
+
+    // Soft Auto-Finish:
+    // +2 години після планового завершення (вікно очікування),
+    // +1 година до автозавершення (вікно для майбутнього попередження)
+    const totalGraceHours = 3;
+
+    return new Date(
+      sessionStart.getTime()
+      + safeDurationMinutes * 60 * 1000
+      + totalGraceHours * 60 * 60 * 1000
+    );
+  }
+
   _getAutoCancelCutoff(daysOld = 30) {
     const cutoffDate = new Date();
     cutoffDate.setUTCDate(cutoffDate.getUTCDate() - daysOld);
@@ -51,44 +69,57 @@ class SessionCleanupService {
     }
   }
 
-  async enqueueConfirmationReminders() {
+  async autoFinishStaleActiveSessions() {
     const timestamp = new Date().toISOString();
 
     try {
       const now = new Date();
-      const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
-      const sessionsNeedingConfirmation = await prisma.session.findMany({
+      const activeSessions = await prisma.session.findMany({
         where: {
-          status: 'PLANNED',
-          date: {
-            lt: now,
-            gte: dayAgo,
-          },
+          status: 'ACTIVE',
         },
         select: {
           id: true,
-          creatorId: true,
           date: true,
           duration: true,
         },
       });
 
-      if (sessionsNeedingConfirmation.length > 0) {
-        console.log(
-          `[${timestamp}] ℹ Reminder Hook: ${sessionsNeedingConfirmation.length} сесій потребують підтвердження статусу`
-        );
+      const staleActiveIds = activeSessions
+        .filter((session) => now >= this._getSessionAutoFinishAt(session.date, session.duration))
+        .map((session) => session.id);
+
+      if (staleActiveIds.length === 0) {
+        return {
+          success: true,
+          finishedCount: 0,
+          scannedCount: activeSessions.length,
+          timestamp,
+        };
       }
 
-      // TODO: Інтегрувати notificationService для відправки нагадувань GM.
+      const updateResult = await prisma.session.updateMany({
+        where: {
+          id: { in: staleActiveIds },
+          status: 'ACTIVE',
+        },
+        data: {
+          status: 'FINISHED',
+        },
+      });
+
+      console.log(
+        `[${timestamp}] Session Cleanup: Автозавершено ${updateResult.count} ACTIVE сесій (soft auto-finish)`
+      );
 
       return {
         success: true,
-        remindersCount: sessionsNeedingConfirmation.length,
+        finishedCount: updateResult.count,
+        scannedCount: activeSessions.length,
         timestamp,
       };
     } catch (error) {
-      console.error(`[${timestamp}] Reminder Hook Error: ${error.message}`);
+      console.error(`[${timestamp}] Session Auto-Finish Error: ${error.message}`);
       return {
         success: false,
         error: error.message,
@@ -101,16 +132,16 @@ class SessionCleanupService {
     console.log('[Session Cleanup] Початок cleanup запланованих сесій...');
 
     const autoCancelResult = await this.autoCancelStalePlannedSessions(30);
-    const reminderResult = await this.enqueueConfirmationReminders();
+    const autoFinishResult = await this.autoFinishStaleActiveSessions();
 
     return {
       autoCancel: autoCancelResult,
-      reminders: reminderResult,
+      autoFinish: autoFinishResult,
       completedAt: new Date().toISOString(),
     };
   }
 
-  startCleanupJob(schedule = '0 3 * * *') {
+  startCleanupJob(schedule = '*/15 * * * *') {
     if (this.cronJob) {
       console.warn('Session Cleanup job вже запущено!');
       return;

@@ -23,6 +23,25 @@ class SessionService {
       && firstDate.getUTCDate() === secondDate.getUTCDate();
   }
 
+  _getDateKeyInTimeZone(dateValue, timeZone) {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+
+    return formatter.format(new Date(dateValue));
+  }
+
+  _isSameDayInTimeZone(firstDate, secondDate, timeZone = 'UTC') {
+    try {
+      return this._getDateKeyInTimeZone(firstDate, timeZone) === this._getDateKeyInTimeZone(secondDate, timeZone);
+    } catch {
+      return this._getDateKeyInTimeZone(firstDate, 'UTC') === this._getDateKeyInTimeZone(secondDate, 'UTC');
+    }
+  }
+
   _getSessionEndWithGrace(sessionDateValue, durationMinutes = 0, graceHours = 2) {
     const sessionStart = new Date(sessionDateValue);
     const safeDurationMinutes = Number.isFinite(Number(durationMinutes))
@@ -34,6 +53,57 @@ class SessionService {
       + safeDurationMinutes * 60 * 1000
       + graceHours * 60 * 60 * 1000
     );
+  }
+
+  _getSessionEnd(sessionDateValue, durationMinutes = 0) {
+    const sessionStart = new Date(sessionDateValue);
+    const safeDurationMinutes = Number.isFinite(Number(durationMinutes))
+      ? Number(durationMinutes)
+      : 0;
+
+    return new Date(sessionStart.getTime() + safeDurationMinutes * 60 * 1000);
+  }
+
+  _isIntervalsOverlap(firstStart, firstEnd, secondStart, secondEnd) {
+    return firstStart < secondEnd && firstEnd > secondStart;
+  }
+
+  async _assertNoSessionTimeConflict(userId, targetStart, targetDuration, options = {}) {
+    const { excludeSessionId = null, conflictErrorCode = ERROR_CODES.VALIDATION_FAILED } = options;
+
+    const userSessions = await prisma.session.findMany({
+      where: {
+        status: { in: ['PLANNED', 'ACTIVE'] },
+        participants: {
+          some: {
+            userId,
+          },
+        },
+      },
+      select: {
+        id: true,
+        date: true,
+        duration: true,
+      },
+    });
+
+    const targetStartDate = new Date(targetStart);
+    const targetEndDate = this._getSessionEnd(targetStartDate, targetDuration);
+
+    const hasConflict = userSessions.some((session) => {
+      if (excludeSessionId && session.id === Number(excludeSessionId)) {
+        return false;
+      }
+
+      const sessionStart = new Date(session.date);
+      const sessionEnd = this._getSessionEnd(session.date, session.duration);
+
+      return this._isIntervalsOverlap(targetStartDate, targetEndDate, sessionStart, sessionEnd);
+    });
+
+    if (hasConflict) {
+      throw new AppError(conflictErrorCode);
+    }
   }
 
   // ============== CRUD Сесії ==============
@@ -56,6 +126,10 @@ class SessionService {
     } = data;
 
     let sessionSystem = system;
+
+    await this._assertNoSessionTimeConflict(creatorId, date, duration, {
+      conflictErrorCode: ERROR_CODES.SESSION_TIME_CONFLICT_CREATOR,
+    });
 
     // Якщо сесія в межах кампанії - перевіряємо права
     if (campaignId) {
@@ -210,6 +284,7 @@ class SessionService {
         gte: startDate,
         lte: endDate,
       },
+      status: { not: 'CANCELED' },
     };
 
     // БЕЗПЕЧНА ПОБУДОВА ФІЛЬТРУ  
@@ -566,15 +641,49 @@ class SessionService {
 
     this._requireSessionCreator(session, creatorId, 'Тільки GM може оновлювати сесію');
 
+    const hasDateChange = updateData.date !== undefined;
+    const hasDurationChange = updateData.duration !== undefined;
+    if (hasDateChange || hasDurationChange) {
+      const targetDate = hasDateChange ? updateData.date : session.date;
+      const targetDuration = hasDurationChange ? updateData.duration : session.duration;
+
+      await this._assertNoSessionTimeConflict(creatorId, targetDate, targetDuration, {
+        excludeSessionId: session.id,
+        conflictErrorCode: ERROR_CODES.SESSION_TIME_CONFLICT_CREATOR,
+      });
+    }
+
     const nextStatus = updateData.status;
     const isPlannedToActiveTransition = session.status === 'PLANNED' && nextStatus === 'ACTIVE';
     const isPlannedToFinishedTransition = session.status === 'PLANNED' && nextStatus === 'FINISHED';
 
+    if (nextStatus && nextStatus !== session.status) {
+      const allowedStatusTransitions = {
+        PLANNED: ['ACTIVE', 'FINISHED', 'CANCELED'],
+        ACTIVE: ['FINISHED', 'CANCELED'],
+        FINISHED: [],
+        CANCELED: [],
+      };
+
+      const allowedNextStatuses = allowedStatusTransitions[session.status] || [];
+      if (!allowedNextStatuses.includes(nextStatus)) {
+        throw new AppError(
+          ERROR_CODES.VALIDATION_FAILED,
+          `Невалідний перехід статусу: ${session.status} → ${nextStatus}`
+        );
+      }
+    }
+
     if (isPlannedToActiveTransition) {
       const now = new Date();
       const sessionDate = new Date(session.date);
+      const creator = await prisma.user.findUnique({
+        where: { id: creatorId },
+        select: { timezone: true },
+      });
+      const userTimeZone = creator?.timezone || 'Europe/Kyiv';
 
-      if (!this._isSameUtcDay(now, sessionDate)) {
+      if (!this._isSameDayInTimeZone(now, sessionDate, userTimeZone)) {
         throw new AppError(ERROR_CODES.SESSION_START_ONLY_ON_SCHEDULED_DAY);
       }
     }
@@ -665,6 +774,11 @@ class SessionService {
     }
 
     // ----------------------------
+
+    await this._assertNoSessionTimeConflict(userId, session.date, session.duration, {
+      excludeSessionId: session.id,
+      conflictErrorCode: ERROR_CODES.SESSION_TIME_CONFLICT_PLAYER,
+    });
 
     // Перевіряємо максимум гравців (не рахуємо GM)
     const playerCount = session.participants.filter(p => p.role === 'PLAYER').length;
@@ -880,6 +994,7 @@ class SessionService {
         gte: dayStart,
         lte: dayEnd,
       },
+      status: { not: 'CANCELED' },
     };
 
     // Та сама безпечна логіка

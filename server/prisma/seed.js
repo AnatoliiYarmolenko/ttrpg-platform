@@ -160,6 +160,13 @@ function daysFromNow(days, hours = 19) {
   return date;
 }
 
+function hoursFromNow(hoursOffset) {
+  const date = new Date();
+  date.setTime(date.getTime() + hoursOffset * 60 * 60 * 1000);
+  date.setUTCMinutes(0, 0, 0);
+  return date;
+}
+
 async function cleanupPreviousSeedData() {
   const seededCampaigns = await prisma.campaign.findMany({
     where: { title: { startsWith: SEED_PREFIX } },
@@ -481,7 +488,7 @@ async function createSessions(usersByKey, campaigns) {
     data: {
       title: `${SEED_PREFIX} Shadows #2`,
       description: 'Розслідування зникнень у старому районі.',
-      date: daysFromNow(4, 19),
+      date: hoursFromNow(-1),
       duration: 210,
       status: 'ACTIVE',
       visibility: 'LINK_ONLY',
@@ -513,7 +520,7 @@ async function createSessions(usersByKey, campaigns) {
     data: {
       title: `${SEED_PREFIX} Saturday One-Shot`,
       description: 'Окрема тестова сесія без кампанії.',
-      date: daysFromNow(1, 16),
+      date: daysFromNow(3, 16),
       duration: 120,
       status: 'PLANNED',
       visibility: 'PUBLIC',
@@ -525,8 +532,40 @@ async function createSessions(usersByKey, campaigns) {
     },
   });
 
+  const session5 = await prisma.session.create({
+    data: {
+      title: `${SEED_PREFIX} Zombie Active (Auto-Finish Test)`,
+      description: 'Сесія для тестування soft auto-finish (ACTIVE, що давно мала завершитися).',
+      date: hoursFromNow(-8),
+      duration: 120,
+      status: 'ACTIVE',
+      visibility: 'PRIVATE',
+      price: 0,
+      maxPlayers: 4,
+      system: 'D&D 5e',
+      campaignId: campaigns.campaign1.id,
+      creatorId: usersByKey.gm1.id,
+    },
+  });
+
+  const session6 = await prisma.session.create({
+    data: {
+      title: `${SEED_PREFIX} Stale Planned (Auto-Cancel Test)`,
+      description: 'Сесія для тестування авто-скасування PLANNED після 30+ днів.',
+      date: daysFromNow(-40, 18),
+      duration: 180,
+      status: 'PLANNED',
+      visibility: 'PRIVATE',
+      price: 0,
+      maxPlayers: 5,
+      system: 'Pathfinder 2e',
+      campaignId: campaigns.campaign3.id,
+      creatorId: usersByKey.gm2.id,
+    },
+  });
+
   const extraSessions = [];
-  const statusCycle = ['PLANNED', 'ACTIVE', 'FINISHED'];
+  const statusCycle = ['PLANNED', 'FINISHED', 'CANCELED'];
   const visibilityCycle = ['PUBLIC', 'PRIVATE', 'LINK_ONLY'];
 
   for (let index = 0; index < 13; index += 1) {
@@ -534,13 +573,18 @@ async function createSessions(usersByKey, campaigns) {
     const gmKey = index % 2 === 0 ? 'gm1' : 'gm2';
     const gmUser = usersByKey[gmKey];
 
+    const status = statusCycle[index % statusCycle.length];
+    const sessionDate = status === 'PLANNED'
+      ? daysFromNow(6 + index, 14 + (index % 6))
+      : daysFromNow(-(3 + index), 14 + (index % 6));
+
     const session = await prisma.session.create({
       data: {
         title: `${SEED_PREFIX} Extra Session #${index + 1}`,
         description: `Додаткова тестова сесія #${index + 1} для перевірки списків і фільтрів.`,
-        date: daysFromNow(index - 6, 15 + (index % 5)),
+        date: sessionDate,
         duration: 120 + (index % 4) * 30,
-        status: statusCycle[index % statusCycle.length],
+        status,
         visibility: visibilityCycle[index % visibilityCycle.length],
         price: 60 + index * 5,
         maxPlayers: 4 + (index % 3),
@@ -572,6 +616,14 @@ async function createSessions(usersByKey, campaigns) {
       { sessionId: session4.id, userId: usersByKey.gm2.id, role: 'GM', status: 'CONFIRMED' },
       { sessionId: session4.id, userId: usersByKey.player4.id, role: 'PLAYER', status: 'PENDING' },
       { sessionId: session4.id, userId: usersByKey.player1.id, role: 'PLAYER', status: 'CONFIRMED' },
+
+      { sessionId: session5.id, userId: usersByKey.gm1.id, role: 'GM', status: 'CONFIRMED' },
+      { sessionId: session5.id, userId: usersByKey.player2.id, role: 'PLAYER', status: 'CONFIRMED' },
+      { sessionId: session5.id, userId: usersByKey.player3.id, role: 'PLAYER', status: 'CONFIRMED' },
+
+      { sessionId: session6.id, userId: usersByKey.gm2.id, role: 'GM', status: 'CONFIRMED' },
+      { sessionId: session6.id, userId: usersByKey.player7.id, role: 'PLAYER', status: 'PENDING' },
+      { sessionId: session6.id, userId: usersByKey.player8.id, role: 'PLAYER', status: 'CONFIRMED' },
       ...extraSessions.flatMap((session, index) => {
         const gmKey = index % 2 === 0 ? 'gm1' : 'gm2';
         const firstPlayer = usersByKey[playerKeys[index % playerKeys.length]];
@@ -595,6 +647,8 @@ async function createSessions(usersByKey, campaigns) {
       { sessionId: session2.id, userId: usersByKey.gm2.id, text: 'Не забудьте про safety tools перед стартом.' },
       { sessionId: session3.id, userId: usersByKey.player8.id, text: 'Фінальна сцена була топ, дякую!' },
       { sessionId: session4.id, userId: usersByKey.player4.id, text: 'Можу трохи запізнитись на 10 хв.' },
+      { sessionId: session5.id, userId: usersByKey.gm1.id, text: 'Тестова ACTIVE сесія для перевірки soft auto-finish.' },
+      { sessionId: session6.id, userId: usersByKey.gm2.id, text: 'Тестова PLANNED сесія для перевірки auto-cancel > 30 днів.' },
       ...extraSessions.map((session, index) => {
         const authorKey = index % 2 === 0 ? 'player2' : 'player7';
         return {

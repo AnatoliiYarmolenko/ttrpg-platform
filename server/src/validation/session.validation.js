@@ -64,11 +64,6 @@ const validateCreateSession = [
     .trim()
     .isLength({ max: 100 }).withMessage('Назва системи не повинна перевищувати 100 символів'),
 
-  body('system')
-    .optional()
-    .trim()
-    .isLength({ max: 100 }).withMessage('Назва системи не повинна перевищувати 100 символів'),
-
   handleValidationErrors,
 ];
 

@@ -2,14 +2,13 @@ const STATUS_CONFIG = {
   PLANNED:   { text: 'Заплановано', class: 'bg-blue-100 text-blue-800' },
   ACTIVE:    { text: 'В процесі',  class: 'bg-green-100 text-green-800' },
   FINISHED:  { text: 'Завершено',  class: 'bg-gray-100 text-gray-800' },
-  CANCELLED: { text: 'Скасовано',  class: 'bg-red-100 text-red-800' },
-  CANCELED:  { text: 'Скасовано',  class: 'bg-red-100 text-red-800' }, // alias
+  CANCELED:  { text: 'Скасовано',  class: 'bg-red-100 text-red-800' },
 };
 
 /**
- * Бейдж статусу сесії/кампанії (PLANNED, ACTIVE, FINISHED, CANCELLED)
+ * Бейдж статусу сесії/кампанії (PLANNED, ACTIVE, FINISHED, CANCELED)
  *
- * @param {'PLANNED'|'ACTIVE'|'FINISHED'|'CANCELLED'|'CANCELED'} status
+ * @param {'PLANNED'|'ACTIVE'|'FINISHED'|'CANCELED'} status
  * @param {'sm'|'md'} size — sm: compact (text-xs), md: standard (text-sm)
  */
 export default function StatusBadge({ status, size = 'md' }) {
