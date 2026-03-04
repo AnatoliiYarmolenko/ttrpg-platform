@@ -283,6 +283,7 @@ class SessionController {
         price,
         visibility,
         status,
+        system,
       } = req.body;
 
       const session = await sessionService.updateSession(
@@ -297,6 +298,7 @@ class SessionController {
           price,
           visibility,
           status,
+          system,
         }
       );
 

@@ -29,6 +29,7 @@ export default function useSessionPageController() {
     joinSessionAction,
     leaveSessionAction,
     updateSessionData,
+    updateSessionStatusAction,
     markSessionAsFinishedAction,
     deleteSessionById,
     isLoading,
@@ -95,7 +96,20 @@ export default function useSessionPageController() {
   const isOwner = myRole === 'OWNER';
   const isGM = myRole === 'GM';
   const canManage = isOwner || isGM;
+  const isSessionInPast = useMemo(() => {
+    if (!currentSession?.date) return false;
+    const sessionDate = new Date(currentSession.date);
+    if (Number.isNaN(sessionDate.getTime())) return false;
+    return sessionDate.getTime() < Date.now();
+  }, [currentSession?.date]);
+  const canManageSettings = canManage && !isSessionInPast;
   const { isPreviewMode } = usePreviewMode({ isMember: amParticipant, isLoading });
+
+  useEffect(() => {
+    if (activeTab === TABS.SETTINGS && !canManageSettings) {
+      setActiveTab(TABS.DETAILS);
+    }
+  }, [activeTab, canManageSettings, setActiveTab]);
 
   const canJoin = useMemo(() => {
     if (!currentSession || !user) return false;
@@ -128,22 +142,28 @@ export default function useSessionPageController() {
 
   const handleStatusChange = useCallback(
     async (newStatus) => {
-      const result = await updateSessionData(id, { status: newStatus });
+      const result = await updateSessionStatusAction(id, newStatus);
       if (result?.success) {
         await fetchSessionById(id);
       }
       return result;
     },
-    [id, updateSessionData, fetchSessionById]
+    [id, updateSessionStatusAction, fetchSessionById]
   );
 
   const handleSaveSettings = useCallback(
     async (sessionData) => {
+      if (!canManageSettings) {
+        return {
+          success: false,
+          message: 'Налаштування недоступні для сесій у минулому',
+        };
+      }
       const result = await updateSessionData(id, sessionData);
       if (result?.success) await fetchSessionById(id);
       return result;
     },
-    [id, updateSessionData, fetchSessionById]
+    [id, canManageSettings, updateSessionData, fetchSessionById]
   );
 
   const handleMarkAsFinished = useCallback(async () => {
@@ -200,6 +220,8 @@ export default function useSessionPageController() {
     isOwner,
     isGM,
     canManage,
+    canManageSettings,
+    isSessionInPast,
     amParticipant,
     canJoin,
 

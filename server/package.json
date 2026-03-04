@@ -2,10 +2,11 @@
   "name": "server",
   "version": "1.0.0",
   "main": "index.js",
-  "scripts": {
+"scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon index.js",
-    "seed": "prisma db seed"
+    "seed": "docker exec -it ttrpg_server node prisma/seed.js",
+    "seed:local": "prisma db seed"
   },
   "keywords": [],
   "author": "",

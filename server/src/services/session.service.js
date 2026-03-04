@@ -638,14 +638,51 @@ class SessionService {
    */
   async updateSession(sessionId, creatorId, updateData) {
     const session = await this.getSessionById(sessionId, creatorId);
+    const normalizedUpdateData = { ...updateData };
 
     this._requireSessionCreator(session, creatorId, 'Тільки GM може оновлювати сесію');
 
-    const hasDateChange = updateData.date !== undefined;
-    const hasDurationChange = updateData.duration !== undefined;
+    const sessionDate = new Date(session.date);
+    const isSessionInPast =
+      !Number.isNaN(sessionDate.getTime()) && sessionDate.getTime() < Date.now();
+    const settingsFields = [
+      'title',
+      'description',
+      'date',
+      'duration',
+      'maxPlayers',
+      'price',
+      'visibility',
+      'system',
+      'location',
+      'notes',
+    ];
+    const hasSettingsUpdate = settingsFields.some((field) =>
+      Object.prototype.hasOwnProperty.call(normalizedUpdateData, field)
+    );
+    const hasStatusUpdate = Object.prototype.hasOwnProperty.call(
+      normalizedUpdateData,
+      'status'
+    );
+
+    if (isSessionInPast && hasSettingsUpdate) {
+      if (!hasStatusUpdate) {
+        throw new AppError(
+          ERROR_CODES.VALIDATION_FAILED,
+          'Неможливо змінювати налаштування сесії, яка вже відбулася'
+        );
+      }
+
+      settingsFields.forEach((field) => {
+        delete normalizedUpdateData[field];
+      });
+    }
+
+    const hasDateChange = normalizedUpdateData.date !== undefined;
+    const hasDurationChange = normalizedUpdateData.duration !== undefined;
     if (hasDateChange || hasDurationChange) {
-      const targetDate = hasDateChange ? updateData.date : session.date;
-      const targetDuration = hasDurationChange ? updateData.duration : session.duration;
+      const targetDate = hasDateChange ? normalizedUpdateData.date : session.date;
+      const targetDuration = hasDurationChange ? normalizedUpdateData.duration : session.duration;
 
       await this._assertNoSessionTimeConflict(creatorId, targetDate, targetDuration, {
         excludeSessionId: session.id,
@@ -653,7 +690,7 @@ class SessionService {
       });
     }
 
-    const nextStatus = updateData.status;
+    const nextStatus = normalizedUpdateData.status;
     const isPlannedToActiveTransition = session.status === 'PLANNED' && nextStatus === 'ACTIVE';
     const isPlannedToFinishedTransition = session.status === 'PLANNED' && nextStatus === 'FINISHED';
 
@@ -700,15 +737,18 @@ class SessionService {
     const updated = await prisma.session.update({
       where: { id: parseInt(sessionId) },
       data: {
-        title: updateData.title || undefined,
-        description: updateData.description || undefined,
-        date: updateData.date || undefined,
-        duration: updateData.duration || undefined,
-        maxPlayers: updateData.maxPlayers || undefined,
-        price: updateData.price || undefined,
-        visibility: updateData.visibility || undefined,
-        status: updateData.status || undefined,
-        system: updateData.system !== undefined ? updateData.system : undefined,
+        title: normalizedUpdateData.title || undefined,
+        description: normalizedUpdateData.description || undefined,
+        date: normalizedUpdateData.date || undefined,
+        duration: normalizedUpdateData.duration || undefined,
+        maxPlayers: normalizedUpdateData.maxPlayers || undefined,
+        price: normalizedUpdateData.price || undefined,
+        visibility: normalizedUpdateData.visibility || undefined,
+        status: normalizedUpdateData.status || undefined,
+        system:
+          normalizedUpdateData.system !== undefined
+            ? normalizedUpdateData.system
+            : undefined,
       },
       include: {
         creator: {

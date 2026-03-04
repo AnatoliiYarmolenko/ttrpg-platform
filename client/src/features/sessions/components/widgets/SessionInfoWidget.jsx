@@ -272,38 +272,46 @@ export default function SessionInfoWidget({
               <h4 className="font-medium text-[#164A41] mb-2 text-sm">
                 Управління статусом
               </h4>
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-3 flex-wrap">
                 {session.status === 'PLANNED' && startState.canShowStartButton && (
-                  <button
+                  <Button
                     onClick={() => handleStatusChange('ACTIVE')}
-                    className="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
+                    variant="primary"
+                    fullWidth={false}
+                    className="px-5"
                   >
                     Розпочати
-                  </button>
+                  </Button>
                 )}
                 {session.status === 'ACTIVE' && (
-                  <button
+                  <Button
                     onClick={() => handleStatusChange('FINISHED')}
-                    className="px-3 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm"
+                    variant="secondary"
+                    fullWidth={false}
+                    className="px-5"
                   >
                     Завершити
-                  </button>
+                  </Button>
                 )}
                 {(session.status === 'PLANNED' || session.status === 'ACTIVE') && (
-                  <button
+                  <Button
                     onClick={() => handleStatusChange('CANCELED')}
-                    className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm"
+                    variant="danger"
+                    fullWidth={false}
+                    className="px-5"
                   >
                     Скасувати
-                  </button>
+                  </Button>
                 )}
                 {session.status === 'PLANNED' && startState.canMarkAsFinished && (
-                  <button
+                  <Button
                     onClick={handleMarkAsFinished}
-                    className="px-3 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm"
+                    variant="secondary"
+                    fullWidth={false}
+                    className="px-5"
                   >
                     Позначити як проведену
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>

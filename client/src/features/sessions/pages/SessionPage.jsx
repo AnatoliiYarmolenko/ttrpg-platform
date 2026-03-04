@@ -39,6 +39,7 @@ export default function SessionPage() {
     isPreviewMode,
     myRole,
     canManage,
+    canManageSettings,
     canJoin,
     handleJoin,
     handleLeave,
@@ -92,7 +93,7 @@ export default function SessionPage() {
 
     switch (activeTab) {
       case TABS.SETTINGS:
-        if (canManage) {
+        if (canManageSettings) {
           return (
             <SessionSettingsWidget
               session={currentSession}
@@ -149,7 +150,7 @@ export default function SessionPage() {
             sessionTitle={currentSession.title}
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            canManage={canManage}
+            canManage={canManageSettings}
             campaignTitle={currentSession.campaign?.title}
           />
         ) : (

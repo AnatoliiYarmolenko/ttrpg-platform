@@ -31,6 +31,12 @@ class SessionCleanupService {
     return cutoffDate;
   }
 
+  _getCanceledDeletionCutoff(daysOld = 7) {
+    const cutoffDate = new Date();
+    cutoffDate.setUTCDate(cutoffDate.getUTCDate() - daysOld);
+    return cutoffDate;
+  }
+
   async autoCancelStalePlannedSessions(daysOld = 30) {
     const timestamp = new Date().toISOString();
 
@@ -128,15 +134,78 @@ class SessionCleanupService {
     }
   }
 
+  async autoDeleteCanceledSessions(daysOld = 7) {
+    const timestamp = new Date().toISOString();
+
+    try {
+      const cutoffDate = this._getCanceledDeletionCutoff(daysOld);
+
+      const canceledSessions = await prisma.session.findMany({
+        where: {
+          status: 'CANCELED',
+          updatedAt: {
+            lt: cutoffDate,
+          },
+        },
+        select: { id: true },
+      });
+
+      if (canceledSessions.length === 0) {
+        return {
+          success: true,
+          deletedCount: 0,
+          scannedCount: 0,
+          cutoffDate,
+          timestamp,
+        };
+      }
+
+      const canceledSessionIds = canceledSessions.map((session) => session.id);
+
+      await prisma.chatMessage.deleteMany({
+        where: { sessionId: { in: canceledSessionIds } },
+      });
+
+      await prisma.sessionParticipant.deleteMany({
+        where: { sessionId: { in: canceledSessionIds } },
+      });
+
+      const deleteResult = await prisma.session.deleteMany({
+        where: { id: { in: canceledSessionIds } },
+      });
+
+      console.log(
+        `[${timestamp}] Session Cleanup: Видалено ${deleteResult.count} CANCELED сесій старше ${daysOld} днів`
+      );
+
+      return {
+        success: true,
+        deletedCount: deleteResult.count,
+        scannedCount: canceledSessions.length,
+        cutoffDate,
+        timestamp,
+      };
+    } catch (error) {
+      console.error(`[${timestamp}] Session Cleanup Delete CANCELED Error: ${error.message}`);
+      return {
+        success: false,
+        error: error.message,
+        timestamp,
+      };
+    }
+  }
+
   async performCleanup() {
     console.log('[Session Cleanup] Початок cleanup запланованих сесій...');
 
     const autoCancelResult = await this.autoCancelStalePlannedSessions(30);
     const autoFinishResult = await this.autoFinishStaleActiveSessions();
+    const autoDeleteCanceledResult = await this.autoDeleteCanceledSessions(7);
 
     return {
       autoCancel: autoCancelResult,
       autoFinish: autoFinishResult,
+      autoDeleteCanceled: autoDeleteCanceledResult,
       completedAt: new Date().toISOString(),
     };
   }
