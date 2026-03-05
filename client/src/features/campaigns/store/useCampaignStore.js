@@ -6,6 +6,9 @@ import {
   getCampaignById,
   updateCampaign,
   deleteCampaign,
+  transferCampaignOwnership,
+  cancelCampaignSession,
+  deleteCampaignSession,
   getCampaignMembers,
   addMemberToCampaign,
   removeMemberFromCampaign,
@@ -103,6 +106,69 @@ const useCampaignStore = create((set) => ({
       successMessage: 'Кампанію видалено',
     }),
 
+  transferOwnership: async (campaignId, newOwnerId) =>
+    apiAction(set, {
+      apiCall: () => transferCampaignOwnership(campaignId, newOwnerId),
+      onSuccess: (data) =>
+        set((state) => ({
+          currentCampaign:
+            state.currentCampaign?.id === campaignId
+              ? data
+              : state.currentCampaign,
+          campaigns: state.campaigns.map((campaign) =>
+            campaign.id === campaignId ? data : campaign
+          ),
+        })),
+      defaultError: 'Помилка при передачі прав кампанії',
+      toastOnSuccess: true,
+      successMessage: 'Права власності передано',
+    }),
+
+  cancelSessionInCampaign: async (sessionId) =>
+    apiAction(set, {
+      loadingKey: 'isLoadingAction',
+      apiCall: () => cancelCampaignSession(sessionId),
+      onSuccess: (data) =>
+        set((state) => ({
+          currentCampaign: state.currentCampaign
+            ? {
+                ...state.currentCampaign,
+                sessions: (state.currentCampaign.sessions || []).map((session) =>
+                  session.id === sessionId
+                    ? {
+                        ...session,
+                        status: data?.status || 'CANCELED',
+                      }
+                    : session
+                ),
+              }
+            : state.currentCampaign,
+        })),
+      defaultError: 'Помилка при скасуванні сесії',
+      toastOnSuccess: true,
+      successMessage: 'Сесію скасовано',
+    }),
+
+  deleteSessionInCampaign: async (sessionId) =>
+    apiAction(set, {
+      loadingKey: 'isLoadingAction',
+      apiCall: () => deleteCampaignSession(sessionId),
+      onSuccess: () =>
+        set((state) => ({
+          currentCampaign: state.currentCampaign
+            ? {
+                ...state.currentCampaign,
+                sessions: (state.currentCampaign.sessions || []).filter(
+                  (session) => session.id !== sessionId
+                ),
+              }
+            : state.currentCampaign,
+        })),
+      defaultError: 'Помилка при видаленні сесії',
+      toastOnSuccess: true,
+      successMessage: 'Сесію видалено',
+    }),
+
   // === ЧЛЕНИ КАМПАНІЇ ===
 
   fetchCampaignMembers: async (campaignId) =>
@@ -149,7 +215,7 @@ const useCampaignStore = create((set) => ({
       onSuccess: (data) =>
         set((state) => ({
           campaignMembers: state.campaignMembers.map((m) =>
-            m.id === memberId ? data : m
+            m.userId === memberId ? data : m
           ),
         })),
       defaultError: 'Помилка при зміні ролі члена',

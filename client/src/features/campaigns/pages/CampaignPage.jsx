@@ -45,9 +45,13 @@ export default function CampaignPage() {
     canJoin,
     handleJoinRequest,
     handleLeave,
+    handleRefreshCampaign,
     handleRegenerateCode,
     handleSaveSettings,
     handleDelete,
+    handleTransferOwnership,
+    handleCancelForeignSession,
+    handleDeleteForeignSession,
     handleViewProfile,
     handleBackFromProfile,
     navigate,
@@ -100,6 +104,7 @@ export default function CampaignPage() {
               campaign={currentCampaign}
               onSave={handleSaveSettings}
               onDelete={handleDelete}
+              onTransferOwnership={handleTransferOwnership}
               isOwner={isOwner}
               isLoading={isLoading}
             />
@@ -109,7 +114,10 @@ export default function CampaignPage() {
           <CampaignSessionsWidget
             campaign={currentCampaign}
             canManage={canManage}
-            onSessionCreated={() => {}}
+            isOwner={isOwner}
+            onCancelForeignSession={handleCancelForeignSession}
+            onDeleteForeignSession={handleDeleteForeignSession}
+            onSessionCreated={handleRefreshCampaign}
           />
         );
 
@@ -131,7 +139,10 @@ export default function CampaignPage() {
           <CampaignSessionsWidget
             campaign={currentCampaign}
             canManage={canManage}
-            onSessionCreated={() => {}}
+            isOwner={isOwner}
+            onCancelForeignSession={handleCancelForeignSession}
+            onDeleteForeignSession={handleDeleteForeignSession}
+            onSessionCreated={handleRefreshCampaign}
           />
         );
     }

@@ -9,7 +9,12 @@ export default function ConfirmDeleteModal({ isOpen, title, message, onConfirm, 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Overlay */}
-      <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
+      <button
+        type="button"
+        aria-label="Закрити модальне вікно"
+        className="absolute inset-0 bg-black/50"
+        onClick={onCancel}
+      />
       
       {/* Modal */}
       <div className="relative bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full mx-4 border-2 border-[#9DC88D]/30">

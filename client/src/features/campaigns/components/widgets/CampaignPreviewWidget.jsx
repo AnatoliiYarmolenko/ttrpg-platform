@@ -26,17 +26,15 @@ export default function CampaignPreviewWidget({
   pendingRequestStatus = null,
 }) {
   const [showJoinModal, setShowJoinModal] = useState(false);
-  const [joinMessage, setJoinMessage] = useState('');
   const [joinError, setJoinError] = useState(null);
   const [isJoining, setIsJoining] = useState(false);
 
   const handleJoinRequest = async () => {
     setIsJoining(true);
     setJoinError(null);
-    const result = await onJoinRequest?.(joinMessage || '');
+    const result = await onJoinRequest?.('');
     if (result?.success) {
       setShowJoinModal(false);
-      setJoinMessage('');
     } else {
       setJoinError(result?.error || 'Помилка при подачі заявки');
     }
@@ -154,20 +152,9 @@ export default function CampaignPreviewWidget({
             <h3 className="text-xl font-bold text-[#164A41] mb-4">
               Подати заявку на вступ
             </h3>
-            <div className="mb-4">
-              <label htmlFor="join-message" className="block text-sm font-medium text-[#164A41] mb-2">
-                Повідомлення (опціонально)
-              </label>
-              <textarea
-                id="join-message"
-                value={joinMessage}
-                onChange={(e) => setJoinMessage(e.target.value)}
-                placeholder="Розкажіть про себе або свій досвід..."
-                className="w-full p-3 border-2 border-[#9DC88D]/50 rounded-xl focus:border-[#164A41] outline-none resize-none"
-                rows={3}
-                maxLength={500}
-              />
-            </div>
+            <p className="text-sm text-[#4D774E] mb-4">
+              Після підтвердження заявку буде надіслано організатору кампанії.
+            </p>
             <div className="flex gap-3">
               <button
                 onClick={() => {

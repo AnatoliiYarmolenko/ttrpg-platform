@@ -1,4 +1,5 @@
 ﻿import api from '@/lib/axios';
+import { normalizeApiEnvelope } from '@/utils/ownerCompatibility';
 
 // === CRUD операції ===
 
@@ -8,7 +9,7 @@
  */
 export const createCampaign = async (campaignData) => {
   const response = await api.post('/campaigns', campaignData);
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -17,7 +18,7 @@ export const createCampaign = async (campaignData) => {
  */
 export const getMyCampaigns = async (role = 'all') => {
   const response = await api.get('/campaigns', { params: { role } });
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -26,7 +27,7 @@ export const getMyCampaigns = async (role = 'all') => {
  */
 export const getCampaignById = async (campaignId) => {
   const response = await api.get(`/campaigns/${campaignId}`);
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -36,7 +37,7 @@ export const getCampaignById = async (campaignId) => {
  */
 export const updateCampaign = async (campaignId, campaignData) => {
   const response = await api.put(`/campaigns/${campaignId}`, campaignData);
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -45,7 +46,37 @@ export const updateCampaign = async (campaignId, campaignData) => {
  */
 export const deleteCampaign = async (campaignId) => {
   const response = await api.delete(`/campaigns/${campaignId}`);
-  return response.data;
+  return normalizeApiEnvelope(response.data);
+};
+
+/**
+ * Передати власність кампанії іншому учаснику
+ * @param {number} campaignId
+ * @param {number} newOwnerId
+ */
+export const transferCampaignOwnership = async (campaignId, newOwnerId) => {
+  const response = await api.post(`/campaigns/${campaignId}/transfer-ownership`, {
+    newOwnerId,
+  });
+  return normalizeApiEnvelope(response.data);
+};
+
+/**
+ * Скасувати сесію кампанії (owner override)
+ * @param {number} sessionId
+ */
+export const cancelCampaignSession = async (sessionId) => {
+  const response = await api.post(`/sessions/${sessionId}/cancel`, {});
+  return normalizeApiEnvelope(response.data);
+};
+
+/**
+ * Видалити сесію кампанії (owner override)
+ * @param {number} sessionId
+ */
+export const deleteCampaignSession = async (sessionId) => {
+  const response = await api.delete(`/sessions/${sessionId}`);
+  return normalizeApiEnvelope(response.data);
 };
 
 // === Управління членами ===
@@ -56,7 +87,7 @@ export const deleteCampaign = async (campaignId) => {
  */
 export const getCampaignMembers = async (campaignId) => {
   const response = await api.get(`/campaigns/${campaignId}/members`);
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -70,7 +101,7 @@ export const addMemberToCampaign = async (campaignId, newMemberId, role = 'PLAYE
     newMemberId,
     role,
   });
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -80,7 +111,7 @@ export const addMemberToCampaign = async (campaignId, newMemberId, role = 'PLAYE
  */
 export const removeMemberFromCampaign = async (campaignId, memberId) => {
   const response = await api.delete(`/campaigns/${campaignId}/members/${memberId}`);
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -93,7 +124,7 @@ export const updateMemberRole = async (campaignId, memberId, role) => {
   const response = await api.patch(`/campaigns/${campaignId}/members/${memberId}`, {
     role,
   });
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 // === Коди запрошень ===
@@ -104,7 +135,7 @@ export const updateMemberRole = async (campaignId, memberId, role) => {
  */
 export const regenerateInviteCode = async (campaignId) => {
   const response = await api.post(`/campaigns/${campaignId}/invite`, {});
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -113,7 +144,7 @@ export const regenerateInviteCode = async (campaignId) => {
  */
 export const joinByInviteCode = async (inviteCode) => {
   const response = await api.post(`/campaigns/invite/${inviteCode}`, {});
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 // === Запити на приєднання ===
@@ -127,7 +158,7 @@ export const submitJoinRequest = async (campaignId, message = '') => {
   const response = await api.post(`/campaigns/${campaignId}/requests`, {
     message,
   });
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -136,7 +167,7 @@ export const submitJoinRequest = async (campaignId, message = '') => {
  */
 export const getJoinRequests = async (campaignId) => {
   const response = await api.get(`/campaigns/${campaignId}/requests`);
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -148,7 +179,7 @@ export const approveJoinRequest = async (requestId, role = 'PLAYER') => {
   const response = await api.post(`/campaigns/requests/${requestId}/approve`, {
     role,
   });
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -157,5 +188,5 @@ export const approveJoinRequest = async (requestId, role = 'PLAYER') => {
  */
 export const rejectJoinRequest = async (requestId) => {
   const response = await api.post(`/campaigns/requests/${requestId}/reject`, {});
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };

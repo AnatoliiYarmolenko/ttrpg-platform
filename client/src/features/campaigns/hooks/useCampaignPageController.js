@@ -30,6 +30,9 @@ export default function useCampaignPageController() {
     fetchCampaignMembers,
     updateCampaignData,
     deleteCampaignData,
+    transferOwnership,
+    cancelSessionInCampaign,
+    deleteSessionInCampaign,
     removeMember,
     submitRequest,
     regenerateCode,
@@ -112,7 +115,7 @@ export default function useCampaignPageController() {
   const handleLeave = useCallback(async () => {
     const myMember = campaignMembers.find((m) => m.userId === user?.id);
     if (myMember) {
-      await removeMember(Number(id), myMember.id);
+      await removeMember(Number(id), myMember.userId);
       navigate('/');
     }
   }, [campaignMembers, user, id, removeMember, navigate]);
@@ -121,6 +124,10 @@ export default function useCampaignPageController() {
     await regenerateCode(Number(id));
     await fetchCampaignById(id);
   }, [id, regenerateCode, fetchCampaignById]);
+
+  const handleRefreshCampaign = useCallback(async () => {
+    await fetchCampaignById(id);
+  }, [id, fetchCampaignById]);
 
   const handleSaveSettings = useCallback(
     async (campaignData) => {
@@ -135,6 +142,40 @@ export default function useCampaignPageController() {
     await deleteCampaignData(Number(id));
     navigate('/');
   }, [id, deleteCampaignData, navigate]);
+
+  const handleTransferOwnership = useCallback(
+    async (newOwnerId) => {
+      const result = await transferOwnership(Number(id), Number(newOwnerId));
+      if (result?.success) {
+        await fetchCampaignById(id);
+        await fetchCampaignMembers(id);
+      }
+      return result;
+    },
+    [id, transferOwnership, fetchCampaignById, fetchCampaignMembers]
+  );
+
+  const handleCancelForeignSession = useCallback(
+    async (sessionId) => {
+      const result = await cancelSessionInCampaign(Number(sessionId));
+      if (result?.success) {
+        await fetchCampaignById(id);
+      }
+      return result;
+    },
+    [id, cancelSessionInCampaign, fetchCampaignById]
+  );
+
+  const handleDeleteForeignSession = useCallback(
+    async (sessionId) => {
+      const result = await deleteSessionInCampaign(Number(sessionId));
+      if (result?.success) {
+        await fetchCampaignById(id);
+      }
+      return result;
+    },
+    [id, deleteSessionInCampaign, fetchCampaignById]
+  );
 
   const handleViewProfile = useCallback((userId) => {
     setSearchParams(
@@ -184,9 +225,13 @@ export default function useCampaignPageController() {
     // Дії
     handleJoinRequest,
     handleLeave,
+    handleRefreshCampaign,
     handleRegenerateCode,
     handleSaveSettings,
     handleDelete,
+    handleTransferOwnership,
+    handleCancelForeignSession,
+    handleDeleteForeignSession,
     handleViewProfile,
     handleBackFromProfile,
 

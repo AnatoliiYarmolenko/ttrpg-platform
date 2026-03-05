@@ -18,6 +18,7 @@ import { toast } from '@/stores/useToastStore';
  * @param {boolean} [options.toastOnSuccess=false] — показувати toast при успіху
  * @param {boolean} [options.toastOnError=true] — показувати toast при помилці
  * @param {boolean} [options.silent=false] — вимкнути всі toasts для цього виклику
+ * @param {boolean} [options.setErrorState=true] — записувати помилку в store.error
  * @returns {Promise<{ success: boolean, data?: any, error?: string }>}
  *
  * @example
@@ -48,6 +49,7 @@ export async function apiAction(set, {
   toastOnSuccess = false,
   toastOnError = true,
   silent = false,
+  setErrorState = true,
 }) {
   set({ [loadingKey]: true, error: null });
   try {
@@ -65,7 +67,9 @@ export async function apiAction(set, {
     }
 
     const message = response.message || defaultError;
-    set({ error: message });
+    if (setErrorState) {
+      set({ error: message });
+    }
 
     if (!silent && toastOnError) {
       toast.error(errorMessage || message);
@@ -75,7 +79,9 @@ export async function apiAction(set, {
   } catch (err) {
     const message =
       err.response?.data?.error || err.message || defaultError;
-    set({ error: message });
+    if (setErrorState) {
+      set({ error: message });
+    }
 
     if (!silent && toastOnError) {
       toast.error(errorMessage || message);

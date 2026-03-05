@@ -45,8 +45,6 @@ export default function CalendarDayCell({
       'D&D 5e': 'bg-red-500',
       'Pathfinder 2e': 'bg-blue-500',
       'Call of Cthulhu': 'bg-purple-500',
-      'Cyberpunk RED': 'bg-pink-500',
-      'Warhammer': 'bg-yellow-500',
       'Інша': 'bg-gray-500',
     };
     return colors[system] || 'bg-green-500';

@@ -41,6 +41,7 @@ export default function CreateSessionForm({ initialDate, campaignId, onSuccess, 
     price: 0,
     visibility: 'PUBLIC',
     system: '',
+    isGm: true,
   });
 
   const [errors, setErrors] = useState({});
@@ -180,6 +181,41 @@ export default function CreateSessionForm({ initialDate, campaignId, onSuccess, 
           placeholder="Оберіть систему"
           error={errors.system}
         />
+      </div>
+
+      {/* Роль організатора */}
+      <div>
+        <p className="block text-sm font-medium text-[#164A41] mb-2">
+          Ваша роль у сесії
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setFormData((prev) => ({ ...prev, isGm: true }))}
+            className={`
+              p-3 rounded-xl border-2 text-left transition-colors
+              ${formData.isGm
+                ? 'border-[#164A41] bg-[#9DC88D]/15 text-[#164A41]'
+                : 'border-[#9DC88D]/30 text-[#4D774E] hover:border-[#164A41]/50'}
+            `}
+          >
+            <div className="font-semibold">Я буду GM</div>
+            <div className="text-xs mt-1 opacity-80">Керуватиму сесією самостійно</div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFormData((prev) => ({ ...prev, isGm: false }))}
+            className={`
+              p-3 rounded-xl border-2 text-left transition-colors
+              ${!formData.isGm
+                ? 'border-[#164A41] bg-[#9DC88D]/15 text-[#164A41]'
+                : 'border-[#9DC88D]/30 text-[#4D774E] hover:border-[#164A41]/50'}
+            `}
+          >
+            <div className="font-semibold">Шукаю GM</div>
+            <div className="text-xs mt-1 opacity-80">Я організатор, GM буде інший</div>
+          </button>
+        </div>
       </div>
       
       {/* Дата та час */}

@@ -24,6 +24,7 @@ export default function CampaignSettingsWidget({
   campaign,
   onSave,
   onDelete,
+  onTransferOwnership,
   isOwner = false,
   isLoading = false,
 }) {
@@ -38,12 +39,23 @@ export default function CampaignSettingsWidget({
   const [formCampaignId, setFormCampaignId] = useState(campaign?.id ?? null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
+  const [transferModal, setTransferModal] = useState(false);
+  const [selectedNewOwnerId, setSelectedNewOwnerId] = useState('');
 
   // Скидати форму при зміні кампанії (обчислення під час рендеру, без effect)
   if (campaign?.id !== formCampaignId) {
     setFormCampaignId(campaign?.id ?? null);
     setFormData(buildFormData(campaign));
+    setSelectedNewOwnerId('');
   }
+
+  const eligibleNewOwners = (campaign?.members || [])
+    .filter((member) => member.userId !== campaign.ownerId)
+    .filter((member, index, array) => array.findIndex((m) => m.userId === member.userId) === index);
+
+  const selectedOwner = eligibleNewOwners.find(
+    (member) => String(member.userId) === String(selectedNewOwnerId)
+  );
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -70,6 +82,17 @@ export default function CampaignSettingsWidget({
   const handleDelete = () => {
     setDeleteModal(false);
     onDelete?.();
+  };
+
+  const handleTransferOwnership = async () => {
+    if (!selectedNewOwnerId) return;
+
+    const result = await onTransferOwnership?.(Number(selectedNewOwnerId));
+
+    if (result?.success) {
+      setTransferModal(false);
+      setSelectedNewOwnerId('');
+    }
   };
 
   if (!campaign) return null;
@@ -162,6 +185,43 @@ export default function CampaignSettingsWidget({
         {isOwner && (
           <div className="border-t border-red-200 pt-4 mt-2">
             <h4 className="text-sm font-bold text-red-600 mb-3">Небезпечна зона</h4>
+
+            <div className="mb-5 p-3 border-2 border-[#9DC88D]/30 rounded-xl bg-[#9DC88D]/5">
+              <p className="text-xs text-[#4D774E] mb-3">
+                Передача прав власності змінить Owner кампанії. Ви станете GM цієї кампанії.
+              </p>
+
+              {eligibleNewOwners.length > 0 ? (
+                <div className="flex flex-col gap-3">
+                  <select
+                    value={selectedNewOwnerId}
+                    onChange={(event) => setSelectedNewOwnerId(event.target.value)}
+                    className={inputClasses}
+                  >
+                    <option value="">Оберіть нового Owner</option>
+                    {eligibleNewOwners.map((member) => {
+                      const displayName = member.user?.displayName || member.user?.username || `User #${member.userId}`;
+                      return (
+                        <option key={member.id} value={member.userId}>
+                          {displayName}
+                        </option>
+                      );
+                    })}
+                  </select>
+
+                  <Button
+                    variant="outline"
+                    disabled={!selectedNewOwnerId || isLoading}
+                    onClick={() => setTransferModal(true)}
+                  >
+                    Передати права кампанії
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-xs text-[#4D774E]">Немає доступних учасників для передачі прав.</p>
+              )}
+            </div>
+
             <p className="text-xs text-red-500 mb-3">
               Видалення кампанії призведе до втрати всіх сесій та даних. Цю дію неможливо відмінити.
             </p>
@@ -183,6 +243,16 @@ export default function CampaignSettingsWidget({
         variant="danger"
         onConfirm={handleDelete}
         onCancel={() => setDeleteModal(false)}
+      />
+
+      <ConfirmModal
+        isOpen={transferModal}
+        title="Передати права кампанії?"
+        message={selectedOwner
+          ? `Новим власником стане ${selectedOwner.user?.displayName || selectedOwner.user?.username || `User #${selectedOwner.userId}`}. Після підтвердження ви втратите роль Owner.`
+          : 'Підтвердити передачу прав кампанії?'}
+        onConfirm={handleTransferOwnership}
+        onCancel={() => setTransferModal(false)}
       />
     </DashboardCard>
   );

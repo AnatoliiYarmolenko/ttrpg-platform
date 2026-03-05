@@ -70,7 +70,7 @@ export default function MemberCard({
         {isOwner && !isSelf && !isMemberOwner && onChangeRole && (
           <select
             value={member.role}
-            onChange={(e) => onChangeRole(member.id, e.target.value)}
+            onChange={(e) => onChangeRole(member.userId, e.target.value)}
             className="text-xs px-2 py-1 border border-[#9DC88D]/50 rounded-lg bg-white text-[#164A41] outline-none focus:border-[#164A41]"
           >
             <option value="PLAYER">Гравець</option>
@@ -80,7 +80,7 @@ export default function MemberCard({
 
         {isOwner && !isSelf && !isMemberOwner && onRemove && (
           <button
-            onClick={() => onRemove(member.id)}
+            onClick={() => onRemove(member.userId)}
             className="px-2 py-1 text-red-600 hover:bg-red-50 rounded transition-colors text-sm"
             title="Видалити учасника"
           >

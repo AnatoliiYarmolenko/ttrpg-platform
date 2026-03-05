@@ -2,12 +2,13 @@ const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middlewares/auth.middleware');
 const campaignController = require('../controllers/campaign.controller');
-const sessionController = require('../controllers/session.controller');
+const sessionCrudController = require('../controllers/session/session-crud.controller');
 
 const { 
   validateCreateCampaign,
   validateUpdateCampaign,
   validateCampaignId,
+  validateTransferCampaignOwnership,
   validateAddMember,
   validateRemoveMember,
   validateUpdateMemberRole,
@@ -42,6 +43,13 @@ router.put('/:campaignId', [authenticateToken, ...validateUpdateCampaign], (req,
 // DELETE /api/campaigns/:campaignId
 router.delete('/:campaignId', [authenticateToken, ...validateCampaignId], (req, res, next) => campaignController.deleteCampaign(req, res, next));
 
+// POST /api/campaigns/:campaignId/transfer-ownership
+router.post(
+  '/:campaignId/transfer-ownership',
+  [authenticateToken, ...validateTransferCampaignOwnership],
+  (req, res, next) => campaignController.transferCampaignOwnership(req, res, next)
+);
+
 // === Члени кампанії ===
 
 router.get('/:campaignId/members', [authenticateToken, ...validateCampaignId], (req, res, next) => campaignController.getCampaignMembers(req, res, next));
@@ -59,7 +67,7 @@ router.patch('/:campaignId/members/:memberId', [authenticateToken, ...validateUp
 router.get(
   '/:campaignId/sessions', 
   [authenticateToken, ...validateGetCampaignSessions], 
-  (req, res, next) => sessionController.getCampaignSessions(req, res, next)
+  (req, res, next) => sessionCrudController.getCampaignSessions(req, res, next)
 );
 
 // === Коди запрошень ===

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import DashboardCard from '@/components/ui/DashboardCard';
-import { BackButton, EmptyState } from '@/components/shared';
+import { BackButton, ConfirmModal, EmptyState } from '@/components/shared';
 import SessionListItem from '../ui/SessionListItem';
 import CreateSessionForm from '@/features/dashboard/components/widgets/CreateSessionForm';
 
@@ -16,9 +16,19 @@ import CreateSessionForm from '@/features/dashboard/components/widgets/CreateSes
 export default function CampaignSessionsWidget({
   campaign,
   canManage = false,
+  isOwner = false,
+  onCancelForeignSession,
+  onDeleteForeignSession,
   onSessionCreated,
 }) {
   const [isCreating, setIsCreating] = useState(false);
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    variant: 'primary',
+    onConfirm: null,
+  });
 
   if (!campaign) return null;
 
@@ -41,6 +51,12 @@ export default function CampaignSessionsWidget({
   const finishedCount = sessions.filter((s) => s.status === 'FINISHED').length;
 
   const title = `📅 Сесії кампанії (${sessions.length})`;
+
+  const closeConfirmModal = () => {
+    setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  const campaignOwnerId = campaign.ownerId;
 
   // === Режим створення сесії ===
   if (isCreating) {
@@ -85,13 +101,50 @@ export default function CampaignSessionsWidget({
           />
         ) : (
           <div className="flex flex-col gap-2">
-            {sortedSessions.map((session, idx) => (
+            {sortedSessions.map((session, idx) => {
+              const sessionOwnerId = session.ownerId;
+              const showOwnerOverrideActions = Boolean(
+                isOwner
+                && sessionOwnerId
+                && campaignOwnerId
+                && sessionOwnerId !== campaignOwnerId
+              );
+
+              return (
               <SessionListItem
                 key={session.id}
                 session={session}
                 index={idx}
+                showOwnerOverrideActions={showOwnerOverrideActions}
+                onCancelOwnerAction={() =>
+                  setConfirmModal({
+                    isOpen: true,
+                    title: 'Скасувати сесію?',
+                    message: 'Сесія змінить статус на CANCELED. Продовжити?',
+                    variant: 'danger',
+                    onConfirm: async () => {
+                      closeConfirmModal();
+                      await onCancelForeignSession?.(session.id);
+                      await onSessionCreated?.();
+                    },
+                  })
+                }
+                onDeleteOwnerAction={() =>
+                  setConfirmModal({
+                    isOpen: true,
+                    title: 'Видалити сесію?',
+                    message: 'Сесію буде видалено без можливості відновлення. Продовжити?',
+                    variant: 'danger',
+                    onConfirm: async () => {
+                      closeConfirmModal();
+                      await onDeleteForeignSession?.(session.id);
+                      await onSessionCreated?.();
+                    },
+                  })
+                }
               />
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -105,6 +158,15 @@ export default function CampaignSessionsWidget({
           </button>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={closeConfirmModal}
+      />
     </DashboardCard>
   );
 }

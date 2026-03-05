@@ -80,6 +80,16 @@ const validateCampaignId = [
   handleValidationErrors,
 ];
 
+const validateTransferCampaignOwnership = [
+  param('campaignId')
+    .isInt({ min: 1 }).withMessage('campaignId повинен бути позитивним числом'),
+
+  body('newOwnerId')
+    .isInt({ min: 1 }).withMessage('newOwnerId повинен бути позитивним числом'),
+
+  handleValidationErrors,
+];
+
 const validateAddMember = [
   param('campaignId')
     .isInt({ min: 1 }).withMessage('campaignId повинен бути позитивним числом'),
@@ -172,6 +182,7 @@ module.exports = {
   validateCreateCampaign,
   validateUpdateCampaign,
   validateCampaignId,
+  validateTransferCampaignOwnership,
   validateAddMember,
   validateRemoveMember,
   validateUpdateMemberRole,

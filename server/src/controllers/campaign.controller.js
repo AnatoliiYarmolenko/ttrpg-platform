@@ -104,6 +104,29 @@ class CampaignController {
     }
   }
 
+  // Передати власність кампанії іншому учаснику
+  async transferCampaignOwnership(req, res, next) {
+    try {
+      const { campaignId } = req.params;
+      const currentOwnerId = req.user.id;
+      const { newOwnerId } = req.body;
+
+      const campaign = await campaignService.transferCampaignOwnership(
+        campaignId,
+        currentOwnerId,
+        newOwnerId
+      );
+
+      res.json({
+        success: true,
+        message: 'Права власності кампанії передано успішно!',
+        data: campaign,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // === Управління учасниками ===
 
   // Отримати список учасників кампанії

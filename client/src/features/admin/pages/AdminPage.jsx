@@ -207,7 +207,7 @@ export default function AdminPage() {
                 </td>
                 <td className="py-2 px-3 text-gray-500">{formatDate(u.createdAt)}</td>
                 <td className="py-2 px-3 text-gray-500">{u._count?.campaignsOwned ?? 0}</td>
-                <td className="py-2 px-3 text-gray-500">{u._count?.createdSessions ?? 0}</td>
+                <td className="py-2 px-3 text-gray-500">{u._count?.ownedSessions ?? 0}</td>
               </tr>
             ))}
             {users.length === 0 && !loading && (
@@ -336,7 +336,7 @@ export default function AdminPage() {
               <tr key={s.id} className="border-b border-[#9DC88D]/10 hover:bg-[#9DC88D]/5 transition-colors">
                 <td className="py-2 px-3 text-gray-500">{s.id}</td>
                 <td className="py-2 px-3 font-medium text-[#164A41] max-w-[200px] truncate">{s.title}</td>
-                <td className="py-2 px-3 text-gray-600">{s.creator?.username ?? '—'}</td>
+                <td className="py-2 px-3 text-gray-600">{s.owner?.username ?? '—'}</td>
                 <td className="py-2 px-3 text-gray-500">{s.campaign?.title || 'One-shot'}</td>
                 <td className="py-2 px-3">
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[s.status] || 'bg-gray-100 text-gray-600'}`}>

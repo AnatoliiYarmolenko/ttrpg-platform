@@ -1,4 +1,5 @@
 import api from '@/lib/axios';
+import { normalizeOwnerFieldsDeep } from '@/utils/ownerCompatibility';
 
 // ============== СТАТИСТИКА ==============
 
@@ -7,7 +8,7 @@ import api from '@/lib/axios';
  */
 export const getAdminStats = async () => {
   const response = await api.get('/admin/stats');
-  return response.data?.data ?? null;
+  return normalizeOwnerFieldsDeep(response.data?.data ?? null);
 };
 
 // ============== КОРИСТУВАЧІ ==============
@@ -18,7 +19,22 @@ export const getAdminStats = async () => {
 export const getAdminUsers = async ({ page = 1, limit = 20, search = '' } = {}) => {
   const params = new URLSearchParams({ page, limit, ...(search && { search }) });
   const response = await api.get(`/admin/users?${params}`);
-  return response.data?.data ?? null;
+  const payload = normalizeOwnerFieldsDeep(response.data?.data ?? null);
+
+  if (!payload?.users) {
+    return payload;
+  }
+
+  return {
+    ...payload,
+    users: payload.users.map((user) => ({
+      ...user,
+      _count: {
+        ...user._count,
+        ownedSessions: user._count?.ownedSessions ?? 0,
+      },
+    })),
+  };
 };
 
 /**
@@ -26,7 +42,19 @@ export const getAdminUsers = async ({ page = 1, limit = 20, search = '' } = {}) 
  */
 export const getAdminUserById = async (id) => {
   const response = await api.get(`/admin/users/${id}`);
-  return response.data?.data ?? null;
+  const payload = normalizeOwnerFieldsDeep(response.data?.data ?? null);
+
+  if (!payload) {
+    return payload;
+  }
+
+  return {
+    ...payload,
+    _count: {
+      ...payload._count,
+      ownedSessions: payload._count?.ownedSessions ?? 0,
+    },
+  };
 };
 
 // ============== КАМПАНІЇ ==============
@@ -37,7 +65,7 @@ export const getAdminUserById = async (id) => {
 export const getAdminCampaigns = async ({ page = 1, limit = 20, search = '', visibility = '' } = {}) => {
   const params = new URLSearchParams({ page, limit, ...(search && { search }), ...(visibility && { visibility }) });
   const response = await api.get(`/admin/campaigns?${params}`);
-  return response.data?.data ?? null;
+  return normalizeOwnerFieldsDeep(response.data?.data ?? null);
 };
 
 /**
@@ -45,7 +73,7 @@ export const getAdminCampaigns = async ({ page = 1, limit = 20, search = '', vis
  */
 export const getAdminCampaignById = async (id) => {
   const response = await api.get(`/admin/campaigns/${id}`);
-  return response.data?.data ?? null;
+  return normalizeOwnerFieldsDeep(response.data?.data ?? null);
 };
 
 /**
@@ -53,7 +81,7 @@ export const getAdminCampaignById = async (id) => {
  */
 export const deleteAdminCampaign = async (id) => {
   const response = await api.delete(`/admin/campaigns/${id}`);
-  return response.data;
+  return normalizeOwnerFieldsDeep(response.data);
 };
 
 // ============== СЕСІЇ ==============
@@ -64,7 +92,7 @@ export const deleteAdminCampaign = async (id) => {
 export const getAdminSessions = async ({ page = 1, limit = 20, search = '', status = '' } = {}) => {
   const params = new URLSearchParams({ page, limit, ...(search && { search }), ...(status && { status }) });
   const response = await api.get(`/admin/sessions?${params}`);
-  return response.data?.data ?? null;
+  return normalizeOwnerFieldsDeep(response.data?.data ?? null);
 };
 
 /**
@@ -72,7 +100,7 @@ export const getAdminSessions = async ({ page = 1, limit = 20, search = '', stat
  */
 export const getAdminSessionById = async (id) => {
   const response = await api.get(`/admin/sessions/${id}`);
-  return response.data?.data ?? null;
+  return normalizeOwnerFieldsDeep(response.data?.data ?? null);
 };
 
 /**
@@ -80,5 +108,5 @@ export const getAdminSessionById = async (id) => {
  */
 export const deleteAdminSession = async (id) => {
   const response = await api.delete(`/admin/sessions/${id}`);
-  return response.data;
+  return normalizeOwnerFieldsDeep(response.data);
 };

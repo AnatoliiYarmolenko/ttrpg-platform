@@ -1,4 +1,5 @@
 ﻿import api from '@/lib/axios';
+import { normalizeApiEnvelope } from '@/utils/ownerCompatibility';
 
 /**
  * Пошук публічних кампаній
@@ -11,7 +12,7 @@
  */
 export const searchCampaigns = async (params = {}) => {
   const response = await api.get('/search/campaigns', { params });
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -31,5 +32,5 @@ export const searchCampaigns = async (params = {}) => {
  */
 export const searchSessions = async (params = {}) => {
   const response = await api.get('/search/sessions', { params });
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };

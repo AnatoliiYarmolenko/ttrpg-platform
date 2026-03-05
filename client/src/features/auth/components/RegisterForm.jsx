@@ -1,5 +1,4 @@
 import { useForm, useWatch } from "react-hook-form";
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import { registerUser } from "../api/authApi";
 
