@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo } from 'react';
 import DashboardCard from '@/components/ui/DashboardCard';
 import CalendarDayCell from '../ui/CalendarDayCell';
-import useDashboardStore, { VIEW_MODES } from '@/stores/useDashboardStore';
+import useDashboardStore from '@/stores/useDashboardStore';
+import useSearchStore from '@/stores/useSearchStore';
+import { VIEW_MODES } from '@/stores/dashboardConstants';
 import useCalendarStore from '@/stores/useCalendarStore';
 import Button from '@/components/ui/Button';
 import { formatDate } from '@/components/shared';
@@ -27,13 +29,14 @@ export default function CalendarWidget({ title, showTodayButton }) {
     currentMonth,
     selectedDate,
     viewMode,
-    searchFilters,
-    hasSearched,
     goToNextMonth,
     goToPrevMonth,
     goToToday,
     selectDate,
   } = useDashboardStore();
+
+  const searchFilters = useSearchStore((state) => state.searchFilters);
+  const hasSearched = useSearchStore((state) => state.hasSearched);
 
   const {
     calendarStats,

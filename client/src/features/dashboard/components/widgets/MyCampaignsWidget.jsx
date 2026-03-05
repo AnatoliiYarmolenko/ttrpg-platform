@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useCampaignStore from '@/features/campaigns/store/useCampaignStore';
-import useDashboardStore, { PANEL_MODES } from '@/stores/useDashboardStore';
+import useDashboardStore from '@/stores/useDashboardStore';
+import { PANEL_MODES } from '@/stores/dashboardConstants';
 import DashboardCard from '@/components/ui/DashboardCard';
 import { RoleBadge, VisibilityBadge, EmptyState } from '@/components/shared';
 import useAuthStore from '@/stores/useAuthStore';

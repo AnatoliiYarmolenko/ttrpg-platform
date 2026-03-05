@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useDashboardStore from '@/stores/useDashboardStore';
+import useSearchStore from '@/stores/useSearchStore';
 import useSessionStore from '@/features/sessions/store/useSessionStore';
 import DashboardCard from '@/components/ui/DashboardCard';
 import SessionCard from '../ui/SessionCard';
@@ -29,6 +30,9 @@ function mapSearchFiltersToLocal(searchFilters) {
  * Використовує useDashboardStore для централізованого управління станом
  */
 export function SearchFiltersWidget({ onSearch }) {
+  const currentMonth = useDashboardStore((state) => state.currentMonth);
+  const viewMode = useDashboardStore((state) => state.viewMode);
+
   const { 
     searchFilters, 
     setSearchFilters, 
@@ -36,7 +40,7 @@ export function SearchFiltersWidget({ onSearch }) {
     searchActiveTab, 
     setSearchActiveTab,
     executeSearch,
-  } = useDashboardStore();
+  } = useSearchStore();
   
   const [localFilters, setLocalFilters] = useState(() => mapSearchFiltersToLocal(searchFilters));
 
@@ -57,15 +61,15 @@ export function SearchFiltersWidget({ onSearch }) {
     });
     
     // Виконуємо пошук (оновлює календар + результати)
-    await executeSearch();
+    await executeSearch({ currentMonth, viewMode });
     
     if (onSearch) {
       onSearch(localFilters);
     }
   };
 
-  const handleClear = () => {
-    resetSearchFilters();
+  const handleClear = async () => {
+    await resetSearchFilters({ currentMonth, viewMode });
     setLocalFilters(mapSearchFiltersToLocal({}));
   };
 
@@ -282,7 +286,7 @@ export function SearchResultsWidget() {
     isSearchLoading,
     error,
     hasSearched,
-  } = useDashboardStore();
+  } = useSearchStore();
   const { joinSessionAction } = useSessionStore();
 
   const [expandedSessionId, setExpandedSessionId] = useState(null);
@@ -353,7 +357,7 @@ export function SearchResultsWidget() {
           {searchActiveTab === 'sessions' && items.map((session) => (
             <SessionCard
               key={session.id}
-              session={{ ...session, creator: session.creator || session.owner }}
+              session={session}
               isExpanded={expandedSessionId === session.id}
               onToggle={() => handleToggleSession(session.id)}
               onJoin={handleJoinSession}

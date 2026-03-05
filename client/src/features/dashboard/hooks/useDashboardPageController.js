@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '@/stores/useAuthStore';
-import useDashboardStore, { VIEW_MODES } from '@/stores/useDashboardStore';
+import useDashboardStore from '@/stores/useDashboardStore';
+import { VIEW_MODES } from '@/stores/dashboardConstants';
 import { logoutUser } from '@/features/auth/api/authApi';
 import { PROFILE_SECTIONS } from '../components/widgets/profileSections';
 

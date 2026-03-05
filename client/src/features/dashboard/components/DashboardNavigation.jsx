@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { VIEW_MODES } from '@/stores/useDashboardStore';
+import { VIEW_MODES } from '@/stores/dashboardConstants';
 import NavButton from '@/components/ui/NavButton';
 import { selectIsAdmin } from '@/stores/useAuthStore';
 import useAuthStore from '@/stores/useAuthStore';

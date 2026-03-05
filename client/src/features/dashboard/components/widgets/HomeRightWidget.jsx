@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
 import DashboardCard from '@/components/ui/DashboardCard';
-import useDashboardStore, { PANEL_MODES } from '@/stores/useDashboardStore';
+import useDashboardStore from '@/stores/useDashboardStore';
+import useSearchStore from '@/stores/useSearchStore';
+import { PANEL_MODES } from '@/stores/dashboardConstants';
 import useCalendarStore from '@/stores/useCalendarStore';
 import CreateSessionForm from './CreateSessionForm';
 import SessionCard from '../ui/SessionCard';
@@ -26,13 +28,14 @@ export default function HomeRightWidget() {
     selectedDate,
     currentMonth,
     viewMode,
-    searchFilters,
-    hasSearched,
     rightPanelMode,
     expandedSessionId,
     setRightPanelMode,
     toggleSessionExpanded,
   } = useDashboardStore();
+
+  const searchFilters = useSearchStore((state) => state.searchFilters);
+  const hasSearched = useSearchStore((state) => state.hasSearched);
 
   const {
     daySessions,
