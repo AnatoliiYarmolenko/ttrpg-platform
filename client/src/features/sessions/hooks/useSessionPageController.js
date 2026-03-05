@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import useSessionStore from '../store/useSessionStore';
 import useAuthStore from '@/stores/useAuthStore';
@@ -26,12 +26,15 @@ export default function useSessionPageController() {
   const {
     currentSession,
     fetchSessionById,
+    fetchParticipants,
     joinSessionAction,
     leaveSessionAction,
     updateSessionData,
     updateSessionStatusAction,
     markSessionAsFinishedAction,
     deleteSessionById,
+    updateParticipantStatusAction,
+    kickGmAction,
     isLoading,
     error,
     clearCurrentSession,
@@ -41,6 +44,7 @@ export default function useSessionPageController() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || TABS.DETAILS;
   const viewingUserId = Number(searchParams.get('viewing')) || null;
+  const [currentTimestamp, setCurrentTimestamp] = useState(() => Date.now());
 
   const setActiveTab = useCallback(
     (tab) => {
@@ -72,20 +76,34 @@ export default function useSessionPageController() {
     };
   }, [id, fetchSessionById, clearCurrentSession]);
 
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setCurrentTimestamp(Date.now());
+    }, 60_000);
+
+    return () => clearInterval(intervalId);
+  }, []);
+
   // === Ролі та права ===
   const myRole = useMemo(() => {
     if (!currentSession || !user) return null;
-    if (currentSession.campaign?.ownerId === user.id) return 'OWNER';
-    const campaignMember = currentSession.campaign?.members?.find(
-      (m) => m.userId === user.id
-    );
-    if (campaignMember?.role === 'GM') return 'GM';
+
+    if (currentSession.ownerId === user.id) {
+      return 'OWNER';
+    }
+
     const participant = currentSession.participants?.find(
       (p) => p.userId === user.id
     );
+
     if (participant) return participant.role || 'PLAYER';
-    if (currentSession.creatorId === user.id) return 'GM';
+
     return null;
+  }, [currentSession, user]);
+
+  const myParticipant = useMemo(() => {
+    if (!currentSession || !user) return null;
+    return currentSession.participants?.find((participant) => participant.userId === user.id) || null;
   }, [currentSession, user]);
 
   const amParticipant = useMemo(() => {
@@ -93,16 +111,32 @@ export default function useSessionPageController() {
     return currentSession.participants?.some((p) => p.userId === user.id);
   }, [currentSession, user]);
 
-  const isOwner = myRole === 'OWNER';
-  const isGM = myRole === 'GM';
-  const canManage = isOwner || isGM;
+  const confirmedGm = useMemo(() => {
+    if (!currentSession?.participants) return null;
+    return (
+      currentSession.participants.find(
+        (participant) => participant.role === 'GM' && participant.status === 'CONFIRMED'
+      ) || null
+    );
+  }, [currentSession]);
+
+  const hasConfirmedGm = Boolean(confirmedGm);
+
+  const isOwner = currentSession?.ownerId === user?.id;
+  const isGM = myParticipant?.role === 'GM';
+  const isConfirmedGm = isGM && myParticipant?.status === 'CONFIRMED';
+
+  const canManageStatus = isConfirmedGm;
+  const canManageParticipants = hasConfirmedGm ? isConfirmedGm : isOwner;
+  const canManageGmRequests = isOwner;
+
   const isSessionInPast = useMemo(() => {
     if (!currentSession?.date) return false;
     const sessionDate = new Date(currentSession.date);
     if (Number.isNaN(sessionDate.getTime())) return false;
-    return sessionDate.getTime() < Date.now();
-  }, [currentSession?.date]);
-  const canManageSettings = canManage && !isSessionInPast;
+    return sessionDate.getTime() < currentTimestamp;
+  }, [currentSession, currentTimestamp]);
+  const canManageSettings = isOwner && !isSessionInPast;
   const { isPreviewMode } = usePreviewMode({ isMember: amParticipant, isLoading });
 
   useEffect(() => {
@@ -123,22 +157,49 @@ export default function useSessionPageController() {
     return true;
   }, [currentSession, user, amParticipant]);
 
+  const canApplyAsGm = useMemo(() => {
+    if (!currentSession || !user) return false;
+    if (amParticipant) return false;
+    if (isOwner) return false;
+    if (currentSession.status !== 'PLANNED') return false;
+    if (new Date(currentSession.date) < new Date()) return false;
+    if (hasConfirmedGm) return false;
+    return true;
+  }, [currentSession, user, amParticipant, isOwner, hasConfirmedGm]);
+
+  const refreshSessionWidgets = useCallback(async () => {
+    if (!id) return;
+    await Promise.all([
+      fetchSessionById(id),
+      fetchParticipants(id),
+    ]);
+  }, [id, fetchSessionById, fetchParticipants]);
+
   // === Дії ===
   const handleJoin = useCallback(
-    async (characterName) => {
-      const result = await joinSessionAction(id, {
-        characterName: characterName || undefined,
-      });
-      if (result?.success) await fetchSessionById(id);
+    async (payload = {}) => {
+      const result = await joinSessionAction(id, payload);
+      if (result?.success) await refreshSessionWidgets();
       return result;
     },
-    [id, joinSessionAction, fetchSessionById]
+    [id, joinSessionAction, refreshSessionWidgets]
   );
 
+  const handleApplyAsGm = useCallback(async () => {
+    const result = await joinSessionAction(id, { role: 'GM' });
+    if (result?.success) {
+      await refreshSessionWidgets();
+    }
+    return result;
+  }, [id, joinSessionAction, refreshSessionWidgets]);
+
   const handleLeave = useCallback(async () => {
-    await leaveSessionAction(id);
-    await fetchSessionById(id);
-  }, [id, leaveSessionAction, fetchSessionById]);
+    const result = await leaveSessionAction(id);
+    if (result?.success) {
+      await refreshSessionWidgets();
+    }
+    return result;
+  }, [id, leaveSessionAction, refreshSessionWidgets]);
 
   const handleStatusChange = useCallback(
     async (newStatus) => {
@@ -178,6 +239,25 @@ export default function useSessionPageController() {
     await deleteSessionById(id);
     navigate('/');
   }, [id, deleteSessionById, navigate]);
+
+  const handleParticipantStatusChange = useCallback(
+    async (participantId, status) => {
+      const result = await updateParticipantStatusAction(id, participantId, status);
+      if (result?.success) {
+        await fetchSessionById(id);
+      }
+      return result;
+    },
+    [id, updateParticipantStatusAction, fetchSessionById]
+  );
+
+  const handleKickGm = useCallback(async () => {
+    const result = await kickGmAction(id);
+    if (result?.success) {
+      await fetchSessionById(id);
+    }
+    return result;
+  }, [id, kickGmAction, fetchSessionById]);
 
   const handleViewProfile = useCallback((userId) => {
     setSearchParams(
@@ -219,19 +299,27 @@ export default function useSessionPageController() {
     myRole,
     isOwner,
     isGM,
-    canManage,
+    canManageStatus,
+    canManageParticipants,
+    canManageGmRequests,
     canManageSettings,
     isSessionInPast,
     amParticipant,
     canJoin,
+    canApplyAsGm,
+    hasConfirmedGm,
+    confirmedGm,
 
     // Дії
     handleJoin,
+    handleApplyAsGm,
     handleLeave,
     handleStatusChange,
     handleMarkAsFinished,
     handleSaveSettings,
     handleDelete,
+    handleParticipantStatusChange,
+    handleKickGm,
     handleViewProfile,
     handleBackFromProfile,
 

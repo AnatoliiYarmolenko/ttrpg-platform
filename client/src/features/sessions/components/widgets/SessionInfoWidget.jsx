@@ -75,6 +75,12 @@ export default function SessionInfoWidget({
     return session?.participants?.filter((participant) => participant.role === 'PLAYER').length || 0;
   };
 
+  const organizerName = session?.owner?.displayName || session?.owner?.username || 'Організатор';
+  const confirmedGm = session?.participants?.find(
+    (participant) => participant.role === 'GM' && participant.status === 'CONFIRMED'
+  );
+  const confirmedGmName = confirmedGm?.user?.displayName || confirmedGm?.user?.username || null;
+
   const handleLeave = () => {
     setConfirmModal({
       isOpen: true,
@@ -184,14 +190,14 @@ export default function SessionInfoWidget({
           <div className="flex items-center gap-2 text-[#4D774E]">
             <span>Вільних: {getFreeSpots()}</span>
           </div>
+          {/* Організатор */}
+          <div className="flex items-center gap-2 text-[#4D774E]">
+            <span>Організатор: {organizerName}</span>
+          </div>
           {/* GM */}
-          {session.creator && (
-            <div className="flex items-center gap-2 text-[#4D774E]">
-              <span>
-                {session.creator.displayName || session.creator.username || 'GM'}
-              </span>
-            </div>
-          )}
+          <div className="flex items-center gap-2 text-[#4D774E]">
+            <span>GM: {confirmedGmName || 'Шукаємо GM'}</span>
+          </div>
           {/* Локація */}
           {session.location && (
             <div className="flex items-center gap-2 text-[#4D774E]">
@@ -254,8 +260,8 @@ export default function SessionInfoWidget({
 
         {/* Дії */}
         <div className="border-t border-[#9DC88D]/20 pt-4 flex flex-col gap-3">
-          {/* Покинути сесію */}
-          {session.status === 'PLANNED' && onLeave && (
+          {/* Покинути сесію (не для Owner) */}
+          {session.status === 'PLANNED' && myRole && myRole !== 'OWNER' && onLeave && (
             <Button
               onClick={handleLeave}
               variant="danger"

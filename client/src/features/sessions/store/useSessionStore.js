@@ -14,6 +14,7 @@ import {
   leaveSession,
   updateParticipantStatus,
   removeParticipant,
+  kickGm,
 } from '../api/sessionApi';
 
 /**
@@ -193,6 +194,7 @@ const useSessionStore = create((set, get) => ({
       defaultError: 'Помилка при приєднанні до сесії',
       toastOnSuccess: true,
       successMessage: 'Ви приєдналися до сесії',
+      setErrorState: false,
     }),
 
   leaveSessionAction: async (sessionId) =>
@@ -209,6 +211,7 @@ const useSessionStore = create((set, get) => ({
       defaultError: 'Помилка при виході з сесії',
       toastOnSuccess: true,
       successMessage: 'Ви покинули сесію',
+      setErrorState: false,
     }),
 
   updateParticipantStatusAction: async (sessionId, participantId, status) =>
@@ -237,6 +240,20 @@ const useSessionStore = create((set, get) => ({
       defaultError: 'Помилка при видаленні учасника',
       toastOnSuccess: true,
       successMessage: 'Учасника видалено',
+    }),
+
+  kickGmAction: async (sessionId) =>
+    apiAction(set, {
+      apiCall: () => kickGm(sessionId),
+      onSuccess: () =>
+        set((state) => ({
+          participants: state.participants.filter(
+            (participant) => !(participant.role === 'GM' && participant.status === 'CONFIRMED')
+          ),
+        })),
+      defaultError: 'Помилка при знятті GM',
+      toastOnSuccess: true,
+      successMessage: 'GM успішно знято з сесії',
     }),
 
   reset: () =>

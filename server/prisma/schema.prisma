@@ -45,7 +45,7 @@ model User {
   campaignsOwned          Campaign[] @relation("OwnerCampaigns") // Кампанії, де він власник
   campaignMembers         CampaignMember[] // Членство в кампаніях
   sessionsJoined          SessionParticipant[] // Сесії, де він гравець/майстер
-  createdSessions         Session[] @relation("CreatedSessions") // Сесії, які він створив
+  ownedSessions           Session[] @relation("OwnedSessions") // Сесії, які він організував
   
   // Заявки на вступ
   joinRequests            JoinRequest[]
@@ -148,8 +148,8 @@ model Session {
   campaignId  Int?                            // Nullable для one-shots
   campaign    Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   
-  creatorId   Int                             // Хто створив (GM)
-  creator     User      @relation("CreatedSessions", fields: [creatorId], references: [id])
+  ownerId     Int                             // Хто володіє/організував сесію
+  owner       User      @relation("OwnedSessions", fields: [ownerId], references: [id])
   
   participants SessionParticipant[]
   messages     ChatMessage[]                  // Чат сесії 

@@ -131,7 +131,7 @@ async function createDynamicWeekSessions(usersByKey, campaigns) {
       visibility: 'PUBLIC',
       system: 'D&D 5e',
       campaignId: campaigns[0].id,
-      creatorId: usersByKey.gm1.id,
+      ownerId: usersByKey.gm1.id,
     });
 
     // Сесія 2: Зазвичай кампанія 2 (Call of Cthulhu)
@@ -148,7 +148,7 @@ async function createDynamicWeekSessions(usersByKey, campaigns) {
       visibility: 'PUBLIC',
       system: 'Call of Cthulhu',
       campaignId: campaigns[1].id,
-      creatorId: usersByKey.gm2.id,
+      ownerId: usersByKey.gm2.id,
     });
   }
 
@@ -160,7 +160,7 @@ async function createDynamicWeekSessions(usersByKey, campaigns) {
     
     // Додаємо учасників до кожної сесії
     const participants = [
-      { sessionId: session.id, userId: data.creatorId, role: 'GM', status: data.status === 'FINISHED' ? 'ATTENDED' : 'CONFIRMED' },
+      { sessionId: session.id, userId: data.ownerId, role: 'GM', status: data.status === 'FINISHED' ? 'ATTENDED' : 'CONFIRMED' },
       { sessionId: session.id, userId: usersByKey.player1.id, role: 'PLAYER', status: data.status === 'FINISHED' ? 'ATTENDED' : 'CONFIRMED' },
       { sessionId: session.id, userId: usersByKey.player2.id, role: 'PLAYER', status: data.status === 'FINISHED' ? 'NO_SHOW' : 'PENDING' },
     ];

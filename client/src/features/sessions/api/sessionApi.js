@@ -1,4 +1,5 @@
 import api from '@/lib/axios';
+import { normalizeApiEnvelope } from '@/utils/ownerCompatibility';
 
 // === CRUD Сесії ===
 
@@ -8,7 +9,7 @@ import api from '@/lib/axios';
  */
 export const createSession = async (sessionData) => {
   const response = await api.post('/sessions', sessionData);
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -21,7 +22,7 @@ export const createSession = async (sessionData) => {
  */
 export const getMySessions = async (params = {}) => {
   const response = await api.get('/sessions', { params });
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -30,7 +31,7 @@ export const getMySessions = async (params = {}) => {
  */
 export const getSessionById = async (sessionId) => {
   const response = await api.get(`/sessions/${sessionId}`);
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -40,7 +41,7 @@ export const getSessionById = async (sessionId) => {
  */
 export const updateSession = async (sessionId, sessionData) => {
   const response = await api.patch(`/sessions/${sessionId}`, sessionData);
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -49,7 +50,7 @@ export const updateSession = async (sessionId, sessionData) => {
  */
 export const deleteSession = async (sessionId) => {
   const response = await api.delete(`/sessions/${sessionId}`);
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -58,7 +59,7 @@ export const deleteSession = async (sessionId) => {
  */
 export const cancelSession = async (sessionId) => {
   const response = await api.post(`/sessions/${sessionId}/cancel`);
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -67,7 +68,7 @@ export const cancelSession = async (sessionId) => {
  */
 export const markSessionAsFinished = async (sessionId) => {
   const response = await api.post(`/sessions/${sessionId}/mark-finished`);
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 // === Календар ===
@@ -81,7 +82,7 @@ export const markSessionAsFinished = async (sessionId) => {
  */
 export const getCalendar = async (params = {}) => {
   const response = await api.get('/sessions/calendar', { params });
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -98,7 +99,7 @@ export const getCalendarStats = async (params = {}) => {
     ...(filters && { filters: JSON.stringify(filters) }),
   };
   const response = await api.get('/sessions/calendar-stats', { params: queryParams });
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -108,7 +109,7 @@ export const getCalendarStats = async (params = {}) => {
  */
 export const getSessionsByDay = async (date, params = {}) => {
   const response = await api.get(`/sessions/day/${date}`, { params });
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -123,7 +124,7 @@ export const getSessionsByDayFiltered = async (date, scope = 'global', filters =
     params.filters = JSON.stringify(filters);
   }
   const response = await api.get(`/sessions/day-filtered/${date}`, { params });
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -133,7 +134,7 @@ export const getSessionsByDayFiltered = async (date, scope = 'global', filters =
  */
 export const getCampaignSessions = async (campaignId, params = {}) => {
   const response = await api.get(`/campaigns/${campaignId}/sessions`, { params });
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 // === Учасники сесії ===
@@ -144,7 +145,7 @@ export const getCampaignSessions = async (campaignId, params = {}) => {
  */
 export const getSessionParticipants = async (sessionId) => {
   const response = await api.get(`/sessions/${sessionId}/participants`);
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -153,7 +154,7 @@ export const getSessionParticipants = async (sessionId) => {
  */
 export const joinSession = async (sessionId, payload = {}) => {
   const response = await api.post(`/sessions/${sessionId}/join`, payload);
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -162,7 +163,7 @@ export const joinSession = async (sessionId, payload = {}) => {
  */
 export const leaveSession = async (sessionId) => {
   const response = await api.post(`/sessions/${sessionId}/leave`, {});
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -176,7 +177,7 @@ export const updateParticipantStatus = async (sessionId, participantId, status) 
     `/sessions/${sessionId}/participants/${participantId}`,
     { status }
   );
-  return response.data;
+  return normalizeApiEnvelope(response.data);
 };
 
 /**
@@ -188,5 +189,14 @@ export const removeParticipant = async (sessionId, participantId) => {
   const response = await api.delete(
     `/sessions/${sessionId}/participants/${participantId}`
   );
-  return response.data;
+  return normalizeApiEnvelope(response.data);
+};
+
+/**
+ * Зняти підтвердженого GM із сесії (для Owner)
+ * @param {number} sessionId
+ */
+export const kickGm = async (sessionId) => {
+  const response = await api.post(`/sessions/${sessionId}/kick-gm`);
+  return normalizeApiEnvelope(response.data);
 };

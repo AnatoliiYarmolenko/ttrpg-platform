@@ -229,6 +229,17 @@ async function deleteAccount(userId, password) {
     throw createError.passwordInvalid();
   }
 
+  const ownedCampaignsCount = await prisma.campaign.count({
+    where: { ownerId: userId },
+  });
+
+  if (ownedCampaignsCount > 0) {
+    throw new AppError(
+      ERROR_CODES.VALIDATION_FAILED,
+      'Неможливо видалити акаунт, поки ви є власником кампаній. Спочатку передайте права власності.'
+    );
+  }
+
   // Виконуємо глибоке очищення в транзакції
   await prisma.$transaction(async (tx) => {
     // 1. Видаляємо токени безпеки
@@ -271,7 +282,7 @@ async function deleteAccount(userId, password) {
     const sessionsToDelete = await tx.session.findMany({
       where: {
         OR: [
-          { creatorId: userId },
+          { ownerId: userId },
           { campaignId: { in: ownedCampaignIds } }
         ]
       },

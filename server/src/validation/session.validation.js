@@ -64,6 +64,10 @@ const validateCreateSession = [
     .trim()
     .isLength({ max: 100 }).withMessage('Назва системи не повинна перевищувати 100 символів'),
 
+  body('isGm')
+    .optional()
+    .isBoolean().withMessage('isGm повинен бути булевим значенням'),
+
   handleValidationErrors,
 ];
 
@@ -248,6 +252,11 @@ const validateJoinSession = [
   body('isGuest')
     .optional()
     .isBoolean().withMessage('isGuest повинен бути булевим значенням'),
+
+  body('role')
+    .optional()
+    .trim()
+    .isIn(['PLAYER', 'GM']).withMessage('role повинен бути PLAYER або GM'),
 
   handleValidationErrors,
 ];

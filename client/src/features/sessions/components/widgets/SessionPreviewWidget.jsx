@@ -18,19 +18,20 @@ import Dice20 from '@/components/ui/icons/Dice20';
  * Відображає інформацію про сесію з кнопкою "Приєднатися".
  *
  * @param {Object} session — дані сесії
- * @param {Function} onJoin — колбек приєднання (characterName?)
+ * @param {Function} onJoin — колбек приєднання ({ role: 'PLAYER' | 'GM' })
  * @param {boolean} canJoin — чи може юзер приєднатися
  */
 export default function SessionPagePreviewWidget({
   session,
   onJoin,
   canJoin = false,
+  canApplyAsGm = false,
 }) {
   const navigate = useNavigate();
   const [showJoinModal, setShowJoinModal] = useState(false);
-  const [joinCharacterName, setJoinCharacterName] = useState('');
   const [joinError, setJoinError] = useState(null);
   const [isJoining, setIsJoining] = useState(false);
+  const [isApplyingGm, setIsApplyingGm] = useState(false);
 
   const formatDuration = (minutes) => {
     if (!minutes) return '';
@@ -55,15 +56,43 @@ export default function SessionPagePreviewWidget({
   const handleJoin = async () => {
     setIsJoining(true);
     setJoinError(null);
-    const result = await onJoin?.(joinCharacterName || undefined);
+    const result = await onJoin?.({
+      role: 'PLAYER',
+    });
     if (result?.success) {
       setShowJoinModal(false);
-      setJoinCharacterName('');
     } else {
       setJoinError(result?.error || 'Помилка при приєднанні');
     }
     setIsJoining(false);
   };
+
+  const handleApplyAsGm = async () => {
+    setIsApplyingGm(true);
+    setJoinError(null);
+
+    const result = await onJoin?.({
+      role: 'GM',
+    });
+
+    if (result?.success) {
+      setShowJoinModal(false);
+    }
+
+    if (!result?.success) {
+      setJoinError(result?.error || 'Помилка при подачі заявки як GM');
+    }
+
+    setIsApplyingGm(false);
+  };
+
+  const organizerName = session?.owner?.displayName || session?.owner?.username || 'Організатор';
+  const confirmedGm = session?.participants?.find(
+    (participant) => participant.role === 'GM' && participant.status === 'CONFIRMED'
+  );
+  const hasConfirmedGm = Boolean(confirmedGm);
+  const confirmedGmName = confirmedGm?.user?.displayName || confirmedGm?.user?.username || null;
+  const canRequestJoin = canJoin || canApplyAsGm;
 
   if (!session) return null;
 
@@ -114,11 +143,12 @@ export default function SessionPagePreviewWidget({
           <div className="flex items-center gap-2 text-[#4D774E]">
             <span>Вільних: {getFreeSpots()}</span>
           </div>
-          {session.creator && (
-            <div className="flex items-center gap-2 text-[#4D774E]">
-              <span>{session.creator.displayName || session.creator.username || 'GM'}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2 text-[#4D774E]">
+            <span>Організатор: {organizerName}</span>
+          </div>
+          <div className="flex items-center gap-2 text-[#4D774E]">
+            <span>GM: {confirmedGmName || 'Шукаємо GM'}</span>
+          </div>
           {session.location && (
             <div className="flex items-center gap-2 text-[#4D774E]">
               <span>{session.location}</span>
@@ -171,7 +201,7 @@ export default function SessionPagePreviewWidget({
         )}
 
         {/* Кнопка приєднання */}
-        {canJoin && (
+        {canRequestJoin && (
           <Button
             onClick={() => setShowJoinModal(true)}
             variant="primary"
@@ -180,16 +210,19 @@ export default function SessionPagePreviewWidget({
           </Button>
         )}
 
-        {!canJoin && session.status !== 'PLANNED' && (
+        {!canRequestJoin && (
           <div className="text-sm text-[#4D774E] text-center p-3 bg-[#9DC88D]/10 rounded-lg">
-            Ця сесія{' '}
-            {session.status === 'FINISHED'
-              ? 'вже завершена'
-              : session.status === 'ACTIVE'
-              ? 'вже в процесі'
-              : session.status === 'CANCELED'
-              ? 'скасована'
-              : 'недоступна'}
+            {session.status !== 'PLANNED'
+              ? `Ця сесія ${
+                  session.status === 'FINISHED'
+                    ? 'вже завершена'
+                    : session.status === 'ACTIVE'
+                    ? 'вже в процесі'
+                    : session.status === 'CANCELED'
+                    ? 'скасована'
+                    : 'недоступна'
+                }`
+              : 'Приєднання до цієї сесії зараз недоступне'}
           </div>
         )}
       </div>
@@ -201,39 +234,54 @@ export default function SessionPagePreviewWidget({
             <h3 className="text-xl font-bold text-[#164A41] mb-4">
               Приєднатися до сесії
             </h3>
-            <div className="mb-4">
-              <label htmlFor="join-character-name" className="block text-sm font-medium text-[#164A41] mb-2">
-                Ім'я персонажа (опціонально)
-              </label>
-              <input
-                id="join-character-name"
-                type="text"
-                value={joinCharacterName}
-                onChange={(e) => setJoinCharacterName(e.target.value)}
-                placeholder="Наприклад: Торін Дубощит"
-                className="w-full p-3 border-2 border-[#9DC88D]/50 rounded-xl focus:border-[#164A41] outline-none"
-              />
-            </div>
-            <div className="flex gap-3">
+            <p className="text-sm text-[#4D774E] mb-4">
+              {hasConfirmedGm
+                ? 'Після підтвердження ви одразу приєднаєтесь до сесії як гравець.'
+                : 'У сесії поки немає підтвердженого GM. Оберіть роль, на яку хочете податися.'}
+            </p>
+            <div className="flex flex-col gap-3">
+              {!hasConfirmedGm && canJoin && (
+                <Button
+                  onClick={handleJoin}
+                  isLoading={isJoining}
+                  loadingText="Приєднання..."
+                  variant="secondary"
+                >
+                  Приєднатися як гравець
+                </Button>
+              )}
+
+              {!hasConfirmedGm && canApplyAsGm && (
+                <Button
+                  onClick={handleApplyAsGm}
+                  isLoading={isApplyingGm}
+                  loadingText="Відправка заявки..."
+                  variant={canJoin ? 'outline' : 'secondary'}
+                >
+                  Податися як GM
+                </Button>
+              )}
+
+              {hasConfirmedGm && (
+                <Button
+                  onClick={handleJoin}
+                  isLoading={isJoining}
+                  loadingText="Приєднання..."
+                  variant="secondary"
+                >
+                  Підтвердити приєднання
+                </Button>
+              )}
+
               <button
                 onClick={() => {
                   setShowJoinModal(false);
                   setJoinError(null);
                 }}
-                className="flex-1 py-2 border-2 border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50 transition-colors"
+                className="w-full py-2 border-2 border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50 transition-colors"
               >
                 Скасувати
               </button>
-              <Button
-                onClick={handleJoin}
-                isLoading={isJoining}
-                loadingText="Приєднання..."
-                variant="secondary"
-                fullWidth={false}
-                className="flex-1"
-              >
-                Приєднатися
-              </Button>
             </div>
           </div>
         </div>

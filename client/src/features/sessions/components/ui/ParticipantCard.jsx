@@ -19,6 +19,7 @@ export default function ParticipantCard({
   currentUserId,
   onRemove,
   onViewProfile,
+  gmModeration,
 }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -46,6 +47,16 @@ export default function ParticipantCard({
   const handleRemoveClick = (e) => {
     e.stopPropagation();
     onRemove?.(participant.id);
+  };
+
+  const handleApproveClick = (e) => {
+    e.stopPropagation();
+    gmModeration?.onApprove?.(participant.id);
+  };
+
+  const handleRejectClick = (e) => {
+    e.stopPropagation();
+    gmModeration?.onReject?.(participant.id);
   };
 
   return (
@@ -83,6 +94,25 @@ export default function ParticipantCard({
           <span className={`text-xs px-2 py-0.5 rounded-full ${statusInfo.class}`}>
             {statusInfo.label}
           </span>
+        )}
+
+        {gmModeration?.enabled && (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleApproveClick}
+              className="px-2 py-1 text-xs rounded bg-[#9DC88D]/30 text-[#164A41] hover:bg-[#9DC88D]/50 transition-colors"
+              title="Схвалити заявку GM"
+            >
+              Схвалити
+            </button>
+            <button
+              onClick={handleRejectClick}
+              className="px-2 py-1 text-xs rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+              title="Відхилити заявку GM"
+            >
+              Відхилити
+            </button>
+          </div>
         )}
 
         {canManage && participant.userId !== currentUserId && onRemove && (

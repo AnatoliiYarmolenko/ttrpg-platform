@@ -21,7 +21,12 @@ import GroupPeople from '@/components/ui/icons/GroupPeople';
  */
 export default function SessionPageParticipantsWidget({
   sessionId,
+  session,
   canManage = false,
+  canManageGmRequests = false,
+  confirmedGm = null,
+  onParticipantStatusChange,
+  onKickGm,
   currentUserId,
   onViewProfile,
   maxPlayers,
@@ -45,6 +50,16 @@ export default function SessionPageParticipantsWidget({
     setConfirmModal((prev) => ({ ...prev, isOpen: false }));
   }, []);
 
+  const openConfirmModal = useCallback((title, message, onConfirm, variant = 'primary') => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      onConfirm,
+      variant,
+    });
+  }, []);
+
   // Завантажити учасників
   useEffect(() => {
     if (sessionId) {
@@ -53,27 +68,83 @@ export default function SessionPageParticipantsWidget({
   }, [sessionId, fetchParticipants]);
 
   const handleRemove = (participantId) => {
-    setConfirmModal({
-      isOpen: true,
-      title: 'Видалити учасника?',
-      message: 'Видалити цього учасника з сесії?',
-      variant: 'danger',
-      onConfirm: async () => {
+    openConfirmModal(
+      'Видалити учасника?',
+      'Видалити цього учасника з сесії?',
+      async () => {
         closeConfirmModal();
         await removeParticipantAction(sessionId, participantId);
-        // Оновити дані сесії та учасників
         await fetchParticipants(sessionId);
         await fetchSessionById(sessionId);
       },
-    });
+      'danger'
+    );
+  };
+
+  const handleApproveGm = (participantId) => {
+    openConfirmModal(
+      'Схвалити GM?',
+      'Підтвердити цього користувача як GM для поточної сесії?',
+      async () => {
+        closeConfirmModal();
+        await onParticipantStatusChange?.(participantId, 'CONFIRMED');
+        await fetchParticipants(sessionId);
+        await fetchSessionById(sessionId);
+      },
+      'primary'
+    );
+  };
+
+  const handleRejectGm = (participantId) => {
+    openConfirmModal(
+      'Відхилити заявку GM?',
+      'Заявку буде відхилено.',
+      async () => {
+        closeConfirmModal();
+        await onParticipantStatusChange?.(participantId, 'DECLINED');
+        await fetchParticipants(sessionId);
+        await fetchSessionById(sessionId);
+      },
+      'danger'
+    );
+  };
+
+  const handleKickConfirmedGm = () => {
+    openConfirmModal(
+      'Зняти GM?',
+      'Підтвердженого GM буде знято із сесії.',
+      async () => {
+        closeConfirmModal();
+        await onKickGm?.();
+        await fetchParticipants(sessionId);
+        await fetchSessionById(sessionId);
+      },
+      'danger'
+    );
   };
 
   const title = maxPlayers
     ? `Учасники (${participants.filter((participant) => participant.role === 'PLAYER').length}/${maxPlayers})`
     : `Учасники (${participants.length})`;
 
+  const canShowKickGmButton =
+    canManageGmRequests
+    && session?.status === 'PLANNED'
+    && Boolean(confirmedGm)
+    && confirmedGm?.userId !== session?.ownerId;
+
   return (
     <DashboardCard title={title}>
+      {canShowKickGmButton && (
+        <button
+          type="button"
+          onClick={handleKickConfirmedGm}
+          className="mb-4 w-full px-3 py-2 text-sm font-semibold rounded-lg border-2 border-red-300 text-red-600 hover:bg-red-50 transition-colors"
+        >
+          Зняти GM
+        </button>
+      )}
+
       {participants.length === 0 ? (
         <EmptyState
           icon={<GroupPeople className="w-10 h-10" />}
@@ -92,6 +163,14 @@ export default function SessionPageParticipantsWidget({
               currentUserId={currentUserId}
               onRemove={handleRemove}
               onViewProfile={onViewProfile}
+              gmModeration={{
+                enabled:
+                  canManageGmRequests
+                  && participant.role === 'GM'
+                  && participant.status === 'PENDING',
+                onApprove: handleApproveGm,
+                onReject: handleRejectGm,
+              }}
             />
           )}
         />

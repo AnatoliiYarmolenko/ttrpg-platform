@@ -67,7 +67,7 @@ class AdminService {
           _count: {
             select: {
               campaignsOwned: true,
-              createdSessions: true,
+              ownedSessions: true,
             },
           },
         },
@@ -113,7 +113,7 @@ class AdminService {
           select: {
             campaignsOwned: true,
             campaignMembers: true,
-            createdSessions: true,
+            ownedSessions: true,
             sessionsJoined: true,
           },
         },
@@ -282,7 +282,7 @@ class AdminService {
       where.OR = [
         { title: { contains: search, mode: 'insensitive' } },
         { description: { contains: search, mode: 'insensitive' } },
-        { creator: { username: { contains: search, mode: 'insensitive' } } },
+        { owner: { username: { contains: search, mode: 'insensitive' } } },
       ];
     }
 
@@ -305,7 +305,7 @@ class AdminService {
           price: true,
           maxPlayers: true,
           createdAt: true,
-          creator: {
+          owner: {
             select: {
               id: true,
               username: true,
@@ -361,7 +361,7 @@ class AdminService {
         maxPlayers: true,
         createdAt: true,
         updatedAt: true,
-        creator: {
+        owner: {
           select: {
             id: true,
             username: true,

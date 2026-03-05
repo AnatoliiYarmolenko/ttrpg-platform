@@ -195,7 +195,7 @@ class SearchService {
       prisma.session.findMany({
         where,
         include: {
-          creator: {
+          owner: {
             select: { id: true, username: true, displayName: true, avatarUrl: true },
           },
           campaign: {
@@ -244,7 +244,8 @@ class SearchService {
         currentPlayers: confirmedPlayers,
         availableSlots: session.maxPlayers - confirmedPlayers,
         visibility: session.visibility,
-        creator: session.creator,
+        owner: session.owner,
+        ownerId: session.ownerId,
         campaign: session.campaign,
         isOneShot: !session.campaignId,
         createdAt: session.createdAt,

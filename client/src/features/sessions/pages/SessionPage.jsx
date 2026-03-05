@@ -38,15 +38,21 @@ export default function SessionPage() {
     viewingUserId,
     isPreviewMode,
     myRole,
-    canManage,
+    canManageStatus,
+    canManageParticipants,
+    canManageGmRequests,
     canManageSettings,
     canJoin,
+    canApplyAsGm,
+    confirmedGm,
     handleJoin,
     handleLeave,
     handleStatusChange,
     handleMarkAsFinished,
     handleSaveSettings,
     handleDelete,
+    handleParticipantStatusChange,
+    handleKickGm,
     handleViewProfile,
     handleBackFromProfile,
     navigate,
@@ -86,6 +92,7 @@ export default function SessionPage() {
           session={currentSession}
           onJoin={handleJoin}
           canJoin={canJoin}
+          canApplyAsGm={canApplyAsGm}
           isLoading={isLoading}
         />
       );
@@ -107,7 +114,7 @@ export default function SessionPage() {
           <SessionInfoWidget
             session={currentSession}
             myRole={myRole}
-            canManage={canManage}
+            canManage={canManageStatus}
             onLeave={handleLeave}
             onStatusChange={handleStatusChange}
             onMarkAsFinished={handleMarkAsFinished}
@@ -121,7 +128,7 @@ export default function SessionPage() {
           <SessionInfoWidget
             session={currentSession}
             myRole={myRole}
-            canManage={canManage}
+            canManage={canManageStatus}
             onLeave={handleLeave}
             onStatusChange={handleStatusChange}
             onMarkAsFinished={handleMarkAsFinished}
@@ -135,7 +142,12 @@ export default function SessionPage() {
   const renderRightPanel = () => (
     <SessionPageParticipantsWidget
       sessionId={id}
-      canManage={canManage}
+      session={currentSession}
+      canManage={canManageParticipants}
+      canManageGmRequests={canManageGmRequests}
+      confirmedGm={confirmedGm}
+      onParticipantStatusChange={handleParticipantStatusChange}
+      onKickGm={handleKickGm}
       currentUserId={user?.id}
       onViewProfile={handleViewProfile}
       maxPlayers={currentSession.maxPlayers}

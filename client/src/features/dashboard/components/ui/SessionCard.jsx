@@ -118,7 +118,7 @@ export default function SessionCard({
 
           {/* Майстер */}
           <div className="text-sm text-[#4D774E] mb-4">
-            <span className="font-medium">Майстер:</span> {session.creator?.displayName || session.creator?.username}
+            <span className="font-medium">Організатор:</span> {session.owner?.displayName || session.owner?.username || 'Невідомо'}
           </div>
 
           {/* Ціна */}

@@ -75,6 +75,66 @@ class SessionCleanupService {
     }
   }
 
+  async autoCancelSessionsWithoutGm() {
+    const timestamp = new Date().toISOString();
+
+    try {
+      const now = new Date();
+
+      const sessionsWithoutGm = await prisma.session.findMany({
+        where: {
+          status: 'PLANNED',
+          date: { lt: now },
+        },
+        include: {
+          participants: {
+            where: { role: 'GM', status: 'CONFIRMED' },
+            select: { id: true },
+          },
+        },
+      });
+
+      const sessionIdsToCancel = sessionsWithoutGm
+        .filter((session) => session.participants.length === 0)
+        .map((session) => session.id);
+
+      if (sessionIdsToCancel.length === 0) {
+        return {
+          success: true,
+          canceledCount: 0,
+          scannedCount: sessionsWithoutGm.length,
+          timestamp,
+        };
+      }
+
+      const result = await prisma.session.updateMany({
+        where: {
+          id: { in: sessionIdsToCancel },
+          status: 'PLANNED',
+        },
+        data: { status: 'CANCELED' },
+      });
+
+      console.log(
+        `[${timestamp}] Session Cleanup: Автоскасовано ${result.count} прострочених PLANNED сесій без CONFIRMED GM`
+      );
+
+      return {
+        success: true,
+        canceledCount: result.count,
+        scannedCount: sessionsWithoutGm.length,
+        timestamp,
+      };
+    } catch (error) {
+      console.error(`[${timestamp}] Session Cleanup Without GM Error: ${error.message}`);
+      return {
+        success: false,
+        error: error.message,
+        timestamp,
+      };
+    }
+  }
+
   async autoFinishStaleActiveSessions() {
     const timestamp = new Date().toISOString();
 
@@ -198,11 +258,13 @@ class SessionCleanupService {
   async performCleanup() {
     console.log('[Session Cleanup] Початок cleanup запланованих сесій...');
 
+    const autoCancelWithoutGmResult = await this.autoCancelSessionsWithoutGm();
     const autoCancelResult = await this.autoCancelStalePlannedSessions(30);
     const autoFinishResult = await this.autoFinishStaleActiveSessions();
     const autoDeleteCanceledResult = await this.autoDeleteCanceledSessions(7);
 
     return {
+      autoCancelWithoutGm: autoCancelWithoutGmResult,
       autoCancel: autoCancelResult,
       autoFinish: autoFinishResult,
       autoDeleteCanceled: autoDeleteCanceledResult,
