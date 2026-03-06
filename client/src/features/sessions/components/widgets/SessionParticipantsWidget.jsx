@@ -160,6 +160,7 @@ export default function SessionPageParticipantsWidget({
             <ParticipantCard
               participant={participant}
               canManage={canManage}
+              isOwner={participant.userId === session?.ownerId}
               currentUserId={currentUserId}
               onRemove={handleRemove}
               onViewProfile={onViewProfile}

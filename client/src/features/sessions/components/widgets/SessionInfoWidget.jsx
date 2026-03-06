@@ -80,6 +80,10 @@ export default function SessionInfoWidget({
     (participant) => participant.role === 'GM' && participant.status === 'CONFIRMED'
   );
   const confirmedGmName = confirmedGm?.user?.displayName || confirmedGm?.user?.username || null;
+  const ownerParticipantRole = session?.participants?.find(
+    (participant) => participant.userId === session?.ownerId
+  )?.role;
+  const displayMyRole = myRole === 'OWNER' ? (ownerParticipantRole || 'GM') : myRole;
 
   const handleLeave = () => {
     setConfirmModal({
@@ -150,7 +154,7 @@ export default function SessionInfoWidget({
             </h2>
             <StatusBadge status={session.status} />
           </div>
-          {myRole && <RoleBadge role={myRole} size="md" />}
+          {displayMyRole && <RoleBadge role={displayMyRole} size="md" />}
         </div>
 
         {/* Основна інформація */}

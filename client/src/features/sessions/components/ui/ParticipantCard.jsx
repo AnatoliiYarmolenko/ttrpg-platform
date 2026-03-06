@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UserAvatar, RoleBadge } from '@/components/shared';
+import Star from '@/components/ui/icons/Star';
 
 /**
  * Картка учасника сесії.
@@ -9,6 +10,7 @@ import { UserAvatar, RoleBadge } from '@/components/shared';
  *
  * @param {Object}   participant   — об'єкт учасника (з user, role, characterName, status)
  * @param {boolean}  canManage     — чи може поточний юзер видаляти учасника
+ * @param {boolean}  isOwner       — чи є цей учасник власником сесії
  * @param {number}   currentUserId — ID поточного юзера
  * @param {Function} onRemove      — колбек видалення (participantId)
  * @param {Function} [onViewProfile] — якщо передано, показує вбудований прев'ю замість переходу
@@ -16,6 +18,7 @@ import { UserAvatar, RoleBadge } from '@/components/shared';
 export default function ParticipantCard({
   participant,
   canManage = false,
+  isOwner = false,
   currentUserId,
   onRemove,
   onViewProfile,
@@ -73,6 +76,11 @@ export default function ParticipantCard({
             <span className="font-medium text-[#164A41] truncate">
               {displayName}
             </span>
+            {isOwner && (
+              <span className="inline-flex items-center text-[#F1B24A]" title="Власник" aria-label="Власник">
+                <Star className="w-4 h-4" />
+              </span>
+            )}
             <RoleBadge role={participant.role} />
           </div>
 

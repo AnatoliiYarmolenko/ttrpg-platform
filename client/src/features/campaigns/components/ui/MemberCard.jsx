@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { UserAvatar, RoleBadge } from '@/components/shared';
+import Star from '@/components/ui/icons/Star';
 
 /**
  * MemberCard — картка учасника кампанії.
@@ -28,6 +29,7 @@ export default function MemberCard({
   const displayName = user.displayName || user.username || 'Невідомий';
   const isSelf = member.userId === currentUserId;
   const isMemberOwner = member.role === 'OWNER';
+  const displayRole = isMemberOwner ? 'GM' : member.role;
 
   const handleCardClick = () => {
     if (onViewProfile) {
@@ -55,7 +57,12 @@ export default function MemberCard({
             <span className="font-medium text-[#164A41] truncate">
               {displayName}
             </span>
-            <RoleBadge role={member.role} />
+            {isMemberOwner && (
+              <span className="inline-flex items-center text-[#F1B24A]" title="Власник" aria-label="Власник">
+                <Star className="w-4 h-4" />
+              </span>
+            )}
+            <RoleBadge role={displayRole} />
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
