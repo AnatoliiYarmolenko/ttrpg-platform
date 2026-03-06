@@ -170,7 +170,7 @@ export const leaveSession = async (sessionId) => {
  * Оновити статус учасника (для GM)
  * @param {number} sessionId
  * @param {number} participantId
- * @param {string} status - PENDING | CONFIRMED | DECLINED | ATTENDED | NO_SHOW
+ * @param {string} status - PENDING | CONFIRMED | DECLINED
  */
 export const updateParticipantStatus = async (sessionId, participantId, status) => {
   const response = await api.patch(

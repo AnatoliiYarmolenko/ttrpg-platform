@@ -273,7 +273,7 @@ const validateUpdateParticipantStatus = [
 
   body('status')
     .trim()
-    .isIn(['PENDING', 'CONFIRMED', 'DECLINED', 'ATTENDED', 'NO_SHOW'])
+    .isIn(['PENDING', 'CONFIRMED', 'DECLINED'])
     .withMessage('Невірний статус учасника'),
 
   handleValidationErrors,

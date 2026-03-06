@@ -160,9 +160,9 @@ async function createDynamicWeekSessions(usersByKey, campaigns) {
     
     // Додаємо учасників до кожної сесії
     const participants = [
-      { sessionId: session.id, userId: data.ownerId, role: 'GM', status: data.status === 'FINISHED' ? 'ATTENDED' : 'CONFIRMED' },
-      { sessionId: session.id, userId: usersByKey.player1.id, role: 'PLAYER', status: data.status === 'FINISHED' ? 'ATTENDED' : 'CONFIRMED' },
-      { sessionId: session.id, userId: usersByKey.player2.id, role: 'PLAYER', status: data.status === 'FINISHED' ? 'NO_SHOW' : 'PENDING' },
+      { sessionId: session.id, userId: data.ownerId, role: 'GM', status: 'CONFIRMED' },
+      { sessionId: session.id, userId: usersByKey.player1.id, role: 'PLAYER', status: 'CONFIRMED' },
+      { sessionId: session.id, userId: usersByKey.player2.id, role: 'PLAYER', status: data.status === 'FINISHED' ? 'DECLINED' : 'PENDING' },
     ];
     await prisma.sessionParticipant.createMany({ data: participants });
   }

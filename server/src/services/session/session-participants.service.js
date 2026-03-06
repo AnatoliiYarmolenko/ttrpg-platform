@@ -136,26 +136,15 @@ function createSessionParticipantsService({
       const { preloadedSession = null } = options;
       const session = await resolveSessionContext(sessionId, requesterId, preloadedSession);
 
-      const validStatuses = ['PENDING', 'CONFIRMED', 'DECLINED', 'ATTENDED', 'NO_SHOW'];
+      const validStatuses = ['PENDING', 'CONFIRMED', 'DECLINED'];
       if (!validStatuses.includes(status)) {
         throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Невалідний статус учасника');
       }
 
-      const isSessionFinished = session.status === 'FINISHED';
-      const isStatusResult = ['ATTENDED', 'NO_SHOW'].includes(status);
-      const isStatusPlanned = ['PENDING', 'CONFIRMED'].includes(status);
-
-      if (isSessionFinished && isStatusPlanned) {
+      if (['FINISHED', 'CANCELED'].includes(session.status)) {
         throw new AppError(
           ERROR_CODES.VALIDATION_FAILED,
-          'Завершеній сесії не можна встановити статус PENDING або CONFIRMED'
-        );
-      }
-
-      if (!isSessionFinished && isStatusResult) {
-        throw new AppError(
-          ERROR_CODES.VALIDATION_FAILED,
-          'Не можна відмітити відвідування для незавершеної сесії'
+          'Не можна змінювати статус учасника для завершеної або скасованої сесії'
         );
       }
 
