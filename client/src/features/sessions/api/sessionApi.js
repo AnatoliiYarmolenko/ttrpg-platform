@@ -192,11 +192,3 @@ export const removeParticipant = async (sessionId, participantId) => {
   return normalizeApiEnvelope(response.data);
 };
 
-/**
- * Зняти підтвердженого GM із сесії (для Owner)
- * @param {number} sessionId
- */
-export const kickGm = async (sessionId) => {
-  const response = await api.post(`/sessions/${sessionId}/kick-gm`);
-  return normalizeApiEnvelope(response.data);
-};

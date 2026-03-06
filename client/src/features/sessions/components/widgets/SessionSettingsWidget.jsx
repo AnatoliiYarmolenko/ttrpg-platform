@@ -24,6 +24,7 @@ export default function SessionSettingsWidget({
   session,
   onSave,
   onDelete,
+  canDelete = true,
   isLoading = false,
 }) {
   const buildFormData = (s) => ({
@@ -238,26 +239,30 @@ export default function SessionSettingsWidget({
         </Button>
 
         {/* Секція небезпечних дій */}
-        <div className="border-t border-red-200 pt-4 mt-2">
+        {canDelete && (
+          <div className="border-t border-red-200 pt-4 mt-2">
             <h4 className="text-sm font-bold text-red-600 mb-3">Небезпечна зона</h4>
-          <Button
-            variant="danger"
-            onClick={() => setDeleteModal(true)}
-          >
-            🗑️ Видалити сесію
-          </Button>
-        </div>
+            <Button
+              variant="danger"
+              onClick={() => setDeleteModal(true)}
+            >
+              🗑️ Видалити сесію
+            </Button>
+          </div>
+        )}
       </form>
 
       {/* Модалка підтвердження видалення */}
-      <ConfirmModal
-        isOpen={deleteModal}
-        title="Видалити сесію?"
-        message={`Ви впевнені, що хочете видалити сесію "${session.title}"? Цю дію неможливо відмінити.`}
-        variant="danger"
-        onConfirm={handleDelete}
-        onCancel={() => setDeleteModal(false)}
-      />
+      {canDelete && (
+        <ConfirmModal
+          isOpen={deleteModal}
+          title="Видалити сесію?"
+          message={`Ви впевнені, що хочете видалити сесію "${session.title}"? Цю дію неможливо відмінити.`}
+          variant="danger"
+          onConfirm={handleDelete}
+          onCancel={() => setDeleteModal(false)}
+        />
+      )}
     </DashboardCard>
   );
 }

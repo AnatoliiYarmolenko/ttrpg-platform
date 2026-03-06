@@ -24,9 +24,7 @@ export default function SessionPageParticipantsWidget({
   session,
   canManage = false,
   canManageGmRequests = false,
-  confirmedGm = null,
   onParticipantStatusChange,
-  onKickGm,
   currentUserId,
   onViewProfile,
   maxPlayers,
@@ -109,13 +107,27 @@ export default function SessionPageParticipantsWidget({
     );
   };
 
-  const handleKickConfirmedGm = () => {
+  const handleApprovePlayer = (participantId) => {
     openConfirmModal(
-      'Зняти GM?',
-      'Підтвердженого GM буде знято із сесії.',
+      'Схвалити гравця?',
+      'Підтвердити цього гравця для поточної сесії?',
       async () => {
         closeConfirmModal();
-        await onKickGm?.();
+        await onParticipantStatusChange?.(participantId, 'CONFIRMED');
+        await fetchParticipants(sessionId);
+        await fetchSessionById(sessionId);
+      },
+      'primary'
+    );
+  };
+
+  const handleRejectPlayer = (participantId) => {
+    openConfirmModal(
+      'Відхилити заявку гравця?',
+      'Заявку гравця буде відхилено.',
+      async () => {
+        closeConfirmModal();
+        await onParticipantStatusChange?.(participantId, 'DECLINED');
         await fetchParticipants(sessionId);
         await fetchSessionById(sessionId);
       },
@@ -127,24 +139,8 @@ export default function SessionPageParticipantsWidget({
     ? `Учасники (${participants.filter((participant) => participant.role === 'PLAYER').length}/${maxPlayers})`
     : `Учасники (${participants.length})`;
 
-  const canShowKickGmButton =
-    canManageGmRequests
-    && session?.status === 'PLANNED'
-    && Boolean(confirmedGm)
-    && confirmedGm?.userId !== session?.ownerId;
-
   return (
     <DashboardCard title={title}>
-      {canShowKickGmButton && (
-        <button
-          type="button"
-          onClick={handleKickConfirmedGm}
-          className="mb-4 w-full px-3 py-2 text-sm font-semibold rounded-lg border-2 border-red-300 text-red-600 hover:bg-red-50 transition-colors"
-        >
-          Зняти GM
-        </button>
-      )}
-
       {participants.length === 0 ? (
         <EmptyState
           icon={<GroupPeople className="w-10 h-10" />}
@@ -171,6 +167,14 @@ export default function SessionPageParticipantsWidget({
                   && participant.status === 'PENDING',
                 onApprove: handleApproveGm,
                 onReject: handleRejectGm,
+              }}
+              playerModeration={{
+                enabled:
+                  canManage
+                  && participant.role === 'PLAYER'
+                  && participant.status === 'PENDING',
+                onApprove: handleApprovePlayer,
+                onReject: handleRejectPlayer,
               }}
             />
           )}

@@ -225,6 +225,11 @@ function createSessionParticipantsService({
         throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Учасник не знайдений');
       }
 
+      const requesterIsSessionOwner = permissionHelpers._isSessionOwner(session, requesterId);
+      if (participant.userId === session.ownerId && !requesterIsSessionOwner) {
+        throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'Майстер не може видаляти власника сесії');
+      }
+
       if (participant.role === 'GM') {
         const canManageGm = permissionHelpers._isSessionOwner(session, requesterId)
           || permissionHelpers._isCampaignOwnerOverride(session, requesterId);

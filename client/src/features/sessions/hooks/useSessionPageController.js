@@ -31,10 +31,10 @@ export default function useSessionPageController() {
     leaveSessionAction,
     updateSessionData,
     updateSessionStatusAction,
+    cancelSessionAction,
     markSessionAsFinishedAction,
     deleteSessionById,
     updateParticipantStatusAction,
-    kickGmAction,
     isLoading,
     error,
     clearCurrentSession,
@@ -126,8 +126,11 @@ export default function useSessionPageController() {
   const isGM = myParticipant?.role === 'GM';
   const isConfirmedGm = isGM && myParticipant?.status === 'CONFIRMED';
 
-  const canManageStatus = isConfirmedGm;
-  const canManageParticipants = hasConfirmedGm ? isConfirmedGm : isOwner;
+  const canStartSession = isConfirmedGm;
+  const canFinishSession = isConfirmedGm;
+  const canCancelSession = isOwner || (currentSession?.status === 'ACTIVE' && isConfirmedGm);
+  const canManageStatus = canStartSession || canFinishSession || canCancelSession;
+  const canManageParticipants = isOwner || isConfirmedGm;
   const canManageGmRequests = isOwner;
 
   const isSessionInPast = useMemo(() => {
@@ -136,7 +139,7 @@ export default function useSessionPageController() {
     if (Number.isNaN(sessionDate.getTime())) return false;
     return sessionDate.getTime() < currentTimestamp;
   }, [currentSession, currentTimestamp]);
-  const canManageSettings = isOwner && !isSessionInPast;
+  const canManageSettings = (isOwner || isConfirmedGm) && !isSessionInPast;
   const { isPreviewMode } = usePreviewMode({ isMember: amParticipant, isLoading });
 
   useEffect(() => {
@@ -203,13 +206,17 @@ export default function useSessionPageController() {
 
   const handleStatusChange = useCallback(
     async (newStatus) => {
-      const result = await updateSessionStatusAction(id, newStatus);
+      const action = newStatus === 'CANCELED'
+        ? () => cancelSessionAction(id)
+        : () => updateSessionStatusAction(id, newStatus);
+
+      const result = await action();
       if (result?.success) {
         await fetchSessionById(id);
       }
       return result;
     },
-    [id, updateSessionStatusAction, fetchSessionById]
+    [id, updateSessionStatusAction, cancelSessionAction, fetchSessionById]
   );
 
   const handleSaveSettings = useCallback(
@@ -251,14 +258,6 @@ export default function useSessionPageController() {
     [id, updateParticipantStatusAction, fetchSessionById]
   );
 
-  const handleKickGm = useCallback(async () => {
-    const result = await kickGmAction(id);
-    if (result?.success) {
-      await fetchSessionById(id);
-    }
-    return result;
-  }, [id, kickGmAction, fetchSessionById]);
-
   const handleViewProfile = useCallback((userId) => {
     setSearchParams(
       (prev) => {
@@ -299,6 +298,9 @@ export default function useSessionPageController() {
     myRole,
     isOwner,
     isGM,
+    canStartSession,
+    canFinishSession,
+    canCancelSession,
     canManageStatus,
     canManageParticipants,
     canManageGmRequests,
@@ -319,7 +321,6 @@ export default function useSessionPageController() {
     handleSaveSettings,
     handleDelete,
     handleParticipantStatusChange,
-    handleKickGm,
     handleViewProfile,
     handleBackFromProfile,
 

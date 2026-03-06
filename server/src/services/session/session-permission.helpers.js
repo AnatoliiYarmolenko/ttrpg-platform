@@ -16,12 +16,10 @@ function _isCampaignOwnerOverride(session, userId) {
 
 function _canManageParticipants(session, userId) {
   const confirmedGm = _getConfirmedGm(session);
+  const isOwner = _isSessionOwner(session, userId);
+  const isConfirmedGm = Boolean(confirmedGm && confirmedGm.userId === userId);
 
-  if (confirmedGm) {
-    return confirmedGm.userId === userId;
-  }
-
-  return _isSessionOwner(session, userId);
+  return isOwner || isConfirmedGm;
 }
 
 function _canChangeSessionStatus(session, userId) {
@@ -30,7 +28,7 @@ function _canChangeSessionStatus(session, userId) {
 }
 
 function _canEditSessionSettings(session, userId) {
-  return _isSessionOwner(session, userId);
+  return _canManageParticipants(session, userId);
 }
 
 function _requireSessionOwner(

@@ -38,13 +38,16 @@ export default function SessionPage() {
     viewingUserId,
     isPreviewMode,
     myRole,
+    isOwner,
+    canStartSession,
+    canFinishSession,
+    canCancelSession,
     canManageStatus,
     canManageParticipants,
     canManageGmRequests,
     canManageSettings,
     canJoin,
     canApplyAsGm,
-    confirmedGm,
     handleJoin,
     handleLeave,
     handleStatusChange,
@@ -52,7 +55,6 @@ export default function SessionPage() {
     handleSaveSettings,
     handleDelete,
     handleParticipantStatusChange,
-    handleKickGm,
     handleViewProfile,
     handleBackFromProfile,
     navigate,
@@ -106,6 +108,7 @@ export default function SessionPage() {
               session={currentSession}
               onSave={handleSaveSettings}
               onDelete={handleDelete}
+              canDelete={isOwner}
               isLoading={isLoading}
             />
           );
@@ -115,6 +118,9 @@ export default function SessionPage() {
             session={currentSession}
             myRole={myRole}
             canManage={canManageStatus}
+            canStartSession={canStartSession}
+            canFinishSession={canFinishSession}
+            canCancelSession={canCancelSession}
             onLeave={handleLeave}
             onStatusChange={handleStatusChange}
             onMarkAsFinished={handleMarkAsFinished}
@@ -129,6 +135,9 @@ export default function SessionPage() {
             session={currentSession}
             myRole={myRole}
             canManage={canManageStatus}
+            canStartSession={canStartSession}
+            canFinishSession={canFinishSession}
+            canCancelSession={canCancelSession}
             onLeave={handleLeave}
             onStatusChange={handleStatusChange}
             onMarkAsFinished={handleMarkAsFinished}
@@ -145,9 +154,7 @@ export default function SessionPage() {
       session={currentSession}
       canManage={canManageParticipants}
       canManageGmRequests={canManageGmRequests}
-      confirmedGm={confirmedGm}
       onParticipantStatusChange={handleParticipantStatusChange}
-      onKickGm={handleKickGm}
       currentUserId={user?.id}
       onViewProfile={handleViewProfile}
       maxPlayers={currentSession.maxPlayers}

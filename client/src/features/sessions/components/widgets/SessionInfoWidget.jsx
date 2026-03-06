@@ -36,6 +36,9 @@ export default function SessionInfoWidget({
   session,
   myRole,
   canManage = false,
+  canStartSession = false,
+  canFinishSession = false,
+  canCancelSession = false,
   onLeave,
   onStatusChange,
   onMarkAsFinished,
@@ -283,7 +286,7 @@ export default function SessionInfoWidget({
                 Управління статусом
               </h4>
               <div className="flex gap-3 flex-wrap">
-                {session.status === 'PLANNED' && startState.canShowStartButton && (
+                {canStartSession && session.status === 'PLANNED' && startState.canShowStartButton && (
                   <Button
                     onClick={() => handleStatusChange('ACTIVE')}
                     variant="primary"
@@ -293,7 +296,7 @@ export default function SessionInfoWidget({
                     Розпочати
                   </Button>
                 )}
-                {session.status === 'ACTIVE' && (
+                {canFinishSession && session.status === 'ACTIVE' && (
                   <Button
                     onClick={() => handleStatusChange('FINISHED')}
                     variant="secondary"
@@ -303,7 +306,7 @@ export default function SessionInfoWidget({
                     Завершити
                   </Button>
                 )}
-                {(session.status === 'PLANNED' || session.status === 'ACTIVE') && (
+                {canCancelSession && (session.status === 'PLANNED' || session.status === 'ACTIVE') && (
                   <Button
                     onClick={() => handleStatusChange('CANCELED')}
                     variant="danger"
@@ -313,7 +316,7 @@ export default function SessionInfoWidget({
                     Скасувати
                   </Button>
                 )}
-                {session.status === 'PLANNED' && startState.canMarkAsFinished && (
+                {canFinishSession && session.status === 'PLANNED' && startState.canMarkAsFinished && (
                   <Button
                     onClick={handleMarkAsFinished}
                     variant="secondary"

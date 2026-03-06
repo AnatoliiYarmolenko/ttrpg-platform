@@ -23,6 +23,7 @@ export default function ParticipantCard({
   onRemove,
   onViewProfile,
   gmModeration,
+  playerModeration,
 }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -50,14 +51,32 @@ export default function ParticipantCard({
     onRemove?.(participant.id);
   };
 
+  const activeModeration = gmModeration?.enabled
+    ? {
+      ...gmModeration,
+      approveLabel: 'Схвалити',
+      rejectLabel: 'Відхилити',
+      approveTitle: 'Схвалити заявку GM',
+      rejectTitle: 'Відхилити заявку GM',
+    }
+    : playerModeration?.enabled
+      ? {
+        ...playerModeration,
+        approveLabel: 'Прийняти',
+        rejectLabel: 'Відхилити',
+        approveTitle: 'Схвалити заявку гравця',
+        rejectTitle: 'Відхилити заявку гравця',
+      }
+      : null;
+
   const handleApproveClick = (e) => {
     e.stopPropagation();
-    gmModeration?.onApprove?.(participant.id);
+    activeModeration?.onApprove?.(participant.id);
   };
 
   const handleRejectClick = (e) => {
     e.stopPropagation();
-    gmModeration?.onReject?.(participant.id);
+    activeModeration?.onReject?.(participant.id);
   };
 
   return (
@@ -102,26 +121,26 @@ export default function ParticipantCard({
           </span>
         )}
 
-        {gmModeration?.enabled && (
+        {activeModeration && (
           <div className="flex items-center gap-1">
             <button
               onClick={handleApproveClick}
               className="px-2 py-1 text-xs rounded bg-[#9DC88D]/30 text-[#164A41] hover:bg-[#9DC88D]/50 transition-colors"
-              title="Схвалити заявку GM"
+              title={activeModeration.approveTitle}
             >
-              Схвалити
+              {activeModeration.approveLabel}
             </button>
             <button
               onClick={handleRejectClick}
               className="px-2 py-1 text-xs rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-              title="Відхилити заявку GM"
+              title={activeModeration.rejectTitle}
             >
-              Відхилити
+              {activeModeration.rejectLabel}
             </button>
           </div>
         )}
 
-        {canManage && participant.userId !== currentUserId && onRemove && (
+        {canManage && !isOwner && participant.userId !== currentUserId && onRemove && (
           <button
             onClick={handleRemoveClick}
             className="px-2 py-1 text-red-600 hover:bg-red-50 rounded transition-colors text-sm"

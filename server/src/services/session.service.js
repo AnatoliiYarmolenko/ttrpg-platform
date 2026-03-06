@@ -590,12 +590,18 @@ class SessionService {
     const { preloadedSession = null } = options;
     const session = await this._resolveSessionContext(sessionId, userId, preloadedSession);
 
-    const canCancel = this._isSessionOwner(session, userId)
-      || this._canChangeSessionStatus(session, userId)
-      || this._isCampaignOwnerOverride(session, userId);
+    const isOwner = this._isSessionOwner(session, userId);
+    const isConfirmedGm = this._canChangeSessionStatus(session, userId);
+    const canCancel = isOwner || (session.status === 'ACTIVE' && isConfirmedGm);
 
     if (!canCancel) {
-      throw new AppError(ERROR_CODES.SESSION_GM_ONLY, 'Скасувати сесію може тільки підтверджений GM або власник');
+      const errorCode = session.status === 'ACTIVE'
+        ? ERROR_CODES.SESSION_GM_ONLY
+        : ERROR_CODES.SESSION_OWNER_ONLY;
+      const message = session.status === 'ACTIVE'
+        ? 'Скасувати ACTIVE сесію може тільки підтверджений GM або власник'
+        : 'Скасувати сесію може тільки власник сесії';
+      throw new AppError(errorCode, message);
     }
 
     if (session.status === 'FINISHED') {
