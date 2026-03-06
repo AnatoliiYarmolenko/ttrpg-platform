@@ -93,7 +93,15 @@ export default function useCampaignPageController() {
 
   const isOwner = myRole === 'OWNER';
   const isGM = myRole === 'GM';
-  const canManage = isOwner || isGM;
+  const canManageCampaignSettings = isOwner;
+  const canManageCampaignVisibility = isOwner;
+  const canAssignCampaignRoles = isOwner;
+  const canModerateJoinRequests = isOwner || isGM;
+  const canRemovePlayers = isOwner || isGM;
+  const canCreateCampaignSessions = isOwner || isGM;
+  const canDeleteCampaign = isOwner;
+  const canManageInviteCode = isOwner;
+  const canUseOwnerSessionOverrides = isOwner;
   const { isPreviewMode } = usePreviewMode({ isMember: amMember, isLoading });
 
   const canJoin = useMemo(() => {
@@ -121,9 +129,13 @@ export default function useCampaignPageController() {
   }, [campaignMembers, user, id, removeMember, navigate]);
 
   const handleRegenerateCode = useCallback(async () => {
+    if (!canManageInviteCode) {
+      return { success: false, message: 'Тільки власник може керувати кодом запрошення' };
+    }
     await regenerateCode(Number(id));
     await fetchCampaignById(id);
-  }, [id, regenerateCode, fetchCampaignById]);
+    return { success: true };
+  }, [id, canManageInviteCode, regenerateCode, fetchCampaignById]);
 
   const handleRefreshCampaign = useCallback(async () => {
     await fetchCampaignById(id);
@@ -131,20 +143,30 @@ export default function useCampaignPageController() {
 
   const handleSaveSettings = useCallback(
     async (campaignData) => {
+      if (!canManageCampaignSettings) {
+        return { success: false, message: 'Тільки власник може змінювати налаштування кампанії' };
+      }
       const result = await updateCampaignData(Number(id), campaignData);
       if (result?.success) await fetchCampaignById(id);
       return result;
     },
-    [id, updateCampaignData, fetchCampaignById]
+    [id, canManageCampaignSettings, updateCampaignData, fetchCampaignById]
   );
 
   const handleDelete = useCallback(async () => {
+    if (!canDeleteCampaign) {
+      return { success: false, message: 'Тільки власник може видаляти кампанію' };
+    }
     await deleteCampaignData(Number(id));
     navigate('/');
-  }, [id, deleteCampaignData, navigate]);
+    return { success: true };
+  }, [id, canDeleteCampaign, deleteCampaignData, navigate]);
 
   const handleTransferOwnership = useCallback(
     async (newOwnerId) => {
+      if (!isOwner) {
+        return { success: false, message: 'Тільки власник може передавати права кампанії' };
+      }
       const result = await transferOwnership(Number(id), Number(newOwnerId));
       if (result?.success) {
         await fetchCampaignById(id);
@@ -152,7 +174,7 @@ export default function useCampaignPageController() {
       }
       return result;
     },
-    [id, transferOwnership, fetchCampaignById, fetchCampaignMembers]
+    [id, isOwner, transferOwnership, fetchCampaignById, fetchCampaignMembers]
   );
 
   const handleCancelForeignSession = useCallback(
@@ -218,7 +240,15 @@ export default function useCampaignPageController() {
     myRole,
     isOwner,
     isGM,
-    canManage,
+    canManageCampaignSettings,
+    canManageCampaignVisibility,
+    canAssignCampaignRoles,
+    canModerateJoinRequests,
+    canRemovePlayers,
+    canCreateCampaignSessions,
+    canDeleteCampaign,
+    canManageInviteCode,
+    canUseOwnerSessionOverrides,
     amMember,
     canJoin,
 

@@ -17,12 +17,12 @@ import GroupPeople from '@/components/ui/icons/GroupPeople';
  * - Назву, видимість, систему, роль юзера
  * - Власника, дату створення
  * - Опис, зображення
- * - Код запрошення (для Owner/GM)
+ * - Код запрошення (тільки для Owner)
  * - Дії: покинути кампанію, управління кодом
  *
  * @param {Object} campaign — дані кампанії
  * @param {string} myRole — роль юзера (OWNER | GM | PLAYER)
- * @param {boolean} canManage — чи може юзер управляти
+ * @param {boolean} canManageInviteCode — чи може юзер керувати invite-кодом (тільки власник)
  * @param {Function} onLeave — колбек виходу з кампанії
  * @param {Function} onRegenerateCode — колбек регенерації invite коду
  * @param {boolean} isLoading
@@ -30,7 +30,7 @@ import GroupPeople from '@/components/ui/icons/GroupPeople';
 export default function CampaignInfoWidget({
   campaign,
   myRole,
-  canManage = false,
+  canManageInviteCode = false,
   onLeave,
   onRegenerateCode,
   isLoading = false,
@@ -150,8 +150,8 @@ export default function CampaignInfoWidget({
           </div>
         )}
 
-        {/* Код запрошення (Owner/GM) */}
-        {canManage && campaign.inviteCode && (
+        {/* Код запрошення (тільки Owner) */}
+        {canManageInviteCode && campaign.inviteCode && (
           <div className="border-t border-[#9DC88D]/20 pt-4">
             <h4 className="text-sm font-bold text-[#164A41] mb-3">Код запрошення</h4>
             <div className="p-4 bg-[#9DC88D]/20 rounded-xl">

@@ -5,6 +5,7 @@ const {
   loadSessionContext,
   requireConfirmedSessionGm,
   requireSessionOwnerOrGm,
+  requireSessionOwnerOrGmOrCampaignOwner,
   requireSessionOwnerOrCampaignOwner,
 } = require('../middlewares/session-access.middleware');
 const sessionCrudController = require('../controllers/session/session-crud.controller');
@@ -100,7 +101,7 @@ router.post(
     authenticateToken,
     ...validateSessionId,
     loadSessionContext,
-    requireSessionOwnerOrGm,
+    requireSessionOwnerOrGmOrCampaignOwner,
   ], // validateSessionId перевіряє, що ID - це число
   (req, res, next) => sessionCrudController.cancelSession(req, res, next)
 );

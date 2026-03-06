@@ -11,12 +11,13 @@ import CreateSessionForm from '@/features/dashboard/components/widgets/CreateSes
  * Майстер/Власник може створювати нові сесії.
  *
  * @param {Object} campaign — дані кампанії (з sessions)
- * @param {boolean} canManage — чи може юзер створювати сесії
+ * @param {boolean} canCreateSessions — чи може юзер створювати сесії
+ * @param {boolean} canOwnerOverride — чи може власник кампанії керувати чужими сесіями
  */
 export default function CampaignSessionsWidget({
   campaign,
-  canManage = false,
-  isOwner = false,
+  canCreateSessions = false,
+  canOwnerOverride = false,
   onCancelForeignSession,
   onDeleteForeignSession,
   onSessionCreated,
@@ -97,14 +98,14 @@ export default function CampaignSessionsWidget({
           <EmptyState
             icon="📅"
             title="Ще немає сесій"
-            description={canManage ? 'Створіть першу сесію для цієї кампанії' : 'Майстер ще не створив жодної сесії'}
+            description={canCreateSessions ? 'Створіть першу сесію для цієї кампанії' : 'Майстер ще не створив жодної сесії'}
           />
         ) : (
           <div className="flex flex-col gap-2">
             {sortedSessions.map((session, idx) => {
               const sessionOwnerId = session.ownerId;
               const showOwnerOverrideActions = Boolean(
-                isOwner
+                canOwnerOverride
                 && sessionOwnerId
                 && campaignOwnerId
                 && sessionOwnerId !== campaignOwnerId
@@ -149,7 +150,7 @@ export default function CampaignSessionsWidget({
         )}
 
         {/* Кнопка створення сесії (Майстер/Власник) */}
-        {canManage && (
+        {canCreateSessions && (
           <button
             onClick={() => setIsCreating(true)}
             className="w-full py-3 border-2 border-dashed border-[#9DC88D]/50 rounded-xl text-[#4D774E] hover:border-[#164A41] hover:text-[#164A41] hover:bg-[#9DC88D]/5 transition-all font-medium"

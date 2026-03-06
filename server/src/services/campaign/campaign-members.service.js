@@ -160,13 +160,23 @@ function createCampaignMembersService({
     async addMemberToCampaign(campaignId, userId, newMemberId, role = 'PLAYER') {
       const campaign = await getCampaignById(campaignId, userId);
 
-      permissionHelpers._requireCampaignRoles(
+      const requesterRole = permissionHelpers._requireCampaignRoles(
         errorDeps,
         campaign,
         userId,
         ['OWNER', 'GM'],
         'Ви не маєте права додавати учасників'
       );
+
+      const normalizedRole = String(role || 'PLAYER').toUpperCase();
+      const targetRole = requesterRole === 'GM' ? 'PLAYER' : normalizedRole;
+
+      if (requesterRole === 'GM' && normalizedRole !== 'PLAYER') {
+        throw new AppError(
+          ERROR_CODES.SECURITY_ACCESS_DENIED,
+          'Майстер може додавати до кампанії тільки гравців'
+        );
+      }
 
       const existingMember = await prisma.campaignMember.findUnique({
         where: {
@@ -193,7 +203,7 @@ function createCampaignMembersService({
         data: {
           userId: parseInt(newMemberId),
           campaignId: parseInt(campaignId),
-          role,
+          role: targetRole,
         },
         include: {
           user: {
@@ -208,7 +218,7 @@ function createCampaignMembersService({
     async removeMemberFromCampaign(campaignId, userId, memberId) {
       const campaign = await getCampaignById(campaignId, userId);
 
-      permissionHelpers._requireCampaignRoles(
+      const requesterRole = permissionHelpers._requireCampaignRoles(
         errorDeps,
         campaign,
         userId,
@@ -233,6 +243,20 @@ function createCampaignMembersService({
         throw new AppError(ERROR_CODES.USER_NOT_FOUND, 'Учасник не знайдений');
       }
 
+      if (member.role === 'OWNER') {
+        throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'Неможливо видалити власника кампанії');
+      }
+
+      if (requesterRole === 'GM') {
+        const isSelfRemoval = member.userId === userId;
+        if (member.role !== 'PLAYER' && !isSelfRemoval) {
+          throw new AppError(
+            ERROR_CODES.SECURITY_ACCESS_DENIED,
+            'Майстер може видаляти з кампанії тільки гравців'
+          );
+        }
+      }
+
       await prisma.campaignMember.delete({
         where: {
           userId_campaignId: {
@@ -253,7 +277,7 @@ function createCampaignMembersService({
         'Тільки власник може змінювати ролі учасників'
       );
 
-      const validRoles = ['OWNER', 'GM', 'PLAYER'];
+      const validRoles = ['GM', 'PLAYER'];
       if (!validRoles.includes(newRole)) {
         throw new AppError(ERROR_CODES.VALIDATION_INVALID_FORMAT, 'Невірна роль');
       }
@@ -487,13 +511,23 @@ function createCampaignMembersService({
 
       const campaign = await getCampaignById(joinRequest.campaignId, userId);
 
-      permissionHelpers._requireCampaignRoles(
+      const requesterRole = permissionHelpers._requireCampaignRoles(
         errorDeps,
         campaign,
         userId,
         ['OWNER', 'GM'],
         'Ви не маєте права схвалювати заявки'
       );
+
+      const normalizedRole = String(role || 'PLAYER').toUpperCase();
+      const targetRole = requesterRole === 'GM' ? 'PLAYER' : normalizedRole;
+
+      if (requesterRole === 'GM' && normalizedRole !== 'PLAYER') {
+        throw new AppError(
+          ERROR_CODES.SECURITY_ACCESS_DENIED,
+          'Майстер може схвалювати заявки тільки з роллю гравця'
+        );
+      }
 
       await prisma.joinRequest.update({
         where: { id: parseInt(requestId) },
@@ -508,7 +542,7 @@ function createCampaignMembersService({
         data: {
           userId: joinRequest.userId,
           campaignId: joinRequest.campaignId,
-          role,
+          role: targetRole,
         },
         include: {
           user: {

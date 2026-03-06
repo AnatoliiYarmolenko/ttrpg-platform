@@ -100,7 +100,7 @@ const validateAddMember = [
   body('role')
     .optional()
     .trim()
-    .isIn(['OWNER', 'GM', 'PLAYER']).withMessage('Невірна роль'),
+    .isIn(['GM', 'PLAYER']).withMessage('Невірна роль'),
   
   handleValidationErrors,
 ];
@@ -124,7 +124,7 @@ const validateUpdateMemberRole = [
   
   body('role')
     .trim()
-    .isIn(['OWNER', 'GM', 'PLAYER']).withMessage('Невірна роль'),
+    .isIn(['GM', 'PLAYER']).withMessage('Невірна роль'),
   
   handleValidationErrors,
 ];

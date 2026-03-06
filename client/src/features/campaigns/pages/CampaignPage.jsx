@@ -41,7 +41,15 @@ export default function CampaignPage() {
     isPreviewMode,
     myRole,
     isOwner,
-    canManage,
+    isGM,
+    canManageCampaignSettings,
+    canAssignCampaignRoles,
+    canModerateJoinRequests,
+    canRemovePlayers,
+    canCreateCampaignSessions,
+    canDeleteCampaign,
+    canManageInviteCode,
+    canUseOwnerSessionOverrides,
     canJoin,
     handleJoinRequest,
     handleLeave,
@@ -98,14 +106,15 @@ export default function CampaignPage() {
 
     switch (activeTab) {
       case TABS.SETTINGS:
-        if (canManage) {
+        if (canManageCampaignSettings) {
           return (
             <CampaignSettingsWidget
               campaign={currentCampaign}
               onSave={handleSaveSettings}
               onDelete={handleDelete}
               onTransferOwnership={handleTransferOwnership}
-              isOwner={isOwner}
+              canDelete={canDeleteCampaign}
+              canTransferOwnership={isOwner}
               isLoading={isLoading}
             />
           );
@@ -113,8 +122,8 @@ export default function CampaignPage() {
         return (
           <CampaignSessionsWidget
             campaign={currentCampaign}
-            canManage={canManage}
-            isOwner={isOwner}
+            canCreateSessions={canCreateCampaignSessions}
+            canOwnerOverride={canUseOwnerSessionOverrides}
             onCancelForeignSession={handleCancelForeignSession}
             onDeleteForeignSession={handleDeleteForeignSession}
             onSessionCreated={handleRefreshCampaign}
@@ -126,7 +135,7 @@ export default function CampaignPage() {
           <CampaignInfoWidget
             campaign={currentCampaign}
             myRole={myRole}
-            canManage={canManage}
+            canManageInviteCode={canManageInviteCode}
             onLeave={handleLeave}
             onRegenerateCode={handleRegenerateCode}
             isLoading={isLoading}
@@ -138,8 +147,8 @@ export default function CampaignPage() {
         return (
           <CampaignSessionsWidget
             campaign={currentCampaign}
-            canManage={canManage}
-            isOwner={isOwner}
+            canCreateSessions={canCreateCampaignSessions}
+            canOwnerOverride={canUseOwnerSessionOverrides}
             onCancelForeignSession={handleCancelForeignSession}
             onDeleteForeignSession={handleDeleteForeignSession}
             onSessionCreated={handleRefreshCampaign}
@@ -153,7 +162,10 @@ export default function CampaignPage() {
     <CampaignMembersWidget
       campaignId={id}
       isOwner={isOwner}
-      canManage={canManage}
+      isGM={isGM}
+      canAssignRoles={canAssignCampaignRoles}
+      canModerateRequests={canModerateJoinRequests}
+      canRemovePlayers={canRemovePlayers}
       currentUserId={user?.id}
       onViewProfile={handleViewProfile}
     />
@@ -167,7 +179,7 @@ export default function CampaignPage() {
             campaignTitle={currentCampaign.title}
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            canManage={canManage}
+            canManageSettings={canManageCampaignSettings}
           />
         ) : (
           <nav className="flex items-center gap-4 justify-between w-full">

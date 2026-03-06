@@ -6,7 +6,7 @@ import { ConfirmModal } from '@/components/shared';
 import { GAME_SYSTEMS } from '@/constants/gameSystems';
 
 /**
- * CampaignSettingsWidget — лівий віджет в табі "Налаштування" (Власник/Майстер).
+ * CampaignSettingsWidget — лівий віджет в табі "Налаштування" (тільки Власник).
  *
  * Дозволяє редагувати:
  * - Назву, опис
@@ -17,7 +17,8 @@ import { GAME_SYSTEMS } from '@/constants/gameSystems';
  * @param {Object} campaign — поточна кампанія
  * @param {Function} onSave — колбек збереження (campaignData)
  * @param {Function} onDelete — колбек видалення кампанії
- * @param {boolean} isOwner — чи є юзер Owner (для можливості видалення)
+ * @param {boolean} canDelete — чи може юзер видаляти кампанію (тільки Owner)
+ * @param {boolean} canTransferOwnership — чи може юзер передати права (тільки Owner)
  * @param {boolean} isLoading
  */
 export default function CampaignSettingsWidget({
@@ -25,7 +26,8 @@ export default function CampaignSettingsWidget({
   onSave,
   onDelete,
   onTransferOwnership,
-  isOwner = false,
+  canDelete = false,
+  canTransferOwnership = false,
   isLoading = false,
 }) {
   const buildFormData = (c) => ({
@@ -85,7 +87,7 @@ export default function CampaignSettingsWidget({
   };
 
   const handleTransferOwnership = async () => {
-    if (!selectedNewOwnerId) return;
+    if (!canTransferOwnership || !selectedNewOwnerId) return;
 
     const result = await onTransferOwnership?.(Number(selectedNewOwnerId));
 
@@ -182,78 +184,88 @@ export default function CampaignSettingsWidget({
         </Button>
 
         {/* Секція небезпечних дій (тільки для Owner) */}
-        {isOwner && (
+        {(canDelete || canTransferOwnership) && (
           <div className="border-t border-red-200 pt-4 mt-2">
             <h4 className="text-sm font-bold text-red-600 mb-3">Небезпечна зона</h4>
 
-            <div className="mb-5 p-3 border-2 border-[#9DC88D]/30 rounded-xl bg-[#9DC88D]/5">
-              <p className="text-xs text-[#4D774E] mb-3">
-                Передача прав власності змінить Owner кампанії. Ви станете GM цієї кампанії.
-              </p>
+            {canTransferOwnership && (
+              <div className="mb-5 p-3 border-2 border-[#9DC88D]/30 rounded-xl bg-[#9DC88D]/5">
+                <p className="text-xs text-[#4D774E] mb-3">
+                  Передача прав власності змінить Owner кампанії. Ви станете GM цієї кампанії.
+                </p>
 
-              {eligibleNewOwners.length > 0 ? (
-                <div className="flex flex-col gap-3">
-                  <select
-                    value={selectedNewOwnerId}
-                    onChange={(event) => setSelectedNewOwnerId(event.target.value)}
-                    className={inputClasses}
-                  >
-                    <option value="">Оберіть нового Owner</option>
-                    {eligibleNewOwners.map((member) => {
-                      const displayName = member.user?.displayName || member.user?.username || `User #${member.userId}`;
-                      return (
-                        <option key={member.id} value={member.userId}>
-                          {displayName}
-                        </option>
-                      );
-                    })}
-                  </select>
+                {eligibleNewOwners.length > 0 ? (
+                  <div className="flex flex-col gap-3">
+                    <select
+                      value={selectedNewOwnerId}
+                      onChange={(event) => setSelectedNewOwnerId(event.target.value)}
+                      className={inputClasses}
+                    >
+                      <option value="">Оберіть нового Owner</option>
+                      {eligibleNewOwners.map((member) => {
+                        const displayName = member.user?.displayName || member.user?.username || `User #${member.userId}`;
+                        return (
+                          <option key={member.id} value={member.userId}>
+                            {displayName}
+                          </option>
+                        );
+                      })}
+                    </select>
 
-                  <Button
-                    variant="outline"
-                    disabled={!selectedNewOwnerId || isLoading}
-                    onClick={() => setTransferModal(true)}
-                  >
-                    Передати права кампанії
-                  </Button>
-                </div>
-              ) : (
-                <p className="text-xs text-[#4D774E]">Немає доступних учасників для передачі прав.</p>
-              )}
-            </div>
+                    <Button
+                      variant="outline"
+                      disabled={!selectedNewOwnerId || isLoading}
+                      onClick={() => setTransferModal(true)}
+                    >
+                      Передати права кампанії
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-[#4D774E]">Немає доступних учасників для передачі прав.</p>
+                )}
+              </div>
+            )}
 
-            <p className="text-xs text-red-500 mb-3">
-              Видалення кампанії призведе до втрати всіх сесій та даних. Цю дію неможливо відмінити.
-            </p>
-            <Button
-              variant="danger"
-              onClick={() => setDeleteModal(true)}
-            >
-              🗑️ Видалити кампанію
-            </Button>
+            {canDelete && (
+              <>
+                <p className="text-xs text-red-500 mb-3">
+                  Видалення кампанії призведе до втрати всіх сесій та даних. Цю дію неможливо відмінити.
+                </p>
+                <Button
+                  variant="danger"
+                  onClick={() => setDeleteModal(true)}
+                >
+                  🗑️ Видалити кампанію
+                </Button>
+              </>
+            )}
           </div>
         )}
       </form>
 
       {/* Модалка підтвердження видалення */}
-      <ConfirmModal
-        isOpen={deleteModal}
-        title="Видалити кампанію?"
-        message={`Ви впевнені, що хочете видалити кампанію "${campaign.title}"? Всі сесії кампанії також будуть видалені. Цю дію неможливо відмінити.`}
-        variant="danger"
-        onConfirm={handleDelete}
-        onCancel={() => setDeleteModal(false)}
-      />
+      {canDelete && (
+        <ConfirmModal
+          isOpen={deleteModal}
+          title="Видалити кампанію?"
+          message={`Ви впевнені, що хочете видалити кампанію "${campaign.title}"? Всі сесії кампанії також будуть видалені. Цю дію неможливо відмінити.`}
+          variant="danger"
+          onConfirm={handleDelete}
+          onCancel={() => setDeleteModal(false)}
+        />
+      )}
 
-      <ConfirmModal
-        isOpen={transferModal}
-        title="Передати права кампанії?"
-        message={selectedOwner
-          ? `Новим власником стане ${selectedOwner.user?.displayName || selectedOwner.user?.username || `User #${selectedOwner.userId}`}. Після підтвердження ви втратите роль Owner.`
-          : 'Підтвердити передачу прав кампанії?'}
-        onConfirm={handleTransferOwnership}
-        onCancel={() => setTransferModal(false)}
-      />
+      {canTransferOwnership && (
+        <ConfirmModal
+          isOpen={transferModal}
+          title="Передати права кампанії?"
+          message={selectedOwner
+            ? `Новим власником стане ${selectedOwner.user?.displayName || selectedOwner.user?.username || `User #${selectedOwner.userId}`}. Після підтвердження ви втратите роль Owner.`
+            : 'Підтвердити передачу прав кампанії?'}
+          onConfirm={handleTransferOwnership}
+          onCancel={() => setTransferModal(false)}
+        />
+      )}
     </DashboardCard>
   );
 }

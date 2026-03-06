@@ -14,25 +14,25 @@ const TABS = {
  * Показує:
  * - Кнопку "Назад" (на Dashboard)
  * - Назву кампанії
- * - Таби: Сесії | Деталі | Налаштування (Власник/Майстер)
+ * - Таби: Сесії | Деталі | Налаштування (тільки Власник)
  *
  * @param {string} campaignTitle — назва кампанії
  * @param {string} activeTab — поточний таб ('sessions' | 'details' | 'settings')
  * @param {Function} onTabChange — колбек зміни табу
- * @param {boolean} canManage — чи є юзер Власник/Майстер (для відображення табу "Налаштування")
+ * @param {boolean} canManageSettings — чи є юзер власником (для відображення табу "Налаштування")
  */
 export default function CampaignNavigation({
   campaignTitle,
   activeTab,
   onTabChange,
-  canManage = false,
+  canManageSettings = false,
 }) {
   const navigate = useNavigate();
 
   const tabs = [
     { key: TABS.SESSIONS, label: 'Сесії' },
     { key: TABS.DETAILS, label: 'Деталі' },
-    ...(canManage ? [{ key: TABS.SETTINGS, label: 'Налаштування' }] : []),
+    ...(canManageSettings ? [{ key: TABS.SETTINGS, label: 'Налаштування' }] : []),
   ];
 
   return (

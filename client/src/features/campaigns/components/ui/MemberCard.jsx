@@ -9,16 +9,18 @@ import Star from '@/components/ui/icons/Star';
  * Контроли (select ролі, кнопка ✕) не тригерять перехід (stopPropagation).
  *
  * @param {Object}   member        — об'єкт учасника (з user, role, joinedAt)
- * @param {boolean}  isOwner       — чи є поточний юзер власником кампанії
  * @param {number}   currentUserId — ID поточного юзера
+ * @param {boolean}  canRemove      — чи може поточний юзер видалити цього учасника
+ * @param {boolean}  canChangeRole  — чи може поточний юзер змінити роль цього учасника
  * @param {Function} onRemove      — колбек видалення (memberId)
  * @param {Function} onChangeRole  — колбек зміни ролі (memberId, newRole)
  * @param {Function} [onViewProfile] — якщо передано, показує вбудований прев'ю замість переходу
  */
 export default function MemberCard({
   member,
-  isOwner = false,
   currentUserId,
+  canRemove = false,
+  canChangeRole = false,
   onRemove,
   onChangeRole,
   onViewProfile,
@@ -74,7 +76,7 @@ export default function MemberCard({
       </div>
 
       <div role="presentation" className="flex items-center gap-2 flex-shrink-0" onClick={stopProp} onKeyDown={stopProp}>
-        {isOwner && !isSelf && !isMemberOwner && onChangeRole && (
+        {canChangeRole && onChangeRole && (
           <select
             value={member.role}
             onChange={(e) => onChangeRole(member.userId, e.target.value)}
@@ -85,7 +87,7 @@ export default function MemberCard({
           </select>
         )}
 
-        {isOwner && !isSelf && !isMemberOwner && onRemove && (
+        {canRemove && onRemove && (
           <button
             onClick={() => onRemove(member.userId)}
             className="px-2 py-1 text-red-600 hover:bg-red-50 rounded transition-colors text-sm"

@@ -182,10 +182,14 @@ class CampaignService {
     }
 
     const requesterRole = this._getRequesterCampaignRole(campaign, userId);
-    const canSeeAdminData = requesterRole === 'OWNER' || requesterRole === 'GM';
+    const canSeeJoinRequests = requesterRole === 'OWNER' || requesterRole === 'GM';
+    const canSeeInviteCode = requesterRole === 'OWNER';
 
-    if (!canSeeAdminData) {
+    if (!canSeeJoinRequests) {
       delete campaign.joinRequests;
+    }
+
+    if (!canSeeInviteCode) {
       delete campaign.inviteCode;
     }
 

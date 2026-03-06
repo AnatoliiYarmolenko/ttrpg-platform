@@ -16,14 +16,20 @@ import GroupPeople from '@/components/ui/icons/GroupPeople';
  *
  * @param {number} campaignId — ID кампанії
  * @param {boolean} isOwner — чи є юзер Owner
- * @param {boolean} canManage — чи може юзер керувати (Власник/Майстер)
+ * @param {boolean} isGM — чи є юзер GM
+ * @param {boolean} canAssignRoles — чи може юзер призначати ролі (тільки Owner)
+ * @param {boolean} canModerateRequests — чи може юзер модерувати заявки (Owner/GM)
+ * @param {boolean} canRemovePlayers — чи може юзер видаляти гравців (Owner/GM)
  * @param {number} currentUserId — ID поточного юзера
  * @param {Function} onViewProfile — колбек для перегляду профілю (userId)
  */
 export default function CampaignMembersWidget({
   campaignId,
   isOwner = false,
-  canManage = false,
+  isGM = false,
+  canAssignRoles = false,
+  canModerateRequests = false,
+  canRemovePlayers = false,
   currentUserId,
   onViewProfile,
 }) {
@@ -55,11 +61,11 @@ export default function CampaignMembersWidget({
   useEffect(() => {
     if (campaignId) {
       fetchCampaignMembers(campaignId);
-      if (canManage) {
+      if (canModerateRequests) {
         fetchJoinRequests(campaignId);
       }
     }
-  }, [campaignId, canManage, fetchCampaignMembers, fetchJoinRequests]);
+  }, [campaignId, canModerateRequests, fetchCampaignMembers, fetchJoinRequests]);
 
   const handleRemove = (memberId) => {
     setConfirmModal({
@@ -95,6 +101,29 @@ export default function CampaignMembersWidget({
 
   const pendingRequests = joinRequests.filter((r) => r.status === 'PENDING');
 
+  const canRemoveMember = (member) => {
+    if (!canRemovePlayers || !member) return false;
+    if (member.userId === currentUserId) return false;
+    if (member.role === 'OWNER') return false;
+
+    if (isOwner) {
+      return member.role === 'PLAYER' || member.role === 'GM';
+    }
+
+    if (isGM) {
+      return member.role === 'PLAYER';
+    }
+
+    return false;
+  };
+
+  const canChangeMemberRole = (member) => {
+    if (!canAssignRoles || !member) return false;
+    if (member.userId === currentUserId) return false;
+    if (member.role === 'OWNER') return false;
+    return true;
+  };
+
   return (
     <div className="flex flex-col gap-3 h-full overflow-y-auto">
       {/* Учасники */}
@@ -111,10 +140,11 @@ export default function CampaignMembersWidget({
               <MemberCard
                 key={member.id}
                 member={member}
-                isOwner={isOwner}
                 currentUserId={currentUserId}
-                onRemove={handleRemove}
-                onChangeRole={handleChangeRole}
+                canRemove={canRemoveMember(member)}
+                canChangeRole={canChangeMemberRole(member)}
+                onRemove={canRemoveMember(member) ? handleRemove : undefined}
+                onChangeRole={canChangeMemberRole(member) ? handleChangeRole : undefined}
                 onViewProfile={onViewProfile}
               />
             ))}
@@ -123,7 +153,7 @@ export default function CampaignMembersWidget({
       </DashboardCard>
 
       {/* Заявки на вступ (Власник/Майстер) */}
-      {canManage && pendingRequests.length > 0 && (
+      {canModerateRequests && pendingRequests.length > 0 && (
         <DashboardCard title={`Заявки (${pendingRequests.length})`}>
           <div className="flex flex-col gap-3">
             {pendingRequests.map((request) => (
