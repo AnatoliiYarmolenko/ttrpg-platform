@@ -12,6 +12,7 @@ import CampaignSessionsWidget from '../components/widgets/CampaignSessionsWidget
 import CampaignInfoWidget from '../components/widgets/CampaignInfoWidget';
 import CampaignSettingsWidget from '../components/widgets/CampaignSettingsWidget';
 import CampaignMembersWidget from '../components/widgets/CampaignMembersWidget';
+import CampaignCreateSessionWidget from '../components/widgets/CampaignCreateSessionWidget';
 import CampaignPreviewWidget from '../components/widgets/CampaignPreviewWidget';
 
 // Shared
@@ -122,7 +123,6 @@ export default function CampaignPage() {
         return (
           <CampaignSessionsWidget
             campaign={currentCampaign}
-            canCreateSessions={canCreateCampaignSessions}
             canOwnerOverride={canUseOwnerSessionOverrides}
             onCancelForeignSession={handleCancelForeignSession}
             onDeleteForeignSession={handleDeleteForeignSession}
@@ -147,7 +147,6 @@ export default function CampaignPage() {
         return (
           <CampaignSessionsWidget
             campaign={currentCampaign}
-            canCreateSessions={canCreateCampaignSessions}
             canOwnerOverride={canUseOwnerSessionOverrides}
             onCancelForeignSession={handleCancelForeignSession}
             onDeleteForeignSession={handleDeleteForeignSession}
@@ -158,18 +157,30 @@ export default function CampaignPage() {
   };
 
   // === Right panel ===
-  const renderRightPanel = () => (
-    <CampaignMembersWidget
-      campaignId={id}
-      isOwner={isOwner}
-      isGM={isGM}
-      canAssignRoles={canAssignCampaignRoles}
-      canModerateRequests={canModerateJoinRequests}
-      canRemovePlayers={canRemovePlayers}
-      currentUserId={user?.id}
-      onViewProfile={handleViewProfile}
-    />
-  );
+  const renderRightPanel = () => {
+    if (!isPreviewMode && activeTab === TABS.SESSIONS && !viewingUserId) {
+      return (
+        <CampaignCreateSessionWidget
+          campaignId={id}
+          canCreateSessions={canCreateCampaignSessions}
+          onSessionCreated={handleRefreshCampaign}
+        />
+      );
+    }
+
+    return (
+      <CampaignMembersWidget
+        campaignId={id}
+        isOwner={isOwner}
+        isGM={isGM}
+        canAssignRoles={canAssignCampaignRoles}
+        canModerateRequests={canModerateJoinRequests}
+        canRemovePlayers={canRemovePlayers}
+        currentUserId={user?.id}
+        onViewProfile={handleViewProfile}
+      />
+    );
+  };
 
   return (
     <CampaignLayout

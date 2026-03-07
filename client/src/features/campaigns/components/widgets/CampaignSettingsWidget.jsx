@@ -103,7 +103,7 @@ export default function CampaignSettingsWidget({
     'w-full p-3 border-2 border-[#9DC88D]/50 rounded-xl focus:border-[#164A41] outline-none text-[#164A41] bg-white transition-colors';
 
   return (
-    <DashboardCard title="⚙️ Налаштування кампанії">
+    <DashboardCard title="Налаштування кампанії">
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         {/* Назва */}
         <FormField id="title" label="Назва кампанії" required>
@@ -169,7 +169,7 @@ export default function CampaignSettingsWidget({
         {/* Успішне збереження */}
         {saveSuccess && (
           <div className="text-sm text-green-600 p-3 bg-green-50 rounded-lg">
-            ✅ Зміни збережено!
+            Зміни збережено!
           </div>
         )}
 
@@ -180,7 +180,7 @@ export default function CampaignSettingsWidget({
           isLoading={isLoading}
           loadingText="Збереження..."
         >
-          💾 Зберегти зміни
+          Зберегти зміни
         </Button>
 
         {/* Секція небезпечних дій (тільки для Owner) */}
@@ -191,7 +191,7 @@ export default function CampaignSettingsWidget({
             {canTransferOwnership && (
               <div className="mb-5 p-3 border-2 border-[#9DC88D]/30 rounded-xl bg-[#9DC88D]/5">
                 <p className="text-xs text-[#4D774E] mb-3">
-                  Передача прав власності змінить Owner кампанії. Ви станете GM цієї кампанії.
+                  Передача прав власності змінить Власника кампанії. Ви станете Майстром цієї кампанії.
                 </p>
 
                 {eligibleNewOwners.length > 0 ? (
@@ -201,7 +201,7 @@ export default function CampaignSettingsWidget({
                       onChange={(event) => setSelectedNewOwnerId(event.target.value)}
                       className={inputClasses}
                     >
-                      <option value="">Оберіть нового Owner</option>
+                      <option value="">Оберіть нового Власника</option>
                       {eligibleNewOwners.map((member) => {
                         const displayName = member.user?.displayName || member.user?.username || `User #${member.userId}`;
                         return (
@@ -235,7 +235,7 @@ export default function CampaignSettingsWidget({
                   variant="danger"
                   onClick={() => setDeleteModal(true)}
                 >
-                  🗑️ Видалити кампанію
+                  Видалити кампанію
                 </Button>
               </>
             )}
@@ -260,7 +260,7 @@ export default function CampaignSettingsWidget({
           isOpen={transferModal}
           title="Передати права кампанії?"
           message={selectedOwner
-            ? `Новим власником стане ${selectedOwner.user?.displayName || selectedOwner.user?.username || `User #${selectedOwner.userId}`}. Після підтвердження ви втратите роль Owner.`
+            ? `Новим власником стане ${selectedOwner.user?.displayName || selectedOwner.user?.username || `User #${selectedOwner.userId}`}. Після підтвердження ви втратите роль Власника.`
             : 'Підтвердити передачу прав кампанії?'}
           onConfirm={handleTransferOwnership}
           onCancel={() => setTransferModal(false)}
