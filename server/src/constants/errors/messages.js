@@ -44,6 +44,7 @@ const ERROR_MESSAGES = {
   [ERROR_CODES.CAMPAIGN_TRANSFER_FAILED]: 'Не вдалося передати права власності кампанії',
   [ERROR_CODES.CAMPAIGN_OWNER_REQUIRED]: 'Дія доступна тільки власнику кампанії',
   [ERROR_CODES.CAMPAIGN_NOT_FOUND]: 'Кампанія не знайдена',
+  [ERROR_CODES.CAMPAIGN_FINISHED]: 'Кампанія завершена і недоступна для цієї дії',
 
   [ERROR_CODES.FILE_INVALID_FORMAT]: 'Недопустимий формат файлу',
   [ERROR_CODES.FILE_TOO_LARGE]: 'Файл занадто великий',

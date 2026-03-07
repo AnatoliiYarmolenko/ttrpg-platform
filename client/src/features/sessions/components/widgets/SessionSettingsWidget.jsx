@@ -89,7 +89,7 @@ export default function SessionSettingsWidget({
     'w-full p-3 border-2 border-[#9DC88D]/50 rounded-xl focus:border-[#164A41] outline-none text-[#164A41] bg-white transition-colors';
 
   return (
-    <DashboardCard title="⚙️ Налаштування сесії">
+    <DashboardCard title="Налаштування сесії">
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         {/* Назва */}
         <FormField id="title" label="Назва сесії" required>
@@ -235,7 +235,7 @@ export default function SessionSettingsWidget({
           isLoading={isLoading}
           loadingText="Збереження..."
         >
-          💾 Зберегти зміни
+          Зберегти зміни
         </Button>
 
         {/* Секція небезпечних дій */}
@@ -246,7 +246,7 @@ export default function SessionSettingsWidget({
               variant="danger"
               onClick={() => setDeleteModal(true)}
             >
-              🗑️ Видалити сесію
+              Видалити сесію
             </Button>
           </div>
         )}

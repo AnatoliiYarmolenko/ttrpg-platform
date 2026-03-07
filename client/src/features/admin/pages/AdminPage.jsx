@@ -244,6 +244,7 @@ export default function AdminPage() {
               <th className="text-left py-2 px-3 text-[#164A41] font-semibold">Назва</th>
               <th className="text-left py-2 px-3 text-[#164A41] font-semibold">Власник</th>
               <th className="text-left py-2 px-3 text-[#164A41] font-semibold">Система</th>
+              <th className="text-left py-2 px-3 text-[#164A41] font-semibold">Статус</th>
               <th className="text-left py-2 px-3 text-[#164A41] font-semibold">Видимість</th>
               <th className="text-left py-2 px-3 text-[#164A41] font-semibold">Учасники</th>
               <th className="text-left py-2 px-3 text-[#164A41] font-semibold">Сесії</th>
@@ -258,6 +259,11 @@ export default function AdminPage() {
                 <td className="py-2 px-3 font-medium text-[#164A41] max-w-[200px] truncate">{c.title}</td>
                 <td className="py-2 px-3 text-gray-600">{c.owner?.username ?? '—'}</td>
                 <td className="py-2 px-3 text-gray-500">{c.system || '—'}</td>
+                <td className="py-2 px-3">
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[c.status] || 'bg-gray-100 text-gray-600'}`}>
+                    {statusLabels[c.status] || c.status || 'ACTIVE'}
+                  </span>
+                </td>
                 <td className="py-2 px-3">
                   <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
                     {visibilityLabels[c.visibility] || c.visibility}
@@ -277,7 +283,7 @@ export default function AdminPage() {
               </tr>
             ))}
             {campaigns.length === 0 && !loading && (
-              <tr><td colSpan={9} className="py-8 text-center text-gray-400">Нічого не знайдено</td></tr>
+              <tr><td colSpan={10} className="py-8 text-center text-gray-400">Нічого не знайдено</td></tr>
             )}
           </tbody>
         </table>

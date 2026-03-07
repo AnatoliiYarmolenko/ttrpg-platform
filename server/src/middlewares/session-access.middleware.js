@@ -36,6 +36,7 @@ async function loadSessionContext(req, res, next) {
           select: {
             id: true,
             ownerId: true,
+            status: true,
           },
         },
         participants: {

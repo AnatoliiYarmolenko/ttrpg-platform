@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import DashboardCard from '@/components/ui/DashboardCard';
-import { ConfirmModal, EmptyState } from '@/components/shared';
+import { ConfirmModal, EmptyState, StatusBadge } from '@/components/shared';
 import SessionListItem from '../ui/SessionListItem';
 
 const STATUS_SECTIONS = [
@@ -66,6 +66,11 @@ export default function CampaignSessionsWidget({
   return (
     <DashboardCard title={title}>
       <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between p-3 rounded-xl bg-[#9DC88D]/8 border border-[#9DC88D]/25">
+          <span className="text-sm font-semibold text-[#164A41]">Статус кампанії</span>
+          <StatusBadge status={campaign.status || 'ACTIVE'} size="sm" />
+        </div>
+
         {/* Статистика */}
         {sessions.length > 0 && (
           <div className="flex items-center gap-4 text-sm text-[#4D774E] p-3 bg-[#9DC88D]/10 rounded-xl flex-wrap">

@@ -3,6 +3,7 @@ import DashboardCard from '@/components/ui/DashboardCard';
 import Button from '@/components/ui/Button';
 import {
   VisibilityBadge,
+  StatusBadge,
   DateTimeDisplay,
   BackButton,
 } from '@/components/shared';
@@ -55,7 +56,10 @@ export default function CampaignPreviewWidget({
             <h2 className="text-xl font-bold text-[#164A41] flex-1 pr-3">
               {campaign.title}
             </h2>
-            <VisibilityBadge visibility={campaign.visibility} />
+            <div className="flex flex-col items-end gap-2">
+              <VisibilityBadge visibility={campaign.visibility} />
+              <StatusBadge status={campaign.status || 'ACTIVE'} size="sm" />
+            </div>
           </div>
         </div>
 
@@ -140,7 +144,9 @@ export default function CampaignPreviewWidget({
 
         {!canJoin && !pendingRequestStatus && (
           <div className="text-sm text-[#4D774E] text-center p-3 bg-[#9DC88D]/10 rounded-lg">
-            Ця кампанія недоступна для приєднання
+            {campaign.status === 'FINISHED'
+              ? 'Кампанія завершена та недоступна для приєднання'
+              : 'Ця кампанія недоступна для приєднання'}
           </div>
         )}
       </div>

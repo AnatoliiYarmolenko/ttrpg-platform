@@ -212,7 +212,9 @@ export default function SessionPagePreviewWidget({
 
         {!canRequestJoin && (
           <div className="text-sm text-[#4D774E] text-center p-3 bg-[#9DC88D]/10 rounded-lg">
-            {session.status !== 'PLANNED'
+            {session.campaign?.status === 'FINISHED'
+              ? 'Кампанія завершена, приєднання до сесії недоступне'
+              : session.status !== 'PLANNED'
               ? `Ця сесія ${
                   session.status === 'FINISHED'
                     ? 'вже завершена'

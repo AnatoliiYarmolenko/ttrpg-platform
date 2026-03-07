@@ -7,6 +7,14 @@ function createCampaignMembersService({
   permissionHelpers,
 }) {
   const errorDeps = { AppError, ERROR_CODES };
+  const assertCampaignNotFinished = (
+    campaign,
+    message = 'Кампанія завершена. Ця дія недоступна.'
+  ) => {
+    if (campaign?.status === 'FINISHED') {
+      throw new AppError(ERROR_CODES.CAMPAIGN_FINISHED, message);
+    }
+  };
 
   const membersService = {
     async transferCampaignOwnership(campaignId, currentOwnerId, newOwnerId) {
@@ -36,6 +44,11 @@ function createCampaignMembersService({
       if (!campaign) {
         throw new AppError(ERROR_CODES.CAMPAIGN_TRANSFER_FAILED, 'Кампанія не знайдена');
       }
+
+      assertCampaignNotFinished(
+        campaign,
+        'Не можна передавати власність у завершеній кампанії'
+      );
 
       permissionHelpers._requireCampaignOwner(
         errorDeps,
@@ -160,6 +173,11 @@ function createCampaignMembersService({
     async addMemberToCampaign(campaignId, userId, newMemberId, role = 'PLAYER') {
       const campaign = await getCampaignById(campaignId, userId);
 
+      assertCampaignNotFinished(
+        campaign,
+        'Не можна додавати учасників до завершеної кампанії'
+      );
+
       const requesterRole = permissionHelpers._requireCampaignRoles(
         errorDeps,
         campaign,
@@ -218,6 +236,11 @@ function createCampaignMembersService({
     async removeMemberFromCampaign(campaignId, userId, memberId) {
       const campaign = await getCampaignById(campaignId, userId);
 
+      assertCampaignNotFinished(
+        campaign,
+        'Не можна видаляти учасників із завершеної кампанії'
+      );
+
       const requesterRole = permissionHelpers._requireCampaignRoles(
         errorDeps,
         campaign,
@@ -269,6 +292,11 @@ function createCampaignMembersService({
 
     async updateMemberRole(campaignId, userId, memberId, newRole) {
       const campaign = await getCampaignById(campaignId, userId);
+
+      assertCampaignNotFinished(
+        campaign,
+        'Не можна змінювати ролі в завершеній кампанії'
+      );
 
       permissionHelpers._requireCampaignOwner(
         errorDeps,
@@ -331,6 +359,11 @@ function createCampaignMembersService({
         'Тільки власник може регенерувати код'
       );
 
+      assertCampaignNotFinished(
+        campaign,
+        'Не можна оновлювати invite-код завершеної кампанії'
+      );
+
       if (campaign.visibility === 'PRIVATE') {
         throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Приватні кампанії не використовують invite-коди');
       }
@@ -348,7 +381,7 @@ function createCampaignMembersService({
     async joinByInviteCode(inviteCode, userId) {
       const campaign = await prisma.campaign.findUnique({
         where: { inviteCode },
-        select: { id: true, visibility: true, title: true, ownerId: true },
+        select: { id: true, visibility: true, title: true, ownerId: true, status: true },
       });
 
       if (!campaign) {
@@ -361,6 +394,11 @@ function createCampaignMembersService({
           'Ця кампанія є приватною. Вступ можливий тільки через подачу заявки або запрошення власника.'
         );
       }
+
+      assertCampaignNotFinished(
+        campaign,
+        'Не можна приєднатися до завершеної кампанії'
+      );
 
       const existingMember = await prisma.campaignMember.findUnique({
         where: {
@@ -396,12 +434,17 @@ function createCampaignMembersService({
 
       const campaign = await prisma.campaign.findUnique({
         where: { id: campaignIdInt },
-        select: { id: true, visibility: true, ownerId: true },
+        select: { id: true, visibility: true, ownerId: true, status: true },
       });
 
       if (!campaign) {
         throw new AppError(ERROR_CODES.CAMPAIGN_NOT_FOUND, 'Кампанія не знайдена');
       }
+
+      assertCampaignNotFinished(
+        campaign,
+        'Не можна подати заявку до завершеної кампанії'
+      );
 
       const existingMember = await prisma.campaignMember.findUnique({
         where: {
@@ -510,6 +553,11 @@ function createCampaignMembersService({
       }
 
       const campaign = await getCampaignById(joinRequest.campaignId, userId);
+
+      assertCampaignNotFinished(
+        campaign,
+        'Не можна схвалювати заявки для завершеної кампанії'
+      );
 
       const requesterRole = permissionHelpers._requireCampaignRoles(
         errorDeps,

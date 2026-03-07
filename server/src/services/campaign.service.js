@@ -201,14 +201,97 @@ class CampaignService {
 
     this._requireCampaignOwner(campaign, userId, 'Тільки власник може оновлювати кампанію');
 
+    const settingsFields = ['title', 'description', 'imageUrl', 'system', 'visibility'];
+    const hasSettingsUpdate = settingsFields.some((field) =>
+      Object.prototype.hasOwnProperty.call(updateData, field)
+    );
+    const nextStatus = updateData.status !== undefined
+      ? String(updateData.status).toUpperCase()
+      : undefined;
+
+    if (campaign.status === 'FINISHED' && hasSettingsUpdate) {
+      throw new AppError(
+        ERROR_CODES.CAMPAIGN_FINISHED,
+        'Неможливо змінювати налаштування завершеної кампанії'
+      );
+    }
+
+    if (nextStatus !== undefined) {
+      if (!['ACTIVE', 'FINISHED'].includes(nextStatus)) {
+        throw new AppError(ERROR_CODES.VALIDATION_INVALID_FORMAT, 'Невірний статус кампанії');
+      }
+
+      if (campaign.status === 'FINISHED' && nextStatus !== 'FINISHED') {
+        throw new AppError(
+          ERROR_CODES.CAMPAIGN_FINISHED,
+          'Неможливо змінити статус завершеної кампанії'
+        );
+      }
+    }
+
+    const campaignIdInt = parseInt(campaignId);
+    const isFinishingCampaign = campaign.status !== 'FINISHED' && nextStatus === 'FINISHED';
+
+    if (isFinishingCampaign) {
+      const [, , updatedCampaign] = await prisma.$transaction([
+        prisma.session.updateMany({
+          where: {
+            campaignId: campaignIdInt,
+            status: 'ACTIVE',
+          },
+          data: {
+            status: 'FINISHED',
+          },
+        }),
+        prisma.session.updateMany({
+          where: {
+            campaignId: campaignIdInt,
+            status: 'PLANNED',
+          },
+          data: {
+            status: 'CANCELED',
+          },
+        }),
+        prisma.campaign.update({
+          where: { id: campaignIdInt },
+          data: {
+            title: updateData.title !== undefined ? updateData.title : undefined,
+            description: updateData.description !== undefined ? updateData.description : undefined,
+            imageUrl: updateData.imageUrl !== undefined ? updateData.imageUrl : undefined,
+            system: updateData.system !== undefined ? updateData.system : undefined,
+            visibility: updateData.visibility !== undefined ? updateData.visibility : undefined,
+            status: nextStatus,
+            ...(updateData.visibility === 'LINK_ONLY' && {
+              inviteCode: crypto.randomBytes(8).toString('hex'),
+            }),
+          },
+          include: {
+            owner: {
+              select: { id: true, username: true, displayName: true },
+            },
+            members: {
+              include: {
+                user: {
+                  select: { id: true, username: true, displayName: true },
+                },
+              },
+            },
+          },
+        }),
+      ]);
+
+      return updatedCampaign;
+    }
+
     const updated = await prisma.campaign.update({
-      where: { id: parseInt(campaignId) },
+      where: { id: campaignIdInt },
       data: {
         title: updateData.title !== undefined ? updateData.title : undefined,
         description: updateData.description !== undefined ? updateData.description : undefined,
         imageUrl: updateData.imageUrl !== undefined ? updateData.imageUrl : undefined,
         system: updateData.system !== undefined ? updateData.system : undefined,
         visibility: updateData.visibility !== undefined ? updateData.visibility : undefined,
+        status: nextStatus !== undefined ? nextStatus : undefined,
         ...(updateData.visibility === 'LINK_ONLY' && {
           inviteCode: crypto.randomBytes(8).toString('hex'),
         }),

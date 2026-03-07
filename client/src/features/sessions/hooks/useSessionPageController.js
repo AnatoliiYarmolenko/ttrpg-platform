@@ -121,6 +121,7 @@ export default function useSessionPageController() {
   }, [currentSession]);
 
   const hasConfirmedGm = Boolean(confirmedGm);
+  const isCampaignFinished = currentSession?.campaign?.status === 'FINISHED';
 
   const isOwner = currentSession?.ownerId === user?.id;
   const isGM = myParticipant?.role === 'GM';
@@ -139,7 +140,7 @@ export default function useSessionPageController() {
     if (Number.isNaN(sessionDate.getTime())) return false;
     return sessionDate.getTime() < currentTimestamp;
   }, [currentSession, currentTimestamp]);
-  const canManageSettings = (isOwner || isConfirmedGm) && !isSessionInPast;
+  const canManageSettings = (isOwner || isConfirmedGm) && !isSessionInPast && !isCampaignFinished;
   const { isPreviewMode } = usePreviewMode({ isMember: amParticipant, isLoading });
 
   useEffect(() => {
@@ -152,6 +153,7 @@ export default function useSessionPageController() {
     if (!currentSession || !user) return false;
     if (amParticipant) return false;
     if (currentSession.status !== 'PLANNED') return false;
+    if (currentSession.campaign?.status === 'FINISHED') return false;
     if (currentSession.maxPlayers) {
       const currentPlayers =
         currentSession.participants?.filter((p) => p.role === 'PLAYER').length || 0;
@@ -165,6 +167,7 @@ export default function useSessionPageController() {
     if (amParticipant) return false;
     if (isOwner) return false;
     if (currentSession.status !== 'PLANNED') return false;
+    if (currentSession.campaign?.status === 'FINISHED') return false;
     if (new Date(currentSession.date) < new Date()) return false;
     if (hasConfirmedGm) return false;
     return true;
@@ -224,14 +227,16 @@ export default function useSessionPageController() {
       if (!canManageSettings) {
         return {
           success: false,
-          message: 'Налаштування недоступні для сесій у минулому',
+          message: isCampaignFinished
+            ? 'Налаштування недоступні: кампанія завершена'
+            : 'Налаштування недоступні для сесій у минулому',
         };
       }
       const result = await updateSessionData(id, sessionData);
       if (result?.success) await fetchSessionById(id);
       return result;
     },
-    [id, canManageSettings, updateSessionData, fetchSessionById]
+    [id, canManageSettings, isCampaignFinished, updateSessionData, fetchSessionById]
   );
 
   const handleMarkAsFinished = useCallback(async () => {
@@ -305,6 +310,7 @@ export default function useSessionPageController() {
     canManageParticipants,
     canManageGmRequests,
     canManageSettings,
+    isCampaignFinished,
     isSessionInPast,
     amParticipant,
     canJoin,

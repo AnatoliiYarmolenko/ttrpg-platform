@@ -12,6 +12,7 @@ import CreateSessionForm from '@/features/dashboard/components/widgets/CreateSes
 export default function CampaignCreateSessionWidget({
   campaignId,
   canCreateSessions = false,
+  isCampaignFinished = false,
   onSessionCreated,
 }) {
   const handleCreateSuccess = async () => {
@@ -22,8 +23,10 @@ export default function CampaignCreateSessionWidget({
     <DashboardCard title="Створити сесію">
       {!canCreateSessions ? (
         <EmptyState
-          title="Недостатньо прав"
-          description="Створювати сесії в кампанії можуть тільки Власник або Майстер"
+          title={isCampaignFinished ? 'Кампанія завершена' : 'Недостатньо прав'}
+          description={isCampaignFinished
+            ? 'У завершеній кампанії не можна створювати нові сесії'
+            : 'Створювати сесії в кампанії можуть тільки Власник або Майстер'}
           className="h-full"
         />
       ) : (

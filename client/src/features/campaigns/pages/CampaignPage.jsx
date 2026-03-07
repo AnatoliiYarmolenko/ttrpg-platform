@@ -51,6 +51,7 @@ export default function CampaignPage() {
     canDeleteCampaign,
     canManageInviteCode,
     canUseOwnerSessionOverrides,
+    isCampaignFinished,
     canJoin,
     handleJoinRequest,
     handleLeave,
@@ -163,6 +164,7 @@ export default function CampaignPage() {
         <CampaignCreateSessionWidget
           campaignId={id}
           canCreateSessions={canCreateCampaignSessions}
+          isCampaignFinished={isCampaignFinished}
           onSessionCreated={handleRefreshCampaign}
         />
       );

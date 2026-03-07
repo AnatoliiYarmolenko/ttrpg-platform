@@ -129,6 +129,13 @@ class SessionService {
         throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Кампанія не знайдена');
       }
 
+      if (campaign.status === 'FINISHED') {
+        throw new AppError(
+          ERROR_CODES.CAMPAIGN_FINISHED,
+          'Не можна створювати сесії в завершеній кампанії'
+        );
+      }
+
       const memberRole = campaign.members[0]?.role;
       if (!memberRole || !['OWNER', 'GM'].includes(memberRole)) {
         throw new AppError(
@@ -168,7 +175,7 @@ class SessionService {
           select: { id: true, username: true, displayName: true, avatarUrl: true },
         },
         campaign: {
-          select: { id: true, title: true },
+          select: { id: true, title: true, status: true, system: true },
         },
         participants: {
           include: {
@@ -214,7 +221,7 @@ class SessionService {
           select: { id: true, username: true, displayName: true, avatarUrl: true },
         },
         campaign: {
-          select: { id: true, title: true },
+          select: { id: true, title: true, status: true },
         },
         participants: {
           include: {
@@ -260,7 +267,7 @@ class SessionService {
           select: { id: true, username: true, displayName: true, avatarUrl: true },
         },
         campaign: {
-          select: { id: true, title: true, visibility: true, ownerId: true },
+          select: { id: true, title: true, visibility: true, ownerId: true, status: true, system: true },
         },
         participants: {
           include: {
@@ -330,6 +337,13 @@ class SessionService {
 
     if (hasSettingsUpdate && !this._canEditSessionSettings(session, requesterId)) {
       throw new AppError(ERROR_CODES.SESSION_OWNER_ONLY);
+    }
+
+    if (hasSettingsUpdate && session.campaign?.status === 'FINISHED') {
+      throw new AppError(
+        ERROR_CODES.CAMPAIGN_FINISHED,
+        'Неможливо змінювати налаштування сесії в завершеній кампанії'
+      );
     }
 
     if (hasStatusUpdate && !this._canChangeSessionStatus(session, requesterId)) {
@@ -425,7 +439,7 @@ class SessionService {
           select: { id: true, username: true, displayName: true, avatarUrl: true },
         },
         campaign: {
-          select: { id: true, title: true },
+          select: { id: true, title: true, status: true, system: true },
         },
         participants: {
           include: {
@@ -524,7 +538,7 @@ class SessionService {
           select: { id: true, username: true, displayName: true, avatarUrl: true },
         },
         campaign: {
-          select: { id: true, title: true },
+          select: { id: true, title: true, status: true },
         },
         participants: {
           include: {

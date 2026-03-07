@@ -93,20 +93,22 @@ export default function useCampaignPageController() {
 
   const isOwner = myRole === 'OWNER';
   const isGM = myRole === 'GM';
+  const isCampaignFinished = currentCampaign?.status === 'FINISHED';
   const canManageCampaignSettings = isOwner;
   const canManageCampaignVisibility = isOwner;
-  const canAssignCampaignRoles = isOwner;
+  const canAssignCampaignRoles = isOwner && !isCampaignFinished;
   const canModerateJoinRequests = isOwner || isGM;
-  const canRemovePlayers = isOwner || isGM;
-  const canCreateCampaignSessions = isOwner || isGM;
+  const canRemovePlayers = (isOwner || isGM) && !isCampaignFinished;
+  const canCreateCampaignSessions = (isOwner || isGM) && !isCampaignFinished;
   const canDeleteCampaign = isOwner;
-  const canManageInviteCode = isOwner;
+  const canManageInviteCode = isOwner && !isCampaignFinished;
   const canUseOwnerSessionOverrides = isOwner;
   const { isPreviewMode } = usePreviewMode({ isMember: amMember, isLoading });
 
   const canJoin = useMemo(() => {
     if (!currentCampaign || !user) return false;
     if (amMember) return false;
+    if (currentCampaign.status === 'FINISHED') return false;
     return true;
   }, [currentCampaign, user, amMember]);
 
@@ -121,12 +123,19 @@ export default function useCampaignPageController() {
   );
 
   const handleLeave = useCallback(async () => {
+    if (isCampaignFinished) {
+      return { success: false, message: 'Не можна покинути завершену кампанію' };
+    }
+
     const myMember = campaignMembers.find((m) => m.userId === user?.id);
     if (myMember) {
       await removeMember(Number(id), myMember.userId);
       navigate('/');
+      return { success: true };
     }
-  }, [campaignMembers, user, id, removeMember, navigate]);
+
+    return { success: false, message: 'Учасника кампанії не знайдено' };
+  }, [campaignMembers, user, id, isCampaignFinished, removeMember, navigate]);
 
   const handleRegenerateCode = useCallback(async () => {
     if (!canManageInviteCode) {
@@ -249,6 +258,7 @@ export default function useCampaignPageController() {
     canDeleteCampaign,
     canManageInviteCode,
     canUseOwnerSessionOverrides,
+    isCampaignFinished,
     amMember,
     canJoin,
 

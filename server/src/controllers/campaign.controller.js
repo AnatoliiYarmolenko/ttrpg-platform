@@ -67,7 +67,7 @@ class CampaignController {
     try {
       const { campaignId } = req.params;
       const userId = req.user.id;
-      const { title, description, imageUrl, system, visibility } = req.body;
+      const { title, description, imageUrl, system, visibility, status } = req.body;
 
       const campaign = await campaignService.updateCampaign(campaignId, userId, {
         title,
@@ -75,6 +75,7 @@ class CampaignController {
         imageUrl,
         system,
         visibility,
+        status,
       });
 
       res.json({ 

@@ -25,6 +25,13 @@ function createSessionParticipantsService({
         );
       }
 
+      if (session.campaign?.status === 'FINISHED') {
+        throw new AppError(
+          ERROR_CODES.CAMPAIGN_FINISHED,
+          'Не можна приєднатися до сесії в завершеній кампанії'
+        );
+      }
+
       if (new Date(session.date) < new Date()) {
         throw new AppError(
           ERROR_CODES.VALIDATION_FAILED,

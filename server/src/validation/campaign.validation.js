@@ -69,6 +69,11 @@ const validateUpdateCampaign = [
     .optional()
     .trim()
     .isIn(['PUBLIC', 'PRIVATE', 'LINK_ONLY']).withMessage('Невірна видимість'),
+
+  body('status')
+    .optional()
+    .trim()
+    .isIn(['ACTIVE', 'FINISHED']).withMessage('Невірний статус кампанії'),
   
   handleValidationErrors,
 ];

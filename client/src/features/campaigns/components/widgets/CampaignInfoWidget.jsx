@@ -3,6 +3,7 @@ import DashboardCard from '@/components/ui/DashboardCard';
 import Button from '@/components/ui/Button';
 import {
   VisibilityBadge,
+  StatusBadge,
   RoleBadge,
   DateTimeDisplay,
   ConfirmModal,
@@ -92,7 +93,10 @@ export default function CampaignInfoWidget({
             <h2 className="text-xl font-bold text-[#164A41] flex-1 pr-3">
               {campaign.title}
             </h2>
-            <VisibilityBadge visibility={campaign.visibility} />
+            <div className="flex flex-col items-end gap-2">
+              <VisibilityBadge visibility={campaign.visibility} />
+              <StatusBadge status={campaign.status || 'ACTIVE'} size="sm" />
+            </div>
           </div>
           {myRole && <RoleBadge role={myRole} size="md" />}
         </div>
@@ -179,7 +183,7 @@ export default function CampaignInfoWidget({
         {/* Дії */}
         <div className="border-t border-[#9DC88D]/20 pt-4 flex flex-col gap-3">
           {/* Покинути кампанію (не для Owner) */}
-          {myRole && myRole !== 'OWNER' && onLeave && (
+          {myRole && myRole !== 'OWNER' && campaign.status !== 'FINISHED' && onLeave && (
             <Button
               onClick={handleLeave}
               variant="danger"
