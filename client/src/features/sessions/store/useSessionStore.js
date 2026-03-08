@@ -192,7 +192,6 @@ const useSessionStore = create((set, get) => ({
       },
       defaultError: 'Помилка при приєднанні до сесії',
       toastOnSuccess: true,
-      successMessage: 'Ви приєдналися до сесії',
       setErrorState: false,
     }),
 

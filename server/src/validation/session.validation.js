@@ -249,10 +249,6 @@ const validateJoinSession = [
   param('id')
     .isInt({ min: 1 }).withMessage('ID сесії повинен бути позитивним числом'),
 
-  body('isGuest')
-    .optional()
-    .isBoolean().withMessage('isGuest повинен бути булевим значенням'),
-
   body('role')
     .optional()
     .trim()

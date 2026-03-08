@@ -1,5 +1,5 @@
 const VISIBILITY_CONFIG = {
-  PUBLIC:    { text: 'Публічна',       abbrev: 'ПУБ', class: 'bg-green-100 text-green-800' },
+  PUBLIC:    { text: 'За заявкою',     abbrev: 'ЗАЯ', class: 'bg-green-100 text-green-800' },
   PRIVATE:   { text: 'Приватна',       abbrev: 'ПРИ', class: 'bg-gray-100 text-gray-800' },
   LINK_ONLY: { text: 'За посиланням',  abbrev: 'ПОС', class: 'bg-blue-100 text-blue-800' },
 };

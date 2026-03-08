@@ -9,7 +9,7 @@ function createSessionParticipantsService({
 }) {
   return {
     async joinSession(sessionId, userId, options = {}) {
-      const { isGuest = false, role = 'PLAYER' } = options;
+      const { role = 'PLAYER' } = options;
       const session = await getSessionById(sessionId, userId);
 
       const normalizedRole = String(role || 'PLAYER').toUpperCase();
@@ -68,10 +68,43 @@ function createSessionParticipantsService({
         }
       }
 
-      let status = 'PENDING';
-      if (normalizedRole === 'PLAYER' && (session.visibility === 'PUBLIC' || session.visibility === 'LINK_ONLY')) {
-        status = 'CONFIRMED';
+      const isCampaignSession = Boolean(session.campaignId);
+      const isCampaignMember = Boolean(session.viewer?.isCampaignMember);
+
+      if (
+        normalizedRole === 'PLAYER'
+        && isCampaignSession
+        && session.visibility === 'PRIVATE'
+        && !isCampaignMember
+      ) {
+        throw new AppError(
+          ERROR_CODES.SECURITY_ACCESS_DENIED,
+          'Для звичайної сесії кампанії спочатку потрібно бути учасником кампанії'
+        );
       }
+
+      let status = 'PENDING';
+      if (normalizedRole === 'PLAYER') {
+        if (!isCampaignSession && session.visibility === 'PUBLIC') {
+          // One-shot: публічні сесії підтверджуються автоматично.
+          status = 'CONFIRMED';
+        }
+
+        if (isCampaignSession && session.visibility === 'PRIVATE' && isCampaignMember) {
+          // Кампанійна "звичайна" сесія: члени кампанії входять одразу.
+          status = 'CONFIRMED';
+        }
+
+        if (isCampaignSession && session.visibility === 'PUBLIC') {
+          // Кампанійна "гостьова" сесія: вхід без апруву.
+          status = 'CONFIRMED';
+        }
+      }
+
+      const isGuest = normalizedRole === 'PLAYER'
+        && isCampaignSession
+        && session.visibility === 'PUBLIC'
+        && !isCampaignMember;
 
       const participant = await prisma.sessionParticipant.create({
         data: {
@@ -163,6 +196,25 @@ function createSessionParticipantsService({
         throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Учасник не знайдений');
       }
 
+      // Rejection flow means removing the pending application instead of storing DECLINED.
+      if (status === 'DECLINED') {
+        if (participant.status !== 'PENDING') {
+          throw new AppError(
+            ERROR_CODES.VALIDATION_FAILED,
+            'Відхиляти можна тільки заявки зі статусом PENDING'
+          );
+        }
+
+        await prisma.sessionParticipant.delete({
+          where: { id: parseInt(participantId) },
+        });
+
+        return {
+          ...participant,
+          status: 'DECLINED',
+        };
+      }
+
       const sessionIdInt = parseInt(sessionId);
       const participantIdInt = parseInt(participantId);
 
@@ -172,16 +224,7 @@ function createSessionParticipantsService({
         }
 
         if (status === 'CONFIRMED') {
-          const [, updatedParticipant] = await prisma.$transaction([
-            prisma.sessionParticipant.updateMany({
-              where: {
-                sessionId: sessionIdInt,
-                role: 'GM',
-                status: 'CONFIRMED',
-                NOT: { id: participantIdInt },
-              },
-              data: { status: 'DECLINED' },
-            }),
+          const [updatedParticipant] = await prisma.$transaction([
             prisma.sessionParticipant.update({
               where: { id: participantIdInt },
               data: { status },
@@ -189,6 +232,14 @@ function createSessionParticipantsService({
                 user: {
                   select: { id: true, username: true, displayName: true, avatarUrl: true },
                 },
+              },
+            }),
+            prisma.sessionParticipant.deleteMany({
+              where: {
+                sessionId: sessionIdInt,
+                role: 'GM',
+                status: 'PENDING',
+                NOT: { id: participantIdInt },
               },
             }),
           ]);

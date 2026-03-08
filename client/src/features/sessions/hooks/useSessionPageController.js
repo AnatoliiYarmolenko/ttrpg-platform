@@ -173,6 +173,15 @@ export default function useSessionPageController() {
     return true;
   }, [currentSession, user, amParticipant, isOwner, hasConfirmedGm]);
 
+  const showCampaignInfo = useMemo(() => {
+    if (!currentSession?.campaign) return false;
+
+    const isGuestViewForPublicCampaignSession = currentSession.visibility === 'PUBLIC'
+      && currentSession.viewer?.isCampaignMember === false;
+
+    return !isGuestViewForPublicCampaignSession;
+  }, [currentSession]);
+
   const refreshSessionWidgets = useCallback(async () => {
     if (!id) return;
     await Promise.all([
@@ -317,6 +326,7 @@ export default function useSessionPageController() {
     canApplyAsGm,
     hasConfirmedGm,
     confirmedGm,
+    showCampaignInfo,
 
     // Дії
     handleJoin,

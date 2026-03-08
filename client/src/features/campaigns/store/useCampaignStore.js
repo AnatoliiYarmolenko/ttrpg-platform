@@ -252,7 +252,7 @@ const useCampaignStore = create((set) => ({
       apiCall: () => joinByInviteCode(inviteCode),
       defaultError: 'Помилка при приєднанні за кодом',
       toastOnSuccess: true,
-      successMessage: 'Ви приєдналися до кампанії',
+      successMessage: 'Запит на приєднання надіслано',
     }),
 
   // === ЗАПИТИ НА ПРИЄДНАННЯ ===

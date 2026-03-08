@@ -17,6 +17,7 @@ import { toast } from '@/stores/useToastStore';
  */
 export default function CreateSessionForm({ initialDate, campaignId, requireGmRole = false, onSuccess, onCancel }) {
   const { createNewSession } = useSessionStore();
+  const isCampaignSession = Boolean(campaignId);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -41,10 +42,34 @@ export default function CreateSessionForm({ initialDate, campaignId, requireGmRo
     duration: 240,
     maxPlayers: 4,
     price: 0,
-    visibility: 'PUBLIC',
+    visibility: isCampaignSession ? 'PRIVATE' : 'PUBLIC',
     system: '',
     isGm: true,
   });
+
+  const visibilityOptions = isCampaignSession
+    ? [
+        { value: 'PRIVATE', label: 'Звичайна' },
+        { value: 'PUBLIC', label: 'Гостьова' },
+        { value: 'LINK_ONLY', label: 'Прихована' },
+      ]
+    : [
+        { value: 'PUBLIC', label: 'Публічна' },
+        { value: 'PRIVATE', label: 'За підтвердженням' },
+        { value: 'LINK_ONLY', label: 'За посиланням' },
+      ];
+
+  const visibilityHint = isCampaignSession
+    ? {
+        PRIVATE: 'Звичайна: вхід тільки для учасників, приєднання без підтвердження.',
+        PUBLIC: 'Гостьова: видима користувачам поза кампанії, сторонні гравці приєднуються як гості, з підтвердженням.',
+        LINK_ONLY: 'Прихована: доступ тільки за посиланням для учасників кампанії, з підтвердженням.',
+      }[formData.visibility]
+    : {
+        PUBLIC: 'Публічна: відображатиметься для інших користувачів, приєднання без підтвердження.',
+        PRIVATE: 'За підтвердженням: відображатиметься для інших користувачів, з підтвердженням.',
+        LINK_ONLY: 'За посиланням: відображатиметься тільки за посиланням, з підтвердженням.',
+      }[formData.visibility];
 
   const [errors, setErrors] = useState({});
 
@@ -320,12 +345,8 @@ export default function CreateSessionForm({ initialDate, campaignId, requireGmRo
         
         <div>
           <Dropdown
-            label="Видимість"
-            options={[
-              { value: 'PUBLIC', label: 'Публічна' },
-              { value: 'LINK_ONLY', label: 'За посиланням' },
-              { value: 'PRIVATE', label: 'Приватна' },
-            ]}
+            label={isCampaignSession ? 'Тип сесії' : 'Видимість'}
+            options={visibilityOptions}
             value={formData.visibility}
             onChange={(option) => {
               setFormData(prev => ({ ...prev, visibility: option.value }));
@@ -336,6 +357,10 @@ export default function CreateSessionForm({ initialDate, campaignId, requireGmRo
             error={errors.visibility}
           />
         </div>
+      </div>
+
+      <div className="text-xs text-[#4D774E] bg-[#9DC88D]/10 border border-[#9DC88D]/30 rounded-lg px-3 py-2">
+        {visibilityHint}
       </div>
       
       {/* Кнопки */}

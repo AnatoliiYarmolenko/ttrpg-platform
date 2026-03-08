@@ -87,7 +87,14 @@ async function createCampaigns(usersByKey) {
   });
 
   const campaign3 = await prisma.campaign.create({
-    data: { title: `${SEED_PREFIX} Iron Frontier`, description: 'Sci-fi', system: 'Pathfinder 2e', visibility: 'PRIVATE', ownerId: usersByKey.gm1.id },
+    data: {
+      title: `${SEED_PREFIX} Iron Frontier`,
+      description: 'Sci-fi',
+      system: 'Pathfinder 2e',
+      visibility: 'LINK_ONLY',
+      inviteCode: 'seed-iron-frontier-link',
+      ownerId: usersByKey.gm1.id,
+    },
   });
 
   // Додаємо учасників базово

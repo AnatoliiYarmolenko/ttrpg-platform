@@ -185,8 +185,10 @@ export default function CampaignSettingsWidget({
               className={inputClasses}
               disabled={controlsDisabled}
             >
-              <option value="PUBLIC">🌍 Публічна</option>
-              <option value="PRIVATE">🔒 Приватна</option>
+              {formData.visibility === 'PRIVATE' && (
+                <option value="PRIVATE">🔒 Приватна (legacy)</option>
+              )}
+              <option value="PUBLIC">📝 За заявкою</option>
               <option value="LINK_ONLY">🔗 За посиланням</option>
             </select>
           </FormField>

@@ -169,8 +169,7 @@ export default function CreateCampaignWidget({ onSuccess, onCancel }) {
               onChange={handleChange}
               className={inputClass('visibility')}
             >
-              <option value="PUBLIC">🌍 Публічна</option>
-              <option value="PRIVATE">🔒 Приватна</option>
+              <option value="PUBLIC">📝 За заявкою</option>
               <option value="LINK_ONLY">🔗 За посиланням</option>
             </select>
           </div>
@@ -178,9 +177,8 @@ export default function CreateCampaignWidget({ onSuccess, onCancel }) {
 
         {/* Підказка по видимості */}
         <div className="text-xs text-[#4D774E]/70 p-3 bg-[#9DC88D]/10 rounded-xl">
-          {formData.visibility === 'PUBLIC' && '🌍 Кампанія буде видна в пошуку. Будь-хто зможе подати заявку.'}
-          {formData.visibility === 'PRIVATE' && '🔒 Кампанія прихована. Гравці зможуть приєднатися тільки через запрошення.'}
-          {formData.visibility === 'LINK_ONLY' && '🔗 Кампанія доступна за посиланням. Гравці зможуть приєднатися по invite-коду.'}
+          {formData.visibility === 'PUBLIC' && '📝 Кампанія буде видна в пошуку. Вступ — тільки після ручного схвалення заявки.'}
+          {formData.visibility === 'LINK_ONLY' && '🔗 Кампанія доступна за посиланням. Вступ — після ручного схвалення заявки.'}
         </div>
 
         {/* Кнопки */}

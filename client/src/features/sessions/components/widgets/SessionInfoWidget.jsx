@@ -42,6 +42,7 @@ export default function SessionInfoWidget({
   onLeave,
   onStatusChange,
   onMarkAsFinished,
+  showCampaignInfo = true,
   isLoading = false,
 }) {
   const navigate = useNavigate();
@@ -235,7 +236,7 @@ export default function SessionInfoWidget({
 
         {/* Кампанія */}
         <div className="border-t border-[#9DC88D]/20 pt-4">
-          {session.campaign ? (
+          {session.campaign && showCampaignInfo ? (
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-bold text-[#164A41]">Кампанія:</span>
               <button
@@ -253,7 +254,7 @@ export default function SessionInfoWidget({
           ) : (
             <div className="flex items-center gap-2 text-sm text-[#4D774E]">
               <Dice20 className="w-4 h-4" />
-              <span>One-shot сесія</span>
+              <span>{session.campaign ? 'Сесія кампанії' : 'One-shot сесія'}</span>
             </div>
           )}
         </div>

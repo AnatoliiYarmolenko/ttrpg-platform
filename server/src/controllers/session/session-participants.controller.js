@@ -5,17 +5,21 @@ const sessionParticipantsController = {
     try {
       const { id: sessionId } = req.params;
       const userId = req.user.id;
-      const { isGuest = false, role = 'PLAYER' } = req.body || {};
+      const { role = 'PLAYER' } = req.body || {};
 
       const participant = await sessionService.joinSession(
         sessionId,
         userId,
-        { isGuest, role }
+        { role }
       );
+
+      const message = participant.status === 'CONFIRMED'
+        ? 'Ви приєдналися до сесії!'
+        : 'Заявку на участь відправлено!';
 
       res.status(201).json({
         success: true,
-        message: 'Ви приєдналися до сесії!',
+        message,
         data: participant,
       });
     } catch (error) {

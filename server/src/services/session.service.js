@@ -93,6 +93,19 @@ class SessionService {
     );
   }
 
+  _buildPublicCalendarVisibilityFilter() {
+    return [
+      {
+        campaignId: null,
+        visibility: { in: ['PUBLIC', 'PRIVATE'] },
+      },
+      {
+        campaignId: { not: null },
+        visibility: { in: ['PUBLIC', 'LINK_ONLY'] },
+      },
+    ];
+  }
+
   async createSession(data) {
     const {
       title,
@@ -284,6 +297,28 @@ class SessionService {
       throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Сесія не знайдена');
     }
 
+    const isCampaignSession = Boolean(session.campaignId);
+    const isParticipant = Boolean(
+      userId && session.participants.some((participant) => participant.userId === userId)
+    );
+    const isOwner = Boolean(userId && session.ownerId === userId);
+    const isCampaignOwner = Boolean(userId && session.campaign?.ownerId === userId);
+
+    let isCampaignMember = false;
+    if (isCampaignSession && userId) {
+      const campaignMembership = await prisma.campaignMember.findUnique({
+        where: {
+          userId_campaignId: {
+            userId,
+            campaignId: session.campaignId,
+          },
+        },
+        select: { userId: true },
+      });
+
+      isCampaignMember = Boolean(campaignMembership) || isCampaignOwner;
+    }
+
     if (session.visibility === 'PRIVATE') {
       if (!userId) {
         throw new AppError(
@@ -292,17 +327,26 @@ class SessionService {
         );
       }
 
-      const isParticipant = session.participants.some((participant) => participant.userId === userId);
-      const isOwner = session.ownerId === userId;
-      const isCampaignOwner = session.campaign?.ownerId === userId;
+      const canAccessPrivateSession = !isCampaignSession
+        || isParticipant
+        || isOwner
+        || isCampaignOwner
+        || isCampaignMember;
 
-      if (!isParticipant && !isOwner && !isCampaignOwner) {
+      if (!canAccessPrivateSession) {
         throw new AppError(
           ERROR_CODES.SECURITY_ACCESS_DENIED,
           'У вас немає доступу до цієї сесії'
         );
       }
     }
+
+    session.viewer = {
+      isParticipant,
+      isCampaignMember,
+      isSessionOwner: isOwner,
+      isCampaignOwner,
+    };
 
     return session;
   }
@@ -519,15 +563,16 @@ class SessionService {
       }
       whereCondition.participants = { some: { userId } };
     } else if (type === 'PUBLIC') {
-      whereCondition.visibility = { in: ['PUBLIC', 'LINK_ONLY'] };
+      whereCondition.OR = this._buildPublicCalendarVisibilityFilter();
     } else if (type === 'ALL') {
+      const publicVisibilityFilter = this._buildPublicCalendarVisibilityFilter();
       if (userId) {
         whereCondition.OR = [
-          { visibility: { in: ['PUBLIC', 'LINK_ONLY'] } },
+          ...publicVisibilityFilter,
           { participants: { some: { userId } } },
         ];
       } else {
-        whereCondition.visibility = { in: ['PUBLIC', 'LINK_ONLY'] };
+        whereCondition.OR = publicVisibilityFilter;
       }
     }
 

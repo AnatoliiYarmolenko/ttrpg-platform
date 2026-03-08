@@ -1,3 +1,21 @@
+function buildPublicCalendarVisibilityFilter() {
+  return [
+    {
+      campaignId: null,
+      visibility: { in: ['PUBLIC', 'PRIVATE'] },
+    },
+    {
+      campaignId: { not: null },
+      visibility: { in: ['PUBLIC', 'LINK_ONLY'] },
+    },
+  ];
+}
+
+function applyPublicCalendarVisibilityFilter(whereCondition) {
+  whereCondition.AND = whereCondition.AND || [];
+  whereCondition.AND.push({ OR: buildPublicCalendarVisibilityFilter() });
+}
+
 function createSessionCalendarService({ prisma, AppError, ERROR_CODES }) {
   return {
     async getCalendar(userId, options = {}) {
@@ -24,15 +42,16 @@ function createSessionCalendarService({ prisma, AppError, ERROR_CODES }) {
         }
         whereCondition.participants = { some: { userId } };
       } else if (type === 'PUBLIC') {
-        whereCondition.visibility = { in: ['PUBLIC', 'LINK_ONLY'] };
+        applyPublicCalendarVisibilityFilter(whereCondition);
       } else if (type === 'ALL') {
+        const publicVisibilityFilter = buildPublicCalendarVisibilityFilter();
         if (userId) {
           whereCondition.OR = [
-            { visibility: { in: ['PUBLIC', 'LINK_ONLY'] } },
+            ...publicVisibilityFilter,
             { participants: { some: { userId } } },
           ];
         } else {
-          whereCondition.visibility = { in: ['PUBLIC', 'LINK_ONLY'] };
+          applyPublicCalendarVisibilityFilter(whereCondition);
         }
       }
 
@@ -81,9 +100,9 @@ function createSessionCalendarService({ prisma, AppError, ERROR_CODES }) {
         }
         whereCondition.participants = { some: { userId } };
       } else if (scope === 'global') {
-        whereCondition.visibility = { in: ['PUBLIC', 'LINK_ONLY'] };
+        applyPublicCalendarVisibilityFilter(whereCondition);
       } else if (scope === 'search') {
-        whereCondition.visibility = { in: ['PUBLIC', 'LINK_ONLY'] };
+        applyPublicCalendarVisibilityFilter(whereCondition);
       }
 
       if (filters) {
@@ -181,7 +200,7 @@ function createSessionCalendarService({ prisma, AppError, ERROR_CODES }) {
         }
         whereCondition.participants = { some: { userId } };
       } else if (scope === 'global' || scope === 'search') {
-        whereCondition.visibility = { in: ['PUBLIC', 'LINK_ONLY'] };
+        applyPublicCalendarVisibilityFilter(whereCondition);
       }
 
       if (filters) {

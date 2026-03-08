@@ -238,12 +238,12 @@ class CampaignController {
       const { inviteCode } = req.params;
       const userId = req.user.id;
 
-      const member = await campaignService.joinByInviteCode(inviteCode, userId);
+      const joinRequest = await campaignService.joinByInviteCode(inviteCode, userId);
 
       res.json({ 
         success: true, 
-        message: 'Ви успішно приєдналися до кампанії!',
-        data: member 
+        message: 'Заявку на вступ відправлено!',
+        data: joinRequest 
       });
     } catch (error) {
       next(error);

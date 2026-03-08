@@ -35,6 +35,7 @@ export default function SessionSettingsWidget({
     duration: s?.duration || '',
     maxPlayers: s?.maxPlayers || '',
     system: s?.system || s?.campaign?.system || '',
+    visibility: s?.visibility || (s?.campaignId ? 'PRIVATE' : 'PUBLIC'),
     location: s?.location || '',
     price: s?.price || '',
   });
@@ -49,6 +50,19 @@ export default function SessionSettingsWidget({
     setFormSessionId(session?.id ?? null);
     setFormData(buildFormData(session));
   }
+
+  const isCampaignSession = Boolean(session?.campaignId);
+  const visibilityOptions = isCampaignSession
+    ? [
+        { value: 'PRIVATE', label: 'Звичайна' },
+        { value: 'PUBLIC', label: 'Гостьова' },
+        { value: 'LINK_ONLY', label: 'Прихована' },
+      ]
+    : [
+        { value: 'PUBLIC', label: 'Публічна (в календарі, без підтвердження)' },
+        { value: 'PRIVATE', label: 'За підтвердженням (в календарі, з підтвердженням)' },
+        { value: 'LINK_ONLY', label: 'За посиланням (без календаря, з підтвердженням)' },
+      ];
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -68,6 +82,7 @@ export default function SessionSettingsWidget({
     if (formData.duration) data.duration = Number(formData.duration);
     if (formData.maxPlayers) data.maxPlayers = Number(formData.maxPlayers);
     data.system = formData.system || null;
+    data.visibility = formData.visibility;
     data.location = formData.location.trim() || null;
     if (formData.price !== '') data.price = Number(formData.price);
 
@@ -192,6 +207,22 @@ export default function SessionSettingsWidget({
             </select>
           </FormField>
         </div>
+
+        <FormField id="visibility" label={isCampaignSession ? 'Тип сесії' : 'Видимість'}>
+          <select
+            id="visibility"
+            name="visibility"
+            value={formData.visibility}
+            onChange={handleChange}
+            className={inputClasses}
+          >
+            {visibilityOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
 
         {/* Локація та Ціна */}
         <div className="grid grid-cols-2 gap-3">

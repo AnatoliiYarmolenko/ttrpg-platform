@@ -48,6 +48,7 @@ export default function SessionPage() {
     canManageSettings,
     canJoin,
     canApplyAsGm,
+    showCampaignInfo,
     handleJoin,
     handleLeave,
     handleStatusChange,
@@ -95,6 +96,7 @@ export default function SessionPage() {
           onJoin={handleJoin}
           canJoin={canJoin}
           canApplyAsGm={canApplyAsGm}
+          showCampaignInfo={showCampaignInfo}
           isLoading={isLoading}
         />
       );
@@ -124,6 +126,7 @@ export default function SessionPage() {
             onLeave={handleLeave}
             onStatusChange={handleStatusChange}
             onMarkAsFinished={handleMarkAsFinished}
+            showCampaignInfo={showCampaignInfo}
             isLoading={isLoading}
           />
         );
@@ -141,6 +144,7 @@ export default function SessionPage() {
             onLeave={handleLeave}
             onStatusChange={handleStatusChange}
             onMarkAsFinished={handleMarkAsFinished}
+            showCampaignInfo={showCampaignInfo}
             isLoading={isLoading}
           />
         );
@@ -183,7 +187,7 @@ export default function SessionPage() {
                   TTRPG Platform
                 </span>
               </div>
-              {currentSession.campaign && (
+              {currentSession.campaign && showCampaignInfo && (
                 <>
                   <span className="text-white/40 hidden sm:inline">/</span>
                   <button

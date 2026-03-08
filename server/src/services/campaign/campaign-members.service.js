@@ -16,6 +16,53 @@ function createCampaignMembersService({
     }
   };
 
+  const upsertJoinRequest = async (campaignId, userId, message = null) => {
+    const existingRequest = await prisma.joinRequest.findUnique({
+      where: {
+        userId_campaignId: {
+          userId,
+          campaignId,
+        },
+      },
+    });
+
+    if (existingRequest) {
+      if (existingRequest.status === 'PENDING') {
+        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Ви вже подали заявку на цю кампанію');
+      }
+
+      return prisma.joinRequest.update({
+        where: { id: existingRequest.id },
+        data: {
+          status: 'PENDING',
+          message,
+          reviewedAt: null,
+          reviewedBy: null,
+          createdAt: new Date(),
+        },
+        include: {
+          user: {
+            select: { id: true, username: true, displayName: true, avatarUrl: true },
+          },
+        },
+      });
+    }
+
+    return prisma.joinRequest.create({
+      data: {
+        userId,
+        campaignId,
+        message,
+        status: 'PENDING',
+      },
+      include: {
+        user: {
+          select: { id: true, username: true, displayName: true, avatarUrl: true },
+        },
+      },
+    });
+  };
+
   const membersService = {
     async transferCampaignOwnership(campaignId, currentOwnerId, newOwnerId) {
       const campaignIdInt = parseInt(campaignId);
@@ -413,20 +460,7 @@ function createCampaignMembersService({
         throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Ви вже член цієї кампанії');
       }
 
-      const member = await prisma.campaignMember.create({
-        data: {
-          userId,
-          campaignId: campaign.id,
-          role: 'PLAYER',
-        },
-        include: {
-          user: {
-            select: { id: true, username: true, displayName: true, avatarUrl: true },
-          },
-        },
-      });
-
-      return member;
+      return upsertJoinRequest(campaign.id, userId, null);
     },
 
     async submitJoinRequest(campaignId, userId, message = null) {
@@ -459,56 +493,7 @@ function createCampaignMembersService({
         throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Ви вже член цієї кампанії');
       }
 
-      if (campaign.visibility === 'PUBLIC') {
-        return membersService.addMemberToCampaign(campaignId, campaign.ownerId, userId, 'PLAYER');
-      }
-
-      const existingRequest = await prisma.joinRequest.findUnique({
-        where: {
-          userId_campaignId: {
-            userId,
-            campaignId: campaignIdInt,
-          },
-        },
-      });
-
-      if (existingRequest) {
-        if (existingRequest.status === 'PENDING') {
-          throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Ви вже подали заявку на цю кампанію');
-        }
-
-        return prisma.joinRequest.update({
-          where: { id: existingRequest.id },
-          data: {
-            status: 'PENDING',
-            message,
-            reviewedAt: null,
-            reviewedBy: null,
-            createdAt: new Date(),
-          },
-          include: {
-            user: {
-              select: { id: true, username: true, displayName: true, avatarUrl: true },
-            },
-          },
-        });
-      }
-
-      const joinRequest = await prisma.joinRequest.create({
-        data: {
-          userId,
-          campaignId: campaignIdInt,
-          message,
-          status: 'PENDING',
-        },
-        include: {
-          user: {
-            select: { id: true, username: true, displayName: true, avatarUrl: true },
-          },
-        },
-      });
-
-      return joinRequest;
+      return upsertJoinRequest(campaignIdInt, userId, message);
     },
 
     async getJoinRequests(campaignId, userId) {
@@ -603,8 +588,9 @@ function createCampaignMembersService({
     },
 
     async rejectJoinRequest(requestId, userId) {
+      const requestIdInt = parseInt(requestId);
       const joinRequest = await prisma.joinRequest.findUnique({
-        where: { id: parseInt(requestId) },
+        where: { id: requestIdInt },
         select: { campaignId: true, status: true },
       });
 
@@ -626,13 +612,8 @@ function createCampaignMembersService({
         'Ви не маєте права відхиляти заявки'
       );
 
-      await prisma.joinRequest.update({
-        where: { id: parseInt(requestId) },
-        data: {
-          status: 'REJECTED',
-          reviewedAt: new Date(),
-          reviewedBy: userId,
-        },
+      await prisma.joinRequest.delete({
+        where: { id: requestIdInt },
       });
     },
   };
