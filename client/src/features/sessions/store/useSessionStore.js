@@ -198,12 +198,9 @@ const useSessionStore = create((set, get) => ({
   leaveSessionAction: async (sessionId) =>
     apiAction(set, {
       apiCall: () => leaveSession(sessionId),
-      onSuccess: async () => {
+      onSuccess: () => {
         if (get().currentSession?.id === sessionId) {
-          const response = await getSessionById(sessionId);
-          if (response.success) {
-            set({ currentSession: response.data });
-          }
+          set({ currentSession: null, participants: [] });
         }
       },
       defaultError: 'Помилка при виході з сесії',

@@ -282,11 +282,48 @@ function createCampaignMembersService({
 
     async removeMemberFromCampaign(campaignId, userId, memberId) {
       const campaign = await getCampaignById(campaignId, userId);
+      const memberIdInt = parseInt(memberId);
+      const campaignIdInt = parseInt(campaignId);
 
       assertCampaignNotFinished(
         campaign,
         'Не можна видаляти учасників із завершеної кампанії'
       );
+
+      if (campaign.ownerId === userId && memberIdInt === userId) {
+        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'OWNER не може видаляти себе');
+      }
+
+      const member = await prisma.campaignMember.findUnique({
+        where: {
+          userId_campaignId: {
+            userId: memberIdInt,
+            campaignId: campaignIdInt,
+          },
+        },
+      });
+
+      if (!member) {
+        throw new AppError(ERROR_CODES.USER_NOT_FOUND, 'Учасник не знайдений');
+      }
+
+      const isSelfRemoval = member.userId === userId;
+      if (isSelfRemoval) {
+        if (member.role === 'OWNER') {
+          throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'OWNER не може видаляти себе');
+        }
+
+        await prisma.campaignMember.delete({
+          where: {
+            userId_campaignId: {
+              userId: memberIdInt,
+              campaignId: campaignIdInt,
+            },
+          },
+        });
+
+        return;
+      }
 
       const requesterRole = permissionHelpers._requireCampaignRoles(
         errorDeps,
@@ -296,30 +333,12 @@ function createCampaignMembersService({
         'Ви не маєте права видаляти учасників'
       );
 
-      if (campaign.ownerId === userId && parseInt(memberId) === userId) {
-        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'OWNER не може видаляти себе');
-      }
-
-      const member = await prisma.campaignMember.findUnique({
-        where: {
-          userId_campaignId: {
-            userId: parseInt(memberId),
-            campaignId: parseInt(campaignId),
-          },
-        },
-      });
-
-      if (!member) {
-        throw new AppError(ERROR_CODES.USER_NOT_FOUND, 'Учасник не знайдений');
-      }
-
       if (member.role === 'OWNER') {
         throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'Неможливо видалити власника кампанії');
       }
 
       if (requesterRole === 'GM') {
-        const isSelfRemoval = member.userId === userId;
-        if (member.role !== 'PLAYER' && !isSelfRemoval) {
+        if (member.role !== 'PLAYER') {
           throw new AppError(
             ERROR_CODES.SECURITY_ACCESS_DENIED,
             'Майстер може видаляти з кампанії тільки гравців'

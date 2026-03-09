@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import DashboardCard from '@/components/ui/DashboardCard';
 import { EmptyState, ConfirmModal, ParticipantsList } from '@/components/shared';
 import ParticipantCard from '../ui/ParticipantCard';
@@ -139,9 +139,25 @@ export default function SessionPageParticipantsWidget({
     ? `Учасники (${participants.filter((participant) => participant.role === 'PLAYER').length}/${maxPlayers})`
     : `Учасники (${participants.length})`;
 
+  const sortedParticipants = useMemo(() => {
+    return participants
+      .map((participant, index) => ({ participant, index }))
+      .sort((a, b) => {
+        const aPending = a.participant.status === 'PENDING' ? 0 : 1;
+        const bPending = b.participant.status === 'PENDING' ? 0 : 1;
+
+        if (aPending !== bPending) {
+          return aPending - bPending;
+        }
+
+        return a.index - b.index;
+      })
+      .map(({ participant }) => participant);
+  }, [participants]);
+
   return (
     <DashboardCard title={title}>
-      {participants.length === 0 ? (
+      {sortedParticipants.length === 0 ? (
         <EmptyState
           icon={<GroupPeople className="w-10 h-10" />}
           title="Ще немає учасників"
@@ -150,7 +166,7 @@ export default function SessionPageParticipantsWidget({
         />
       ) : (
         <ParticipantsList
-          items={participants}
+          items={sortedParticipants}
           getItemKey={(participant) => participant.id}
           renderItem={(participant) => (
             <ParticipantCard

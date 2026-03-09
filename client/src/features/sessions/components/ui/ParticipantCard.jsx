@@ -140,7 +140,11 @@ export default function ParticipantCard({
           </div>
         )}
 
-        {canManage && !isOwner && participant.userId !== currentUserId && onRemove && (
+        {canManage
+          && participant.status !== 'PENDING'
+          && !isOwner
+          && participant.userId !== currentUserId
+          && onRemove && (
           <button
             onClick={handleRemoveClick}
             className="px-2 py-1 text-red-600 hover:bg-red-50 rounded transition-colors text-sm"

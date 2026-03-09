@@ -9,7 +9,6 @@ import Star from '@/components/ui/icons/Star';
  * Контроли (select ролі, кнопка ✕) не тригерять перехід (stopPropagation).
  *
  * @param {Object}   member        — об'єкт учасника (з user, role, joinedAt)
- * @param {number}   currentUserId — ID поточного юзера
  * @param {boolean}  canRemove      — чи може поточний юзер видалити цього учасника
  * @param {boolean}  canChangeRole  — чи може поточний юзер змінити роль цього учасника
  * @param {Function} onRemove      — колбек видалення (memberId)
@@ -18,7 +17,6 @@ import Star from '@/components/ui/icons/Star';
  */
 export default function MemberCard({
   member,
-  currentUserId,
   canRemove = false,
   canChangeRole = false,
   onRemove,
@@ -29,7 +27,6 @@ export default function MemberCard({
   const location = useLocation();
   const user = member.user || {};
   const displayName = user.displayName || user.username || 'Невідомий';
-  const isSelf = member.userId === currentUserId;
   const isMemberOwner = member.role === 'OWNER';
   const displayRole = isMemberOwner ? 'GM' : member.role;
 

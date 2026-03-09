@@ -212,10 +212,11 @@ export default function useSessionPageController() {
   const handleLeave = useCallback(async () => {
     const result = await leaveSessionAction(id);
     if (result?.success) {
-      await refreshSessionWidgets();
+      clearCurrentSession();
+      navigate('/');
     }
     return result;
-  }, [id, leaveSessionAction, refreshSessionWidgets]);
+  }, [id, leaveSessionAction, clearCurrentSession, navigate]);
 
   const handleStatusChange = useCallback(
     async (newStatus) => {
