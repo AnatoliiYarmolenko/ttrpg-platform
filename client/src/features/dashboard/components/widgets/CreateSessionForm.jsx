@@ -51,7 +51,6 @@ export default function CreateSessionForm({ initialDate, campaignId, requireGmRo
     ? [
         { value: 'PRIVATE', label: 'Звичайна' },
         { value: 'PUBLIC', label: 'Гостьова' },
-        { value: 'LINK_ONLY', label: 'Прихована' },
       ]
     : [
         { value: 'PUBLIC', label: 'Публічна' },
@@ -62,8 +61,7 @@ export default function CreateSessionForm({ initialDate, campaignId, requireGmRo
   const visibilityHint = isCampaignSession
     ? {
         PRIVATE: 'Звичайна: вхід тільки для учасників, приєднання без підтвердження.',
-        PUBLIC: 'Гостьова: видима користувачам поза кампанії, сторонні гравці приєднуються як гості, з підтвердженням.',
-        LINK_ONLY: 'Прихована: доступ тільки за посиланням для учасників кампанії, з підтвердженням.',
+        PUBLIC: 'Гостьова: видима користувачам поза кампанією, приєднання для всіх через підтвердження.',
       }[formData.visibility]
     : {
         PUBLIC: 'Публічна: відображатиметься для інших користувачів, приєднання без підтвердження.',

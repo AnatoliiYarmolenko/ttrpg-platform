@@ -177,6 +177,7 @@ export default function useSessionPageController() {
     if (!currentSession?.campaign) return false;
 
     const isGuestViewForPublicCampaignSession = currentSession.visibility === 'PUBLIC'
+      && currentSession.campaign?.visibility === 'LINK_ONLY'
       && currentSession.viewer?.isCampaignMember === false;
 
     return !isGuestViewForPublicCampaignSession;

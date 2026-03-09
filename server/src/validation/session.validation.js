@@ -57,7 +57,18 @@ const validateCreateSession = [
   body('visibility')
     .optional()
     .trim()
-    .isIn(['PUBLIC', 'PRIVATE', 'LINK_ONLY']).withMessage('Невірна видимість'),
+    .isIn(['PUBLIC', 'PRIVATE', 'LINK_ONLY']).withMessage('Невірна видимість')
+    .custom((value, { req }) => {
+      const hasCampaign = req.body?.campaignId !== undefined
+        && req.body?.campaignId !== null
+        && String(req.body.campaignId).trim() !== '';
+
+      if (hasCampaign && value === 'LINK_ONLY') {
+        throw new Error('Для сесії в кампанії тип LINK_ONLY більше не підтримується');
+      }
+
+      return true;
+    }),
 
   body('system')
     .optional()

@@ -1,19 +1,107 @@
-function buildPublicCalendarVisibilityFilter() {
+function buildCalendarVisibilityFilter(userId = null) {
+  if (!userId) {
+    return [
+      {
+        campaignId: null,
+        visibility: 'PUBLIC',
+      },
+      {
+        campaignId: { not: null },
+        visibility: 'PUBLIC',
+      },
+    ];
+  }
+
   return [
     {
       campaignId: null,
       visibility: { in: ['PUBLIC', 'PRIVATE'] },
     },
     {
+      campaignId: null,
+      visibility: 'LINK_ONLY',
+      participants: {
+        some: { userId },
+      },
+    },
+    {
       campaignId: { not: null },
-      visibility: { in: ['PUBLIC', 'LINK_ONLY'] },
+      visibility: 'PUBLIC',
+    },
+    {
+      campaignId: { not: null },
+      visibility: 'PRIVATE',
+      OR: [
+        {
+          campaign: {
+            ownerId: userId,
+          },
+        },
+        {
+          campaign: {
+            members: {
+              some: { userId },
+            },
+          },
+        },
+        {
+          participants: {
+            some: { userId },
+          },
+        },
+      ],
+    },
+    {
+      campaignId: { not: null },
+      visibility: 'LINK_ONLY',
+      participants: {
+        some: { userId },
+      },
     },
   ];
 }
 
-function applyPublicCalendarVisibilityFilter(whereCondition) {
+function applyCalendarVisibilityFilter(whereCondition, userId = null) {
   whereCondition.AND = whereCondition.AND || [];
-  whereCondition.AND.push({ OR: buildPublicCalendarVisibilityFilter() });
+  whereCondition.AND.push({ OR: buildCalendarVisibilityFilter(userId) });
+}
+
+function isCampaignInfoHiddenForViewer(session, userId = null) {
+  if (!session?.campaign) return false;
+
+  const isPublicCampaignSession = Boolean(session.campaignId) && session.visibility === 'PUBLIC';
+  const isLinkOnlyCampaign = session.campaign.visibility === 'LINK_ONLY';
+
+  if (!isPublicCampaignSession || !isLinkOnlyCampaign) {
+    return false;
+  }
+
+  if (!userId) return true;
+
+  const isCampaignOwner = session.campaign.ownerId === userId;
+  const isCampaignMember = Array.isArray(session.campaign.members)
+    && session.campaign.members.some((member) => member.userId === userId);
+
+  return !isCampaignOwner && !isCampaignMember;
+}
+
+function buildCampaignSelectForViewer(userId = null) {
+  const campaignSelect = {
+    id: true,
+    title: true,
+    system: true,
+    visibility: true,
+    ownerId: true,
+  };
+
+  if (userId) {
+    campaignSelect.members = {
+      where: { userId },
+      select: { userId: true },
+    };
+  }
+
+  return campaignSelect;
 }
 
 function createSessionCalendarService({ prisma, AppError, ERROR_CODES }) {
@@ -42,17 +130,9 @@ function createSessionCalendarService({ prisma, AppError, ERROR_CODES }) {
         }
         whereCondition.participants = { some: { userId } };
       } else if (type === 'PUBLIC') {
-        applyPublicCalendarVisibilityFilter(whereCondition);
+        applyCalendarVisibilityFilter(whereCondition, null);
       } else if (type === 'ALL') {
-        const publicVisibilityFilter = buildPublicCalendarVisibilityFilter();
-        if (userId) {
-          whereCondition.OR = [
-            ...publicVisibilityFilter,
-            { participants: { some: { userId } } },
-          ];
-        } else {
-          applyPublicCalendarVisibilityFilter(whereCondition);
-        }
+        applyCalendarVisibilityFilter(whereCondition, userId);
       }
 
       const sessions = await prisma.session.findMany({
@@ -100,9 +180,9 @@ function createSessionCalendarService({ prisma, AppError, ERROR_CODES }) {
         }
         whereCondition.participants = { some: { userId } };
       } else if (scope === 'global') {
-        applyPublicCalendarVisibilityFilter(whereCondition);
+        applyCalendarVisibilityFilter(whereCondition, userId);
       } else if (scope === 'search') {
-        applyPublicCalendarVisibilityFilter(whereCondition);
+        applyCalendarVisibilityFilter(whereCondition, userId);
       }
 
       if (filters) {
@@ -148,12 +228,10 @@ function createSessionCalendarService({ prisma, AppError, ERROR_CODES }) {
           id: true,
           date: true,
           system: true,
+          visibility: true,
+          campaignId: true,
           campaign: {
-            select: {
-              id: true,
-              title: true,
-              system: true,
-            },
+            select: buildCampaignSelectForViewer(userId),
           },
         },
       });
@@ -169,10 +247,12 @@ function createSessionCalendarService({ prisma, AppError, ERROR_CODES }) {
         }
         stats[dateKey].count += 1;
 
+        const hideCampaignInfo = isCampaignInfoHiddenForViewer(session, userId);
+
         const sessionInfo = {
           system: session.system || session.campaign?.system || null,
-          campaignTitle: session.campaign?.title || null,
-          campaignId: session.campaign?.id || null,
+          campaignTitle: hideCampaignInfo ? null : (session.campaign?.title || null),
+          campaignId: hideCampaignInfo ? null : (session.campaign?.id || null),
         };
 
         stats[dateKey].sessions.push(sessionInfo);
@@ -200,7 +280,7 @@ function createSessionCalendarService({ prisma, AppError, ERROR_CODES }) {
         }
         whereCondition.participants = { some: { userId } };
       } else if (scope === 'global' || scope === 'search') {
-        applyPublicCalendarVisibilityFilter(whereCondition);
+        applyCalendarVisibilityFilter(whereCondition, userId);
       }
 
       if (filters) {
@@ -233,7 +313,7 @@ function createSessionCalendarService({ prisma, AppError, ERROR_CODES }) {
             select: { id: true, username: true, displayName: true, avatarUrl: true },
           },
           campaign: {
-            select: { id: true, title: true, system: true },
+            select: buildCampaignSelectForViewer(userId),
           },
           participants: {
             include: {
@@ -247,12 +327,25 @@ function createSessionCalendarService({ prisma, AppError, ERROR_CODES }) {
       });
 
       return sessions.map((session) => {
+        const hideCampaignInfo = isCampaignInfoHiddenForViewer(session, userId);
         const myParticipation = userId
           ? session.participants.find((participant) => participant.userId === userId)
           : null;
 
+        const sanitizedCampaign = hideCampaignInfo
+          ? null
+          : (session.campaign
+            ? {
+              id: session.campaign.id,
+              title: session.campaign.title,
+              system: session.campaign.system,
+              visibility: session.campaign.visibility,
+            }
+            : null);
+
         return {
           ...session,
+          campaign: sanitizedCampaign,
           myRole: myParticipation?.role || null,
           myStatus: myParticipation?.status || null,
           currentPlayers: session.participants.filter((participant) => participant.role === 'PLAYER').length,

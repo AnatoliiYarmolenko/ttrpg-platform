@@ -96,8 +96,8 @@ function createSessionParticipantsService({
         }
 
         if (isCampaignSession && session.visibility === 'PUBLIC') {
-          // Кампанійна "гостьова" сесія: вхід без апруву.
-          status = 'CONFIRMED';
+          // Кампанійна "гостьова" сесія: вхід через підтвердження.
+          status = 'PENDING';
         }
       }
 

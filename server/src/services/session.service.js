@@ -94,14 +94,68 @@ class SessionService {
   }
 
   _buildPublicCalendarVisibilityFilter() {
+    return this._buildPublicCalendarVisibilityFilterForUser(null);
+  }
+
+  _buildPublicCalendarVisibilityFilterForUser(userId = null) {
+    if (!userId) {
+      return [
+        {
+          campaignId: null,
+          visibility: 'PUBLIC',
+        },
+        {
+          campaignId: { not: null },
+          visibility: 'PUBLIC',
+        },
+      ];
+    }
+
     return [
       {
         campaignId: null,
         visibility: { in: ['PUBLIC', 'PRIVATE'] },
       },
       {
+        campaignId: null,
+        visibility: 'LINK_ONLY',
+        participants: {
+          some: { userId },
+        },
+      },
+      {
         campaignId: { not: null },
-        visibility: { in: ['PUBLIC', 'LINK_ONLY'] },
+        visibility: 'PUBLIC',
+      },
+      {
+        campaignId: { not: null },
+        visibility: 'PRIVATE',
+        OR: [
+          {
+            campaign: {
+              ownerId: userId,
+            },
+          },
+          {
+            campaign: {
+              members: {
+                some: { userId },
+              },
+            },
+          },
+          {
+            participants: {
+              some: { userId },
+            },
+          },
+        ],
+      },
+      {
+        campaignId: { not: null },
+        visibility: 'LINK_ONLY',
+        participants: {
+          some: { userId },
+        },
       },
     ];
   }
@@ -128,6 +182,13 @@ class SessionService {
     });
 
     if (campaignId) {
+      if (visibility === 'LINK_ONLY') {
+        throw new AppError(
+          ERROR_CODES.VALIDATION_FAILED,
+          'Для сесії в кампанії тип "LINK_ONLY" більше не підтримується'
+        );
+      }
+
       const campaign = await prisma.campaign.findUnique({
         where: { id: parseInt(campaignId) },
         include: {
@@ -383,6 +444,16 @@ class SessionService {
       throw new AppError(ERROR_CODES.SESSION_OWNER_ONLY);
     }
 
+    if (
+      session.campaignId
+      && normalizedUpdateData.visibility === 'LINK_ONLY'
+    ) {
+      throw new AppError(
+        ERROR_CODES.VALIDATION_FAILED,
+        'Для сесії в кампанії тип "LINK_ONLY" більше не підтримується'
+      );
+    }
+
     if (hasSettingsUpdate && session.campaign?.status === 'FINISHED') {
       throw new AppError(
         ERROR_CODES.CAMPAIGN_FINISHED,
@@ -563,9 +634,9 @@ class SessionService {
       }
       whereCondition.participants = { some: { userId } };
     } else if (type === 'PUBLIC') {
-      whereCondition.OR = this._buildPublicCalendarVisibilityFilter();
+      whereCondition.OR = this._buildPublicCalendarVisibilityFilterForUser(userId);
     } else if (type === 'ALL') {
-      const publicVisibilityFilter = this._buildPublicCalendarVisibilityFilter();
+      const publicVisibilityFilter = this._buildPublicCalendarVisibilityFilterForUser(userId);
       if (userId) {
         whereCondition.OR = [
           ...publicVisibilityFilter,

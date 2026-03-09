@@ -135,7 +135,7 @@ async function createDynamicWeekSessions(usersByKey, campaigns) {
       date: time1,
       duration: 180,
       status: status1,
-      visibility: 'PUBLIC',
+      visibility: day % 2 === 0 ? 'PRIVATE' : 'PUBLIC',
       system: 'D&D 5e',
       campaignId: campaigns[0].id,
       ownerId: usersByKey.gm1.id,
@@ -159,18 +159,66 @@ async function createDynamicWeekSessions(usersByKey, campaigns) {
     });
   }
 
+  // Додаємо one-shot сесії для візуальної перевірки правил календаря.
+  sessionsData.push(
+    {
+      title: `${SEED_PREFIX} One-shot Public`,
+      date: getDayOfCurrentWeek((currentDayIndex + 1) % 7, 15, 0),
+      duration: 180,
+      status: 'PLANNED',
+      visibility: 'PUBLIC',
+      system: 'D&D 5e',
+      campaignId: null,
+      ownerId: usersByKey.gm1.id,
+      extraParticipants: [
+        { userId: usersByKey.gm1.id, role: 'GM', status: 'CONFIRMED' },
+      ],
+    },
+    {
+      title: `${SEED_PREFIX} One-shot Private`,
+      date: getDayOfCurrentWeek((currentDayIndex + 2) % 7, 16, 30),
+      duration: 180,
+      status: 'PLANNED',
+      visibility: 'PRIVATE',
+      system: 'Pathfinder 2e',
+      campaignId: null,
+      ownerId: usersByKey.gm2.id,
+      extraParticipants: [
+        { userId: usersByKey.gm2.id, role: 'GM', status: 'CONFIRMED' },
+      ],
+    },
+    {
+      title: `${SEED_PREFIX} One-shot Link Only`,
+      date: getDayOfCurrentWeek((currentDayIndex + 3) % 7, 19, 0),
+      duration: 240,
+      status: 'PLANNED',
+      visibility: 'LINK_ONLY',
+      system: 'Call of Cthulhu',
+      campaignId: null,
+      ownerId: usersByKey.gm1.id,
+      extraParticipants: [
+        { userId: usersByKey.gm1.id, role: 'GM', status: 'CONFIRMED' },
+      ],
+    }
+  );
+
   // Створюємо всі сесії
   const createdSessions = [];
   for (const data of sessionsData) {
-    const session = await prisma.session.create({ data });
+    const { extraParticipants, ...sessionData } = data;
+    const session = await prisma.session.create({ data: sessionData });
     createdSessions.push(session);
     
     // Додаємо учасників до кожної сесії
-    const participants = [
-      { sessionId: session.id, userId: data.ownerId, role: 'GM', status: 'CONFIRMED' },
-      { sessionId: session.id, userId: usersByKey.player1.id, role: 'PLAYER', status: 'CONFIRMED' },
-      { sessionId: session.id, userId: usersByKey.player2.id, role: 'PLAYER', status: data.status === 'FINISHED' ? 'DECLINED' : 'PENDING' },
-    ];
+    const participants = (extraParticipants || [
+      { userId: data.ownerId, role: 'GM', status: 'CONFIRMED' },
+      { userId: usersByKey.player1.id, role: 'PLAYER', status: 'CONFIRMED' },
+      { userId: usersByKey.player2.id, role: 'PLAYER', status: data.status === 'FINISHED' ? 'DECLINED' : 'PENDING' },
+    ]).map((participant) => ({
+      sessionId: session.id,
+      ...participant,
+    }));
+
     await prisma.sessionParticipant.createMany({ data: participants });
   }
 }

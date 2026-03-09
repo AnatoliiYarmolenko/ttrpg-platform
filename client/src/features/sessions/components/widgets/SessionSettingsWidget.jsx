@@ -35,7 +35,9 @@ export default function SessionSettingsWidget({
     duration: s?.duration || '',
     maxPlayers: s?.maxPlayers || '',
     system: s?.system || s?.campaign?.system || '',
-    visibility: s?.visibility || (s?.campaignId ? 'PRIVATE' : 'PUBLIC'),
+    visibility: s?.campaignId && s?.visibility === 'LINK_ONLY'
+      ? 'PRIVATE'
+      : (s?.visibility || (s?.campaignId ? 'PRIVATE' : 'PUBLIC')),
     location: s?.location || '',
     price: s?.price || '',
   });
@@ -56,7 +58,6 @@ export default function SessionSettingsWidget({
     ? [
         { value: 'PRIVATE', label: 'Звичайна' },
         { value: 'PUBLIC', label: 'Гостьова' },
-        { value: 'LINK_ONLY', label: 'Прихована' },
       ]
     : [
         { value: 'PUBLIC', label: 'Публічна (в календарі, без підтвердження)' },
