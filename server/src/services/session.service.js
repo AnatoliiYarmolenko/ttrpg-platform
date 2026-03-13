@@ -20,8 +20,18 @@ class SessionService {
     });
   }
 
+  _parsePositiveInt(value, label = 'ID') {
+    const parsed = Number.parseInt(value, 10);
+
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+      throw new AppError(ERROR_CODES.VALIDATION_FAILED, `${label} повинен бути позитивним числом`);
+    }
+
+    return parsed;
+  }
+
   async _resolveSessionContext(sessionId, userId, preloadedSession = null) {
-    const sessionIdInt = parseInt(sessionId);
+    const sessionIdInt = this._parsePositiveInt(sessionId, 'ID сесії');
 
     if (preloadedSession && preloadedSession.id === sessionIdInt) {
       return preloadedSession;
@@ -190,7 +200,7 @@ class SessionService {
       }
 
       const campaign = await prisma.campaign.findUnique({
-        where: { id: parseInt(campaignId) },
+        where: { id: this._parsePositiveInt(campaignId, 'ID кампанії') },
         include: {
           members: {
             where: { userId: ownerId },
@@ -232,7 +242,7 @@ class SessionService {
         maxPlayers,
         price,
         system: sessionSystem || null,
-        campaignId: campaignId ? parseInt(campaignId) : null,
+        campaignId: campaignId ? this._parsePositiveInt(campaignId, 'ID кампанії') : null,
         ownerId,
         visibility,
         participants: {
@@ -334,8 +344,10 @@ class SessionService {
   }
 
   async getSessionById(sessionId, userId = null) {
+    const sessionIdInt = this._parsePositiveInt(sessionId, 'ID сесії');
+
     const session = await prisma.session.findUnique({
-      where: { id: parseInt(sessionId) },
+      where: { id: sessionIdInt },
       include: {
         owner: {
           select: { id: true, username: true, displayName: true, avatarUrl: true },
@@ -429,8 +441,6 @@ class SessionService {
       'price',
       'visibility',
       'system',
-      'location',
-      'notes',
     ];
     const hasSettingsUpdate = settingsFields.some((field) =>
       Object.prototype.hasOwnProperty.call(normalizedUpdateData, field)
@@ -533,21 +543,21 @@ class SessionService {
       }
     }
 
+    const hasField = (field) =>
+      Object.prototype.hasOwnProperty.call(normalizedUpdateData, field);
+
     const updated = await prisma.session.update({
-      where: { id: parseInt(sessionId) },
+      where: { id: this._parsePositiveInt(sessionId, 'ID сесії') },
       data: {
-        title: normalizedUpdateData.title || undefined,
-        description: normalizedUpdateData.description || undefined,
-        date: normalizedUpdateData.date || undefined,
-        duration: normalizedUpdateData.duration || undefined,
-        maxPlayers: normalizedUpdateData.maxPlayers || undefined,
-        price: normalizedUpdateData.price || undefined,
-        visibility: normalizedUpdateData.visibility || undefined,
-        status: normalizedUpdateData.status || undefined,
-        system:
-          normalizedUpdateData.system !== undefined
-            ? normalizedUpdateData.system
-            : undefined,
+        title: hasField('title') ? normalizedUpdateData.title : undefined,
+        description: hasField('description') ? normalizedUpdateData.description : undefined,
+        date: hasField('date') ? normalizedUpdateData.date : undefined,
+        duration: hasField('duration') ? normalizedUpdateData.duration : undefined,
+        maxPlayers: hasField('maxPlayers') ? normalizedUpdateData.maxPlayers : undefined,
+        price: hasField('price') ? normalizedUpdateData.price : undefined,
+        visibility: hasField('visibility') ? normalizedUpdateData.visibility : undefined,
+        status: hasField('status') ? normalizedUpdateData.status : undefined,
+        system: hasField('system') ? normalizedUpdateData.system : undefined,
       },
       include: {
         owner: {
@@ -581,7 +591,7 @@ class SessionService {
     }
 
     await prisma.session.delete({
-      where: { id: parseInt(sessionId) },
+      where: { id: this._parsePositiveInt(sessionId, 'ID сесії') },
     });
   }
 
@@ -672,9 +682,10 @@ class SessionService {
 
   async getCampaignSessions(campaignId, userId, options = {}) {
     const { limit = 20, offset = 0 } = options;
+    const campaignIdInt = this._parsePositiveInt(campaignId, 'ID кампанії');
 
     const campaign = await prisma.campaign.findUnique({
-      where: { id: parseInt(campaignId) },
+      where: { id: campaignIdInt },
       include: {
         members: {
           where: { userId },
@@ -695,7 +706,7 @@ class SessionService {
     }
 
     const sessions = await prisma.session.findMany({
-      where: { campaignId: parseInt(campaignId) },
+      where: { campaignId: campaignIdInt },
       include: {
         owner: {
           select: { id: true, username: true, displayName: true, avatarUrl: true },
@@ -750,7 +761,7 @@ class SessionService {
     }
 
     const updatedSession = await prisma.session.update({
-      where: { id: parseInt(sessionId) },
+      where: { id: this._parsePositiveInt(sessionId, 'ID сесії') },
       data: {
         status: 'CANCELED',
       },

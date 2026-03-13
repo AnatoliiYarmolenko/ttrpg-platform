@@ -1,4 +1,5 @@
 const securityService = require('../services/security.service');
+const { clearAuthCookies } = require('../utils/cookie.helper');
 
 class SecurityController {
   /**
@@ -72,15 +73,8 @@ class SecurityController {
       
       await securityService.deleteAccount(userId, password);
       
-      // Очищаємо cookies (logout) - назви відповідають auth.controller.js
-      const cookieOptions = {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-      };
-      res.clearCookie('token', cookieOptions);
-      res.clearCookie('refreshToken', cookieOptions);
-      res.clearCookie('XSRF-TOKEN', { ...cookieOptions, httpOnly: false });
+      // Використовуємо централізований helper, щоб опції cookie завжди збігалися
+      clearAuthCookies(res);
       
       res.json({ 
         success: true, 

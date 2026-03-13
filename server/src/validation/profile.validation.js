@@ -78,9 +78,19 @@ const updateUsernameSchema = Joi.object({
   username: usernameRule.required(),
 });
 
+const userIdParamSchema = Joi.object({
+  id: Joi.number().integer().positive().required().messages({
+    'number.base': 'ID користувача повинен бути числом',
+    'number.integer': 'ID користувача повинен бути цілим числом',
+    'number.positive': 'ID користувача повинен бути позитивним',
+    'any.required': 'ID користувача обов\'язковий',
+  }),
+});
+
 module.exports = {
   updateProfileSchema,
   updateUsernameSchema,
+  userIdParamSchema,
   displayNameRule,
   bioRule,
   timezoneRule,

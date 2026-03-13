@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken, optionalAuthenticateToken } = require('../middlewares/auth.middleware');
+const { verifyCSRFToken } = require('../middlewares/csrf.middleware');
 const {
   loadSessionContext,
   requireConfirmedSessionGm,
@@ -30,7 +31,7 @@ const {
 // POST /api/sessions - Створити нову сесію
 router.post(
   '/',
-  [authenticateToken, ...validateCreateSession],
+  [authenticateToken, verifyCSRFToken, ...validateCreateSession],
   (req, res, next) => sessionCrudController.createSession(req, res, next)
 );
 
@@ -83,14 +84,14 @@ router.get(
 // PATCH /api/sessions/:id - Оновити сесію (тільки для GM)
 router.patch(
   '/:id',
-  [authenticateToken, ...validateUpdateSession, loadSessionContext, requireSessionOwnerOrGm],
+  [authenticateToken, verifyCSRFToken, ...validateUpdateSession, loadSessionContext, requireSessionOwnerOrGm],
   (req, res, next) => sessionCrudController.updateSession(req, res, next)
 );
 
 // DELETE /api/sessions/:id - Видалити сесію (тільки для GM)
 router.delete(
   '/:id',
-  [authenticateToken, ...validateSessionId, loadSessionContext, requireSessionOwnerOrCampaignOwner],
+  [authenticateToken, verifyCSRFToken, ...validateSessionId, loadSessionContext, requireSessionOwnerOrCampaignOwner],
   (req, res, next) => sessionCrudController.deleteSession(req, res, next)
 );
 
@@ -99,6 +100,7 @@ router.post(
   '/:id/cancel',
   [
     authenticateToken,
+    verifyCSRFToken,
     ...validateSessionId,
     loadSessionContext,
     requireSessionOwnerOrGmOrCampaignOwner,
@@ -109,7 +111,7 @@ router.post(
 // POST /api/sessions/:id/mark-finished - Позначити як проведену
 router.post(
   '/:id/mark-finished',
-  [authenticateToken, ...validateSessionId, loadSessionContext, requireConfirmedSessionGm],
+  [authenticateToken, verifyCSRFToken, ...validateSessionId, loadSessionContext, requireConfirmedSessionGm],
   (req, res, next) => sessionCrudController.markSessionAsFinished(req, res, next)
 );
 
@@ -125,35 +127,35 @@ router.get(
 // POST /api/sessions/:id/join - Приєднатися до сесії
 router.post(
   '/:id/join',
-  [authenticateToken, ...validateJoinSession],
+  [authenticateToken, verifyCSRFToken, ...validateJoinSession],
   (req, res, next) => sessionParticipantsController.joinSession(req, res, next)
 );
 
 // POST /api/sessions/:id/leave - Вийти з сесії
 router.post(
   '/:id/leave',
-  [authenticateToken, ...validateSessionId],
+  [authenticateToken, verifyCSRFToken, ...validateSessionId],
   (req, res, next) => sessionParticipantsController.leaveSession(req, res, next)
 );
 
 // POST /api/sessions/:id/kick-gm - Кікнути підтвердженого GM
 router.post(
   '/:id/kick-gm',
-  [authenticateToken, ...validateSessionId, loadSessionContext, requireSessionOwnerOrCampaignOwner],
+  [authenticateToken, verifyCSRFToken, ...validateSessionId, loadSessionContext, requireSessionOwnerOrCampaignOwner],
   (req, res, next) => sessionParticipantsController.kickGm(req, res, next)
 );
 
 // PATCH /api/sessions/:id/participants/:participantId - Оновити статус учасника (тільки для GM)
 router.patch(
   '/:id/participants/:participantId',
-  [authenticateToken, ...validateUpdateParticipantStatus, loadSessionContext, requireSessionOwnerOrGm],
+  [authenticateToken, verifyCSRFToken, ...validateUpdateParticipantStatus, loadSessionContext, requireSessionOwnerOrGm],
   (req, res, next) => sessionParticipantsController.updateParticipantStatus(req, res, next)
 );
 
 // DELETE /api/sessions/:id/participants/:participantId - Видалити учасника (тільки для GM)
 router.delete(
   '/:id/participants/:participantId',
-  [authenticateToken, ...validateRemoveParticipant, loadSessionContext, requireSessionOwnerOrGm],
+  [authenticateToken, verifyCSRFToken, ...validateRemoveParticipant, loadSessionContext, requireSessionOwnerOrGm],
   (req, res, next) => sessionParticipantsController.removeParticipant(req, res, next)
 );
 

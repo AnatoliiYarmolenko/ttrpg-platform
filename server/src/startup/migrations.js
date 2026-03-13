@@ -11,13 +11,13 @@ const path = require('path');
  */
 async function runMigrations() {
   try {
-    console.log('🔄 Виконуємо міграції Prisma...');
+    console.log('Виконуємо міграції Prisma...');
     const rootDir = path.resolve(__dirname, '../..');
     execSync('npx prisma migrate deploy', { stdio: 'inherit', cwd: rootDir });
-    console.log('✅ Міграції виконано успішно');
+    console.log('Міграції виконано успішно');
     return true;
   } catch (error) {
-    console.warn('⚠️ Помилка виконання міграцій:', error.message);
+    console.warn('Помилка виконання міграцій:', error.message);
     // Не зупиняємо сервер, якщо міграції не виконалися
     return false;
   }
@@ -33,7 +33,7 @@ async function initMigrations() {
     try {
       await runMigrations();
     } catch (err) {
-      console.error('❌ Критична помилка при виконанні міграцій:', err);
+      console.error('Критична помилка при виконанні міграцій:', err);
     }
   }
 }

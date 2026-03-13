@@ -9,6 +9,13 @@ const api = axios.create({
   },
 });
 
+const CSRF_ERROR_CODE = 'SECURITY_CSRF_INVALID';
+const RECOVERABLE_AUTH_ERROR_CODES = new Set([
+  'AUTH_TOKEN_MISSING',
+  'AUTH_TOKEN_EXPIRED',
+  'AUTH_TOKEN_INVALID',
+]);
+
 // === CSRF Logic ===
 const getCSRFToken = () => {
   // Твій код без змін
@@ -19,6 +26,33 @@ const getCSRFToken = () => {
     if (name === 'XSRF-TOKEN') return decodeURIComponent(value);
   }
   return null;
+};
+
+const isCsrfError = (error) => {
+  if (error.response?.status !== 403) return false;
+
+  const { code, error: errorText, message } = error.response?.data || {};
+  if (code === CSRF_ERROR_CODE) return true;
+
+  const combinedMessage = [errorText, message]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  return combinedMessage.includes('csrf');
+};
+
+const shouldAttemptRefresh = (error) => {
+  if (error.response?.status !== 401) {
+    return false;
+  }
+
+  const code = error.response?.data?.code;
+  if (!code) {
+    return true;
+  }
+
+  return RECOVERABLE_AUTH_ERROR_CODES.has(code);
 };
 
 // === Interceptors: Request ===
@@ -43,6 +77,7 @@ api.interceptors.request.use(
 // === Refresh Token Logic ===
 let isRefreshing = false;
 let failedQueue = [];
+let csrfBootstrapPromise = null;
 
 const processQueue = (error, token = null) => {
   failedQueue.forEach((prom) => {
@@ -52,15 +87,44 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
+const ensureCsrfCookie = async () => {
+  if (!csrfBootstrapPromise) {
+    csrfBootstrapPromise = api
+      .get('/auth/csrf-token', { _skipCsrfRetry: true })
+      .finally(() => {
+        csrfBootstrapPromise = null;
+      });
+  }
+
+  return csrfBootstrapPromise;
+};
+
 // === Interceptors: Response ===
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
+    if (
+      originalRequest &&
+      isCsrfError(error) &&
+      !originalRequest._csrfRetry &&
+      !originalRequest._skipCsrfRetry &&
+      !originalRequest.url?.includes('/auth/csrf-token')
+    ) {
+      originalRequest._csrfRetry = true;
+
+      try {
+        await ensureCsrfCookie();
+        return api(originalRequest);
+      } catch (csrfError) {
+        return Promise.reject(csrfError);
+      }
+    }
+
     // Перевіряємо помилки 401/403 і щоб це не був сам запит на рефреш/логін
     if (
-      (error.response?.status === 401 || error.response?.status === 403) &&
+      shouldAttemptRefresh(error) &&
       !originalRequest._retry &&
       !originalRequest.url?.includes('/auth/refresh') &&
       !originalRequest.url?.includes('/auth/login')

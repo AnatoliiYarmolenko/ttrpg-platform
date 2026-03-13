@@ -17,6 +17,6 @@ ENV DATABASE_URL="postgresql://johndoe:randompassword@localhost:5432/mydb?schema
 # Генеруємо Prisma Client
 RUN npx prisma generate
 
-EXPOSE 3000
+EXPOSE 5000
 
 CMD ["npm", "run", "dev"]

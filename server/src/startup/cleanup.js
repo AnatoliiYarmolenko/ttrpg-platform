@@ -26,7 +26,7 @@ function initTokenCleanup(schedule) {
 
   // Виконуємо першу очистку при старті сервера (з затримкою)
   initialCleanupTimeout = setTimeout(async () => {
-    console.log('[Startup] 🧹 Виконуємо першу очистку токенів при старті...');
+    console.log('[Startup] Виконуємо першу очистку токенів при старті...');
     await tokenCleanupService.performFullCleanup();
   }, INITIAL_TOKEN_CLEANUP_DELAY);
 }
@@ -52,7 +52,7 @@ function initRateLimitCleanup() {
     cleanupRateLimits();
   }, RATE_LIMIT_CLEANUP_INTERVAL);
 
-  console.log('✅ Rate Limit Cleanup запущено (кожні 5 хвилин)');
+  console.log('Rate Limit Cleanup запущено (кожні 5 хвилин)');
 }
 
 /**

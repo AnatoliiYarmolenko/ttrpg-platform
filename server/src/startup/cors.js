@@ -3,7 +3,35 @@
  */
 
 const cors = require('cors');
-const { corsAllowedOrigins } = require('../config/config');
+const { corsAllowedOrigins, nodeEnv } = require('../config/config');
+
+const LOCALHOST_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1']);
+
+function normalizeOrigin(origin) {
+  return typeof origin === 'string' ? origin.replace(/\/$/, '') : origin;
+}
+
+function isDevLocalhostOrigin(origin) {
+  if (nodeEnv === 'production') {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(origin);
+    return LOCALHOST_HOSTNAMES.has(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function isAllowedConfiguredOrigin(origin) {
+  const normalizedOrigin = normalizeOrigin(origin);
+  const allowedOrigins = Array.isArray(corsAllowedOrigins)
+    ? corsAllowedOrigins.map(normalizeOrigin)
+    : [];
+
+  return allowedOrigins.includes(normalizedOrigin);
+}
 
 /**
  * Створює налаштування CORS middleware
@@ -14,11 +42,15 @@ function createCorsMiddleware() {
     origin: function (origin, callback) {
       // Дозволяємо запити без origin (наприклад, Postman or curl) та з whitelist
       if (!origin) return callback(null, true);
-      // allow localhost during development
-      if (origin.includes('localhost')) return callback(null, true);
-      if (Array.isArray(corsAllowedOrigins) && corsAllowedOrigins.includes(origin)) {
+
+      if (isDevLocalhostOrigin(origin)) {
         return callback(null, true);
       }
+
+      if (isAllowedConfiguredOrigin(origin)) {
+        return callback(null, true);
+      }
+
       console.warn('Blocked CORS origin:', origin);
       return callback(new Error('Не дозволено CORS'));
     },

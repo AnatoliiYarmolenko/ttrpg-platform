@@ -45,8 +45,8 @@ export default function DeleteAccountForm() {
     try {
       await deleteAccount(formData);
       
-      // Очищаємо localStorage
-      localStorage.removeItem('user');
+      // Очищаємо persisted auth state
+      localStorage.removeItem('ttrpg_app_user');
       
       // Перенаправляємо на login
       navigate('/login', { 

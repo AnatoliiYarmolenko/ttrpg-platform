@@ -15,9 +15,9 @@ try {
       : ['error'],
   });
   
-  console.log('✅ Prisma Client ініціалізовано');
+  console.log('Prisma Client ініціалізовано');
 } catch (error) {
-  console.error('❌ Критична помилка ініціалізації Prisma Client:', error);
+  console.error('Критична помилка ініціалізації Prisma Client:', error);
   process.exit(1); // Fail-fast: зупиняємо процес
 }
 

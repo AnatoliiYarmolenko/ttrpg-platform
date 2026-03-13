@@ -9,6 +9,7 @@ const router = express.Router();
 const adminController = require('../controllers/admin.controller');
 const { authenticateToken } = require('../middlewares/auth.middleware');
 const { requireAdmin } = require('../middlewares/admin.middleware');
+const { verifyCSRFToken } = require('../middlewares/csrf.middleware');
 
 // Всі admin routes потребують автентифікації + перевірки ролі адміністратора
 router.use(authenticateToken);
@@ -34,7 +35,7 @@ router.get('/token-stats', adminController.getTokenStats);
  * POST /api/admin/cleanup-tokens
  * Ручна очистка прострочених токенів
  */
-router.post('/cleanup-tokens', adminController.cleanupTokens);
+router.post('/cleanup-tokens', verifyCSRFToken, adminController.cleanupTokens);
 
 // ========== USER MANAGEMENT ==========
 
@@ -70,7 +71,7 @@ router.get('/campaigns/:id', adminController.getCampaignById);
  * DELETE /api/admin/campaigns/:id
  * Видалення кампанії адміністратором
  */
-router.delete('/campaigns/:id', adminController.deleteCampaign);
+router.delete('/campaigns/:id', verifyCSRFToken, adminController.deleteCampaign);
 
 // ========== SESSION MANAGEMENT ==========
 
@@ -91,6 +92,6 @@ router.get('/sessions/:id', adminController.getSessionById);
  * DELETE /api/admin/sessions/:id
  * Видалення сесії адміністратором
  */
-router.delete('/sessions/:id', adminController.deleteSession);
+router.delete('/sessions/:id', verifyCSRFToken, adminController.deleteSession);
 
 module.exports = router;

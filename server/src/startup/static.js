@@ -27,7 +27,7 @@ function setupStaticFiles(app, options = {}) {
   // Статична папка для завантажених файлів (аватари тощо)
   app.use(uploadsRoute, express.static(absoluteUploadsPath));
 
-  console.log(`✅ Статичні файли налаштовано: ${uploadsRoute} -> ${absoluteUploadsPath}`);
+  console.log(`Статичні файли налаштовано: ${uploadsRoute} -> ${absoluteUploadsPath}`);
 }
 
 module.exports = {

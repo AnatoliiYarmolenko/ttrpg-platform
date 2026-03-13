@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const profileController = require('../controllers/profile.controller');
-const { validateBody } = require('../middlewares/validation.middleware');
+const { validateBody, validateParams } = require('../middlewares/validation.middleware');
 const { 
   updateProfileSchema, 
   updateUsernameSchema, 
+  userIdParamSchema,
 } = require('../validation/profile.validation');
 const { authenticateToken } = require('../middlewares/auth.middleware');
 const { verifyCSRFToken } = require('../middlewares/csrf.middleware');
@@ -59,7 +60,7 @@ router.delete('/me/avatar',
 // ===== ПУБЛІЧНІ РОУТИ =====
 
 // Отримати профіль за userId (публічний) — до /:username щоб не конфліктував
-router.get('/user/:id', publicProfileLimiter, profileController.getProfileByUserId);
+router.get('/user/:id', validateParams(userIdParamSchema), publicProfileLimiter, profileController.getProfileByUserId);
 
 // Отримати профіль за username (публічний)
 router.get('/:username', publicProfileLimiter, profileController.getProfileByUsername);

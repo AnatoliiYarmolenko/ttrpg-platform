@@ -1,34 +1,54 @@
 const crypto = require('crypto');
-const { cookieSecret } = require('../config/config');
+const { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } = require('../constants/errors');
+const { COOKIE_NAMES } = require('../utils/cookie.helper');
 
 /**
  * CSRF Protection Middleware (Double-Submit Cookie Pattern)
  * Генерує CSRF токен та перевіряє його при POST/PUT/DELETE/PATCH запитах
  */
 
+const CSRF_COOKIE_MAX_AGE = 24 * 60 * 60 * 1000;
+const CSRF_COOKIE_OPTIONS = {
+  httpOnly: false,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  maxAge: CSRF_COOKIE_MAX_AGE,
+  path: '/',
+};
+
 // Генеруємо CSRF токен
 const generateCSRFToken = () => {
   return crypto.randomBytes(32).toString('hex');
 };
 
+const setCSRFTokenCookie = (res, token) => {
+  res.cookie(COOKIE_NAMES.XSRF_TOKEN, token, CSRF_COOKIE_OPTIONS);
+  res.setHeader('X-CSRF-Token', token);
+};
+
+const rejectCSRFRequest = (res, errorMessage = ERROR_MESSAGES[ERROR_CODES.SECURITY_CSRF_INVALID]) => {
+  return res.status(HTTP_STATUS.FORBIDDEN).json({
+    code: ERROR_CODES.SECURITY_CSRF_INVALID,
+    error: errorMessage,
+  });
+};
+
+const isBearerOnlyRequest = (req) => {
+  const hasAuthorizationHeader = typeof req.headers['authorization'] === 'string' && req.headers['authorization'].trim().length > 0;
+  const hasAuthCookies = Boolean(req.cookies?.[COOKIE_NAMES.ACCESS_TOKEN] || req.cookies?.[COOKIE_NAMES.REFRESH_TOKEN]);
+
+  return hasAuthorizationHeader && !hasAuthCookies;
+};
+
 // Middleware для встановлення CSRF токена в cookie та повернення його в заголовку
 const setCSRFToken = (req, res, next) => {
   // Перевіряємо, чи вже є CSRF токен в cookie
-  const existingToken = req.cookies?.['XSRF-TOKEN'];
+  const existingToken = req.cookies?.[COOKIE_NAMES.XSRF_TOKEN];
   
   // Якщо токен вже є, використовуємо його, інакше генеруємо новий
   const csrfToken = existingToken || generateCSRFToken();
   
-  // Встановлюємо CSRF токен в cookie (не httpOnly, щоб JS міг його прочитати)
-  res.cookie('XSRF-TOKEN', csrfToken, {
-    httpOnly: false, // Потрібно для читання через JS
-    secure: process.env.NODE_ENV === 'production', // Тільки HTTPS в production
-    sameSite: 'lax', // Змінив на 'lax' для кращої сумісності
-    maxAge: 24 * 60 * 60 * 1000, // 24 години
-  });
-
-  // Додаємо токен до заголовків відповіді для зручності
-  res.setHeader('X-CSRF-Token', csrfToken);
+  setCSRFTokenCookie(res, csrfToken);
   
   next();
 };
@@ -42,33 +62,30 @@ const verifyCSRFToken = (req, res, next) => {
     return next(); // Пропускаємо безпечні методи
   }
 
+  if (isBearerOnlyRequest(req)) {
+    return next();
+  }
+
   // Отримуємо CSRF токен з cookie
-  const cookieToken = req.cookies?.['XSRF-TOKEN'];
+  const cookieToken = req.cookies?.[COOKIE_NAMES.XSRF_TOKEN];
   
   // Отримуємо CSRF токен з заголовка (перевіряємо різні варіанти назв)
   const headerToken = req.headers['x-csrf-token'] || req.headers['x-xsrf-token'] || req.headers['X-CSRF-Token'];
 
-  // Якщо токенів немає, встановлюємо новий та дозволяємо запит (для першого разу)
+  // Якщо cookie немає, видаємо новий токен, але не пропускаємо unsafe-запит без перевірки.
   if (!cookieToken) {
-    // Встановлюємо новий токен
-    const newToken = generateCSRFToken();
-    res.cookie('XSRF-TOKEN', newToken, {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 24 * 60 * 60 * 1000,
-    });
-    return next(); // Дозволяємо перший запит
+    setCSRFTokenCookie(res, generateCSRFToken());
+    return rejectCSRFRequest(res, 'CSRF токен відсутній. Оновіть сторінку та повторіть запит.');
   }
 
   // Перевіряємо наявність заголовка
   if (!headerToken) {
-    return res.status(403).json({ error: 'CSRF токен не надано в заголовку' });
+    return rejectCSRFRequest(res, 'CSRF токен не надано в заголовку');
   }
 
   // Перевіряємо, чи токени співпадають
   if (cookieToken !== headerToken) {
-    return res.status(403).json({ error: 'Невірний CSRF токен' });
+    return rejectCSRFRequest(res);
   }
 
   next();

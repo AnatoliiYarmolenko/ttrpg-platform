@@ -5,6 +5,7 @@
 
 const express = require('express');
 const cookieParser = require('cookie-parser');
+const helmet = require('helmet');
 
 // Routes
 const authRoutes = require('./routes/auth.routes');
@@ -21,6 +22,28 @@ const { errorHandler } = require('./middlewares/error.middleware');
 // Startup modules
 const { createCorsMiddleware, setupStaticFiles } = require('./startup');
 
+function resolveTrustProxySetting() {
+  const raw = process.env.TRUST_PROXY;
+
+  if (raw === undefined) {
+    return false;
+  }
+
+  if (raw === 'true') {
+    return true;
+  }
+
+  if (raw === 'false') {
+    return false;
+  }
+
+  if (/^\d+$/.test(raw)) {
+    return Number(raw);
+  }
+
+  return raw;
+}
+
 /**
  * Створює та налаштовує Express application
  * @returns {Express} Налаштований Express app
@@ -33,6 +56,10 @@ function createApp() {
   // Налаштування CORS для роботи з cookies
   app.use(createCorsMiddleware());
 
+  // Базові security headers.
+  // CORP вимикаємо, щоб не ламати завантаження аватарів з окремого фронтенд origin.
+  app.use(helmet({ crossOriginResourcePolicy: false }));
+
   // Парсери
   app.use(express.json({ limit: '10mb' })); // JSON з підтримкою UTF-8
   app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Для форм
@@ -43,7 +70,7 @@ function createApp() {
 
   // Налаштування для отримання правильного IP адреси (для rate limiting)
   // Важливо для роботи за proxy/load balancer
-  app.set('trust proxy', 1);
+  app.set('trust proxy', resolveTrustProxySetting());
 
   // ========== ROUTES ==========
 

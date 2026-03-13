@@ -19,6 +19,32 @@ const PRIVATE_PROFILE_FIELDS = {
   emailVerified: true,
 };
 
+function hashToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+function getTokenCandidates(token) {
+  if (typeof token !== 'string' || token.length === 0) {
+    return [];
+  }
+
+  const normalized = token.trim();
+  if (!normalized) {
+    return [];
+  }
+
+  const hashed = hashToken(normalized);
+  return normalized === hashed ? [normalized] : [normalized, hashed];
+}
+
+function createRawAndHashedToken(bytes = 32) {
+  const rawToken = crypto.randomBytes(bytes).toString('hex');
+  return {
+    rawToken,
+    tokenHash: hashToken(rawToken),
+  };
+}
+
 /**
  * Змінити пароль користувача
  * @param {number} userId - ID користувача
@@ -122,12 +148,12 @@ async function requestEmailChange(userId, password, newEmail) {
   });
 
   // Створюємо новий токен
-  const token = crypto.randomBytes(32).toString('hex');
+  const { rawToken, tokenHash } = createRawAndHashedToken(32);
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 хвилин
 
   await prisma.emailChangeToken.create({
     data: {
-      token,
+      token: tokenHash,
       userId,
       newEmail: normalizedNewEmail,
       expiresAt,
@@ -135,7 +161,7 @@ async function requestEmailChange(userId, password, newEmail) {
   });
 
   // Формуємо URL підтвердження
-  const confirmUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/confirm-email-change?token=${token}`;
+  const confirmUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/confirm-email-change?token=${rawToken}`;
 
   // Надсилаємо лист на НОВИЙ email
   const emailResult = await emailService.sendEmailChangeConfirmation(
@@ -157,9 +183,19 @@ async function requestEmailChange(userId, password, newEmail) {
  * @returns {Promise<Object>} - Оновлений профіль
  */
 async function confirmEmailChange(token) {
+  const tokenCandidates = getTokenCandidates(token);
+
+  if (tokenCandidates.length === 0) {
+    throw new AppError(ERROR_CODES.EMAIL_CHANGE_TOKEN_INVALID);
+  }
+
   // Знаходимо токен
-  const record = await prisma.emailChangeToken.findUnique({
-    where: { token },
+  const record = await prisma.emailChangeToken.findFirst({
+    where: {
+      token: {
+        in: tokenCandidates,
+      },
+    },
     include: { user: true },
   });
 
