@@ -13,9 +13,6 @@ CREATE TYPE "ParticipantStatus" AS ENUM ('PENDING', 'CONFIRMED', 'DECLINED', 'AT
 -- CreateEnum
 CREATE TYPE "JoinRequestStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
 
--- DropEnum
-DROP TYPE "GameRole";
-
 -- AlterTable
 ALTER TABLE "Campaign" ADD COLUMN "imageUrl" TEXT,
 ADD COLUMN "system" TEXT,
@@ -36,6 +33,9 @@ ALTER TABLE "SessionParticipant" DROP COLUMN "role",
 ADD COLUMN "role" "SessionRole" NOT NULL DEFAULT 'PLAYER',
 ADD COLUMN "status" "ParticipantStatus" NOT NULL DEFAULT 'PENDING',
 ADD COLUMN "isGuest" BOOLEAN NOT NULL DEFAULT false;
+
+-- DropEnum
+DROP TYPE "GameRole";
 
 -- CreateTable
 CREATE TABLE "CampaignMember" (

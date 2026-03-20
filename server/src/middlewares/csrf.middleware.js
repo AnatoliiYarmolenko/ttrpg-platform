@@ -11,7 +11,7 @@ const CSRF_COOKIE_MAX_AGE = 24 * 60 * 60 * 1000;
 const CSRF_COOKIE_OPTIONS = {
   httpOnly: false,
   secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax',
+  sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
   maxAge: CSRF_COOKIE_MAX_AGE,
   path: '/',
 };

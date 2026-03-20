@@ -481,13 +481,16 @@ class AuthService {
       user.username || 'Користувач'
     );
 
+    const shouldExposeResetDebugData =
+      process.env.NODE_ENV !== 'production' && process.env.EXPOSE_AUTH_DEBUG_TOKENS === 'true';
+
     // Повертаємо результат (успішно чи ні)
     return {
       message: "Посилання для ресету надіслано",
       emailSent: emailResult.success,
       emailMessage: emailResult.message,
-      // На development: видаємо токен для тестування
-      ...(process.env.NODE_ENV !== 'production' && { resetToken, resetUrl })
+      // Тільки якщо явно ввімкнено debug-прапором поза production
+      ...(shouldExposeResetDebugData && { resetToken, resetUrl })
     };
   }
 
