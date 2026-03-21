@@ -42,6 +42,7 @@ export default function SessionPage() {
     canStartSession,
     canFinishSession,
     canCancelSession,
+    canDeleteSession,
     canManageStatus,
     canManageParticipants,
     canManageGmRequests,
@@ -110,7 +111,7 @@ export default function SessionPage() {
               session={currentSession}
               onSave={handleSaveSettings}
               onDelete={handleDelete}
-              canDelete={isOwner}
+              canDelete={canDeleteSession}
               isLoading={isLoading}
             />
           );

@@ -590,6 +590,13 @@ class SessionService {
       throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'У вас немає прав на видалення сесії');
     }
 
+    if (session.status !== 'PLANNED') {
+      throw new AppError(
+        ERROR_CODES.SESSION_DELETE_FORBIDDEN,
+        'Видаляти можна лише заплановані сесії'
+      );
+    }
+
     await prisma.session.delete({
       where: { id: this._parsePositiveInt(sessionId, 'ID сесії') },
     });

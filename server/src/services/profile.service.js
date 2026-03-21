@@ -31,8 +31,8 @@ const UPDATABLE_FIELDS = ['displayName', 'bio', 'timezone', 'language', 'avatarU
  * @param {number} userId - ID поточного користувача
  */
 async function getMyProfile(userId) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
+  const user = await prisma.user.findFirst({
+    where: { id: userId, isDeleted: false },
     select: {
       ...PRIVATE_PROFILE_FIELDS,
       // Додаємо статистику
@@ -64,8 +64,11 @@ async function getMyProfile(userId) {
  * @param {string} username - Username користувача
  */
 async function getProfileByUsername(username) {
-  const user = await prisma.user.findUnique({
-    where: { username },
+  const user = await prisma.user.findFirst({
+    where: { 
+      username,
+      isDeleted: false  // Не повертаємо видалених користувачів
+    },
     select: {
       ...PUBLIC_PROFILE_FIELDS,
       // Публічна статистика
@@ -92,8 +95,11 @@ async function getProfileByUsername(username) {
 }
 
 async function getProfileByUserId(userId) {
-  const user = await prisma.user.findUnique({
-    where: { id: parseInt(userId) },
+  const user = await prisma.user.findFirst({
+    where: { 
+      id: parseInt(userId),
+      isDeleted: false  // Не повертаємо видалених користувачів
+    },
     select: {
       ...PUBLIC_PROFILE_FIELDS,
       stats: {

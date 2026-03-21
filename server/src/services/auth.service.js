@@ -6,6 +6,7 @@ const { jwtSecret } = require('../config/config');
 const emailService = require('./email.service');
 const { checkRefreshRateLimit } = require('./rateLimit.service');
 const { createError, AppError, ERROR_CODES } = require('../constants/errors');
+const { isUserDeleted } = require('../store/deletedUsers');
 
 function normalizeEmail(email) {
   return typeof email === 'string' ? email.trim().toLowerCase() : email;
@@ -115,8 +116,8 @@ class AuthService {
     const normalizedEmail = normalizeEmail(email);
     const genericMessage = 'Якщо цей email зареєстрований, лист відправлено.';
 
-    const user = await prismaClient.user.findUnique({
-      where: { email: normalizedEmail },
+    const user = await prismaClient.user.findFirst({
+      where: { email: normalizedEmail, isDeleted: false },
       select: { id: true, email: true, username: true, emailVerified: true }
     });
 
@@ -223,8 +224,8 @@ class AuthService {
     const normalizedEmail = normalizeEmail(email);
     
     // 1. Оптимізація: Вибираємо тільки ті поля, які нам потрібні для перевірки та відповіді
-    const user = await prismaClient.user.findUnique({ 
-      where: { email: normalizedEmail },
+    const user = await prismaClient.user.findFirst({ 
+      where: { email: normalizedEmail, isDeleted: false },
       select: {
         id: true,
         email: true, // Обов'язково додаємо, бо повертаємо його в об'єкті user
@@ -388,6 +389,11 @@ class AuthService {
         throw createError.userNotFound();
       }
 
+      // Перевіряємо blacklist анонімізованих акаунтів
+      if (isUserDeleted(user.id)) {
+        throw createError.userNotFound();
+      }
+
       // Видаляємо старий refresh token (замість revoke, щоб не накопичувалися)
       await prismaClient.refreshToken.delete({ 
         where: { id: storedAgain.id }
@@ -446,8 +452,8 @@ class AuthService {
     const normalizedEmail = normalizeEmail(email);
     
     // 1. Перевіряємо, чи існує користувач з таким email
-    const user = await prismaClient.user.findUnique({
-      where: { email: normalizedEmail },
+    const user = await prismaClient.user.findFirst({
+      where: { email: normalizedEmail, isDeleted: false },
       select: { id: true, email: true, username: true }
     });
 

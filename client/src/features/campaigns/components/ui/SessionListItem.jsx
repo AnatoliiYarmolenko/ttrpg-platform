@@ -37,6 +37,7 @@ export default function SessionListItem({
   const participantCount = session.participants?.length || session._count?.participants || 0;
 
   const canCancelSession = session.status === 'PLANNED' || session.status === 'ACTIVE';
+  const canDeleteSession = session.status === 'PLANNED';
 
   const handleOpenSession = () => {
     navigate(`/session/${session.id}`);
@@ -85,7 +86,8 @@ export default function SessionListItem({
                   event.stopPropagation();
                   onDeleteOwnerAction?.();
                 }}
-                className="px-2 py-1 text-xs rounded border border-red-300 text-red-600 hover:bg-red-50 transition-colors"
+                disabled={!canDeleteSession}
+                className="px-2 py-1 text-xs rounded border border-red-300 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Видалити сесію"
               >
                 Видалити

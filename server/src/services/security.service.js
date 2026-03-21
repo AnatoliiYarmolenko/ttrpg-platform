@@ -2,6 +2,7 @@ const { prisma } = require('../lib/prisma');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { createError, AppError, ERROR_CODES } = require('../constants/errors');
+const { markUserAsDeleted } = require('../store/deletedUsers');
 
 // Поля для власного профілю (для відповідей)
 const PRIVATE_PROFILE_FIELDS = {
@@ -243,7 +244,7 @@ async function confirmEmailChange(token) {
 }
 
 /**
- * Видалити акаунт користувача
+ * Видалити акаунт користувача (soft delete via анонімізація)
  * @param {number} userId - ID користувача
  * @param {string} password - Пароль для підтвердження
  * @returns {Promise<boolean>} - Успішно чи ні
@@ -265,18 +266,29 @@ async function deleteAccount(userId, password) {
     throw createError.passwordInvalid();
   }
 
+  // Перевіряємо, що користувач не є власником активних кампаній
+  // (деактивованих — проходять по статусу)
   const ownedCampaignsCount = await prisma.campaign.count({
-    where: { ownerId: userId },
+    where: { 
+      ownerId: userId,
+      status: { not: 'FINISHED' }  // Тільки активні кампанії блокують видалення
+    },
   });
 
   if (ownedCampaignsCount > 0) {
     throw new AppError(
       ERROR_CODES.VALIDATION_FAILED,
-      'Неможливо видалити акаунт, поки ви є власником кампаній. Спочатку передайте права власності.'
+      'Неможливо видалити акаунт, поки ви є власником активних кампаній. Спочатку завершіть їх.'
     );
   }
 
-  // Виконуємо глибоке очищення в транзакції
+  // Генеруємо анонімні дані
+  const timestamp = Date.now();
+  const anonymousEmail = `deleted+${userId}+${timestamp}@deleted.local`;
+  const anonymousUsername = `deleted_user_${userId}_${timestamp}`;
+  const anonymousPassword = await bcrypt.hash(require('crypto').randomBytes(32).toString('hex'), 10);
+
+  // Виконуємо анонімізацію в транзакції
   await prisma.$transaction(async (tx) => {
     // 1. Видаляємо токени безпеки
     await tx.refreshToken.deleteMany({ where: { userId } });
@@ -289,78 +301,57 @@ async function deleteAccount(userId, password) {
       data: { reviewedBy: null }
     });
 
-    // 3. Видаляємо пряму активність користувача
-    await tx.chatMessage.deleteMany({ where: { userId } }); // Повідомлення в чатах
-    await tx.sessionParticipant.deleteMany({ where: { userId } }); // Участь у сесіях
-    await tx.campaignMember.deleteMany({ where: { userId } }); // Членство в кампаніях (в т.ч. чужих)
-    await tx.joinRequest.deleteMany({ where: { userId } }); // Власні заявки на вступ
-    await tx.userStats.deleteMany({ where: { userId } }); // Статистика
-    
-    // 4. Видаляємо гаманець
+    // 3. Скасовуємо всі сесії, які належать цьому користувачу (овнер)
+    await tx.session.updateMany({
+      where: { 
+        ownerId: userId,
+        status: { not: 'CANCELED' } // Тільки не-скасовані
+      },
+      data: { status: 'CANCELED' }
+    });
+
+    // 4. Завершуємо всі кампанії, які належать цьому користувачу (овнер)
+    await tx.campaign.updateMany({
+      where: {
+        ownerId: userId,
+        status: { not: 'FINISHED' } // Тільки не-завершені
+      },
+      data: { status: 'FINISHED' }
+    });
+
+    // 5. Видаляємо гаманець (фінансову активність)
     const wallet = await tx.wallet.findUnique({ where: { userId } });
     if (wallet) {
       await tx.transaction.deleteMany({ where: { walletId: wallet.id } });
       await tx.wallet.delete({ where: { userId } });
     }
-    
-    // 5. Видаляємо контент, яким володіє користувач (Кампанії та Сесії)
-    
-    // Знаходимо ID кампаній власника
-    const ownedCampaigns = await tx.campaign.findMany({ 
-      where: { ownerId: userId },
-      select: { id: true }
+
+    // 6. Анонімізуємо користувача
+    await tx.user.update({
+      where: { id: userId },
+      data: {
+        isDeleted: true,
+        email: anonymousEmail,
+        username: anonymousUsername,
+        password: anonymousPassword,
+        passwordResetToken: null,
+        passwordResetExpiry: null,
+        displayName: `Deleted User ${userId}`,
+        bio: null,
+        avatarUrl: null,
+        timezone: null,
+        language: 'uk',
+        emailVerified: false,
+        updatedAt: new Date(),
+      }
     });
-    const ownedCampaignIds = ownedCampaigns.map(c => c.id);
 
-    // Знаходимо сесії, які треба видалити:
-    // а) Створені цим юзером (наприклад, One-Shots)
-    // б) Сесії, що належать кампаніям цього юзера
-    const sessionsToDelete = await tx.session.findMany({
-      where: {
-        OR: [
-          { ownerId: userId },
-          { campaignId: { in: ownedCampaignIds } }
-        ]
-      },
-      select: { id: true }
-    });
-    const sessionIdsToDelete = sessionsToDelete.map(s => s.id);
-
-    // Якщо є сесії для видалення -> чистимо залежності сесій
-    if (sessionIdsToDelete.length > 0) {
-      // Видаляємо учасників цих сесій
-      await tx.sessionParticipant.deleteMany({ 
-        where: { sessionId: { in: sessionIdsToDelete } } 
-      });
-      // Видаляємо повідомлення в цих сесіях
-      await tx.chatMessage.deleteMany({ 
-        where: { sessionId: { in: sessionIdsToDelete } } 
-      });
-      // Видаляємо самі сесії
-      await tx.session.deleteMany({ 
-        where: { id: { in: sessionIdsToDelete } } 
-      });
-    }
-
-    // Якщо є кампанії -> чистимо залежності кампаній
-    if (ownedCampaignIds.length > 0) {
-      // Видаляємо членів кампаній
-      await tx.campaignMember.deleteMany({ 
-        where: { campaignId: { in: ownedCampaignIds } } 
-      });
-      // Видаляємо заявки до цих кампаній
-      await tx.joinRequest.deleteMany({ 
-        where: { campaignId: { in: ownedCampaignIds } } 
-      });
-      // Видаляємо самі кампанії
-      await tx.campaign.deleteMany({ 
-        where: { id: { in: ownedCampaignIds } } 
-      });
-    }
-    
-    // 6. Нарешті видаляємо самого користувача
-    await tx.user.delete({ where: { id: userId } });
+    // 7. Видаляємо всю статистику (необов'язково, можна зберігти)
+    await tx.userStats.deleteMany({ where: { userId } });
   });
+
+  // Блокуємо доступ через активні JWT токени (закриває 15-хв вікно вразливості)
+  markUserAsDeleted(userId);
 
   // Видаляємо аватар файл якщо є
   if (user.avatarUrl && user.avatarUrl.startsWith('/uploads/')) {
@@ -369,11 +360,11 @@ async function deleteAccount(userId, password) {
       await deleteOldAvatar(user.avatarUrl);
     } catch (e) {
       console.error("Помилка видалення аватара:", e);
-      // Не кидаємо помилку, бо акаунт вже видалено в БД
+      // Не кидаємо помилку, бо акаунт вже анонімізовано в БД
     }
   }
 
-  console.log(`[Security] Акаунт видалено: ${user.username} (${user.email})`);
+  console.log(`[Security] Акаунт анонімізовано: ${user.username} (${user.email}) → ${anonymousUsername}`);
 
   return true;
 }

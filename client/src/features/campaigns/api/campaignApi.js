@@ -41,15 +41,6 @@ export const updateCampaign = async (campaignId, campaignData) => {
 };
 
 /**
- * Видалити кампанію
- * @param {number} campaignId
- */
-export const deleteCampaign = async (campaignId) => {
-  const response = await api.delete(`/campaigns/${campaignId}`);
-  return normalizeApiEnvelope(response.data);
-};
-
-/**
  * Передати власність кампанії іншому учаснику
  * @param {number} campaignId
  * @param {number} newOwnerId

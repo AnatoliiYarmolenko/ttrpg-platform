@@ -40,6 +40,7 @@ const ERROR_MESSAGES = {
   [ERROR_CODES.SESSION_GM_ONLY]: 'Дія доступна тільки підтвердженому GM',
   [ERROR_CODES.SESSION_GM_ALREADY_EXISTS]: 'У сесії вже є підтверджений GM',
   [ERROR_CODES.SESSION_NO_GM_KICK_ACTIVE]: 'Неможливо змінювати GM після початку або завершення сесії',
+  [ERROR_CODES.SESSION_DELETE_FORBIDDEN]: 'Видаляти можна лише заплановані сесії',
 
   [ERROR_CODES.CAMPAIGN_TRANSFER_FAILED]: 'Не вдалося передати права власності кампанії',
   [ERROR_CODES.CAMPAIGN_OWNER_REQUIRED]: 'Дія доступна тільки власнику кампанії',

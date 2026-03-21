@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { jwtSecret } = require('../config/config');
 const { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } = require('../constants/errors');
+const { isUserDeleted } = require('../store/deletedUsers');
 
 /**
  * Middleware для верифікації JWT токена
@@ -41,6 +42,15 @@ const authenticateToken = (req, res, next) => {
         code: ERROR_CODES.AUTH_TOKEN_INVALID, 
         error: ERROR_MESSAGES[ERROR_CODES.AUTH_TOKEN_INVALID], 
         canRefresh: false 
+      });
+    }
+
+    // Перевіряємо blacklist анонімізованих акаунтів (закриває 15-хв вікно JWT)
+    if (isUserDeleted(user.id)) {
+      return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+        code: ERROR_CODES.AUTH_TOKEN_INVALID,
+        error: 'Акаунт було видалено',
+        canRefresh: false,
       });
     }
 

@@ -313,16 +313,6 @@ class CampaignService {
     return updated;
   }
 
-  async deleteCampaign(campaignId, userId) {
-    const campaign = await this.getCampaignById(campaignId, userId);
-
-    this._requireCampaignOwner(campaign, userId, 'Тільки власник може видаляти кампанію');
-
-    await prisma.campaign.delete({
-      where: { id: parseInt(campaignId) },
-    });
-  }
-
   async transferCampaignOwnership(campaignId, currentOwnerId, newOwnerId) {
     return this.membersService.transferCampaignOwnership(campaignId, currentOwnerId, newOwnerId);
   }

@@ -130,6 +130,7 @@ export default function useSessionPageController() {
   const canStartSession = isConfirmedGm;
   const canFinishSession = isConfirmedGm;
   const canCancelSession = isOwner || (currentSession?.status === 'ACTIVE' && isConfirmedGm);
+  const canDeleteSession = isOwner && currentSession?.status === 'PLANNED';
   const canManageStatus = canStartSession || canFinishSession || canCancelSession;
   const canManageParticipants = isOwner || isConfirmedGm;
   const canManageGmRequests = isOwner;
@@ -259,8 +260,11 @@ export default function useSessionPageController() {
   }, [id, markSessionAsFinishedAction, fetchSessionById]);
 
   const handleDelete = useCallback(async () => {
-    await deleteSessionById(id);
-    navigate('/');
+    const result = await deleteSessionById(id);
+    if (result?.success) {
+      navigate('/');
+    }
+    return result;
   }, [id, deleteSessionById, navigate]);
 
   const handleParticipantStatusChange = useCallback(
@@ -317,6 +321,7 @@ export default function useSessionPageController() {
     canStartSession,
     canFinishSession,
     canCancelSession,
+    canDeleteSession,
     canManageStatus,
     canManageParticipants,
     canManageGmRequests,

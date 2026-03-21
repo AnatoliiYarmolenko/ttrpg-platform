@@ -29,7 +29,6 @@ export default function useCampaignPageController() {
     fetchCampaignById,
     fetchCampaignMembers,
     updateCampaignData,
-    deleteCampaignData,
     transferOwnership,
     cancelSessionInCampaign,
     deleteSessionInCampaign,
@@ -100,7 +99,6 @@ export default function useCampaignPageController() {
   const canModerateJoinRequests = isOwner || isGM;
   const canRemovePlayers = (isOwner || isGM) && !isCampaignFinished;
   const canCreateCampaignSessions = (isOwner || isGM) && !isCampaignFinished;
-  const canDeleteCampaign = isOwner;
   const canManageInviteCode = isOwner && !isCampaignFinished;
   const canUseOwnerSessionOverrides = isOwner;
   const { isPreviewMode } = usePreviewMode({ isMember: amMember, isLoading });
@@ -161,15 +159,6 @@ export default function useCampaignPageController() {
     },
     [id, canManageCampaignSettings, updateCampaignData, fetchCampaignById]
   );
-
-  const handleDelete = useCallback(async () => {
-    if (!canDeleteCampaign) {
-      return { success: false, message: 'Тільки власник може видаляти кампанію' };
-    }
-    await deleteCampaignData(Number(id));
-    navigate('/');
-    return { success: true };
-  }, [id, canDeleteCampaign, deleteCampaignData, navigate]);
 
   const handleTransferOwnership = useCallback(
     async (newOwnerId) => {
@@ -255,7 +244,6 @@ export default function useCampaignPageController() {
     canModerateJoinRequests,
     canRemovePlayers,
     canCreateCampaignSessions,
-    canDeleteCampaign,
     canManageInviteCode,
     canUseOwnerSessionOverrides,
     isCampaignFinished,
@@ -268,7 +256,6 @@ export default function useCampaignPageController() {
     handleRefreshCampaign,
     handleRegenerateCode,
     handleSaveSettings,
-    handleDelete,
     handleTransferOwnership,
     handleCancelForeignSession,
     handleDeleteForeignSession,

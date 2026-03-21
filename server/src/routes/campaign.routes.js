@@ -41,9 +41,6 @@ router.get('/:campaignId', [authenticateToken, ...validateCampaignId], (req, res
 // PUT /api/campaigns/:campaignId
 router.put('/:campaignId', [authenticateToken, verifyCSRFToken, ...validateUpdateCampaign], (req, res, next) => campaignController.updateCampaign(req, res, next));
 
-// DELETE /api/campaigns/:campaignId
-router.delete('/:campaignId', [authenticateToken, verifyCSRFToken, ...validateCampaignId], (req, res, next) => campaignController.deleteCampaign(req, res, next));
-
 // POST /api/campaigns/:campaignId/transfer-ownership
 router.post(
   '/:campaignId/transfer-ownership',

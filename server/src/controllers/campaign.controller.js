@@ -88,23 +88,6 @@ class CampaignController {
     }
   }
 
-  // Видалити кампанію (тільки для власника)
-  async deleteCampaign(req, res, next) {
-    try {
-      const { campaignId } = req.params;
-      const userId = req.user.id;
-
-      await campaignService.deleteCampaign(campaignId, userId);
-
-      res.json({ 
-        success: true, 
-        message: 'Кампанія видалена успішно!' 
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
   // Передати власність кампанії іншому учаснику
   async transferCampaignOwnership(req, res, next) {
     try {

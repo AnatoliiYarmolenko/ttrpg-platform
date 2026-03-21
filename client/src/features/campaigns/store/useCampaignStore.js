@@ -5,7 +5,6 @@ import {
   getMyCampaigns,
   getCampaignById,
   updateCampaign,
-  deleteCampaign,
   transferCampaignOwnership,
   cancelCampaignSession,
   deleteCampaignSession,
@@ -88,22 +87,6 @@ const useCampaignStore = create((set) => ({
       defaultError: 'Помилка при оновленні кампанії',
       toastOnSuccess: true,
       successMessage: 'Кампанію оновлено',
-    }),
-
-  deleteCampaignData: async (campaignId) =>
-    apiAction(set, {
-      apiCall: () => deleteCampaign(campaignId),
-      onSuccess: () =>
-        set((state) => ({
-          campaigns: state.campaigns.filter((c) => c.id !== campaignId),
-          currentCampaign:
-            state.currentCampaign?.id === campaignId
-              ? null
-              : state.currentCampaign,
-        })),
-      defaultError: 'Помилка при видаленні кампанії',
-      toastOnSuccess: true,
-      successMessage: 'Кампанію видалено',
     }),
 
   transferOwnership: async (campaignId, newOwnerId) =>

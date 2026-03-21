@@ -48,7 +48,6 @@ export default function CampaignPage() {
     canModerateJoinRequests,
     canRemovePlayers,
     canCreateCampaignSessions,
-    canDeleteCampaign,
     canManageInviteCode,
     canUseOwnerSessionOverrides,
     isCampaignFinished,
@@ -58,7 +57,6 @@ export default function CampaignPage() {
     handleRefreshCampaign,
     handleRegenerateCode,
     handleSaveSettings,
-    handleDelete,
     handleTransferOwnership,
     handleCancelForeignSession,
     handleDeleteForeignSession,
@@ -113,9 +111,7 @@ export default function CampaignPage() {
             <CampaignSettingsWidget
               campaign={currentCampaign}
               onSave={handleSaveSettings}
-              onDelete={handleDelete}
               onTransferOwnership={handleTransferOwnership}
-              canDelete={canDeleteCampaign}
               canTransferOwnership={isOwner}
               isLoading={isLoading}
             />

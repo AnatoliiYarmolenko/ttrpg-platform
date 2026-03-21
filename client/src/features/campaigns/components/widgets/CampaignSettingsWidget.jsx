@@ -13,21 +13,16 @@ import { GAME_SYSTEMS } from '@/constants/gameSystems';
  * - Систему гри
  * - Видимість (PUBLIC, PRIVATE, LINK_ONLY)
  * - Завершити кампанію (без можливості повернути в ACTIVE)
- * - Видалити кампанію (Owner only)
  *
  * @param {Object} campaign — поточна кампанія
  * @param {Function} onSave — колбек збереження (campaignData)
- * @param {Function} onDelete — колбек видалення кампанії
- * @param {boolean} canDelete — чи може юзер видаляти кампанію (тільки Owner)
  * @param {boolean} canTransferOwnership — чи може юзер передати права (тільки Owner)
  * @param {boolean} isLoading
  */
 export default function CampaignSettingsWidget({
   campaign,
   onSave,
-  onDelete,
   onTransferOwnership,
-  canDelete = false,
   canTransferOwnership = false,
   isLoading = false,
 }) {
@@ -41,7 +36,6 @@ export default function CampaignSettingsWidget({
   const [formData, setFormData] = useState(() => buildFormData(campaign));
   const [formCampaignId, setFormCampaignId] = useState(campaign?.id ?? null);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [deleteModal, setDeleteModal] = useState(false);
   const [finishModal, setFinishModal] = useState(false);
   const [transferModal, setTransferModal] = useState(false);
   const [selectedNewOwnerId, setSelectedNewOwnerId] = useState('');
@@ -87,11 +81,6 @@ export default function CampaignSettingsWidget({
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     }
-  };
-
-  const handleDelete = () => {
-    setDeleteModal(false);
-    onDelete?.();
   };
 
   const handleFinishCampaign = async () => {
@@ -229,7 +218,7 @@ export default function CampaignSettingsWidget({
         </Button>
 
         {/* Секція небезпечних дій (тільки для Owner) */}
-        {(canDelete || canTransferOwnership) && (
+        {canTransferOwnership && (
           <div className="border-t border-red-200 pt-4 mt-2">
             <h4 className="text-sm font-bold text-red-600 mb-3">Небезпечна зона</h4>
 
@@ -287,34 +276,9 @@ export default function CampaignSettingsWidget({
               </div>
             )}
 
-            {canDelete && (
-              <>
-                <p className="text-xs text-red-500 mb-3">
-                  Видалення кампанії призведе до втрати всіх сесій та даних. Цю дію неможливо відмінити.
-                </p>
-                <Button
-                  variant="danger"
-                  onClick={() => setDeleteModal(true)}
-                >
-                  Видалити кампанію
-                </Button>
-              </>
-            )}
           </div>
         )}
       </form>
-
-      {/* Модалка підтвердження видалення */}
-      {canDelete && (
-        <ConfirmModal
-          isOpen={deleteModal}
-          title="Видалити кампанію?"
-          message={`Ви впевнені, що хочете видалити кампанію "${campaign.title}"? Всі сесії кампанії також будуть видалені. Цю дію неможливо відмінити.`}
-          variant="danger"
-          onConfirm={handleDelete}
-          onCancel={() => setDeleteModal(false)}
-        />
-      )}
 
       <ConfirmModal
         isOpen={finishModal}
