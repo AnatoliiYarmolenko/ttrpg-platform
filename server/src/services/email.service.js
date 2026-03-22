@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const { logger } = require('../lib/logger');
 
 /**
  * Email сервіс для відправлення листів (ресет пароля, верифікація, тощо)
@@ -17,7 +18,7 @@ class EmailService {
 
     try {
       if (emailProvider === 'disabled') {
-        console.log('⚠️ Email Service: Режим відлагодження (відправка листів вимкнена)');
+        logger.warn('Email Service: Режим відлагодження (відправка листів вимкнена)');
         return;
       }
 
@@ -29,7 +30,7 @@ class EmailService {
             pass: process.env.GMAIL_PASSWORD,
           }
         });
-        console.log('✅ Email Service: Gmail конфігурація активована');
+        logger.info('Email Service: Gmail конфігурація активована');
       } else if (emailProvider === 'smtp') {
         this.transporter = nodemailer.createTransport({
           host: process.env.SMTP_HOST,
@@ -40,19 +41,19 @@ class EmailService {
             pass: process.env.SMTP_PASSWORD,
           }
         });
-        console.log('✅ Email Service: SMTP конфігурація активована');
+        logger.info('Email Service: SMTP конфігурація активована');
       } else {
-        console.warn('⚠️ Email Service: Невідомий провайдер email');
+        logger.warn('Email Service: Невідомий провайдер email');
       }
 
       if (this.transporter) {
         this.transporter.verify((error) => {
-          if (error) console.error('⚠️ Email Service: Помилка з\'єднання:', error.message);
-          else console.log('✅ Email Service: З\'єднання успішне');
+          if (error) logger.error({ err: error }, 'Email Service: Помилка з\'єднання');
+          else logger.info('Email Service: З\'єднання успішне');
         });
       }
     } catch (error) {
-      console.error('❌ Email Service: Помилка ініціалізації:', error.message);
+      logger.error({ err: error }, 'Email Service: Помилка ініціалізації');
     }
   }
 
@@ -108,11 +109,7 @@ class EmailService {
    */
   async sendPasswordResetEmail(email, resetUrl, userName = 'Користувач') {
     if (process.env.EMAIL_PROVIDER === 'disabled') {
-        console.log('==========================================');
-        console.log('📧 MOCK EMAIL (Скидання пароля)');
-        console.log(`To: ${email}`);
-        console.log(`Link: ${resetUrl}`);
-        console.log('==========================================');
+        logger.info({ to: email, link: resetUrl }, 'MOCK EMAIL (Скидання пароля)');
         return { success: true, message: 'Email (Mock) успішно емульовано' };
     }
 
@@ -149,10 +146,10 @@ class EmailService {
         subject: '🔐 Скидання пароля - TTRPG Platform',
         html: html,
       });
-      console.log(`✅ Email надіслано: ${email} (ID: ${info.messageId})`);
+      logger.info({ to: email, messageId: info.messageId }, 'Email надіслано');
       return { success: true, message: 'Email успішно надіслано' };
     } catch (error) {
-      console.error(`❌ Помилка надсилання:`, error.message);
+      logger.error({ err: error, to: email }, 'Помилка надсилання email');
       return { success: false, message: 'Помилка при надсиланні email' };
     }
   }
@@ -162,11 +159,7 @@ class EmailService {
    */
   async sendEmailVerificationEmail(email, verificationUrl, userName = 'Користувач') {
     if (process.env.EMAIL_PROVIDER === 'disabled') {
-        console.log('==========================================');
-        console.log('📧 MOCK EMAIL (Верифікація)');
-        console.log(`To: ${email}`);
-        console.log(`Link: ${verificationUrl}`);
-        console.log('==========================================');
+        logger.info({ to: email, link: verificationUrl }, 'MOCK EMAIL (Верифікація)');
         return { success: true, message: 'Email (Mock) успішно емульовано' };
     }
 
@@ -198,10 +191,10 @@ class EmailService {
         subject: '✅ Підтвердження реєстрації - TTRPG Platform',
         html: html,
       });
-      console.log(`✅ Email верифікації надіслано: ${email} (ID: ${info.messageId})`);
+      logger.info({ to: email, messageId: info.messageId }, 'Email верифікації надіслано');
       return { success: true, message: 'Email верифікації надіслано' };
     } catch (error) {
-      console.error(`❌ Помилка надсилання:`, error.message);
+      logger.error({ err: error, to: email }, 'Помилка надсилання email верифікації');
       return { success: false, message: 'Помилка при надсиланні email' };
     }
   }
@@ -211,11 +204,7 @@ class EmailService {
    */
   async sendEmailChangeConfirmation(newEmail, confirmUrl, userName = 'Користувач') {
     if (process.env.EMAIL_PROVIDER === 'disabled') {
-        console.log('==========================================');
-        console.log('📧 MOCK EMAIL (Зміна email)');
-        console.log(`To: ${newEmail}`);
-        console.log(`Link: ${confirmUrl}`);
-        console.log('==========================================');
+        logger.info({ to: newEmail, link: confirmUrl }, 'MOCK EMAIL (Зміна email)');
         return { success: true, message: 'Email (Mock) успішно емульовано' };
     }
 
@@ -247,10 +236,10 @@ class EmailService {
         subject: '📧 Підтвердження зміни Email - TTRPG Platform',
         html: html,
       });
-      console.log(`✅ Email підтвердження зміни надіслано: ${newEmail} (ID: ${info.messageId})`);
+      logger.info({ to: newEmail, messageId: info.messageId }, 'Email підтвердження зміни надіслано');
       return { success: true, message: 'Email підтвердження надіслано' };
     } catch (error) {
-      console.error(`❌ Помилка надсилання:`, error.message);
+      logger.error({ err: error, to: newEmail }, 'Помилка надсилання email підтвердження зміни');
       return { success: false, message: 'Помилка при надсиланні email' };
     }
   }

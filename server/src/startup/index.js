@@ -14,6 +14,7 @@ const {
   shutdownCleanupJobs,
 } = require('./cleanup');
 const { setupStaticFiles } = require('./static');
+const { httpLogger } = require('../lib/logger');
 
 module.exports = {
   // Migrations
@@ -22,6 +23,7 @@ module.exports = {
   
   // CORS
   createCorsMiddleware,
+  httpLogger,
   
   // Cleanup jobs
   initAllCleanupJobs,

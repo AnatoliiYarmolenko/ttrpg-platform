@@ -4,6 +4,7 @@
 
 const express = require('express');
 const path = require('path');
+const { logger } = require('../lib/logger');
 
 /**
  * Налаштовує статичні файли для Express додатку
@@ -27,7 +28,7 @@ function setupStaticFiles(app, options = {}) {
   // Статична папка для завантажених файлів (аватари тощо)
   app.use(uploadsRoute, express.static(absoluteUploadsPath));
 
-  console.log(`Статичні файли налаштовано: ${uploadsRoute} -> ${absoluteUploadsPath}`);
+  logger.info({ uploadsRoute, absoluteUploadsPath }, 'Статичні файли налаштовано');
 }
 
 module.exports = {

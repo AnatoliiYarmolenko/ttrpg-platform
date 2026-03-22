@@ -1,5 +1,7 @@
 FROM node:22-alpine
 
+ARG INSTALL_DEV_DEPS=true
+
 WORKDIR /app
 
 COPY package*.json ./
@@ -17,6 +19,10 @@ ENV DATABASE_URL="postgresql://johndoe:randompassword@localhost:5432/mydb?schema
 # Генеруємо Prisma Client
 RUN npx prisma generate
 
+# Опційно видаляємо dev-залежності для production image.
+# Для локального docker-compose (dev) залишаємо їх, щоб працював pino-pretty.
+RUN if [ "$INSTALL_DEV_DEPS" = "false" ]; then npm prune --omit=dev; fi
+
 EXPOSE 5000
 
-CMD ["npm", "run", "dev"]
+CMD ["node", "index.js"]

@@ -3,6 +3,7 @@
  * Formats validation errors (from validation.middleware) and general errors
  */
 const { AppError, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } = require('../constants/errors');
+const { logger } = require('../lib/logger');
 
 const errorHandler = (err, req, res, next) => {
   // 1. Якщо це AppError - використовуємо його структуру
@@ -14,14 +15,14 @@ const errorHandler = (err, req, res, next) => {
     
     // Логуємо серверні помилки
     if (err.status >= 500) {
-      console.error('Server Error:', {
+      logger.error({
         code: err.code,
         message: err.message,
         stack: err.stack,
         timestamp: err.timestamp,
         path: req.path,
         method: req.method,
-      });
+      }, 'Server Error');
     }
     
     return res.status(err.status).json(err.toJSON());
@@ -45,13 +46,13 @@ const errorHandler = (err, req, res, next) => {
 
   // 5. Логуємо детальну помилку на сервері
   if (status >= 500) {
-    console.error('Server Error:', {
+    logger.error({
       message: err.message,
       stack: err.stack,
       timestamp: new Date().toISOString(),
       path: req.path,
       method: req.method,
-    });
+    }, 'Server Error');
   }
 
   // 6. Якщо є деталі валідації — повертаємо їх у стандартизованому виді

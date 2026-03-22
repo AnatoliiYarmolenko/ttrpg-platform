@@ -37,7 +37,7 @@ services:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
       REDIS_URL: ${REDIS_URL:-redis://ttrpg_redis:6379}
       PORT: ${SERVER_PORT:-5000}
-      NODE_ENV: ${NODE_ENV:-production}
+      NODE_ENV: ${NODE_ENV:-development}
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
       TRUST_PROXY: ${TRUST_PROXY:-1}
       FRONTEND_URL: ${FRONTEND_URL:-https://app.example.com}
@@ -59,9 +59,6 @@ services:
       - db
       - redis
     volumes:
-      # Це "дзеркало": зміни в коді на комп'ютері миттєво з'являться в контейнері
-      - ./server:/app
-      - /app/node_modules
       # Зберігаємо завантажені файли (аватари) між перезапусками
       - uploads_data:/app/uploads
 
@@ -81,4 +78,4 @@ services:
 volumes:
   db_data:
   uploads_data:
-  redis_data:
+  redis_data:

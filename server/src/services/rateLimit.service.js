@@ -11,6 +11,7 @@
 
 const { redis } = require('../lib/redis');
 const { createError } = require('../constants/errors');
+const { logger } = require('../lib/logger');
 
 // Конфігурація rate limit для різних типів операцій
 const RATE_LIMIT_CONFIG = {
@@ -64,7 +65,7 @@ async function checkRateLimit(type, identifier, customConfig = null) {
   const config = customConfig || RATE_LIMIT_CONFIG[type];
 
   if (!config) {
-    console.warn(`[Rate Limit] Невідомий тип операції: ${type}`);
+    logger.warn({ type }, '[Rate Limit] Невідомий тип операції');
     return true; // Якщо немає конфігурації — пропускаємо
   }
 
@@ -106,7 +107,7 @@ async function checkRateLimit(type, identifier, customConfig = null) {
       throw err;
     }
     // При помилці Redis — fail-open (не блокуємо запит)
-    console.error(`[Rate Limit] Redis помилка для ${type}:${identifier}:`, err.message);
+    logger.error({ err, type, identifier }, '[Rate Limit] Redis помилка');
     return true;
   }
 }
@@ -132,7 +133,7 @@ async function resetRateLimit(type, identifier) {
       .del(getBlockedKey(type, identifier))
       .exec();
   } catch (err) {
-    console.error(`[Rate Limit] Redis помилка resetRateLimit(${type}:${identifier}):`, err.message);
+    logger.error({ err, type, identifier }, '[Rate Limit] Redis помилка resetRateLimit');
   }
 }
 

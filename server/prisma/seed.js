@@ -1,6 +1,7 @@
 require('dotenv').config(); // <-- Додай це сюди
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
+const { logger } = require('../src/lib/logger');
 
 const prisma = new PrismaClient();
 
@@ -224,7 +225,7 @@ async function createDynamicWeekSessions(usersByKey, campaigns) {
 }
 
 async function main() {
-  console.log('🌱 Запуск MVP сидингу...');
+  logger.info('Запуск MVP сидингу');
   const passwordHash = await bcrypt.hash(TEST_PASSWORD, 10);
 
   await cleanupPreviousSeedData();
@@ -232,9 +233,12 @@ async function main() {
   const campaigns = await createCampaigns(usersByKey);
   await createDynamicWeekSessions(usersByKey, campaigns);
 
-  console.log('✅ Сидинг завершено! Календар на цей тиждень заповнено.');
+  logger.info('Сидинг завершено! Календар на цей тиждень заповнено.');
 }
 
 main()
-  .catch((e) => { console.error(e); process.exit(1); })
+  .catch((e) => {
+    logger.error({ err: e }, 'Помилка сидингу');
+    process.exit(1);
+  })
   .finally(async () => { await prisma.$disconnect(); });

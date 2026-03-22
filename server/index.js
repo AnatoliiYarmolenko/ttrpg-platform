@@ -8,6 +8,7 @@ require('./src/config/config');
 
 const { prisma } = require('./src/lib/prisma');
 const { redis } = require('./src/lib/redis');
+const { logger } = require('./src/lib/logger');
 const { port } = require('./src/config/config');
 const { createApp } = require('./src/app');
 
@@ -27,7 +28,7 @@ initMigrations();
 redis.connect().catch((err) => {
   // Некритична помилка: сервер запуститься без Redis,
   // але blacklist і rate-limit будуть тимчасово недоступні
-  console.error('⚠️ Redis недоступний при старті:', err.message);
+  logger.error({ err }, 'Redis недоступний при старті');
 });
 
 // Ініціалізуємо cleanup jobs (токени та rate limits)
@@ -38,16 +39,16 @@ const app = createApp();
 
 // ========== START SERVER ==========
 const server = app.listen(port, () => {
-  console.log(`✅ Сервер запущено на порту ${port}`);
+  logger.info({ port }, 'Сервер запущено');
 });
 
 // ========== GRACEFUL SHUTDOWN ==========
 async function gracefulShutdown(signal) {
-  console.log(`\n🛑 ${signal} отримано. Завершуємо роботу...`);
+  logger.warn({ signal }, 'Отримано сигнал завершення. Завершуємо роботу');
   
   // Зупиняємо прийом нових з'єднань
   server.close(async () => {
-    console.log('📡 HTTP сервер закрито');
+    logger.info('HTTP сервер закрито');
     
     // Очищаємо ресурси
     await shutdownCleanupJobs();
@@ -55,18 +56,18 @@ async function gracefulShutdown(signal) {
       try {
         await redis.quit();
       } catch (err) {
-        console.warn('⚠️ Не вдалося коректно закрити Redis:', err.message);
+        logger.warn({ err }, 'Не вдалося коректно закрити Redis');
       }
     }
     await prisma.$disconnect();
     
-    console.log('✅ Graceful shutdown завершено');
+    logger.info('Graceful shutdown завершено');
     process.exit(0);
   });
   
   // Якщо shutdown займає більше 10 секунд - примусово завершуємо
   setTimeout(() => {
-    console.error('⚠️ Примусове завершення через timeout');
+    logger.error('Примусове завершення через timeout');
     process.exit(1);
   }, 10000);
 }

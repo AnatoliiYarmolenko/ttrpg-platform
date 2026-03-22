@@ -1,4 +1,5 @@
 const Redis = require('ioredis');
+const { logger } = require('./logger');
 
 /**
  * Redis клієнт (singleton).
@@ -38,24 +39,24 @@ const redis = new Redis(REDIS_URL, {
 });
 
 redis.on('connect', () => {
-  console.log('✅ Redis підключено');
+  logger.info('Redis підключено');
 });
 
 redis.on('ready', () => {
-  console.log('✅ Redis готовий до роботи');
+  logger.info('Redis готовий до роботи');
 });
 
 redis.on('error', (err) => {
   // Логуємо, але не кидаємо — сервер продовжує роботу
-  console.error(`❌ Redis помилка: ${err.message}`);
+  logger.error({ err }, 'Redis помилка');
 });
 
 redis.on('close', () => {
-  console.warn('⚠️ Redis з\'єднання закрито');
+  logger.warn('Redis з\'єднання закрито');
 });
 
 redis.on('reconnecting', () => {
-  console.warn('🔄 Redis перепідключення...');
+  logger.warn('Redis перепідключення');
 });
 
 /**

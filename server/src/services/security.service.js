@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { createError, AppError, ERROR_CODES } = require('../constants/errors');
 const { markUserAsDeleted } = require('../store/deletedUsers');
+const { logger } = require('../lib/logger');
 
 // Поля для власного профілю (для відповідей)
 const PRIVATE_PROFILE_FIELDS = {
@@ -96,7 +97,7 @@ async function changePassword(userId, currentPassword, newPassword) {
       where: { userId } 
     });
     
-    console.log(`[Security] Інвалідовано ${deletedTokens.count} сесій після зміни пароля для userId=${userId}`);
+    logger.info({ userId, invalidatedSessions: deletedTokens.count }, '[Security] Інвалідовано сесії після зміни пароля');
   });
 
   return true;
@@ -238,7 +239,7 @@ async function confirmEmailChange(token) {
     });
   });
 
-  console.log(`[Security] Email змінено для userId=${record.userId}: ${record.newEmail}`);
+  logger.info({ userId: record.userId, newEmail: record.newEmail }, '[Security] Email змінено');
 
   return updatedUser;
 }
@@ -359,12 +360,15 @@ async function deleteAccount(userId, password) {
       const { deleteOldAvatar } = require('./upload.service');
       await deleteOldAvatar(user.avatarUrl);
     } catch (e) {
-      console.error("Помилка видалення аватара:", e);
+      logger.error({ err: e }, 'Помилка видалення аватара');
       // Не кидаємо помилку, бо акаунт вже анонімізовано в БД
     }
   }
 
-  console.log(`[Security] Акаунт анонімізовано: ${user.username} (${user.email}) → ${anonymousUsername}`);
+  logger.info(
+    { userId, oldUsername: user.username, oldEmail: user.email, anonymousUsername },
+    '[Security] Акаунт анонімізовано'
+  );
 
   return true;
 }

@@ -1,4 +1,5 @@
 require('dotenv').config();
+const { logger } = require('../lib/logger');
 
 /**
  * Централізована конфігурація змінних оточення
@@ -20,19 +21,18 @@ const corsAllowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || process.env.FRON
 const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
 
 if (missingVars.length > 0) {
-  console.error('❌ ПОМИЛКА: Відсутні обов\'язкові змінні оточення:');
+  logger.error('ПОМИЛКА: Відсутні обов\'язкові змінні оточення');
   missingVars.forEach(varName => {
-    console.error(`   - ${varName}`);
+    logger.error({ varName }, 'Відсутня змінна оточення');
   });
-  console.error('\n💡 Створіть файл .env в директорії server/ з необхідними змінними.');
-  console.error('   Приклад: дивіться .env.example\n');
+  logger.error('Створіть файл .env в директорії server/ з необхідними змінними. Приклад: .env.example');
   process.exit(1);
 }
 
 
 // Перевірка мінімальної довжини JWT_SECRET для безпеки
 if (process.env.JWT_SECRET.length < 32) {
-  console.warn('⚠️  УВАГА: JWT_SECRET занадто короткий (менше 32 символів). Рекомендується використовувати мінімум 32 символи для безпеки.');
+  logger.warn('УВАГА: JWT_SECRET занадто короткий (менше 32 символів). Рекомендується мінімум 32 символи.');
 }
 
 if (nodeEnv === 'production') {
@@ -45,17 +45,17 @@ if (nodeEnv === 'production') {
   ]);
 
   if (process.env.JWT_SECRET.length < 32 || weakJwtSecrets.has(process.env.JWT_SECRET.toLowerCase())) {
-    console.error('❌ ПОМИЛКА: Для production потрібен сильний JWT_SECRET (мінімум 32 символи, не шаблонний).');
+    logger.error('ПОМИЛКА: Для production потрібен сильний JWT_SECRET (мінімум 32 символи, не шаблонний).');
     process.exit(1);
   }
 
   if (!process.env.COOKIE_SECRET) {
-    console.error('❌ ПОМИЛКА: Для production обов\'язково вкажіть COOKIE_SECRET (окремий від JWT_SECRET).');
+    logger.error('ПОМИЛКА: Для production обов\'язково вкажіть COOKIE_SECRET (окремий від JWT_SECRET).');
     process.exit(1);
   }
 
   if (!process.env.CORS_ALLOWED_ORIGINS) {
-    console.error('❌ ПОМИЛКА: Для production обов\'язково вкажіть CORS_ALLOWED_ORIGINS.');
+    logger.error('ПОМИЛКА: Для production обов\'язково вкажіть CORS_ALLOWED_ORIGINS.');
     process.exit(1);
   }
 
@@ -69,7 +69,7 @@ if (nodeEnv === 'production') {
   });
 
   if (hasLocalOrigin) {
-    console.error('❌ ПОМИЛКА: CORS_ALLOWED_ORIGINS для production не може містити localhost/127.0.0.1/::1.');
+    logger.error('ПОМИЛКА: CORS_ALLOWED_ORIGINS для production не може містити localhost/127.0.0.1/::1.');
     process.exit(1);
   }
 }

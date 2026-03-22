@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const { logger } = require('./logger');
 
 /**
  * Singleton Prisma Client
@@ -15,9 +16,9 @@ try {
       : ['error'],
   });
   
-  console.log('Prisma Client ініціалізовано');
+  logger.info('Prisma Client ініціалізовано');
 } catch (error) {
-  console.error('Критична помилка ініціалізації Prisma Client:', error);
+  logger.fatal({ err: error }, 'Критична помилка ініціалізації Prisma Client');
   process.exit(1); // Fail-fast: зупиняємо процес
 }
 

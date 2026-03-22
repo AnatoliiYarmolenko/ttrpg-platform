@@ -8,6 +8,7 @@ const { checkRefreshRateLimit } = require('./rateLimit.service');
 const { createError, AppError, ERROR_CODES } = require('../constants/errors');
 const { isUserDeleted } = require('../store/deletedUsers');
 const { redis } = require('../lib/redis');
+const { logger } = require('../lib/logger');
 
 function normalizeEmail(email) {
   return typeof email === 'string' ? email.trim().toLowerCase() : email;
@@ -318,7 +319,7 @@ class AuthService {
     const prismaClient = prisma;
     
     if (!prismaClient || !prismaClient.refreshToken) {
-      console.error('Prisma Client або модель refreshToken недоступні');
+      logger.error('Prisma Client або модель refreshToken недоступні');
       throw createError.serverError();
     }
 
@@ -362,7 +363,7 @@ class AuthService {
       if (err && err.status === 429) {
         throw err;
       }
-      console.error(`[Auth] Redis lock недоступний для userId=${stored.userId}:`, err.message);
+      logger.error({ err, userId: stored.userId }, '[Auth] Redis lock недоступний');
     }
 
     try {
@@ -429,7 +430,7 @@ class AuthService {
         try {
           await releaseRefreshLock(stored.userId, lockValue);
         } catch (err) {
-          console.error(`[Auth] Не вдалося звільнити Redis lock для userId=${stored.userId}:`, err.message);
+          logger.error({ err, userId: stored.userId }, '[Auth] Не вдалося звільнити Redis lock');
         }
       }
     }

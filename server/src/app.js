@@ -20,7 +20,7 @@ const searchRoutes = require('./routes/search.routes');
 const { errorHandler } = require('./middlewares/error.middleware');
 
 // Startup modules
-const { createCorsMiddleware, setupStaticFiles } = require('./startup');
+const { createCorsMiddleware, setupStaticFiles, httpLogger } = require('./startup');
 
 function resolveTrustProxySetting() {
   const raw = process.env.TRUST_PROXY;
@@ -55,6 +55,9 @@ function createApp() {
 
   // Налаштування CORS для роботи з cookies
   app.use(createCorsMiddleware());
+
+  // Структуроване логування HTTP запитів (reqId, statusCode, responseTime)
+  app.use(httpLogger);
 
   // Базові security headers.
   // CORP вимикаємо, щоб не ламати завантаження аватарів з окремого фронтенд origin.

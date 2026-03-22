@@ -6,6 +6,7 @@
 
 const tokenCleanupService = require('../services/tokenCleanup.service');
 const sessionCleanupService = require('../services/sessionCleanup.service');
+const { logger } = require('../lib/logger');
 
 // Інтервали для cleanup jobs
 const INITIAL_TOKEN_CLEANUP_DELAY = 30000; // 30 секунд
@@ -23,7 +24,7 @@ function initTokenCleanup(schedule) {
 
   // Виконуємо першу очистку при старті сервера (з затримкою)
   initialCleanupTimeout = setTimeout(async () => {
-    console.log('[Startup] Виконуємо першу очистку токенів при старті...');
+    logger.info('[Startup] Виконуємо першу очистку токенів при старті');
     await tokenCleanupService.performFullCleanup();
   }, INITIAL_TOKEN_CLEANUP_DELAY);
 }

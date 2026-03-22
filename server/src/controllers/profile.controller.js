@@ -1,5 +1,6 @@
 const profileService = require('../services/profile.service');
 const { processAndSaveAvatar, deleteOldAvatar } = require('../services/upload.service');
+const { logger } = require('../lib/logger');
 
 class ProfileController {
   /**
@@ -12,7 +13,9 @@ class ProfileController {
       const profile = await profileService.getMyProfile(userId);
       
       // Оновлюємо lastActiveAt у фоні (не чекаємо)
-      profileService.updateLastActive(userId).catch(console.error);
+      profileService.updateLastActive(userId).catch((err) => {
+        logger.error({ err, userId }, 'Не вдалося оновити lastActive');
+      });
       
       res.json({ success: true, profile });
     } catch (error) {

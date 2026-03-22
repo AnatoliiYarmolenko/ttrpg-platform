@@ -1,4 +1,5 @@
 const { redis } = require('../lib/redis');
+const { logger } = require('../lib/logger');
 
 /**
  * Blacklist видалених акаунтів — тепер у Redis.
@@ -24,7 +25,7 @@ async function markUserAsDeleted(userId) {
     // Не кидаємо помилку — акаунт вже анонімізовано в БД.
     // blacklist через in-memory Set як fallback не потрібен:
     // при помилці Redis краще просто залогувати.
-    console.error(`[DeletedUsers] Redis помилка markUserAsDeleted(${userId}):`, err.message);
+    logger.error({ err, userId }, '[DeletedUsers] Redis помилка markUserAsDeleted');
   }
 }
 
@@ -40,7 +41,7 @@ async function isUserDeleted(userId) {
   } catch (err) {
     // При помилці Redis — fail-open (не блокуємо користувача).
     // Це менший ризик, ніж заблокувати всіх при недоступному Redis.
-    console.error(`[DeletedUsers] Redis помилка isUserDeleted(${userId}):`, err.message);
+    logger.error({ err, userId }, '[DeletedUsers] Redis помилка isUserDeleted');
     return false;
   }
 }

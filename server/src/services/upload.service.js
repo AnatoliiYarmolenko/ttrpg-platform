@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const { createError } = require('../constants/errors');
+const { logger } = require('../lib/logger');
 
 // Папка для зберігання аватарів
 const UPLOAD_DIR = path.join(__dirname, '../../uploads/avatars');
@@ -95,10 +96,10 @@ async function deleteOldAvatar(avatarUrl) {
   try {
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
-      console.log(`[Upload] Видалено старий аватар: ${fileName}`);
+      logger.info({ fileName }, '[Upload] Видалено старий аватар');
     }
   } catch (error) {
-    console.error(`[Upload] Помилка видалення аватара: ${error.message}`);
+    logger.error({ err: error }, '[Upload] Помилка видалення аватара');
   }
 }
 

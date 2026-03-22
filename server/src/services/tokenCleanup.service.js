@@ -1,5 +1,6 @@
 const { prisma } = require('../lib/prisma');
 const cron = require('node-cron');
+const { logger } = require('../lib/logger');
 
 class TokenCleanupService {
   constructor() {
@@ -26,9 +27,10 @@ class TokenCleanupService {
 
       const deletedCount = result.count;
       const timestamp = new Date().toISOString();
-      
-      console.log(
-        `[${timestamp}] ✅ Token Cleanup: Видалено ${deletedCount} прострочених refresh токенів`
+
+      logger.info(
+        { deletedCount, operation: 'cleanupExpiredTokens' },
+        'Token Cleanup: refresh токени видалено'
       );
 
       return {
@@ -39,9 +41,7 @@ class TokenCleanupService {
       };
     } catch (error) {
       const timestamp = new Date().toISOString();
-      console.error(
-        `[${timestamp}] ❌ Token Cleanup Error: ${error.message}`
-      );
+      logger.error({ err: error, operation: 'cleanupExpiredTokens' }, 'Token Cleanup Error');
 
       return {
         success: false,
@@ -75,8 +75,9 @@ class TokenCleanupService {
 
       const deletedCount = result.count;
 
-      console.log(
-        `[${timestamp}] 🧹 Revoked Token Cleanup: Видалено ${deletedCount} старих відкликаних токенів`
+      logger.info(
+        { deletedCount, daysOld, operation: 'cleanupRevokedTokens' },
+        'Token Cleanup: revoked токени видалено'
       );
 
       return {
@@ -85,9 +86,7 @@ class TokenCleanupService {
         timestamp,
       };
     } catch (error) {
-      console.error(
-        `[${timestamp}] ❌ Revoked Token Cleanup Error: ${error.message}`
-      );
+      logger.error({ err: error, daysOld, operation: 'cleanupRevokedTokens' }, 'Revoked Token Cleanup Error');
       return {
         success: false,
         error: error.message,
@@ -99,7 +98,7 @@ class TokenCleanupService {
    * Повна очистка (прострочені + старі відкликані)
    */
   async performFullCleanup() {
-    console.log('[Token Cleanup] 🔄 Початок повної очистки токенів...');
+    logger.info('[Token Cleanup] Початок повної очистки токенів');
     
     const expiredResult = await this.cleanupExpiredTokens();
     const revokedResult = await this.cleanupRevokedTokens();
@@ -123,13 +122,13 @@ class TokenCleanupService {
    */
   startCleanupJob(schedule = '0 2 * * *') {
     if (this.cronJob) {
-      console.warn('⚠️ Cleanup job вже запущено!');
+      logger.warn('Cleanup job вже запущено');
       return;
     }
 
     this.cronJob = cron.schedule(schedule, async () => {
       if (this.isRunning) {
-        console.warn('⚠️ Попередня очистка ще виконується, пропускаємо...');
+        logger.warn('Попередня очистка ще виконується, пропускаємо');
         return;
       }
 
@@ -137,13 +136,13 @@ class TokenCleanupService {
       try {
         await this.performFullCleanup();
       } catch (error) {
-        console.error('❌ Помилка в cleanup job:', error);
+        logger.error({ err: error }, 'Помилка в cleanup job');
       } finally {
         this.isRunning = false;
       }
     });
 
-    console.log(`✅ Token Cleanup Job запущено з розкладом: "${schedule}"`);
+    logger.info({ schedule }, 'Token Cleanup Job запущено');
     return this.cronJob;
   }
 
@@ -154,7 +153,7 @@ class TokenCleanupService {
     if (this.cronJob) {
       this.cronJob.stop();
       this.cronJob = null;
-      console.log('🛑 Token Cleanup Job зупинено');
+      logger.info('Token Cleanup Job зупинено');
     }
   }
 
@@ -191,7 +190,7 @@ class TokenCleanupService {
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
-      console.error('❌ Помилка отримання статистики:', error.message);
+      logger.error({ err: error }, 'Помилка отримання статистики токенів');
       return { error: error.message };
     }
   }
@@ -205,7 +204,7 @@ class TokenCleanupService {
       await this.prisma.$disconnect();
       this.prisma = null;
     }
-    console.log('✅ Token Cleanup Service відключено');
+    logger.info('Token Cleanup Service відключено');
   }
 }
 

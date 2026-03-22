@@ -4,6 +4,7 @@
 
 const cors = require('cors');
 const { corsAllowedOrigins, nodeEnv } = require('../config/config');
+const { logger } = require('../lib/logger');
 
 const LOCALHOST_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1']);
 
@@ -51,7 +52,7 @@ function createCorsMiddleware() {
         return callback(null, true);
       }
 
-      console.warn('Blocked CORS origin:', origin);
+      logger.warn({ origin }, 'Blocked CORS origin');
       return callback(new Error('Не дозволено CORS'));
     },
     credentials: true, // Дозволяємо відправку cookies

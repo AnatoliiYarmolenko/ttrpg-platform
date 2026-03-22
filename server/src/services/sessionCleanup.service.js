@@ -1,5 +1,6 @@
 const { prisma } = require('../lib/prisma');
 const cron = require('node-cron');
+const { logger } = require('../lib/logger');
 
 class SessionCleanupService {
   constructor() {
@@ -55,8 +56,9 @@ class SessionCleanupService {
         },
       });
 
-      console.log(
-        `[${timestamp}] Session Cleanup: Автоскасовано ${result.count} запланованих сесій старше ${daysOld} днів`
+      logger.info(
+        { canceledCount: result.count, daysOld, operation: 'autoCancelStalePlannedSessions' },
+        'Session Cleanup: автоскасовано застарілі PLANNED сесії'
       );
 
       return {
@@ -66,7 +68,7 @@ class SessionCleanupService {
         timestamp,
       };
     } catch (error) {
-      console.error(`[${timestamp}] Session Cleanup Error: ${error.message}`);
+      logger.error({ err: error, daysOld, operation: 'autoCancelStalePlannedSessions' }, 'Session Cleanup Error');
       return {
         success: false,
         error: error.message,
@@ -115,8 +117,9 @@ class SessionCleanupService {
         data: { status: 'CANCELED' },
       });
 
-      console.log(
-        `[${timestamp}] Session Cleanup: Автоскасовано ${result.count} прострочених PLANNED сесій без CONFIRMED GM`
+      logger.info(
+        { canceledCount: result.count, scannedCount: sessionsWithoutGm.length, operation: 'autoCancelSessionsWithoutGm' },
+        'Session Cleanup: автоскасовано PLANNED сесії без CONFIRMED GM'
       );
 
       return {
@@ -126,7 +129,7 @@ class SessionCleanupService {
         timestamp,
       };
     } catch (error) {
-      console.error(`[${timestamp}] Session Cleanup Without GM Error: ${error.message}`);
+      logger.error({ err: error, operation: 'autoCancelSessionsWithoutGm' }, 'Session Cleanup Without GM Error');
       return {
         success: false,
         error: error.message,
@@ -174,8 +177,9 @@ class SessionCleanupService {
         },
       });
 
-      console.log(
-        `[${timestamp}] Session Cleanup: Автозавершено ${updateResult.count} ACTIVE сесій (soft auto-finish)`
+      logger.info(
+        { finishedCount: updateResult.count, scannedCount: activeSessions.length, operation: 'autoFinishStaleActiveSessions' },
+        'Session Cleanup: автозавершено ACTIVE сесії (soft auto-finish)'
       );
 
       return {
@@ -185,7 +189,7 @@ class SessionCleanupService {
         timestamp,
       };
     } catch (error) {
-      console.error(`[${timestamp}] Session Auto-Finish Error: ${error.message}`);
+      logger.error({ err: error, operation: 'autoFinishStaleActiveSessions' }, 'Session Auto-Finish Error');
       return {
         success: false,
         error: error.message,
@@ -234,8 +238,9 @@ class SessionCleanupService {
         where: { id: { in: canceledSessionIds } },
       });
 
-      console.log(
-        `[${timestamp}] Session Cleanup: Видалено ${deleteResult.count} CANCELED сесій старше ${daysOld} днів`
+      logger.info(
+        { deletedCount: deleteResult.count, scannedCount: canceledSessions.length, daysOld, operation: 'autoDeleteCanceledSessions' },
+        'Session Cleanup: видалено застарілі CANCELED сесії'
       );
 
       return {
@@ -246,7 +251,7 @@ class SessionCleanupService {
         timestamp,
       };
     } catch (error) {
-      console.error(`[${timestamp}] Session Cleanup Delete CANCELED Error: ${error.message}`);
+      logger.error({ err: error, daysOld, operation: 'autoDeleteCanceledSessions' }, 'Session Cleanup Delete CANCELED Error');
       return {
         success: false,
         error: error.message,
@@ -256,7 +261,7 @@ class SessionCleanupService {
   }
 
   async performCleanup() {
-    console.log('[Session Cleanup] Початок cleanup запланованих сесій...');
+    logger.info('[Session Cleanup] Початок cleanup запланованих сесій');
 
     const autoCancelWithoutGmResult = await this.autoCancelSessionsWithoutGm();
     const autoCancelResult = await this.autoCancelStalePlannedSessions(30);
@@ -274,13 +279,13 @@ class SessionCleanupService {
 
   startCleanupJob(schedule = '*/15 * * * *') {
     if (this.cronJob) {
-      console.warn('Session Cleanup job вже запущено!');
+      logger.warn('Session Cleanup job вже запущено');
       return;
     }
 
     this.cronJob = cron.schedule(schedule, async () => {
       if (this.isRunning) {
-        console.warn('Попередній Session Cleanup ще виконується, пропускаємо...');
+        logger.warn('Попередній Session Cleanup ще виконується, пропускаємо');
         return;
       }
 
@@ -288,13 +293,13 @@ class SessionCleanupService {
       try {
         await this.performCleanup();
       } catch (error) {
-        console.error('Помилка в session cleanup job:', error);
+        logger.error({ err: error }, 'Помилка в session cleanup job');
       } finally {
         this.isRunning = false;
       }
     });
 
-    console.log(`Session Cleanup Job запущено з розкладом: "${schedule}"`);
+    logger.info({ schedule }, 'Session Cleanup Job запущено');
     return this.cronJob;
   }
 
@@ -302,13 +307,13 @@ class SessionCleanupService {
     if (this.cronJob) {
       this.cronJob.stop();
       this.cronJob = null;
-      console.log('Session Cleanup Job зупинено');
+      logger.info('Session Cleanup Job зупинено');
     }
   }
 
   async disconnect() {
     this.stopCleanupJob();
-    console.log('Session Cleanup Service відключено');
+    logger.info('Session Cleanup Service відключено');
   }
 }
 
