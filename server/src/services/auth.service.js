@@ -7,6 +7,7 @@ const emailService = require('./email.service');
 const { checkRefreshRateLimit } = require('./rateLimit.service');
 const { createError, AppError, ERROR_CODES } = require('../constants/errors');
 const { isUserDeleted } = require('../store/deletedUsers');
+const { redis } = require('../lib/redis');
 
 function normalizeEmail(email) {
   return typeof email === 'string' ? email.trim().toLowerCase() : email;
@@ -38,35 +39,43 @@ function createRawAndHashedToken(bytes = 32) {
   };
 }
 
-// Mutex для запобігання race conditions при refresh токенів
-// Зберігає блокування для кожного userId
-const refreshMutexes = new Map();
-
 /**
- * Отримує або створює mutex для користувача
- * Повертає функцію, яка чекає на звільнення блокування
+ * Отримує distributed lock для refresh операції конкретного користувача.
+ * Використовує Redis SET NX PX — атомарна операція "встанови якщо не існує".
+ *
+ * @param {number} userId
+ * @param {number} ttlMs - TTL блокування в мілісекундах (за замовчуванням 5 секунд)
+ * @returns {Promise<string|null>} lockValue (для release) або null якщо lock зайнятий
  */
-function getMutexForUser(userId) {
-  if (!refreshMutexes.has(userId)) {
-    refreshMutexes.set(userId, Promise.resolve());
-  }
-  return refreshMutexes.get(userId);
+async function acquireRefreshLock(userId, ttlMs = 5000) {
+  const lockKey = `lock:refresh:${userId}`;
+  // Унікальне значення щоб тільки власник lock міг його звільнити
+  const lockValue = crypto.randomBytes(16).toString('hex');
+  // SET key value NX PX ttl — ставить ключ тільки якщо його ще немає
+  const result = await redis.set(lockKey, lockValue, 'NX', 'PX', ttlMs);
+  return result === 'OK' ? lockValue : null;
 }
 
 /**
- * Встановлює нове блокування для користувача
+ * Звільняє distributed lock тільки якщо він належить цьому власнику (через lockValue).
+ * Lua script гарантує атомарність перевірки + видалення.
+ *
+ * @param {number} userId
+ * @param {string} lockValue - значення отримане з acquireRefreshLock
  */
-function setMutexForUser(userId, promise) {
-  refreshMutexes.set(userId, promise);
-
-  // Очищаємо map після завершення актуального mutex для цього користувача,
-  // щоб уникати накопичення записів при великій кількості унікальних userId.
-  promise.finally(() => {
-    if (refreshMutexes.get(userId) === promise) {
-      refreshMutexes.delete(userId);
-    }
-  });
+async function releaseRefreshLock(userId, lockValue) {
+  const lockKey = `lock:refresh:${userId}`;
+  // Атомарно: перевір що value співпадає → тоді видали. Інакше нічого не роби.
+  const luaScript = `
+    if redis.call('get', KEYS[1]) == ARGV[1] then
+      return redis.call('del', KEYS[1])
+    else
+      return 0
+    end
+  `;
+  await redis.eval(luaScript, 1, lockKey, lockValue);
 }
+
 
 class AuthService {
   async verifyEmailToken(token) {
@@ -304,7 +313,7 @@ class AuthService {
     };
   }
 
-  // Обмін refresh токена на нові токени (ротація) з mutex для запобігання race conditions
+  // Обмін refresh токена на нові токени (ротація) з distributed lock через Redis
   async refreshTokens(oldRefreshToken) {
     const prismaClient = prisma;
     
@@ -313,7 +322,6 @@ class AuthService {
       throw createError.serverError();
     }
 
-    // Перевіряємо наявність refresh token (завантажуємо тільки потрібні поля)
     if (!oldRefreshToken) {
       throw createError.refreshTokenMissing();
     }
@@ -323,16 +331,10 @@ class AuthService {
       throw createError.refreshTokenInvalid();
     }
 
-    // Перший запит - отримуємо userId для блокування та rate limit перевірки
+    // Перший запит — отримуємо userId для блокування та rate limit перевірки
     let stored = await prismaClient.refreshToken.findFirst({ 
-      where: {
-        token: { in: tokenCandidates },
-      },
-      select: {
-        id: true,
-        userId: true,
-        expiresAt: true
-      }
+      where: { token: { in: tokenCandidates } },
+      select: { id: true, userId: true, expiresAt: true }
     });
     
     if (!stored) {
@@ -343,64 +345,68 @@ class AuthService {
       throw createError.refreshTokenExpired();
     }
 
-    // 🔥 RATE LIMITING - перевіряємо ліміт запитів для користувача
-    checkRefreshRateLimit(stored.userId);
+    // 🔥 RATE LIMITING — перевіряємо ліміт запитів для користувача
+    await checkRefreshRateLimit(stored.userId);
 
-    // 🔒 Отримуємо mutex для цього користувача
-    const currentMutex = getMutexForUser(stored.userId);
-    
-    // Створюємо нове блокування та встановлюємо його
-    const newMutex = currentMutex.then(async () => {
-      // ⚡ КРИТИЧНО: Перевіряємо токен ЗА НОВО після отримання блокування
+    // 🔒 Отримуємо distributed lock через Redis (SET NX PX)
+    // Якщо Redis тимчасово недоступний — продовжуємо без lock (fail-open)
+    // щоб не ламати refresh потік повністю.
+    let lockValue = null;
+    try {
+      lockValue = await acquireRefreshLock(stored.userId, 5000);
+      if (!lockValue) {
+        // Lock зайнятий — просто повертаємо помилку, клієнт може retry
+        throw createError.rateLimitExceeded(5);
+      }
+    } catch (err) {
+      if (err && err.status === 429) {
+        throw err;
+      }
+      console.error(`[Auth] Redis lock недоступний для userId=${stored.userId}:`, err.message);
+    }
+
+    try {
+      // ⚡ КРИТИЧНО: Перевіряємо токен ЗНОВУ після отримання блокування
       // (інша вкладка могла вже його видалити)
       const storedAgain = await prismaClient.refreshToken.findFirst({ 
-        where: {
-          token: { in: tokenCandidates },
-        },
-        select: {
-          id: true,
-          userId: true,
-          expiresAt: true
-        }
+        where: { token: { in: tokenCandidates } },
+        select: { id: true, userId: true, expiresAt: true }
       });
 
       if (!storedAgain) {
         throw createError.refreshTokenInvalid();
       }
 
-      // Очищаємо прострочені токени цього користувача (щоб не накопичувались між cron-запусками)
+      // Очищаємо прострочені токени цього користувача
       const now = new Date();
       await prismaClient.refreshToken.deleteMany({
         where: { userId: storedAgain.userId, expiresAt: { lt: now } },
       });
 
-      // Завантажуємо користувача (тільки потрібні поля)
+      // Завантажуємо користувача
       const user = await prismaClient.user.findUnique({ 
         where: { id: storedAgain.userId },
-        select: {
-          id: true,
-          username: true,
-          email: true,
-          role: true,
-        }
+        select: { id: true, username: true, email: true, role: true }
       });
       
       if (!user) {
         throw createError.userNotFound();
       }
 
-      // Перевіряємо blacklist анонімізованих акаунтів
-      if (isUserDeleted(user.id)) {
+      // Перевіряємо blacklist анонімізованих акаунтів (тепер async)
+      if (await isUserDeleted(user.id)) {
         throw createError.userNotFound();
       }
 
-      // Видаляємо старий refresh token (замість revoke, щоб не накопичувалися)
-      await prismaClient.refreshToken.delete({ 
-        where: { id: storedAgain.id }
-      });
+      // Видаляємо старий refresh token
+      await prismaClient.refreshToken.delete({ where: { id: storedAgain.id } });
 
       // Створюємо нові токени
-      const accessToken = jwt.sign({ id: user.id, username: user.username, role: user.role }, jwtSecret, { expiresIn: '15m' });
+      const accessToken = jwt.sign(
+        { id: user.id, username: user.username, role: user.role },
+        jwtSecret,
+        { expiresIn: '15m' }
+      );
       const { rawToken: newRefreshToken, tokenHash: newRefreshTokenHash } = createRawAndHashedToken(64);
       const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 днів
 
@@ -417,11 +423,16 @@ class AuthService {
       };
 
       return { accessToken, refreshToken: newRefreshToken, user: safeUser };
-    });
-
-    setMutexForUser(stored.userId, newMutex);
-    
-    return await newMutex;
+    } finally {
+      // Завжди звільняємо lock, якщо він був встановлений
+      if (lockValue) {
+        try {
+          await releaseRefreshLock(stored.userId, lockValue);
+        } catch (err) {
+          console.error(`[Auth] Не вдалося звільнити Redis lock для userId=${stored.userId}:`, err.message);
+        }
+      }
+    }
   }
 
   // Відкликати (revoke) refresh token

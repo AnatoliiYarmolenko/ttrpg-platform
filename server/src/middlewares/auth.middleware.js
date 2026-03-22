@@ -26,7 +26,7 @@ const authenticateToken = (req, res, next) => {
   }
 
   // Верифікуємо токен
-  jwt.verify(token, jwtSecret, (err, user) => {
+  jwt.verify(token, jwtSecret, async (err, user) => {
     if (err) {
       // Розрізняємо прострочений токен (401) від невалідного (403)
       // Повертаємо уніфікований JSON + заголовок для клієнта/інтеграцій
@@ -46,7 +46,7 @@ const authenticateToken = (req, res, next) => {
     }
 
     // Перевіряємо blacklist анонімізованих акаунтів (закриває 15-хв вікно JWT)
-    if (isUserDeleted(user.id)) {
+    if (await isUserDeleted(user.id)) {
       return res.status(HTTP_STATUS.UNAUTHORIZED).json({
         code: ERROR_CODES.AUTH_TOKEN_INVALID,
         error: 'Акаунт було видалено',

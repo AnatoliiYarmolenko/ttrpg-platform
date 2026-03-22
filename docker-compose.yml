@@ -19,6 +19,14 @@ services:
     ports:
       - "${ADMINER_PORT:-8080}:8080"
 
+  redis:
+    image: redis:7-alpine
+    container_name: ttrpg_redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    command: redis-server --save 60 1 --loglevel warning
+
   # 2. Сервіс Бекенду
   server:
     build: ./server
@@ -27,6 +35,7 @@ services:
       - "${SERVER_PORT:-5000}:5000" # Зліва порт на ПК, справа - в контейнері
     environment:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
+      REDIS_URL: ${REDIS_URL:-redis://ttrpg_redis:6379}
       PORT: ${SERVER_PORT:-5000}
       NODE_ENV: ${NODE_ENV:-production}
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
@@ -48,6 +57,7 @@ services:
       TOKEN_CLEANUP_SCHEDULE: ${TOKEN_CLEANUP_SCHEDULE:-0 2 * * *}
     depends_on:
       - db
+      - redis
     volumes:
       # Це "дзеркало": зміни в коді на комп'ютері миттєво з'являться в контейнері
       - ./server:/app
@@ -71,4 +81,4 @@ services:
 volumes:
   db_data:
   uploads_data:
-  
+  redis_data:

@@ -1,31 +1,48 @@
+const { redis } = require('../lib/redis');
+
 /**
- * In-memory blacklist видалених акаунтів.
+ * Blacklist видалених акаунтів — тепер у Redis.
  *
- * Зберігає Set userId, які були анонімізовані в поточному процесі.
- * Мета: закрити 15-хвилинне вікно між анонімізацією та інвалідацією JWT access token,
- * без звернення до БД на кожен запит.
+ * Замість in-memory Set використовується Redis ключ з TTL = 900 секунд (15 хвилин).
+ * Це відповідає терміну дії access JWT токена, що закриває вікно вразливості.
  *
- * ⚠️  ОБМЕЖЕННЯ: при горизонтальному масштабуванні (кілька Node-процесів)
- *     Set не синхронізується між інстансами. Для production-кластера
- *     замінити на Redis SET з TTL, рівним max(accessToken TTL) = 15 хв.
+ * При горизонтальному масштабуванні всі інстанси читають один Redis →
+ * видалений акаунт заблокований на всіх подах одразу.
  */
-const _deletedUserIds = new Set();
+
+const DELETED_USER_TTL_SECONDS = 15 * 60; // 900 сек = 15 хвилин (час життя access JWT)
 
 /**
  * Додати userId до blacklist після анонімізації акаунту.
+ * Ключ зникне автоматично через 15 хвилин (TTL).
  * @param {number} userId
  */
-function markUserAsDeleted(userId) {
-  _deletedUserIds.add(userId);
+async function markUserAsDeleted(userId) {
+  try {
+    await redis.set(`deleted:user:${userId}`, '1', 'EX', DELETED_USER_TTL_SECONDS);
+  } catch (err) {
+    // Не кидаємо помилку — акаунт вже анонімізовано в БД.
+    // blacklist через in-memory Set як fallback не потрібен:
+    // при помилці Redis краще просто залогувати.
+    console.error(`[DeletedUsers] Redis помилка markUserAsDeleted(${userId}):`, err.message);
+  }
 }
 
 /**
  * Перевірити, чи userId є в blacklist.
  * @param {number} userId
- * @returns {boolean}
+ * @returns {Promise<boolean>}
  */
-function isUserDeleted(userId) {
-  return _deletedUserIds.has(userId);
+async function isUserDeleted(userId) {
+  try {
+    const result = await redis.exists(`deleted:user:${userId}`);
+    return result === 1;
+  } catch (err) {
+    // При помилці Redis — fail-open (не блокуємо користувача).
+    // Це менший ризик, ніж заблокувати всіх при недоступному Redis.
+    console.error(`[DeletedUsers] Redis помилка isUserDeleted(${userId}):`, err.message);
+    return false;
+  }
 }
 
 module.exports = { markUserAsDeleted, isUserDeleted };

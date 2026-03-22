@@ -7,6 +7,7 @@
 require('./src/config/config');
 
 const { prisma } = require('./src/lib/prisma');
+const { redis } = require('./src/lib/redis');
 const { port } = require('./src/config/config');
 const { createApp } = require('./src/app');
 
@@ -21,6 +22,13 @@ const {
 
 // Виконуємо міграції при старті
 initMigrations();
+
+// Підключаємось до Redis (lazyConnect=true — потрібне явне підключення)
+redis.connect().catch((err) => {
+  // Некритична помилка: сервер запуститься без Redis,
+  // але blacklist і rate-limit будуть тимчасово недоступні
+  console.error('⚠️ Redis недоступний при старті:', err.message);
+});
 
 // Ініціалізуємо cleanup jobs (токени та rate limits)
 initAllCleanupJobs();
@@ -43,6 +51,13 @@ async function gracefulShutdown(signal) {
     
     // Очищаємо ресурси
     await shutdownCleanupJobs();
+    if (redis.status !== 'end' && redis.status !== 'wait') {
+      try {
+        await redis.quit();
+      } catch (err) {
+        console.warn('⚠️ Не вдалося коректно закрити Redis:', err.message);
+      }
+    }
     await prisma.$disconnect();
     
     console.log('✅ Graceful shutdown завершено');

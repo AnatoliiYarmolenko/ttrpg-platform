@@ -1,111 +1,122 @@
 /**
- * Rate Limit Service
- * Відповідає за обмеження частоти запитів (rate limiting)
+ * Rate Limit Service (Redis-backed)
+ *
+ * Використовує Redis для зберігання лічильників запитів:
+ *  - Лічильник: INCR + EXPIRE NX (атомарно через pipeline, Redis 7+)
+ *  - Блокування: SET blocked:key 1 EX blockDurationSeconds (атомарно в один запит)
+ *
+ * При горизонтальному масштабуванні всі інстанси читають один Redis →
+ * rate limit діє глобально, не обходиться балансуванням.
  */
 
+const { redis } = require('../lib/redis');
 const { createError } = require('../constants/errors');
-
-// ===== RATE LIMITING =====
-// Структура: Map<key, { count, resetTime, isBlocked, blockedUntil }>
-const rateLimits = new Map();
 
 // Конфігурація rate limit для різних типів операцій
 const RATE_LIMIT_CONFIG = {
   refresh: {
-    maxRequests: 5,              // Макс 5 refresh запитів
-    windowMs: 60 * 1000,         // За 60 секунд (1 хвилина)
+    maxRequests: 5,                  // Макс 5 refresh запитів
+    windowMs: 60 * 1000,             // За 60 секунд (1 хвилина)
     blockDurationMs: 5 * 60 * 1000, // Блокування на 5 хвилин після перевищення
   },
   login: {
-    maxRequests: 5,              // Макс 5 спроб входу
-    windowMs: 15 * 60 * 1000,    // За 15 хвилин
+    maxRequests: 5,                   // Макс 5 спроб входу
+    windowMs: 15 * 60 * 1000,         // За 15 хвилин
     blockDurationMs: 30 * 60 * 1000, // Блокування на 30 хвилин
   },
   passwordReset: {
-    maxRequests: 3,              // Макс 3 запити на скидання пароля
-    windowMs: 60 * 60 * 1000,    // За 1 годину
+    maxRequests: 3,                   // Макс 3 запити на скидання пароля
+    windowMs: 60 * 60 * 1000,         // За 1 годину
     blockDurationMs: 60 * 60 * 1000, // Блокування на 1 годину
   },
 };
 
 /**
- * Генерує ключ для rate limit
- * @param {string} type - Тип операції (refresh, login, passwordReset)
- * @param {string|number} identifier - Ідентифікатор (userId, email, IP)
- * @returns {string} Ключ для Map
+ * Генерує ключ для лічильника запитів
  */
-function getRateLimitKey(type, identifier) {
-  return `${type}:${identifier}`;
+function getCounterKey(type, identifier) {
+  return `rateLimit:counter:${type}:${identifier}`;
 }
 
 /**
- * Перевіряє rate limit для конкретної операції
- * @param {string} type - Тип операції (refresh, login, passwordReset)
- * @param {string|number} identifier - Ідентифікатор (userId, email, IP)
- * @param {Object} customConfig - Кастомна конфігурація (опційно)
- * @returns {boolean} true якщо операція дозволена
- * @throws {Error} Якщо перевищено ліміт (status: 429)
+ * Генерує ключ для блокування
  */
-function checkRateLimit(type, identifier, customConfig = null) {
+function getBlockedKey(type, identifier) {
+  return `rateLimit:blocked:${type}:${identifier}`;
+}
+
+/**
+ * Перевіряє rate limit для конкретної операції.
+ *
+ * Алгоритм:
+ * 1. Перевіряємо ключ blocked — якщо є, кидаємо 429
+ * 2. Атомарно INCR лічильник + EXPIRE NX (лише якщо TTL ще немає)
+ *    Це запобігає race condition між INCR і EXPIRE
+ * 3. Якщо лічильник > maxRequests — встановлюємо blocked ключ з TTL і кидаємо 429
+ *
+ * @param {string} type - Тип операції ('refresh', 'login', 'passwordReset')
+ * @param {string|number} identifier - Ідентифікатор (userId, email, IP)
+ * @param {Object|null} customConfig - Кастомна конфігурація (опційно)
+ * @returns {Promise<boolean>} true якщо операція дозволена
+ * @throws {AppError} якщо перевищено ліміт (status: 429)
+ */
+async function checkRateLimit(type, identifier, customConfig = null) {
   const config = customConfig || RATE_LIMIT_CONFIG[type];
-  
+
   if (!config) {
     console.warn(`[Rate Limit] Невідомий тип операції: ${type}`);
-    return true; // Якщо немає конфігурації - пропускаємо
+    return true; // Якщо немає конфігурації — пропускаємо
   }
 
-  const key = getRateLimitKey(type, identifier);
-  const now = Date.now();
-  const userLimit = rateLimits.get(key);
+  const counterKey = getCounterKey(type, identifier);
+  const blockedKey = getBlockedKey(type, identifier);
+  const windowSeconds = Math.ceil(config.windowMs / 1000);
+  const blockSeconds = Math.ceil(config.blockDurationMs / 1000);
 
-  // Якщо користувач не в системі ліміту - створюємо запис
-  if (!userLimit) {
-    rateLimits.set(key, {
-      count: 1,
-      resetTime: now + config.windowMs,
-      isBlocked: false,
-      blockedUntil: null,
-    });
+  try {
+    // 1. Перевіряємо чи заблокований (один GET запит)
+    const ttlRemaining = await redis.ttl(blockedKey);
+    if (ttlRemaining > 0) {
+      throw createError.rateLimitExceeded(ttlRemaining);
+    }
+
+    // 2. Атомарний підрахунок через pipeline:
+    //    INCR — збільшуємо лічильник (або створюємо з 1)
+    //    EXPIRE NX — встановлюємо TTL ТІЛЬКИ якщо його ще немає (перший запит у вікні)
+    //    Це усуває race condition між INCR і EXPIRE
+    const results = await redis.pipeline()
+      .incr(counterKey)
+      .expire(counterKey, windowSeconds, 'NX')
+      .exec();
+
+    // results[0] = [error, count], results[1] = [error, expireResult]
+    const count = results[0][1];
+
+    // 3. Перевіряємо чи перевищено ліміт
+    if (count > config.maxRequests) {
+      // Встановлюємо блокування (SET ... EX — атомарно в один запит)
+      await redis.set(blockedKey, '1', 'EX', blockSeconds);
+      throw createError.rateLimitExceeded(blockSeconds);
+    }
+
+    return true;
+  } catch (err) {
+    // Пробрасуємо лише AppError 429 далі
+    if (err && err.status === 429) {
+      throw err;
+    }
+    // При помилці Redis — fail-open (не блокуємо запит)
+    console.error(`[Rate Limit] Redis помилка для ${type}:${identifier}:`, err.message);
     return true;
   }
-
-  // Перевіряємо, чи користувач заблокований
-  if (userLimit.isBlocked && now < userLimit.blockedUntil) {
-    const remainingSeconds = Math.ceil((userLimit.blockedUntil - now) / 1000);
-    throw createError.rateLimitExceeded(remainingSeconds);
-  }
-
-  // Якщо період скінчився - скидуємо лічильник
-  if (now > userLimit.resetTime) {
-    userLimit.count = 1;
-    userLimit.resetTime = now + config.windowMs;
-    userLimit.isBlocked = false;
-    userLimit.blockedUntil = null;
-    return true;
-  }
-
-  // Збільшуємо лічильник
-  userLimit.count++;
-
-  // Перевіряємо, чи перевищено ліміт
-  if (userLimit.count > config.maxRequests) {
-    userLimit.isBlocked = true;
-    userLimit.blockedUntil = now + config.blockDurationMs;
-    
-    const remainingSeconds = Math.ceil(config.blockDurationMs / 1000);
-    throw createError.rateLimitExceeded(remainingSeconds);
-  }
-
-  return true;
 }
 
 /**
- * Перевіряє rate limit для refresh токенів (для зворотної сумісності)
+ * Перевіряє rate limit для refresh токенів (alias для зворотної сумісності)
  * @param {number} userId - ID користувача
- * @returns {boolean} true якщо можна робити refresh
- * @throws {Error} Якщо перевищено ліміт
+ * @returns {Promise<boolean>}
  */
-function checkRefreshRateLimit(userId) {
+async function checkRefreshRateLimit(userId) {
   return checkRateLimit('refresh', userId);
 }
 
@@ -114,65 +125,37 @@ function checkRefreshRateLimit(userId) {
  * @param {string} type - Тип операції
  * @param {string|number} identifier - Ідентифікатор
  */
-function resetRateLimit(type, identifier) {
-  const key = getRateLimitKey(type, identifier);
-  rateLimits.delete(key);
-}
-
-/**
- * Очищує застарілі rate limit записи (викликається за розкладом)
- */
-function cleanupRateLimits() {
-  const now = Date.now();
-  const expiredKeys = [];
-
-  for (const [key, limit] of rateLimits.entries()) {
-    // Видаляємо запис, якщо період ліміту давно закінчився
-    // (до наступного периоду + 1 хвилина для вірогідності)
-    if (now > limit.resetTime + 60000 && !limit.isBlocked) {
-      expiredKeys.push(key);
-      continue;
-    }
-    // Видаляємо заблокованого користувача через 10 хвилин після розблокування
-    if (limit.blockedUntil && now > limit.blockedUntil + 10 * 60 * 1000) {
-      expiredKeys.push(key);
-    }
-  }
-
-  expiredKeys.forEach(key => rateLimits.delete(key));
-  
-  if (expiredKeys.length > 0) {
-    console.log(`[Rate Limit Cleanup] Видалено ${expiredKeys.length} застарілих записів`);
+async function resetRateLimit(type, identifier) {
+  try {
+    await redis.pipeline()
+      .del(getCounterKey(type, identifier))
+      .del(getBlockedKey(type, identifier))
+      .exec();
+  } catch (err) {
+    console.error(`[Rate Limit] Redis помилка resetRateLimit(${type}:${identifier}):`, err.message);
   }
 }
 
 /**
- * Отримує статистику rate limit
- * @returns {Object} Статистика
+ * Отримує поточний стан rate limit для конкретного ідентифікатора
+ * @param {string} type - Тип операції
+ * @param {string|number} identifier - Ідентифікатор
+ * @returns {Promise<Object>} Стан rate limit
  */
-function getRateLimitStats() {
-  const stats = {
-    totalEntries: rateLimits.size,
-    blocked: 0,
-    byType: {},
-  };
-
-  for (const [key, limit] of rateLimits.entries()) {
-    const [type] = key.split(':');
-    
-    if (!stats.byType[type]) {
-      stats.byType[type] = { total: 0, blocked: 0 };
-    }
-    
-    stats.byType[type].total++;
-    
-    if (limit.isBlocked && Date.now() < limit.blockedUntil) {
-      stats.blocked++;
-      stats.byType[type].blocked++;
-    }
+async function getRateLimitStatus(type, identifier) {
+  try {
+    const [count, blockedTtl] = await redis.pipeline()
+      .get(getCounterKey(type, identifier))
+      .ttl(getBlockedKey(type, identifier))
+      .exec();
+    return {
+      count: parseInt(count[1], 10) || 0,
+      isBlocked: blockedTtl[1] > 0,
+      blockedSecondsRemaining: blockedTtl[1] > 0 ? blockedTtl[1] : 0,
+    };
+  } catch (err) {
+    return { count: 0, isBlocked: false, blockedSecondsRemaining: 0 };
   }
-
-  return stats;
 }
 
 /**
@@ -184,17 +167,10 @@ function getRateLimitConfig() {
 }
 
 module.exports = {
-  // Основні функції
   checkRateLimit,
-  checkRefreshRateLimit, // Для зворотної сумісності
+  checkRefreshRateLimit,
   resetRateLimit,
-  cleanupRateLimits,
-  
-  // Допоміжні функції
-  getRateLimitStats,
+  getRateLimitStatus,
   getRateLimitConfig,
-  getRateLimitKey,
-  
-  // Конфігурація
   RATE_LIMIT_CONFIG,
 };

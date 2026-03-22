@@ -351,7 +351,7 @@ async function deleteAccount(userId, password) {
   });
 
   // Блокуємо доступ через активні JWT токени (закриває 15-хв вікно вразливості)
-  markUserAsDeleted(userId);
+  await markUserAsDeleted(userId);
 
   // Видаляємо аватар файл якщо є
   if (user.avatarUrl && user.avatarUrl.startsWith('/uploads/')) {
