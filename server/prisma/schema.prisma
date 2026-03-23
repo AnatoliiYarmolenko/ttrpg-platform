@@ -7,99 +7,77 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// --- КОРИСТУВАЧІ ТА ПРОФІЛЬ---
-
 enum UserRole {
   USER
   ADMIN
 }
 
 model User {
-  id                      Int       @id @default(autoincrement())
-  email                   String    @unique
-  username                String    @unique
-  password                String    // Зберігаємо хеш пароля
-  role                    UserRole  @default(USER)
-  
-  // --- ПРОФІЛЬ ---
+  id                      Int                      @id @default(autoincrement())
+  email                   String                   @unique
+  username                String                   @unique
+  password                String
+  role                    UserRole                 @default(USER)
   avatarUrl               String?
-  displayName             String?             // Відображуване ім'я
+  displayName             String?
   bio                     String?
-  timezone                String?             // Europe/Kyiv - для планування сесій
-  language                String?   @default("uk") // Мова інтерфейсу
-  
-  // --- МЕТА-ДАНІ ---
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
-  lastActiveAt            DateTime?           // Останній візит
-  isDeleted               Boolean   @default(false) // Soft delete: анонімізований акаунт
-
-  // 🔐 Ресет пароля
-  passwordResetToken      String?   @unique
+  timezone                String?
+  language                String?                  @default("uk")
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  lastActiveAt            DateTime?
+  isDeleted               Boolean                  @default(false)
+  passwordResetToken      String?                  @unique
   passwordResetExpiry     DateTime?
-
-  // Зв'язки
-  wallet                  Wallet?   // Один гаманець на юзера
-  stats                   UserStats? // Статистика
-  
-  // Участь у кампаніях та сесіях
-  campaignsOwned          Campaign[] @relation("OwnerCampaigns") // Кампанії, де він власник
-  campaignMembers         CampaignMember[] // Членство в кампаніях
-  sessionsJoined          SessionParticipant[] // Сесії, де він гравець/майстер
-  ownedSessions           Session[] @relation("OwnedSessions") // Сесії, які він організував
-  
-  // Заявки на вступ
+  wallet                  Wallet?
+  stats                   UserStats?
+  campaignsOwned          Campaign[]               @relation("OwnerCampaigns")
+  campaignMembers         CampaignMember[]
+  sessionsJoined          SessionParticipant[]
+  ownedSessions           Session[]                @relation("OwnedSessions")
   joinRequests            JoinRequest[]
-  reviewedJoinRequests    JoinRequest[] @relation("ReviewedBy")
-  
-  // Комунікація
-  messages                ChatMessage[] // Повідомлення в чатах
-  emailVerified            Boolean   @default(false)
+  reviewedJoinRequests    JoinRequest[]            @relation("ReviewedBy")
+  messages                ChatMessage[]
+  emailVerified           Boolean                  @default(false)
   refreshTokens           RefreshToken[]
-
   emailVerificationTokens EmailVerificationToken[]
   emailChangeTokens       EmailChangeToken[]
 }
 
 model Wallet {
-  id      Int     @id @default(autoincrement())
-  balance Float   @default(0.0)
-  userId  Int     @unique
-  user    User    @relation(fields: [userId], references: [id])
-  
-  transactions Transaction[] // Історія оплат
+  id           Int           @id @default(autoincrement())
+  balance      Float         @default(0.0)
+  userId       Int           @unique
+  user         User          @relation(fields: [userId], references: [id])
+  transactions Transaction[]
 }
 
 model UserStats {
-  id             Int @id @default(autoincrement())
-  hoursPlayed    Int @default(0)
-  sessionsPlayed Int @default(0)
-  userId         Int @unique
+  id             Int  @id @default(autoincrement())
+  hoursPlayed    Int  @default(0)
+  sessionsPlayed Int  @default(0)
+  userId         Int  @unique
   user           User @relation(fields: [userId], references: [id])
 }
 
-// --- КАМПАНІЇ ТА СЕСІЇ ---
-
 model Campaign {
-  id          Int       @id @default(autoincrement())
-  title       String
-  description String?
-  imageUrl    String?                           // Обкладинка
-  system      String?                           // D&D 5e, Pathfinder, тощо
-  status      CampaignStatus @default(ACTIVE)
-  
-  visibility  CampaignVisibility @default(LINK_ONLY)
-  inviteCode  String?   @unique                // Для LINK_ONLY
-  
-  ownerId     Int
-  owner       User      @relation("OwnerCampaigns", fields: [ownerId], references: [id])
-  
-  members     CampaignMember[]                 // Учасники кампанії
-  sessions    Session[]                        // Кампанія має багато сесій
-  joinRequests JoinRequest[]
-  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id                 Int                @id @default(autoincrement())
+  title              String
+  description        String?
+  imageUrl           String?
+  system             String?
+  status             CampaignStatus     @default(ACTIVE)
+  visibility         CampaignVisibility @default(LINK_ONLY)
+  inviteCode         String?            @unique
+  shareTokenHash     String?            @unique
+  shareTokenCreatedAt DateTime?
+  ownerId            Int
+  owner              User               @relation("OwnerCampaigns", fields: [ownerId], references: [id])
+  members            CampaignMember[]
+  sessions           Session[]
+  joinRequests       JoinRequest[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 }
 
 enum CampaignStatus {
@@ -108,22 +86,19 @@ enum CampaignStatus {
 }
 
 enum CampaignVisibility {
-  PUBLIC      // Видно в пошуку
-  LINK_ONLY   // Доступ за посиланням
+  PUBLIC
+  LINK_ONLY
 }
 
-// === Учасники кампанії ===
 model CampaignMember {
   id         Int          @id @default(autoincrement())
   role       CampaignRole @default(PLAYER)
   joinedAt   DateTime     @default(now())
-  
   userId     Int
   user       User         @relation(fields: [userId], references: [id])
-  
   campaignId Int
   campaign   Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  
+
   @@unique([userId, campaignId])
   @@index([campaignId])
 }
@@ -135,36 +110,28 @@ enum CampaignRole {
 }
 
 model Session {
-  id          Int           @id @default(autoincrement())
-  title       String
-  description String?
-  
-  date        DateTime                        // Дата і час початку (UTC)
-  duration    Int           @default(180)     // Тривалість в хвилинах
-  
-  status      SessionStatus @default(PLANNED) // Active, Planned, Finished
-  visibility  SessionVisibility @default(PRIVATE)
-  
-  price       Float     @default(0.0)         // Ціна за гру
-  maxPlayers  Int       @default(4)
-  
-  system      String?                         // D&D 5e, Pathfinder 2e, тощо
-                                              // Копіюється з кампанії при створенні
-                                              // або задається вручну для one-shot
-  
-  campaignId  Int?                            // Nullable для one-shots
-  campaign    Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
-  
-  ownerId     Int                             // Хто володіє/організував сесію
-  owner       User      @relation("OwnedSessions", fields: [ownerId], references: [id])
-  
-  participants SessionParticipant[]
-  messages     ChatMessage[]                  // Чат сесії 
-  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  
-  @@index([date, system])                     // Композитний індекс для фільтрації по даті ТА системі
+  id                  Int               @id @default(autoincrement())
+  title               String
+  description         String?
+  date                DateTime
+  duration            Int               @default(180)
+  status              SessionStatus     @default(PLANNED)
+  visibility          SessionVisibility @default(PRIVATE)
+  shareTokenHash      String?           @unique
+  shareTokenCreatedAt DateTime?
+  price               Float             @default(0.0)
+  maxPlayers          Int               @default(4)
+  system              String?
+  campaignId          Int?
+  campaign            Campaign?         @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  ownerId             Int
+  owner               User              @relation("OwnedSessions", fields: [ownerId], references: [id])
+  participants        SessionParticipant[]
+  messages            ChatMessage[]
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@index([date, system])
   @@index([status])
   @@index([campaignId])
 }
@@ -175,20 +142,17 @@ enum SessionVisibility {
   LINK_ONLY
 }
 
-// Таблиця зв'язку: Хто є хто в сесії 
 model SessionParticipant {
-  id        Int              @id @default(autoincrement())
-  role      SessionRole      @default(PLAYER)
-  status    ParticipantStatus @default(PENDING)  // Підтвердив участь?
-  isGuest   Boolean          @default(false)     // Гість (не член кампанії)
-  
+  id        Int               @id @default(autoincrement())
+  role      SessionRole       @default(PLAYER)
+  status    ParticipantStatus @default(PENDING)
+  isGuest   Boolean           @default(false)
   userId    Int
   sessionId Int
-  
-  user      User    @relation(fields: [userId], references: [id])
-  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user      User              @relation(fields: [userId], references: [id])
+  session   Session           @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, sessionId]) // Юзер не може бути двічі в одній грі
+  @@unique([userId, sessionId])
 }
 
 enum SessionRole {
@@ -197,28 +161,24 @@ enum SessionRole {
 }
 
 enum ParticipantStatus {
-  PENDING     // Запрошений, але не підтвердив
-  CONFIRMED   // Підтвердив участь
-  DECLINED    // Відмовився
+  PENDING
+  CONFIRMED
+  DECLINED
 }
 
-// === Заявки на вступ до кампанії ===
 model JoinRequest {
-  id         Int              @id @default(autoincrement())
+  id         Int               @id @default(autoincrement())
   status     JoinRequestStatus @default(PENDING)
-  message    String?                           // Повідомлення від заявника
-  
+  message    String?
   userId     Int
-  user       User             @relation(fields: [userId], references: [id])
-  
+  user       User              @relation(fields: [userId], references: [id])
   campaignId Int
-  campaign   Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  
-  createdAt  DateTime         @default(now())
+  campaign   Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdAt  DateTime          @default(now())
   reviewedAt DateTime?
   reviewedBy Int?
-  reviewer   User?            @relation("ReviewedBy", fields: [reviewedBy], references: [id])
-  
+  reviewer   User?             @relation("ReviewedBy", fields: [reviewedBy], references: [id])
+
   @@unique([userId, campaignId])
   @@index([campaignId, status])
 }
@@ -230,50 +190,42 @@ enum JoinRequestStatus {
 }
 
 model EmailVerificationToken {
-  id          Int      @id @default(autoincrement())
-  token       String   @unique
-  userId      Int
-  user        User     @relation(fields: [userId], references: [id])
-  expiresAt   DateTime
-  createdAt   DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
 
-// Токен для зміни email
 model EmailChangeToken {
-  id          Int      @id @default(autoincrement())
-  token       String   @unique
-  userId      Int
-  user        User     @relation(fields: [userId], references: [id])
-  newEmail    String   // Новий email, на який надіслано підтвердження
-  expiresAt   DateTime
-  createdAt   DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  newEmail  String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
-
-// --- КОМУНІКАЦІЯ ТА ФІНАНСИ ---
 
 model ChatMessage {
   id        Int      @id @default(autoincrement())
   text      String
   createdAt DateTime @default(now())
-  
   userId    Int
   user      User     @relation(fields: [userId], references: [id])
-  
   sessionId Int
   session   Session  @relation(fields: [sessionId], references: [id])
 }
 
 model Transaction {
-  id        Int      @id @default(autoincrement())
-  amount    Float
-  type      String   // "DEPOSIT" або "PAYMENT"
-  date      DateTime @default(now())
-  
-  walletId  Int
-  wallet    Wallet   @relation(fields: [walletId], references: [id])
+  id       Int      @id @default(autoincrement())
+  amount   Float
+  type     String
+  date     DateTime @default(now())
+  walletId Int
+  wallet   Wallet   @relation(fields: [walletId], references: [id])
 }
-
-// --- ENUMS (Списки варіантів) ---
 
 enum SessionStatus {
   PLANNED
@@ -283,11 +235,11 @@ enum SessionStatus {
 }
 
 model RefreshToken {
-  id         Int      @id @default(autoincrement())
-  token      String   @unique
-  userId     Int
-  user       User     @relation(fields: [userId], references: [id])
-  revoked    Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  expiresAt  DateTime
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
 }

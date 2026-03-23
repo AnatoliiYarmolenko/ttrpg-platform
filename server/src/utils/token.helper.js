@@ -26,8 +26,17 @@ function createRawAndHashedToken(bytes = 32) {
   };
 }
 
+function createRawAndHashedShareToken(bytes = 24) {
+  const rawToken = crypto.randomBytes(bytes).toString('base64url');
+  return {
+    rawToken,
+    tokenHash: hashToken(rawToken),
+  };
+}
+
 module.exports = {
   hashToken,
   getTokenCandidates,
   createRawAndHashedToken,
+  createRawAndHashedShareToken,
 };
