@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import useCalendarStore from './useCalendarStore';
 import useSearchStore from './useSearchStore';
 import {
   DASHBOARD_VIEWS,
@@ -34,7 +33,6 @@ const useDashboardStore = create((set, get) => ({
     });
 
     useSearchStore.getState().setHasSearched(false);
-    useCalendarStore.getState().clearDaySessions();
   },
 
   setRightPanelMode: (mode) => {
@@ -56,15 +54,6 @@ const useDashboardStore = create((set, get) => ({
     } else if (viewMode === VIEW_MODES.SEARCH) {
       set({ rightPanelMode: PANEL_MODES.RESULTS });
     }
-
-    if (date) {
-      const { searchFilters, hasSearched } = useSearchStore.getState();
-      useCalendarStore.getState().fetchDaySessions(date, {
-        viewMode,
-        searchFilters,
-        hasSearched,
-      });
-    }
   },
 
   clearSelectedDate: () => {
@@ -81,8 +70,6 @@ const useDashboardStore = create((set, get) => ({
       rightPanelMode: defaultPanelModes[viewMode],
       expandedSessionId: null,
     });
-
-    useCalendarStore.getState().clearDaySessions();
   },
 
   setCurrentMonth: (date) => {
@@ -131,7 +118,6 @@ const useDashboardStore = create((set, get) => ({
     });
 
     useSearchStore.getState().reset();
-    useCalendarStore.getState().reset();
   },
 }));
 

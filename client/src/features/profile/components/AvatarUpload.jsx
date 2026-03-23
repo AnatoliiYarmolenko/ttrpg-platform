@@ -1,12 +1,13 @@
-import React, { useState, useRef } from 'react';
-import { uploadAvatar, deleteAvatar } from '../api/profileApi';
+import React, { useRef } from 'react';
+import { useProfileMutations } from '../hooks/useProfileQueries';
 import Button from '@/components/ui/Button';
 import { UserAvatar } from '@/components/shared';
 import { toast } from '@/stores/useToastStore';
 
 export default function AvatarUpload({ currentAvatarUrl, username, onUpdate }) {
-  const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
+  const { uploadAvatar, deleteAvatar, uploadAvatarStatus, deleteAvatarStatus } = useProfileMutations();
+  const uploading = uploadAvatarStatus || deleteAvatarStatus;
 
   const handleFileSelect = async (e) => {
     const file = e.target.files?.[0];
@@ -22,18 +23,12 @@ export default function AvatarUpload({ currentAvatarUrl, username, onUpdate }) {
       return;
     }
 
-    setUploading(true);
-
     try {
       const result = await uploadAvatar(file);
-      if (onUpdate && result.profile) {
+      if (onUpdate && result?.profile) {
         onUpdate(result.profile);
       }
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Помилка завантаження');
-    } finally {
-      setUploading(false);
-      // Очищуємо input для можливості повторного вибору того ж файлу
+    } catch {} finally {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -42,18 +37,12 @@ export default function AvatarUpload({ currentAvatarUrl, username, onUpdate }) {
 
   const handleDelete = async () => {
     if (!currentAvatarUrl) return;
-    setUploading(true);
-
     try {
       const result = await deleteAvatar();
-      if (onUpdate && result.profile) {
+      if (onUpdate && result?.profile) {
         onUpdate(result.profile);
       }
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Помилка видалення');
-    } finally {
-      setUploading(false);
-    }
+    } catch {}
   };
 
   return (

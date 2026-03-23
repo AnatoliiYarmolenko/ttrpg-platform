@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import useCampaignStore from '../store/useCampaignStore';
+import { useCampaignQuery, useCampaignMembersQuery, useCampaignMutations } from './useCampaignQueries';
 import useAuthStore from '@/stores/useAuthStore';
 import usePreviewMode from '@/hooks/usePreviewMode';
 import { TABS } from '../components/navigation/CampaignNavigation';
@@ -20,25 +20,18 @@ import { TABS } from '../components/navigation/CampaignNavigation';
  */
 export default function useCampaignPageController() {
   const { id } = useParams();
+  const campaignIdNumber = Number(id);
   const navigate = useNavigate();
 
   const user = useAuthStore((state) => state.user);
-  const {
-    currentCampaign,
-    campaignMembers,
-    fetchCampaignById,
-    fetchCampaignMembers,
-    updateCampaignData,
-    transferOwnership,
-    cancelSessionInCampaign,
-    deleteSessionInCampaign,
-    removeMember,
-    submitRequest,
-    regenerateCode,
-    isLoading,
-    error,
-    clearCurrentCampaign,
-  } = useCampaignStore();
+
+  const { data: currentCampaign, isLoading: isCampaignLoading, error: campaignError } = useCampaignQuery(campaignIdNumber);
+  const { data: campaignMembers = [], isLoading: isMembersLoading } = useCampaignMembersQuery(campaignIdNumber);
+  
+  const isLoading = isCampaignLoading || isMembersLoading;
+  const error = campaignError;
+
+  const mutations = useCampaignMutations(campaignIdNumber);
 
   // Таби та перегляд профілю — обидва в URL, щоб перемикання було атомарним (без миготіння)
   const [searchParams, setSearchParams] = useSearchParams();
@@ -64,16 +57,10 @@ export default function useCampaignPageController() {
     [setSearchParams],
   );
 
-  // Завантаження; скидання viewing при зміні id
+  // Скидання viewing при зміні id вже не потребує очищення store
   useEffect(() => {
-    if (id) {
-      fetchCampaignById(id);
-      fetchCampaignMembers(id);
-    }
-    return () => {
-      clearCurrentCampaign();
-    };
-  }, [id, fetchCampaignById, fetchCampaignMembers, clearCurrentCampaign]);
+    // Empty effect for compatibility, no manual loading needed
+  }, [campaignIdNumber]);
 
 
   // === Ролі та права ===
@@ -113,11 +100,11 @@ export default function useCampaignPageController() {
   // === Дії ===
   const handleJoinRequest = useCallback(
     async (message) => {
-      const result = await submitRequest(Number(id), message);
+      const result = await mutations.submitJoinRequest(message);
       if (result?.success) return { success: true };
       return { success: false, error: result?.error || 'Помилка при подачі заявки' };
     },
-    [id, submitRequest]
+    [mutations]
   );
 
   const handleLeave = useCallback(async () => {
@@ -127,37 +114,34 @@ export default function useCampaignPageController() {
 
     const myMember = campaignMembers.find((m) => m.userId === user?.id);
     if (myMember) {
-      await removeMember(Number(id), myMember.userId);
+      await mutations.removeMember(myMember.userId);
       navigate('/');
       return { success: true };
     }
 
     return { success: false, message: 'Учасника кампанії не знайдено' };
-  }, [campaignMembers, user, id, isCampaignFinished, removeMember, navigate]);
+  }, [campaignMembers, user, isCampaignFinished, mutations, navigate]);
 
   const handleRegenerateCode = useCallback(async () => {
     if (!canManageInviteCode) {
       return { success: false, message: 'Тільки власник може керувати кодом запрошення' };
     }
-    await regenerateCode(Number(id));
-    await fetchCampaignById(id);
+    await mutations.regenerateCode();
     return { success: true };
-  }, [id, canManageInviteCode, regenerateCode, fetchCampaignById]);
+  }, [canManageInviteCode, mutations]);
 
   const handleRefreshCampaign = useCallback(async () => {
-    await fetchCampaignById(id);
-  }, [id, fetchCampaignById]);
+    // RQ handles refreshing automatically, but if needed we can trigger an invalidate here.
+  }, []);
 
   const handleSaveSettings = useCallback(
     async (campaignData) => {
       if (!canManageCampaignSettings) {
         return { success: false, message: 'Тільки власник може змінювати налаштування кампанії' };
       }
-      const result = await updateCampaignData(Number(id), campaignData);
-      if (result?.success) await fetchCampaignById(id);
-      return result;
+      return await mutations.updateCampaign(campaignData);
     },
-    [id, canManageCampaignSettings, updateCampaignData, fetchCampaignById]
+    [canManageCampaignSettings, mutations]
   );
 
   const handleTransferOwnership = useCallback(
@@ -165,36 +149,23 @@ export default function useCampaignPageController() {
       if (!isOwner) {
         return { success: false, message: 'Тільки власник може передавати права кампанії' };
       }
-      const result = await transferOwnership(Number(id), Number(newOwnerId));
-      if (result?.success) {
-        await fetchCampaignById(id);
-        await fetchCampaignMembers(id);
-      }
-      return result;
+      return await mutations.transferOwnership(Number(newOwnerId));
     },
-    [id, isOwner, transferOwnership, fetchCampaignById, fetchCampaignMembers]
+    [isOwner, mutations]
   );
 
   const handleCancelForeignSession = useCallback(
     async (sessionId) => {
-      const result = await cancelSessionInCampaign(Number(sessionId));
-      if (result?.success) {
-        await fetchCampaignById(id);
-      }
-      return result;
+      return await mutations.cancelSession(Number(sessionId));
     },
-    [id, cancelSessionInCampaign, fetchCampaignById]
+    [mutations]
   );
 
   const handleDeleteForeignSession = useCallback(
     async (sessionId) => {
-      const result = await deleteSessionInCampaign(Number(sessionId));
-      if (result?.success) {
-        await fetchCampaignById(id);
-      }
-      return result;
+      return await mutations.deleteSession(Number(sessionId));
     },
-    [id, deleteSessionInCampaign, fetchCampaignById]
+    [mutations]
   );
 
   const handleViewProfile = useCallback((userId) => {

@@ -1,9 +1,10 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import DashboardCard from '@/components/ui/DashboardCard';
 import useDashboardStore from '@/stores/useDashboardStore';
 import useSearchStore from '@/stores/useSearchStore';
 import { PANEL_MODES } from '@/stores/dashboardConstants';
-import useCalendarStore from '@/stores/useCalendarStore';
+import { useQueryClient } from '@tanstack/react-query';
+import { useDaySessionsQuery } from '../../hooks/useCalendarQueries';
 import CreateSessionForm from './CreateSessionForm';
 import SessionCard from '../ui/SessionCard';
 import Button from '@/components/ui/Button';
@@ -37,19 +38,14 @@ export default function HomeRightWidget() {
   const searchFilters = useSearchStore((state) => state.searchFilters);
   const hasSearched = useSearchStore((state) => state.hasSearched);
 
-  const {
-    daySessions,
-    fetchDaySessions,
-    fetchCalendarStats,
-  } = useCalendarStore();
-
-  // Автоматично встановлюємо сьогоднішню дату при першому завантаженні
-  useEffect(() => {
-    // Завантажуємо дані тільки якщо дата вибрана
-    if (selectedDate) {
-      fetchDaySessions(selectedDate, { viewMode, searchFilters, hasSearched });
-    }
-  }, [selectedDate, fetchDaySessions, viewMode, searchFilters, hasSearched]);
+  const queryClient = useQueryClient();
+  
+  const { data: daySessions = [], isLoading } = useDaySessionsQuery({
+    date: selectedDate,
+    viewMode,
+    searchFilters,
+    hasSearched,
+  });
 
   // Форматування дати для відображення
   const getDateTitle = (dateStr) => {
@@ -68,10 +64,9 @@ export default function HomeRightWidget() {
   };
 
   const handleCreateSuccess = async () => {
-    await fetchCalendarStats({ currentMonth, viewMode, searchFilters, hasSearched });
-    if (selectedDate) {
-      await fetchDaySessions(selectedDate, { viewMode, searchFilters, hasSearched });
-    }
+    await queryClient.invalidateQueries({ queryKey: ['calendar'] });
+    await queryClient.invalidateQueries({ queryKey: ['sessions', 'daily'] });
+    await queryClient.invalidateQueries({ queryKey: ['dashboard', 'games'] });
     handleBackToList();
   };
 
@@ -105,12 +100,11 @@ return (
     <DashboardCard title={title}>
       <div className="flex flex-col h-full">
         <div className="flex-1 overflow-y-auto min-h-0">
-          {/* {isDaySessionsLoading ? ( 
+          {isLoading ? ( 
             <div className="flex items-center justify-center h-full">
               <div className="animate-pulse text-[#164A41] font-medium">Завантаження сесій...</div>
             </div>
-          ) : */}
-          {daySessions.length === 0 ? (
+          ) : daySessions.length === 0 ? (
             <EmptyState
               icon={<Dice20 className="w-14 h-14" />}
               title="Немає запланованих сесій"

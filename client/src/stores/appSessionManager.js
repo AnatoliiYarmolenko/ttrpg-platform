@@ -10,9 +10,6 @@
  */
 
 import useDashboardStore from './useDashboardStore';
-import useCalendarStore from './useCalendarStore';
-import useSessionStore from '@/features/sessions/store/useSessionStore';
-import useCampaignStore from '@/features/campaigns/store/useCampaignStore';
 
 /**
  * Скидає всі feature-стори до початкового стану.
@@ -20,7 +17,4 @@ import useCampaignStore from '@/features/campaigns/store/useCampaignStore';
  */
 export function resetAllStores() {
   useDashboardStore.getState().reset();
-  useCalendarStore.getState().reset();
-  useSessionStore.getState().reset();
-  useCampaignStore.getState().reset();
 }

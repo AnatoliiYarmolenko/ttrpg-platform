@@ -2,7 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import DashboardCard from '@/components/ui/DashboardCard';
 import { EmptyState, ConfirmModal, ParticipantsList } from '@/components/shared';
 import ParticipantCard from '../ui/ParticipantCard';
-import useSessionStore from '../../store/useSessionStore';
+import { useSessionParticipantsQuery, useSessionMutations } from '../../hooks/useSessionQueries';
 import { useState, useCallback } from 'react';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
 
@@ -29,12 +29,8 @@ export default function SessionPageParticipantsWidget({
   onViewProfile,
   maxPlayers,
 }) {
-  const {
-    participants,
-    fetchParticipants,
-    removeParticipantAction,
-    fetchSessionById,
-  } = useSessionStore();
+  const { data: participants = [] } = useSessionParticipantsQuery(sessionId);
+  const mutations = useSessionMutations(sessionId);
 
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
@@ -58,12 +54,7 @@ export default function SessionPageParticipantsWidget({
     });
   }, []);
 
-  // Завантажити учасників
-  useEffect(() => {
-    if (sessionId) {
-      fetchParticipants(sessionId);
-    }
-  }, [sessionId, fetchParticipants]);
+  // Дані завантажуються автоматично через useQuery
 
   const handleRemove = (participantId) => {
     openConfirmModal(
@@ -71,9 +62,7 @@ export default function SessionPageParticipantsWidget({
       'Видалити цього учасника з сесії?',
       async () => {
         closeConfirmModal();
-        await removeParticipantAction(sessionId, participantId);
-        await fetchParticipants(sessionId);
-        await fetchSessionById(sessionId);
+        await mutations.removeParticipant(participantId);
       },
       'danger'
     );
@@ -85,9 +74,7 @@ export default function SessionPageParticipantsWidget({
       'Підтвердити цього користувача як GM для поточної сесії?',
       async () => {
         closeConfirmModal();
-        await onParticipantStatusChange?.(participantId, 'CONFIRMED');
-        await fetchParticipants(sessionId);
-        await fetchSessionById(sessionId);
+        await mutations.updateParticipantStatus({ participantId, status: 'CONFIRMED' });
       },
       'primary'
     );
@@ -99,9 +86,7 @@ export default function SessionPageParticipantsWidget({
       'Заявку буде відхилено.',
       async () => {
         closeConfirmModal();
-        await onParticipantStatusChange?.(participantId, 'DECLINED');
-        await fetchParticipants(sessionId);
-        await fetchSessionById(sessionId);
+        await mutations.updateParticipantStatus({ participantId, status: 'DECLINED' });
       },
       'danger'
     );
@@ -113,9 +98,7 @@ export default function SessionPageParticipantsWidget({
       'Підтвердити цього гравця для поточної сесії?',
       async () => {
         closeConfirmModal();
-        await onParticipantStatusChange?.(participantId, 'CONFIRMED');
-        await fetchParticipants(sessionId);
-        await fetchSessionById(sessionId);
+        await mutations.updateParticipantStatus({ participantId, status: 'CONFIRMED' });
       },
       'primary'
     );
@@ -127,9 +110,7 @@ export default function SessionPageParticipantsWidget({
       'Заявку гравця буде відхилено.',
       async () => {
         closeConfirmModal();
-        await onParticipantStatusChange?.(participantId, 'DECLINED');
-        await fetchParticipants(sessionId);
-        await fetchSessionById(sessionId);
+        await mutations.updateParticipantStatus({ participantId, status: 'DECLINED' });
       },
       'danger'
     );

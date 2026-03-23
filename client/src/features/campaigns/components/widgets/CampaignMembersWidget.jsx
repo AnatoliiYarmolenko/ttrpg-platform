@@ -3,7 +3,7 @@ import DashboardCard from '@/components/ui/DashboardCard';
 import { EmptyState, ConfirmModal, ParticipantsList } from '@/components/shared';
 import MemberCard from '../ui/MemberCard';
 import ParticipantCard from '@/features/sessions/components/ui/ParticipantCard';
-import useCampaignStore from '../../store/useCampaignStore';
+import { useCampaignMembersQuery, useCampaignJoinRequestsQuery, useCampaignMutations } from '../../hooks/useCampaignQueries';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
 
 /**
@@ -34,17 +34,9 @@ export default function CampaignMembersWidget({
   currentUserId,
   onViewProfile,
 }) {
-  const {
-    campaignMembers,
-    joinRequests,
-    fetchCampaignMembers,
-    fetchJoinRequests,
-    removeMember,
-    changeMemberRole,
-    approveRequest,
-    rejectRequest,
-    fetchCampaignById,
-  } = useCampaignStore();
+  const { data: campaignMembers = [] } = useCampaignMembersQuery(campaignId);
+  const { data: joinRequests = [] } = useCampaignJoinRequestsQuery(campaignId, canModerateRequests);
+  const mutations = useCampaignMutations(campaignId);
 
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
@@ -58,15 +50,7 @@ export default function CampaignMembersWidget({
     setConfirmModal((prev) => ({ ...prev, isOpen: false }));
   }, []);
 
-  // Завантажити членів
-  useEffect(() => {
-    if (campaignId) {
-      fetchCampaignMembers(campaignId);
-      if (canModerateRequests) {
-        fetchJoinRequests(campaignId);
-      }
-    }
-  }, [campaignId, canModerateRequests, fetchCampaignMembers, fetchJoinRequests]);
+  // Дані завантажуються автоматично через useQuery
 
   const handleRemove = (memberId) => {
     setConfirmModal({
@@ -76,28 +60,21 @@ export default function CampaignMembersWidget({
       variant: 'danger',
       onConfirm: async () => {
         closeConfirmModal();
-        await removeMember(campaignId, memberId);
-        await fetchCampaignMembers(campaignId);
-        await fetchCampaignById(campaignId);
+        await mutations.removeMember(memberId);
       },
     });
   };
 
   const handleChangeRole = async (memberId, newRole) => {
-    await changeMemberRole(campaignId, memberId, newRole);
-    await fetchCampaignMembers(campaignId);
+    await mutations.changeMemberRole({ memberId, role: newRole });
   };
 
   const handleApproveRequest = async (requestId) => {
-    await approveRequest(requestId, 'PLAYER');
-    await fetchCampaignMembers(campaignId);
-    await fetchJoinRequests(campaignId);
-    await fetchCampaignById(campaignId);
+    await mutations.approveRequest({ requestId, role: 'PLAYER' });
   };
 
   const handleRejectRequest = async (requestId) => {
-    await rejectRequest(requestId);
-    await fetchJoinRequests(campaignId);
+    await mutations.rejectRequest(requestId);
   };
 
   const visiblePendingRequests = useMemo(() => {

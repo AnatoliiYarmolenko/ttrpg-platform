@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import useSessionStore from '../store/useSessionStore';
+import { useSessionQuery, useSessionMutations } from './useSessionQueries';
 import useAuthStore from '@/stores/useAuthStore';
 import usePreviewMode from '@/hooks/usePreviewMode';
 import { TABS } from '../components/navigation/SessionNavigation';
@@ -20,25 +20,13 @@ import { TABS } from '../components/navigation/SessionNavigation';
  */
 export default function useSessionPageController() {
   const { id } = useParams();
+  const sessionIdNumber = Number(id);
   const navigate = useNavigate();
 
   const user = useAuthStore((state) => state.user);
-  const {
-    currentSession,
-    fetchSessionById,
-    fetchParticipants,
-    joinSessionAction,
-    leaveSessionAction,
-    updateSessionData,
-    updateSessionStatusAction,
-    cancelSessionAction,
-    markSessionAsFinishedAction,
-    deleteSessionById,
-    updateParticipantStatusAction,
-    isLoading,
-    error,
-    clearCurrentSession,
-  } = useSessionStore();
+  
+  const { data: currentSession, isLoading, error } = useSessionQuery(sessionIdNumber);
+  const mutations = useSessionMutations(sessionIdNumber);
 
   // Таби та перегляд профілю — обидва в URL, щоб перемикання було атомарним (без миготіння)
   const [searchParams, setSearchParams] = useSearchParams();
@@ -66,15 +54,10 @@ export default function useSessionPageController() {
     [setSearchParams],
   );
 
-  // Завантаження; скидання viewing при зміні id
+  // Завантаження даних відбувається автоматично через useSessionQuery
   useEffect(() => {
-    if (id) {
-      fetchSessionById(id);
-    }
-    return () => {
-      clearCurrentSession();
-    };
-  }, [id, fetchSessionById, clearCurrentSession]);
+    // Empty effect for compatibility
+  }, [sessionIdNumber]);
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -184,54 +167,36 @@ export default function useSessionPageController() {
     return !isGuestViewForPublicCampaignSession;
   }, [currentSession]);
 
-  const refreshSessionWidgets = useCallback(async () => {
-    if (!id) return;
-    await Promise.all([
-      fetchSessionById(id),
-      fetchParticipants(id),
-    ]);
-  }, [id, fetchSessionById, fetchParticipants]);
-
   // === Дії ===
   const handleJoin = useCallback(
     async (payload = {}) => {
-      const result = await joinSessionAction(id, payload);
-      if (result?.success) await refreshSessionWidgets();
+      const result = await mutations.joinSession(payload);
       return result;
     },
-    [id, joinSessionAction, refreshSessionWidgets]
+    [mutations]
   );
 
   const handleApplyAsGm = useCallback(async () => {
-    const result = await joinSessionAction(id, { role: 'GM' });
-    if (result?.success) {
-      await refreshSessionWidgets();
-    }
+    const result = await mutations.joinSession({ role: 'GM' });
     return result;
-  }, [id, joinSessionAction, refreshSessionWidgets]);
+  }, [mutations]);
 
   const handleLeave = useCallback(async () => {
-    const result = await leaveSessionAction(id);
+    const result = await mutations.leaveSession();
     if (result?.success) {
-      clearCurrentSession();
       navigate('/');
     }
     return result;
-  }, [id, leaveSessionAction, clearCurrentSession, navigate]);
+  }, [mutations, navigate]);
 
   const handleStatusChange = useCallback(
     async (newStatus) => {
-      const action = newStatus === 'CANCELED'
-        ? () => cancelSessionAction(id)
-        : () => updateSessionStatusAction(id, newStatus);
-
-      const result = await action();
-      if (result?.success) {
-        await fetchSessionById(id);
+      if (newStatus === 'CANCELED') {
+        return await mutations.cancelSession();
       }
-      return result;
+      return await mutations.updateStatus(newStatus);
     },
-    [id, updateSessionStatusAction, cancelSessionAction, fetchSessionById]
+    [mutations]
   );
 
   const handleSaveSettings = useCallback(
@@ -244,38 +209,28 @@ export default function useSessionPageController() {
             : 'Налаштування недоступні для сесій у минулому',
         };
       }
-      const result = await updateSessionData(id, sessionData);
-      if (result?.success) await fetchSessionById(id);
-      return result;
+      return await mutations.updateSession(sessionData);
     },
-    [id, canManageSettings, isCampaignFinished, updateSessionData, fetchSessionById]
+    [canManageSettings, isCampaignFinished, mutations]
   );
 
   const handleMarkAsFinished = useCallback(async () => {
-    const result = await markSessionAsFinishedAction(id);
-    if (result?.success) {
-      await fetchSessionById(id);
-    }
-    return result;
-  }, [id, markSessionAsFinishedAction, fetchSessionById]);
+    return await mutations.finishSession();
+  }, [mutations]);
 
   const handleDelete = useCallback(async () => {
-    const result = await deleteSessionById(id);
+    const result = await mutations.deleteSession();
     if (result?.success) {
       navigate('/');
     }
     return result;
-  }, [id, deleteSessionById, navigate]);
+  }, [mutations, navigate]);
 
   const handleParticipantStatusChange = useCallback(
     async (participantId, status) => {
-      const result = await updateParticipantStatusAction(id, participantId, status);
-      if (result?.success) {
-        await fetchSessionById(id);
-      }
-      return result;
+      return await mutations.updateParticipantStatus({ participantId, status });
     },
-    [id, updateParticipantStatusAction, fetchSessionById]
+    [mutations]
   );
 
   const handleViewProfile = useCallback((userId) => {

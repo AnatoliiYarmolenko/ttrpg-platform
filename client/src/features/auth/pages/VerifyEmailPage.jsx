@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
+import { useMutation } from "@tanstack/react-query";
 import { verifyEmail } from "../api/authApi"; 
 import AuthLayout from "../components/AuthLayout";
 import { toast } from "@/stores/useToastStore";
@@ -17,26 +18,31 @@ export default function VerifyEmailPage() {
   
   const verifyCalled = useRef(false);
 
+  const verifyMutation = useMutation({
+    mutationFn: (token) => verifyEmail(token),
+  });
+
   useEffect(() => {
     if (!token) return;
 
     if (verifyCalled.current) return;
     verifyCalled.current = true;
 
-    verifyEmail(token)
-      .then(data => { 
+    verifyMutation.mutate(token, {
+      onSuccess: (data) => {
         setStatus("success");
         const successMessage = data.message || "Email успішно підтверджено! Тепер ви можете увійти.";
         setMessage(successMessage);
         toast.success(successMessage);
         setTimeout(() => navigate("/login"), 4000);
-      })
-      .catch(err => {
+      },
+      onError: (err) => {
         setStatus("error");
         const errorMessage = err.response?.data?.error || err.response?.data?.message || "Помилка під час підтвердження email.";
         setMessage(errorMessage);
         toast.error(errorMessage);
-      });
+      }
+    });
   }, [token, navigate]);
   
   return (

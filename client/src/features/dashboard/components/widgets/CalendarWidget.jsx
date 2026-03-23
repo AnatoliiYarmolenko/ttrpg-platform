@@ -1,13 +1,13 @@
-import React, { useEffect, useMemo, memo } from 'react';
+import React, { useMemo, memo } from 'react';
 import DashboardCard from '@/components/ui/DashboardCard';
 import CalendarDayCell from '../ui/CalendarDayCell';
 import useDashboardStore from '@/stores/useDashboardStore';
 import useSearchStore from '@/stores/useSearchStore';
 import { VIEW_MODES } from '@/stores/dashboardConstants';
-import useCalendarStore from '@/stores/useCalendarStore';
 import Button from '@/components/ui/Button';
 import { formatDate } from '@/components/shared';
 import Arrow from '@/components/ui/icons/Arrow';
+import { useCalendarStatsQuery } from '../../hooks/useCalendarQueries';
 
 const EMPTY_SESSIONS = [];
 
@@ -28,23 +28,15 @@ const CalendarWidget = memo(function CalendarWidget({ title, showTodayButton }) 
   const searchFilters = useSearchStore((state) => state.searchFilters);
   const hasSearched = useSearchStore((state) => state.hasSearched);
 
-  const {
-    calendarStats,
-    fetchCalendarStats,
-  } = useCalendarStore();
-  
-  // Визначаємо чи показувати кнопку "Сьогодні"
   const shouldShowTodayButton = showTodayButton ?? (viewMode === VIEW_MODES.MY_GAMES || viewMode === VIEW_MODES.HOME);
 
-  // Завантажуємо статистику при першому рендері
-  useEffect(() => {
-    fetchCalendarStats({
-      currentMonth,
-      viewMode,
-      searchFilters,
-      hasSearched,
-    });
-  }, [fetchCalendarStats, currentMonth, viewMode, searchFilters, hasSearched]);
+  // Отримуємо статистику через React Query
+  const { data: calendarStats = {} } = useCalendarStatsQuery({
+    currentMonth,
+    viewMode,
+    searchFilters,
+    hasSearched,
+  });
 
   // Генеруємо дні для календаря
   const calendarDays = useMemo(() => {

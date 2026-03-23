@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { requestEmailChange } from '../api/securityApi';
+import { useSecurityMutations } from '../hooks/useSecurityMutations';
 import Button from '@/components/ui/Button';
 import { toast } from '@/stores/useToastStore';
 
 export default function EmailChangeForm({ currentEmail }) {
-  const [saving, setSaving] = useState(false);
+  const { requestEmailChange } = useSecurityMutations();
+  const saving = requestEmailChange.isPending;
   
   const [formData, setFormData] = useState({
     password: '',
@@ -43,27 +44,18 @@ export default function EmailChangeForm({ currentEmail }) {
     return true;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     
     if (!validateForm()) {
       return;
     }
 
-    setSaving(true);
-
-    try {
-      const result = await requestEmailChange(formData);
-      toast.success(result.message || 'Лист для підтвердження надіслано на новий email!');
-      
-      // Очищаємо форму
-      setFormData({ password: '', newEmail: '' });
-    } catch (err) {
-      const message = err.response?.data?.message || err.response?.data?.error || 'Помилка при зміні email';
-      toast.error(message);
-    } finally {
-      setSaving(false);
-    }
+    requestEmailChange.mutate(formData, {
+      onSuccess: () => {
+        setFormData({ password: '', newEmail: '' });
+      }
+    });
   };
 
   const inputClasses = "w-full px-4 py-3 rounded-xl border-2 border-[#9DC88D]/30 focus:border-[#164A41] focus:outline-none transition-colors";

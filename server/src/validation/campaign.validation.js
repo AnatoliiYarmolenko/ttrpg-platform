@@ -105,7 +105,7 @@ const updateMemberRoleBodySchema = Joi.object({
 const validateUpdateMemberRole = [validateParams(removeMemberParamsSchema), validateBody(updateMemberRoleBodySchema)];
 
 const joinRequestBodySchema = Joi.object({
-  message: Joi.string().trim().max(500).optional().messages({
+  message: Joi.string().trim().allow('').max(500).optional().messages({
     'string.max': 'Повідомлення не повинно перевищувати 500 символів',
   }),
 });

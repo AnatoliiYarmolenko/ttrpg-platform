@@ -7,8 +7,7 @@ import {
   DateTimeDisplay,
   EmptyState,
 } from '@/components/shared';
-import useCampaignStore from '@/features/campaigns/store/useCampaignStore';
-import useSessionStore from '@/features/sessions/store/useSessionStore';
+import { useMyCampaignsQuery, useMySessionsQuery } from '../../hooks/useDashboardQueries';
 import Dice20 from '@/components/ui/icons/Dice20';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
 import Data from '@/components/ui/icons/Data';
@@ -57,30 +56,9 @@ function SessionCard({ session, navigate, formatDuration }) {
 export default function MyGamesListWidget() {
   const navigate = useNavigate();
 
-  const { campaigns, fetchMyCampaigns } = useCampaignStore();
-  const { sessions, fetchMySessions } = useSessionStore();
-
-  // const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(true);
-  // const [isLoadingSessions, setIsLoadingSessions] = useState(true);
-
-  // Завантажуємо дані при маунті
-  useEffect(() => {
-    const load = async () => {
-      // setIsLoadingCampaigns(true);
-      await fetchMyCampaigns('all');
-      // setIsLoadingCampaigns(false);
-    };
-    load();
-  }, [fetchMyCampaigns]);
-
-  useEffect(() => {
-    const load = async () => {
-      // setIsLoadingSessions(true);
-      await fetchMySessions();
-      // setIsLoadingSessions(false);
-    };
-    load();
-  }, [fetchMySessions]);
+  const { data: campaigns = [], isLoading: isLoadingCampaigns } = useMyCampaignsQuery('all');
+  const { data: sessions = [], isLoading: isLoadingSessions } = useMySessionsQuery();
+  const isLoading = isLoadingCampaigns || isLoadingSessions;
 
   // Розбиваємо сесії на one-shot та сесії всередині кампаній
   const oneShotSessions = sessions.filter((s) => !s.campaignId);
@@ -109,20 +87,20 @@ export default function MyGamesListWidget() {
     return `${hours} год ${mins} хв`;
   };
 
-  // if (isLoading) {
-  //   return (
-  //     <DashboardCard title="Мої ігри">
-  //       <div className="animate-pulse space-y-4">
-  //         {[1, 2, 3].map((i) => (
-  //           <div key={i} className="p-4 border-2 border-gray-100 rounded-xl space-y-2">
-  //             <div className="h-5 bg-gray-200 rounded w-3/4" />
-  //             <div className="h-4 bg-gray-200 rounded w-1/2" />
-  //           </div>
-  //         ))}
-  //       </div>
-  //     </DashboardCard>
-  //   );
-  // }
+  if (isLoading) {
+    return (
+      <DashboardCard title="Мої ігри">
+        <div className="animate-pulse space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="p-4 border-2 border-gray-100 rounded-xl space-y-2">
+              <div className="h-5 bg-gray-200 rounded w-3/4" />
+              <div className="h-4 bg-gray-200 rounded w-1/2" />
+            </div>
+          ))}
+        </div>
+      </DashboardCard>
+    );
+  }
 
   if (isEmpty) {
     return (

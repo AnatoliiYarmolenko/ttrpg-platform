@@ -1,4 +1,4 @@
-﻿import api from '@/lib/axios';
+import api from '@/lib/axios';
 import { normalizeApiEnvelope } from '@/utils/ownerCompatibility';
 
 // === CRUD операції ===
@@ -146,9 +146,8 @@ export const joinByInviteCode = async (inviteCode) => {
  * @param {string} [message=''] - Повідомлення до запиту
  */
 export const submitJoinRequest = async (campaignId, message = '') => {
-  const response = await api.post(`/campaigns/${campaignId}/requests`, {
-    message,
-  });
+  const payload = message ? { message } : {};
+  const response = await api.post(`/campaigns/${campaignId}/requests`, payload);
   return normalizeApiEnvelope(response.data);
 };
 

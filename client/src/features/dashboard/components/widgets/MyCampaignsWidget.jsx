@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import useCampaignStore from '@/features/campaigns/store/useCampaignStore';
+import { useMyCampaignsQuery } from '../../hooks/useDashboardQueries';
 import useDashboardStore from '@/stores/useDashboardStore';
 import { PANEL_MODES } from '@/stores/dashboardConstants';
 import DashboardCard from '@/components/ui/DashboardCard';
@@ -16,13 +16,10 @@ import Data from '@/components/ui/icons/Data';
 export default function MyCampaignsWidget() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const { campaigns, fetchMyCampaigns, error } = useCampaignStore();
   const { setRightPanelMode } = useDashboardStore();
   const [filter, setFilter] = useState('all'); // all, owner, member
 
-  useEffect(() => {
-    fetchMyCampaigns(filter);
-  }, [filter, fetchMyCampaigns]);
+  const { data: campaigns = [], isLoading, error } = useMyCampaignsQuery(filter);
 
   // Визначення ролі користувача в кампанії
   const getUserRole = (campaign) => {
@@ -78,12 +75,11 @@ export default function MyCampaignsWidget() {
         </div>
       }
     >
-      {/* {isLoading ? (
+      {isLoading ? (
         <div className="flex items-center justify-center h-full">
           <div className="animate-pulse text-[#164A41]">Завантаження...</div>
         </div>
-      ) : */}
-      {error ? (
+      ) : error ? (
         <div className="flex flex-col items-center justify-center h-full text-red-500">
           <p>{error}</p>
         </div>

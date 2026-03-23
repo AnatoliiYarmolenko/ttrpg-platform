@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import DashboardCard from '@/components/ui/DashboardCard';
 import { ViewProfileButton } from '@/components/shared';
-import { getProfileByUsername } from '@/features/profile/api/profileApi';
+import { useProfileByUsernameQuery } from '@/features/profile/hooks/useProfileQueries';
 import ProfilePublicCard from '@/features/profile/components/ProfilePublicCard';
-import { toast } from '@/stores/useToastStore';
 import useAuthStore from '@/stores/useAuthStore';
 
 /**
@@ -28,74 +27,29 @@ export default function ProfileInfoWidget({
   title = 'Інформація про гравця',
 }) {
   const authUser = useAuthStore((state) => state.user);
-  const [profile, setProfile] = useState(profileProp || (mode === 'me' ? authUser : null));
-  const [isInitialLoading, setIsInitialLoading] = useState(mode === 'username' && !profileProp);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(Boolean(profileProp));
-  const [error, setError] = useState(null);
+  
+  const shouldFetch = mode === 'username' && !profileProp && !!username;
+  const {
+    data: fetchedProfile,
+    isLoading: isFetching,
+    error: fetchError,
+    isRefetching
+  } = useProfileByUsernameQuery(shouldFetch ? username : null);
 
-  // Зовнішній profileProp має пріоритет
-  useEffect(() => {
-    if (profileProp) {
-      setProfile(profileProp);
-      setHasLoadedOnce(true);
-      setError(null);
+  let profile = profileProp;
+  if (!profile) {
+    if (mode === 'me') {
+      profile = authUser;
+    } else {
+      profile = fetchedProfile;
     }
-  }, [profileProp]);
+  }
 
-  // mode='me': синхронізуємо з authStore
-  useEffect(() => {
-    if (mode !== 'me') return;
-    setProfile(profileProp || authUser || null);
-  }, [mode, authUser, profileProp]);
-
-  // mode='username': завантажуємо по мережі
-  useEffect(() => {
-    if (mode !== 'username' || profileProp) return;
-    if (!username) {
-      const message = 'Не вказано username';
-      setError(message);
-      toast.error(message);
-      setIsInitialLoading(false);
-      return;
-    }
-
-    let isCancelled = false;
-
-    const load = async () => {
-      if (!hasLoadedOnce) {
-        setIsInitialLoading(true);
-      } else {
-        setIsRefreshing(true);
-      }
-
-      try {
-        const { profile: data } = await getProfileByUsername(username);
-        if (!isCancelled) {
-          setProfile(data);
-          setError(null);
-          setHasLoadedOnce(true);
-        }
-      } catch (err) {
-        if (!isCancelled) {
-          const message =
-            err.response?.status === 404
-              ? 'Користувача не знайдено'
-              : 'Не вдалося завантажити профіль';
-          setError(message);
-          toast.error(message);
-        }
-      } finally {
-        if (!isCancelled) {
-          setIsInitialLoading(false);
-          setIsRefreshing(false);
-        }
-      }
-    };
-
-    load();
-    return () => { isCancelled = true; };
-  }, [mode, username, profileProp, hasLoadedOnce]);
+  const isLoading = shouldFetch && isFetching;
+  const isRefreshing = shouldFetch && isRefetching;
+  const error = shouldFetch && fetchError
+    ? (fetchError.response?.status === 404 ? 'Користувача не знайдено' : 'Не вдалося завантажити профіль')
+    : (!profileProp && mode === 'username' && !username ? 'Не вказано username' : null);
 
   return (
     <DashboardCard title={title}>
@@ -104,7 +58,7 @@ export default function ProfileInfoWidget({
       )}
       <ProfilePublicCard
         profile={profile}
-        isLoading={isInitialLoading && !profile}
+        isLoading={isLoading && !profile}
         error={error}
         showStats
         showContactInfo

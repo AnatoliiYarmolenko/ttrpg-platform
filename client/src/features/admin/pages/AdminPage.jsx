@@ -1,14 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '@/stores/useAuthStore';
-import { getAdminStats, getAdminUsers, getAdminCampaigns, getAdminSessions, deleteAdminCampaign, deleteAdminSession } from '../api/adminApi';
 import { logoutUser } from '@/features/auth/api/authApi';
+import {
+  useAdminStatsQuery,
+  useAdminUsersQuery,
+  useAdminCampaignsQuery,
+  useAdminSessionsQuery,
+  useAdminMutations,
+} from '../hooks/useAdminQueries';
 import StatsCards from '../components/StatsCards';
 import AdminSearchBar from '../components/AdminSearchBar';
 import AdminPagination from '../components/AdminPagination';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import NavButton from '@/components/ui/NavButton';
-import { toast } from '@/stores/useToastStore';
 
 // Вкладки адмін-панелі
 const TABS = {
@@ -24,109 +29,52 @@ export default function AdminPage() {
   const clearUser = useAuthStore((state) => state.clearUser);
 
   const [activeTab, setActiveTab] = useState(TABS.DASHBOARD);
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(false);
 
   // Users state
-  const [users, setUsers] = useState([]);
-  const [usersPagination, setUsersPagination] = useState(null);
-  const [usersSearch, setUsersSearch] = useState('');
-  const [usersPage, setUsersPage] = useState(1);
+  const [usersSearchInput, setUsersSearchInput] = useState('');
+  const [usersParams, setUsersParams] = useState({ page: 1, search: '' });
 
   // Campaigns state
-  const [campaigns, setCampaigns] = useState([]);
-  const [campaignsPagination, setCampaignsPagination] = useState(null);
-  const [campaignsSearch, setCampaignsSearch] = useState('');
-  const [campaignsPage, setCampaignsPage] = useState(1);
+  const [campaignsSearchInput, setCampaignsSearchInput] = useState('');
+  const [campaignsParams, setCampaignsParams] = useState({ page: 1, search: '' });
 
   // Sessions state
-  const [sessions, setSessions] = useState([]);
-  const [sessionsPagination, setSessionsPagination] = useState(null);
-  const [sessionsSearch, setSessionsSearch] = useState('');
-  const [sessionsPage, setSessionsPage] = useState(1);
+  const [sessionsSearchInput, setSessionsSearchInput] = useState('');
   const [sessionsStatusFilter, setSessionsStatusFilter] = useState('');
+  const [sessionsParams, setSessionsParams] = useState({ page: 1, search: '', status: '' });
 
   // Delete modal
   const [deleteModal, setDeleteModal] = useState({ open: false, type: '', id: null, title: '' });
-  const [deleting, setDeleting] = useState(false);
 
-  // ============== Завантаження даних ==============
+  // Queries
+  const { data: stats, isLoading: statsLoading } = useAdminStatsQuery({ enabled: activeTab === TABS.DASHBOARD });
+  
+  const { data: usersData, isLoading: usersLoading } = useAdminUsersQuery(usersParams, { enabled: activeTab === TABS.USERS });
+  const users = usersData?.users ?? [];
+  const usersPagination = usersData?.pagination ?? null;
 
-  const loadStats = useCallback(async () => {
-    try {
-      const data = await getAdminStats();
-      setStats(data);
-    } catch {
-      toast.error('Помилка завантаження статистики');
-    }
-  }, []);
+  const { data: campaignsData, isLoading: campaignsLoading } = useAdminCampaignsQuery(campaignsParams, { enabled: activeTab === TABS.CAMPAIGNS });
+  const campaigns = campaignsData?.campaigns ?? [];
+  const campaignsPagination = campaignsData?.pagination ?? null;
 
-  const loadUsers = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await getAdminUsers({ page: usersPage, search: usersSearch });
-      setUsers(data?.users ?? []);
-      setUsersPagination(data?.pagination ?? null);
-    } catch {
-      toast.error('Помилка завантаження користувачів');
-    } finally {
-      setLoading(false);
-    }
-  }, [usersPage, usersSearch]);
+  const { data: sessionsData, isLoading: sessionsLoading } = useAdminSessionsQuery(sessionsParams, { enabled: activeTab === TABS.SESSIONS });
+  const sessions = sessionsData?.sessions ?? [];
+  const sessionsPagination = sessionsData?.pagination ?? null;
 
-  const loadCampaigns = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await getAdminCampaigns({ page: campaignsPage, search: campaignsSearch });
-      setCampaigns(data?.campaigns ?? []);
-      setCampaignsPagination(data?.pagination ?? null);
-    } catch {
-      toast.error('Помилка завантаження кампаній');
-    } finally {
-      setLoading(false);
-    }
-  }, [campaignsPage, campaignsSearch]);
-
-  const loadSessions = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await getAdminSessions({ page: sessionsPage, search: sessionsSearch, status: sessionsStatusFilter });
-      setSessions(data?.sessions ?? []);
-      setSessionsPagination(data?.pagination ?? null);
-    } catch {
-      toast.error('Помилка завантаження сесій');
-    } finally {
-      setLoading(false);
-    }
-  }, [sessionsPage, sessionsSearch, sessionsStatusFilter]);
-
-  // Завантаження при зміні вкладки
-  useEffect(() => {
-    if (activeTab === TABS.DASHBOARD) loadStats();
-    if (activeTab === TABS.USERS) loadUsers();
-    if (activeTab === TABS.CAMPAIGNS) loadCampaigns();
-    if (activeTab === TABS.SESSIONS) loadSessions();
-  }, [activeTab, loadStats, loadUsers, loadCampaigns, loadSessions]);
+  const mutations = useAdminMutations();
 
   // ============== Видалення ==============
 
   const handleDelete = async () => {
-    setDeleting(true);
     try {
       if (deleteModal.type === 'campaign') {
-        await deleteAdminCampaign(deleteModal.id);
-        loadCampaigns();
-        toast.success('Кампанію видалено');
+        await mutations.deleteCampaign(deleteModal.id);
       } else if (deleteModal.type === 'session') {
-        await deleteAdminSession(deleteModal.id);
-        loadSessions();
-        toast.success('Сесію видалено');
+        await mutations.deleteSession(deleteModal.id);
       }
       setDeleteModal({ open: false, type: '', id: null, title: '' });
     } catch {
-      toast.error('Помилка видалення');
-    } finally {
-      setDeleting(false);
+      // Помилки вже оброблені у mutations
     }
   };
 
@@ -173,9 +121,9 @@ export default function AdminPage() {
   const renderUsersTable = () => (
     <div>
       <AdminSearchBar
-        value={usersSearch}
-        onChange={setUsersSearch}
-        onSearch={() => { setUsersPage(1); loadUsers(); }}
+        value={usersSearchInput}
+        onChange={setUsersSearchInput}
+        onSearch={() => setUsersParams(p => ({ ...p, page: 1, search: usersSearchInput }))}
         placeholder="Пошук за username, email або ім'ям..."
       />
 
@@ -210,8 +158,11 @@ export default function AdminPage() {
                 <td className="py-2 px-3 text-gray-500">{u._count?.ownedSessions ?? 0}</td>
               </tr>
             ))}
-            {users.length === 0 && !loading && (
+            {users.length === 0 && !usersLoading && (
               <tr><td colSpan={7} className="py-8 text-center text-gray-400">Нічого не знайдено</td></tr>
+            )}
+            {usersLoading && (
+              <tr><td colSpan={7} className="py-8 text-center text-gray-400">Завантаження...</td></tr>
             )}
           </tbody>
         </table>
@@ -221,7 +172,7 @@ export default function AdminPage() {
         <AdminPagination
           page={usersPagination.page}
           totalPages={usersPagination.totalPages}
-          onPageChange={(p) => setUsersPage(p)}
+          onPageChange={(p) => setUsersParams(prev => ({ ...prev, page: p }))}
         />
       )}
     </div>
@@ -230,9 +181,9 @@ export default function AdminPage() {
   const renderCampaignsTable = () => (
     <div>
       <AdminSearchBar
-        value={campaignsSearch}
-        onChange={setCampaignsSearch}
-        onSearch={() => { setCampaignsPage(1); loadCampaigns(); }}
+        value={campaignsSearchInput}
+        onChange={setCampaignsSearchInput}
+        onSearch={() => setCampaignsParams(p => ({ ...p, page: 1, search: campaignsSearchInput }))}
         placeholder="Пошук за назвою або власником..."
       />
 
@@ -282,8 +233,11 @@ export default function AdminPage() {
                 </td>
               </tr>
             ))}
-            {campaigns.length === 0 && !loading && (
+            {campaigns.length === 0 && !campaignsLoading && (
               <tr><td colSpan={10} className="py-8 text-center text-gray-400">Нічого не знайдено</td></tr>
+            )}
+            {campaignsLoading && (
+              <tr><td colSpan={10} className="py-8 text-center text-gray-400">Завантаження...</td></tr>
             )}
           </tbody>
         </table>
@@ -293,7 +247,7 @@ export default function AdminPage() {
         <AdminPagination
           page={campaignsPagination.page}
           totalPages={campaignsPagination.totalPages}
-          onPageChange={(p) => setCampaignsPage(p)}
+          onPageChange={(p) => setCampaignsParams(prev => ({ ...prev, page: p }))}
         />
       )}
     </div>
@@ -304,15 +258,19 @@ export default function AdminPage() {
       <div className="flex gap-2 flex-wrap">
         <div className="flex-1">
           <AdminSearchBar
-            value={sessionsSearch}
-            onChange={setSessionsSearch}
-            onSearch={() => { setSessionsPage(1); loadSessions(); }}
+            value={sessionsSearchInput}
+            onChange={setSessionsSearchInput}
+            onSearch={() => setSessionsParams(p => ({ ...p, page: 1, search: sessionsSearchInput }))}
             placeholder="Пошук за назвою або GM..."
           />
         </div>
         <select
           value={sessionsStatusFilter}
-          onChange={(e) => { setSessionsStatusFilter(e.target.value); setSessionsPage(1); }}
+          onChange={(e) => { 
+            const newStatus = e.target.value;
+            setSessionsStatusFilter(newStatus); 
+            setSessionsParams(p => ({ ...p, page: 1, status: newStatus }));
+          }}
           className="px-3 py-2 rounded-xl border-2 border-[#9DC88D]/30 focus:border-[#164A41] focus:outline-none text-[#164A41] bg-white transition-colors"
         >
           <option value="">Всі статуси</option>
@@ -361,8 +319,11 @@ export default function AdminPage() {
                 </td>
               </tr>
             ))}
-            {sessions.length === 0 && !loading && (
+            {sessions.length === 0 && !sessionsLoading && (
               <tr><td colSpan={8} className="py-8 text-center text-gray-400">Нічого не знайдено</td></tr>
+            )}
+            {sessionsLoading && (
+              <tr><td colSpan={8} className="py-8 text-center text-gray-400">Завантаження...</td></tr>
             )}
           </tbody>
         </table>
@@ -372,7 +333,7 @@ export default function AdminPage() {
         <AdminPagination
           page={sessionsPagination.page}
           totalPages={sessionsPagination.totalPages}
-          onPageChange={(p) => setSessionsPage(p)}
+          onPageChange={(p) => setSessionsParams(prev => ({ ...prev, page: p }))}
         />
       )}
     </div>
@@ -381,8 +342,8 @@ export default function AdminPage() {
   // ============== Контент вкладки ==============
 
   const renderTabContent = () => {
-    if (loading && !stats) {
-      return <div className="text-center py-12 text-gray-400">Завантаження...</div>;
+    if (activeTab === TABS.DASHBOARD && statsLoading && !stats) {
+      return <div className="text-center py-12 text-gray-400">Завантаження статистики...</div>;
     }
 
     switch (activeTab) {

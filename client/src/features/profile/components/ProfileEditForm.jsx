@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getMyProfile, updateProfile } from '../api/profileApi';
+import { useMyProfileQuery, useProfileMutations } from '../hooks/useProfileQueries';
 import Button from '@/components/ui/Button';
 import Dropdown from '@/components/ui/Dropdown';
 import { toast } from '@/stores/useToastStore';
@@ -15,7 +15,8 @@ const LANGUAGES = [
 ];
 
 export default function ProfileEditForm({ onSuccess }) {
-  const [loading, setLoading] = useState(true);
+  const { data: profile, isLoading } = useMyProfileQuery();
+  const { updateProfile } = useProfileMutations();
   const [saving, setSaving] = useState(false);
   
   // Форма
@@ -26,27 +27,17 @@ export default function ProfileEditForm({ onSuccess }) {
     language: 'uk',
   });
   
-  // Завантаження профілю
+  // Заповнення форми даними
   useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const { profile } = await getMyProfile();
-        setFormData({
-          displayName: profile.displayName || '',
-          bio: profile.bio || '',
-          timezone: profile.timezone || '',
-          language: profile.language || 'uk',
-        });
-      } catch (err) {
-        toast.error('Не вдалося завантажити профіль');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    loadProfile();
-  }, []);
+    if (profile) {
+      setFormData({
+        displayName: profile.displayName || '',
+        bio: profile.bio || '',
+        timezone: profile.timezone || '',
+        language: profile.language || 'uk',
+      });
+    }
+  }, [profile]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -82,7 +73,7 @@ export default function ProfileEditForm({ onSuccess }) {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="animate-pulse text-center py-8 text-[#4D774E]">
         Завантаження...

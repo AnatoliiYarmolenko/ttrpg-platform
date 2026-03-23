@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import Button from '@/components/ui/Button';
 import { GAME_SYSTEMS } from '@/constants/gameSystems';
-import useCampaignStore from '../../store/useCampaignStore';
-
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { createCampaign } from '@/features/campaigns/api/campaignApi';
 /**
  * Віджет створення нової кампанії для правого вікна
  * 
@@ -11,7 +11,15 @@ import useCampaignStore from '../../store/useCampaignStore';
  * @param {Function} props.onCancel - Callback при скасуванні
  */
 export default function CreateCampaignWidget({ onSuccess, onCancel }) {
-  const { createNewCampaign } = useCampaignStore();
+  const queryClient = useQueryClient();
+  const createMutation = useMutation({
+    mutationFn: (data) => createCampaign(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar'] });
+    }
+  });
 
   const [formData, setFormData] = useState({
     title: '',
@@ -59,7 +67,7 @@ export default function CreateCampaignWidget({ onSuccess, onCancel }) {
       if (formData.description.trim()) payload.description = formData.description.trim();
       if (formData.system) payload.system = formData.system;
 
-      const result = await createNewCampaign(payload);
+      const result = await createMutation.mutateAsync(payload);
 
       if (result.success) {
         setFormData({ title: '', description: '', system: '', visibility: 'PUBLIC' });

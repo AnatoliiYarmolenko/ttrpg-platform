@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useDashboardStore from '@/stores/useDashboardStore';
 import useSearchStore from '@/stores/useSearchStore';
-import useSessionStore from '@/features/sessions/store/useSessionStore';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSearchCampaignsQuery, useSearchSessionsQuery } from '@/features/search/hooks/useSearchQueries';
+import { joinSession } from '@/features/sessions/api/sessionApi';
 import DashboardCard from '@/components/ui/DashboardCard';
 import SessionCard from '../ui/SessionCard';
 import { VisibilityBadge } from '@/components/shared';
@@ -60,8 +62,8 @@ export function SearchFiltersWidget({ onSearch }) {
       maxPrice: localFilters.maxPrice ? Number(localFilters.maxPrice) : null,
     });
     
-    // Виконуємо пошук (оновлює календар + результати)
-    await executeSearch({ currentMonth, viewMode });
+    // Виконуємо пошук (оновлює результати)
+    executeSearch();
     
     if (onSearch) {
       onSearch(localFilters);
@@ -69,7 +71,7 @@ export function SearchFiltersWidget({ onSearch }) {
   };
 
   const handleClear = async () => {
-    await resetSearchFilters({ currentMonth, viewMode });
+    resetSearchFilters();
     setLocalFilters(mapSearchFiltersToLocal({}));
   };
 
@@ -278,39 +280,67 @@ export function SearchResultsWidget() {
   const navigate = useNavigate();
   const { 
     searchActiveTab,
-    campaignResults,
-    sessionResults,
-    searchCampaignsAction,
-    searchSessionsAction,
-    loadMoreSearchResults,
-    isSearchLoading,
-    error,
+    searchFilters,
     hasSearched,
   } = useSearchStore();
-  const { joinSessionAction } = useSessionStore();
+
+  const queryClient = useQueryClient();
+  const joinMutation = useMutation({
+    mutationFn: (id) => joinSession(id, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'games'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar'] });
+    }
+  });
 
   const [expandedSessionId, setExpandedSessionId] = useState(null);
   const [joiningSessionId, setJoiningSessionId] = useState(null);
   const [joinErrors, setJoinErrors] = useState({});
 
-  // Виконуємо пошук при зміні вкладки (тільки якщо вже був пошук)
-  useEffect(() => {
-    if (hasSearched) {
-      if (searchActiveTab === 'campaigns') {
-        searchCampaignsAction();
-      } else {
-        searchSessionsAction();
-      }
-    }
-  }, [
-    hasSearched,
-    searchActiveTab,
-    searchCampaignsAction,
-    searchSessionsAction,
-  ]);
+  const {
+    data: campaignsData,
+    fetchNextPage: fetchNextCampaigns,
+    hasNextPage: hasNextCampaigns,
+    isFetching: isFetchingCampaigns,
+    isLoading: isCampLoading,
+    isError: isCampError,
+  } = useSearchCampaignsQuery(searchFilters, {
+    enabled: hasSearched && searchActiveTab === 'campaigns',
+  });
 
-  const results = searchActiveTab === 'campaigns' ? campaignResults : sessionResults;
-  const items = searchActiveTab === 'campaigns' ? results.campaigns : results.sessions;
+  const {
+    data: sessionsData,
+    fetchNextPage: fetchNextSessions,
+    hasNextPage: hasNextSessions,
+    isFetching: isFetchingSessions,
+    isLoading: isSessLoading,
+    isError: isSessError,
+  } = useSearchSessionsQuery(searchFilters, {
+    enabled: hasSearched && searchActiveTab === 'sessions',
+  });
+
+  const isSearchLoading = searchActiveTab === 'campaigns' ? isCampLoading : isSessLoading;
+  const isFetchingMore = searchActiveTab === 'campaigns' ? isFetchingCampaigns : isFetchingSessions;
+  const hasError = searchActiveTab === 'campaigns' ? isCampError : isSessError;
+  const hasMore = searchActiveTab === 'campaigns' ? hasNextCampaigns : hasNextSessions;
+
+  const loadMoreSearchResults = () => {
+    if (searchActiveTab === 'campaigns') fetchNextCampaigns();
+    else fetchNextSessions();
+  };
+
+  const getItems = () => {
+    if (searchActiveTab === 'campaigns') {
+      return campaignsData?.pages?.flatMap(page => page?.campaigns || []) || [];
+    }
+    return sessionsData?.pages?.flatMap(page => page?.sessions || []) || [];
+  };
+
+  const items = getItems();
+  const total = searchActiveTab === 'campaigns' 
+    ? campaignsData?.pages?.[0]?.total || 0 
+    : sessionsData?.pages?.[0]?.total || 0;
 
   const handleToggleSession = (sessionId) => {
     setExpandedSessionId(prev => (prev === sessionId ? null : sessionId));
@@ -320,10 +350,17 @@ export function SearchResultsWidget() {
     setJoiningSessionId(sessionId);
     setJoinErrors(prev => ({ ...prev, [sessionId]: null }));
 
-    const result = await joinSessionAction(sessionId);
-
-    if (!result?.success) {
-      setJoinErrors(prev => ({ ...prev, [sessionId]: result.error }));
+    try {
+      const result = await joinMutation.mutateAsync(sessionId);
+      if (!result?.success) {
+        setJoinErrors(prev => ({ ...prev, [sessionId]: result.error }));
+        toast.error(result.error || 'Помилка приєднання');
+      } else {
+        toast.success('Ви успішно приєдналися! Ваша заявка розглядається.');
+      }
+    } catch (err) {
+      setJoinErrors(prev => ({ ...prev, [sessionId]: err.message || 'Помилка' }));
+      toast.error(err.message || 'Сталася помилка');
     }
 
     setJoiningSessionId(null);
@@ -331,15 +368,15 @@ export function SearchResultsWidget() {
 
   return (
     <DashboardCard 
-      title={`Результати (${results.total || 0})`}
+      title={`Результати (${total})`}
     >
       {isSearchLoading && items.length === 0 ? (
         <div className="flex items-center justify-center h-full">
           <div className="animate-pulse text-[#164A41]">Шукаємо...</div>
         </div>
-      ) : error ? (
+      ) : hasError ? (
         <div className="flex flex-col items-center justify-center h-full text-red-500">
-          <p>{error}</p>
+          <p>Помилка пошуку</p>
         </div>
       ) : !hasSearched ? (
         <div className="flex flex-col items-center justify-center h-full text-[#4D774E]">
@@ -402,13 +439,13 @@ export function SearchResultsWidget() {
           })}
 
           {/* Кнопка "Завантажити ще" */}
-          {results.hasMore && (
+          {hasMore && (
             <button
               onClick={loadMoreSearchResults}
-              disabled={isSearchLoading}
+              disabled={isFetchingMore}
               className="py-3 border-2 border-dashed border-[#9DC88D]/50 rounded-xl text-[#4D774E] hover:border-[#164A41] hover:text-[#164A41] transition-colors disabled:opacity-50"
             >
-              {isSearchLoading ? 'Завантаження...' : 'Завантажити ще'}
+              {isFetchingMore ? 'Завантаження...' : 'Завантажити ще'}
             </button>
           )}
         </div>

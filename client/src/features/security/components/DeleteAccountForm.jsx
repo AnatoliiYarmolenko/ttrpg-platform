@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { deleteAccount } from '../api/securityApi';
+import { useSecurityMutations } from '../hooks/useSecurityMutations';
 import Button from '@/components/ui/Button';
 import { toast } from '@/stores/useToastStore';
 
 export default function DeleteAccountForm() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1); // 1 - попередження, 2 - форма
-  const [deleting, setDeleting] = useState(false);
+  const { deleteAccount } = useSecurityMutations();
+  const deleting = deleteAccount.isPending;
   
   const [formData, setFormData] = useState({
     password: '',
@@ -33,31 +34,22 @@ export default function DeleteAccountForm() {
     return true;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     
     if (!validateForm()) {
       return;
     }
 
-    setDeleting(true);
-
-    try {
-      await deleteAccount(formData);
-      
-      // Очищаємо persisted auth state
-      localStorage.removeItem('ttrpg_app_user');
-      
-      // Перенаправляємо на login
-      navigate('/login', { 
-        replace: true,
-        state: { message: 'Ваш акаунт було успішно видалено' }
-      });
-    } catch (err) {
-      const message = err.response?.data?.message || err.response?.data?.error || 'Помилка при видаленні акаунту';
-      toast.error(message);
-      setDeleting(false);
-    }
+    deleteAccount.mutate(formData, {
+      onSuccess: () => {
+        localStorage.removeItem('ttrpg_app_user');
+        navigate('/login', { 
+          replace: true,
+          state: { message: 'Ваш акаунт було успішно видалено' }
+        });
+      }
+    });
   };
 
   const inputClasses = "w-full px-4 py-3 rounded-xl border-2 border-red-200 focus:border-red-500 focus:outline-none transition-colors";

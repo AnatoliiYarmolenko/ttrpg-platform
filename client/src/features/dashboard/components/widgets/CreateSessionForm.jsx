@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import useSessionStore from '@/features/sessions/store/useSessionStore';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { createSession } from '@/features/sessions/api/sessionApi';
 import { GAME_SYSTEMS } from '@/constants/gameSystems';
 import Dropdown from '@/components/ui/Dropdown';
 import Button from '@/components/ui/Button';
@@ -16,9 +17,24 @@ import { toast } from '@/stores/useToastStore';
  * @param {Function} [props.onCancel] - Callback при скасуванні (опціонально)
  */
 export default function CreateSessionForm({ initialDate, campaignId, requireGmRole = false, onSuccess, onCancel }) {
-  const { createNewSession } = useSessionStore();
+  const queryClient = useQueryClient();
+  const createMutation = useMutation({
+    mutationFn: (data) => createSession(data),
+    onSuccess: () => {
+      toast.success('Сесію успішно створено!');
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'games'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar'] });
+      if (campaignId) {
+        queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] });
+      }
+    },
+    onError: (err) => {
+      toast.error(err?.response?.data?.error || err?.message || 'Помилка при створенні сесії');
+    }
+  });
+
   const isCampaignSession = Boolean(campaignId);
-  
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Форматуємо початкову дату для input datetime-local
@@ -135,7 +151,7 @@ export default function CreateSessionForm({ initialDate, campaignId, requireGmRo
     setIsSubmitting(true);
     
     try {
-      const result = await createNewSession({
+      const result = await createMutation.mutateAsync({
         ...formData,
         isGm: requireGmRole ? true : formData.isGm,
         date: new Date(formData.date).toISOString(),
@@ -144,7 +160,11 @@ export default function CreateSessionForm({ initialDate, campaignId, requireGmRo
       
       if (result.success) {
         onSuccess?.();
+      } else if (result.error) {
+        toast.error(result.error);
       }
+    } catch (err) {
+      toast.error(err?.message || 'Помилка при створенні сесії');
     } finally {
       setIsSubmitting(false);
     }

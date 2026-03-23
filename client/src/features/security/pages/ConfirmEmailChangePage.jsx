@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { confirmEmailChange } from '../api/securityApi';
+import { useSecurityMutations } from '../hooks/useSecurityMutations';
 import AuthLayout from '@/features/auth/components/AuthLayout';
 import Button from '@/components/ui/Button';
 import { toast } from '@/stores/useToastStore';
@@ -9,28 +9,28 @@ export default function ConfirmEmailChangePage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get('token');
+  const { confirmEmailChange } = useSecurityMutations();
 
   const [status, setStatus] = useState(token ? 'loading' : 'error'); // loading, success, error
   const [newEmail, setNewEmail] = useState('');
+  
+  const confirmCalled = useRef(false);
 
   useEffect(() => {
     if (!token) return;
+    if (confirmCalled.current) return;
+    confirmCalled.current = true;
 
-    const confirm = async () => {
-      try {
-        const result = await confirmEmailChange(token);
+    confirmEmailChange.mutate(token, {
+      onSuccess: (result) => {
         setStatus('success');
-        toast.success('Email успішно змінено!');
-        setNewEmail(result.profile?.email || '');
-      } catch (err) {
+        setNewEmail(result?.profile?.email || '');
+      },
+      onError: () => {
         setStatus('error');
-        const errorMsg = err.response?.data?.message || err.response?.data?.error || 'Помилка підтвердження';
-        toast.error(errorMsg);
       }
-    };
-
-    confirm();
-  }, [token]);
+    });
+  }, [token, confirmEmailChange]);
 
   return (
     <AuthLayout 

@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { changePassword } from '../api/securityApi';
+import { useSecurityMutations } from '../hooks/useSecurityMutations';
 import Button from '@/components/ui/Button';
 import PasswordStrength from '@/features/auth/ui/PasswordStrength';
 import { toast } from '@/stores/useToastStore';
 
 export default function PasswordChangeForm() {
-  const [saving, setSaving] = useState(false);
+  const { changePassword } = useSecurityMutations();
+  const saving = changePassword.isPending;
   
   const [formData, setFormData] = useState({
     currentPassword: '',
@@ -67,31 +68,22 @@ export default function PasswordChangeForm() {
     return true;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     
     if (!validateForm()) {
       return;
     }
 
-    setSaving(true);
-
-    try {
-      await changePassword(formData);
-      toast.success('Пароль успішно змінено!');
-      
-      // Очищаємо форму після успіху
-      setFormData({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-      });
-    } catch (err) {
-      const message = err.response?.data?.message || err.response?.data?.error || 'Помилка при зміні пароля';
-      toast.error(message);
-    } finally {
-      setSaving(false);
-    }
+    changePassword.mutate(formData, {
+      onSuccess: () => {
+        setFormData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: '',
+        });
+      }
+    });
   };
 
   const inputClasses = "w-full px-4 py-3 pr-12 rounded-xl border-2 border-[#9DC88D]/30 focus:border-[#164A41] focus:outline-none transition-colors";
