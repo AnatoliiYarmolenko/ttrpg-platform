@@ -41,6 +41,8 @@ export default function UserAvatar({
         src={resolvedUrl}
         alt={name || 'Avatar'}
         className={`${base} object-cover`}
+        loading="lazy"
+        decoding="async"
       />
     );
   }

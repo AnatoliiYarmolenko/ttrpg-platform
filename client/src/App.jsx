@@ -23,15 +23,13 @@ function AuthExpiredRedirectListener() {
   return null;
 }
 
+import FullPageLoader from "./components/shared/FullPageLoader";
+
 function App() {
   const { isInitialized } = useCsrfInit();
 
   if (!isInitialized) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-[#164A41] text-white">
-        Завантаження...
-      </div>
-    );
+    return <FullPageLoader text="Завантаження ініціативи..." />;
   }
 
   return (

@@ -37,6 +37,22 @@ const logger = pino(
 
 const httpLogger = pinoHttp({
   logger,
+  serializers: {
+    req(req) {
+      return {
+        id: req.id,
+        method: req.method,
+        url: req.url,
+        query: Object.keys(req.query || {}).length ? req.query : undefined,
+        params: Object.keys(req.params || {}).length ? req.params : undefined,
+      };
+    },
+    res(res) {
+      return {
+        statusCode: res.statusCode,
+      };
+    },
+  },
 });
 
 module.exports = {

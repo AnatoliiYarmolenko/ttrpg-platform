@@ -1,24 +1,24 @@
-import React from 'react';
+import React, { memo } from 'react';
 import Campfire from '../../../../components/ui/icons/Campfire';
+
 /**
  * Компонент для відображення дня календаря з детальною інформацією
- * 
- * @param {Object} props
- * @param {number} props.day - Номер дня (1-31)
- * @param {number} props.count - Загальна кількість сесій
- * @param {Array} props.sessions - Масив сесій з інформацією про системи/кампанії
- * @param {boolean} props.isSelected - Чи вибраний цей день
- * @param {boolean} props.isToday - Чи це сьогодні
- * @param {Function} props.onClick - Обробник кліку
+ * Огорнутий у React.memo для запобігання зайвим перемальовуванням
  */
-export default function CalendarDayCell({
+const CalendarDayCell = memo(function CalendarDayCell({
   day,
+  dateKey,
   count = 0,
   sessions = [],
   isSelected = false,
   isToday = false,
-  onClick,
+  onSelect,
 }) {
+  const handleClick = () => {
+    if (onSelect && dateKey) {
+      onSelect(dateKey);
+    }
+  };
   // Агрегуємо сесії за системами та кампаніями
   const aggregateData = React.useMemo(() => {
     const systemCounts = {};
@@ -65,7 +65,7 @@ export default function CalendarDayCell({
 
   return (
     <button
-      onClick={onClick}
+      onClick={handleClick}
       className={`
         w-full min-h-[82px]
         flex flex-col items-start justify-between
@@ -147,4 +147,6 @@ export default function CalendarDayCell({
       )}
     </button>
   );
-}
+});
+
+export default CalendarDayCell;

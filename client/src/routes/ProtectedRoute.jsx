@@ -2,12 +2,15 @@ import { Navigate } from "react-router-dom";
 import { useEffect, useRef, useCallback } from "react";
 import { getCurrentUser } from "../features/auth/api/authApi"; 
 import useAuthStore from '../stores/useAuthStore';
+import FullPageLoader from "../components/shared/FullPageLoader";
 
 const MIN_CHECK_INTERVAL = 30 * 1000;
 
 function ProtectedRoute({ children }) {
   // Використовуємо Zustand store
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isHydrated = useAuthStore((state) => state.isHydrated);
+  const isLoading = useAuthStore((state) => state.isLoading);
   const setUser = useAuthStore((state) => state.setUser);
   const clearUser = useAuthStore((state) => state.clearUser);
   const setLoading = useAuthStore((state) => state.setLoading);
@@ -59,18 +62,12 @@ function ProtectedRoute({ children }) {
     };
   }, [checkAuth]);
 
-  // Показуємо завантаження
-  // if (isLoading) {
-  //   return (
-  //     <div className="min-h-screen bg-[#164A41] flex items-center justify-center">
-  //       <div className="text-center text-[#FFFFFF]">
-  //         <div className="text-xl">Завантаження...</div>
-  //       </div>
-  //     </div>
-  //   );
-  // }
+  // Показуємо завантаження доки стан не гідратувався або йде первинна перевірка і в нас ще немає користувача
+  if (!isHydrated || (isLoading && !isAuthenticated)) {
+    return <FullPageLoader text="Перевірка доступу..." />;
+  }
 
-  // Якщо не авторизований - редірект на логін
+  // Якщо після гідратації та завантаження не авторизований - редірект на логін
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }

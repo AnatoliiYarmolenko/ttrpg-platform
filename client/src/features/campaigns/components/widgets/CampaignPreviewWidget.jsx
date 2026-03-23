@@ -113,6 +113,8 @@ export default function CampaignPreviewWidget({
                 src={campaign.imageUrl}
                 alt={campaign.title}
                 className="w-full h-full object-cover"
+                loading="lazy"
+                decoding="async"
               />
             </div>
           </div>

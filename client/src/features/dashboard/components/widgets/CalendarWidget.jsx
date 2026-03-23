@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, memo } from 'react';
 import DashboardCard from '@/components/ui/DashboardCard';
 import CalendarDayCell from '../ui/CalendarDayCell';
 import useDashboardStore from '@/stores/useDashboardStore';
@@ -8,23 +8,13 @@ import useCalendarStore from '@/stores/useCalendarStore';
 import Button from '@/components/ui/Button';
 import { formatDate } from '@/components/shared';
 import Arrow from '@/components/ui/icons/Arrow';
+
+const EMPTY_SESSIONS = [];
+
 /**
  * Універсальний CalendarWidget для всіх режимів Dashboard
- * 
- * Підтримує:
- * - HOME: глобальні публічні сесії
- * 
- * Функції:
- * - Відображення кількості сесій на кожен день
- * - Навігація по місяцям
- * - Кнопка "Сьогодні" для швидкої навігації
- * - Інтеграція з useDashboardStore
- * 
- * @param {Object} props
- * @param {string} props.title - Заголовок (опціонально, буде автогенерований)
- * @param {boolean} props.showTodayButton - Показувати кнопку "Сьогодні" (за замовчуванням true для MY_GAMES)
  */
-export default function CalendarWidget({ title, showTodayButton }) {
+const CalendarWidget = memo(function CalendarWidget({ title, showTodayButton }) {
   const {
     currentMonth,
     selectedDate,
@@ -177,7 +167,7 @@ const navigationActions = (
             {calendarDays.map((item, index) => {
               const stats = item.dateKey ? calendarStats[item.dateKey] : null;
               const count = stats?.count || 0;
-              const sessions = stats?.sessions || [];
+              const sessions = stats?.sessions || EMPTY_SESSIONS;
               
               if (!item.day) {
                 // Порожня клітинка
@@ -187,12 +177,13 @@ const navigationActions = (
               return (
                 <CalendarDayCell
                   key={item.dateKey}
+                  dateKey={item.dateKey}
                   day={item.day}
                   count={count}
                   sessions={sessions}
                   isSelected={selectedDate === item.dateKey}
                   isToday={item.isToday}
-                  onClick={() => selectDate(item.dateKey)}
+                  onSelect={selectDate}
                 />
               );
             })}
@@ -201,4 +192,6 @@ const navigationActions = (
       }
     </DashboardCard>
   );
-}
+});
+
+export default CalendarWidget;

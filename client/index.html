@@ -5,9 +5,42 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>My TTRPG Platform</title>
+    <style>
+      body {
+        margin: 0;
+        background-color: #164A41;
+      }
+      .pre-loader-container {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        width: 100vw;
+        color: #F1B24A;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+      .pre-loader-spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(241, 178, 74, 0.3);
+        border-radius: 50%;
+        border-top-color: #F1B24A;
+        animation: pre-loader-spin 1s ease-in-out infinite;
+        margin-bottom: 1rem;
+      }
+      @keyframes pre-loader-spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="pre-loader-container">
+        <div class="pre-loader-spinner"></div>
+        <div style="font-weight: 500; letter-spacing: 0.05em;">Завантаження ініціативи...</div>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
