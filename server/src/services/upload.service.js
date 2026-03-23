@@ -2,6 +2,7 @@ const multer = require('multer');
 const sharp = require('sharp');
 const path = require('path');
 const fs = require('fs');
+const fsPromises = require('fs/promises');
 const crypto = require('crypto');
 const { createError } = require('../constants/errors');
 const { logger } = require('../lib/logger');
@@ -94,11 +95,13 @@ async function deleteOldAvatar(avatarUrl) {
   const filePath = path.join(UPLOAD_DIR, fileName);
 
   try {
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-      logger.info({ fileName }, '[Upload] Видалено старий аватар');
-    }
+    await fsPromises.unlink(filePath);
+    logger.info({ fileName }, '[Upload] Видалено старий аватар');
   } catch (error) {
+    if (error.code === 'ENOENT') {
+      return;
+    }
+
     logger.error({ err: error }, '[Upload] Помилка видалення аватара');
   }
 }

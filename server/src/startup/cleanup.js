@@ -24,7 +24,7 @@ function initTokenCleanup(schedule) {
 
   // Виконуємо першу очистку при старті сервера (з затримкою)
   initialCleanupTimeout = setTimeout(async () => {
-    logger.info('[Startup] Виконуємо першу очистку токенів при старті');
+    logger.info('Startup: Виконуємо першу очистку токенів при старті');
     await tokenCleanupService.performFullCleanup();
   }, INITIAL_TOKEN_CLEANUP_DELAY);
 }

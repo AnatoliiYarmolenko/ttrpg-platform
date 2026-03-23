@@ -61,12 +61,10 @@ api.interceptors.request.use(
       const csrfToken = getCSRFToken();
       if (csrfToken) config.headers['X-CSRF-Token'] = csrfToken;
       
-      // Запобігаємо кешуванню для запитів автентифікації
-      // Використовуємо параметр замість заголовків, щоб уникнути CORS проблем
-      if (config.url?.includes('/profile') || config.url?.includes('/auth/')) {
-        // Додаємо timestamp до URL для запобігання кешуванню
-        const separator = config.url.includes('?') ? '&' : '?';
-        config.url = `${config.url}${separator}_t=${Date.now()}`;
+      // Запобігаємо кешуванню для профілю/автентифікації без маніпуляції URL.
+      if (config.url?.startsWith('/profile') || config.url?.startsWith('/auth/')) {
+        config.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+        config.headers.Pragma = 'no-cache';
       }
       
       return config;
@@ -163,7 +161,12 @@ api.interceptors.response.use(
           if (typeof window !== 'undefined' && window.localStorage) {
             window.localStorage.removeItem('ttrpg_app_user');
           }
-          window.location.href = '/login'; 
+
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('app:auth-expired', { detail: { redirectTo: '/login' } })
+            );
+          }
         }
         return Promise.reject(refreshError);
       }

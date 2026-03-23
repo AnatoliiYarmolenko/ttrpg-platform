@@ -50,6 +50,15 @@ function resolveTrustProxySetting() {
  */
 function createApp() {
   const app = express();
+  const registerApiRoutes = (prefix) => {
+    app.use(`${prefix}/auth`, authRoutes);
+    app.use(`${prefix}/profile`, profileRoutes);
+    app.use(`${prefix}/security`, securityRoutes);
+    app.use(`${prefix}/admin`, adminRoutes);
+    app.use(`${prefix}/campaigns`, campaignRoutes);
+    app.use(`${prefix}/sessions`, sessionRoutes);
+    app.use(`${prefix}/search`, searchRoutes);
+  };
 
   // ========== MIDDLEWARE ==========
 
@@ -90,14 +99,9 @@ function createApp() {
     });
   });
 
-  // API Routes
-  app.use('/api/auth', authRoutes);
-  app.use('/api/profile', profileRoutes);
-  app.use('/api/security', securityRoutes);
-  app.use('/api/admin', adminRoutes);
-  app.use('/api/campaigns', campaignRoutes);
-  app.use('/api/sessions', sessionRoutes);
-  app.use('/api/search', searchRoutes);
+  // API Routes (v1 + legacy aliases)
+  registerApiRoutes('/api/v1');
+  registerApiRoutes('/api');
 
   // ========== ERROR HANDLER ==========
   // Повинен бути останнім middleware

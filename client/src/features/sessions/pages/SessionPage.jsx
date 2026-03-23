@@ -38,7 +38,6 @@ export default function SessionPage() {
     viewingUserId,
     isPreviewMode,
     myRole,
-    isOwner,
     canStartSession,
     canFinishSession,
     canCancelSession,

@@ -98,7 +98,7 @@ class TokenCleanupService {
    * Повна очистка (прострочені + старі відкликані)
    */
   async performFullCleanup() {
-    logger.info('[Token Cleanup] Початок повної очистки токенів');
+    logger.info('Token Cleanup: Початок повної очистки токенів');
     
     const expiredResult = await this.cleanupExpiredTokens();
     const revokedResult = await this.cleanupRevokedTokens();
@@ -136,7 +136,7 @@ class TokenCleanupService {
       try {
         await this.performFullCleanup();
       } catch (error) {
-        logger.error({ err: error }, 'Помилка в cleanup job');
+        logger.error({ err: error }, 'Token Cleanup: Помилка в cleanup job');
       } finally {
         this.isRunning = false;
       }

@@ -4,48 +4,11 @@ const crypto = require('crypto');
 const { createError, AppError, ERROR_CODES } = require('../constants/errors');
 const { markUserAsDeleted } = require('../store/deletedUsers');
 const { logger } = require('../lib/logger');
-
-// Поля для власного профілю (для відповідей)
-const PRIVATE_PROFILE_FIELDS = {
-  id: true,
-  username: true,
-  displayName: true,
-  avatarUrl: true,
-  bio: true,
-  createdAt: true,
-  email: true,
-  timezone: true,
-  language: true,
-  lastActiveAt: true,
-  updatedAt: true,
-  emailVerified: true,
-};
-
-function hashToken(token) {
-  return crypto.createHash('sha256').update(token).digest('hex');
-}
-
-function getTokenCandidates(token) {
-  if (typeof token !== 'string' || token.length === 0) {
-    return [];
-  }
-
-  const normalized = token.trim();
-  if (!normalized) {
-    return [];
-  }
-
-  const hashed = hashToken(normalized);
-  return normalized === hashed ? [normalized] : [normalized, hashed];
-}
-
-function createRawAndHashedToken(bytes = 32) {
-  const rawToken = crypto.randomBytes(bytes).toString('hex');
-  return {
-    rawToken,
-    tokenHash: hashToken(rawToken),
-  };
-}
+const { getTokenCandidates, createRawAndHashedToken } = require('../utils/token.helper');
+const { PASSWORD_HASH_ROUNDS, TOKEN_TTL_MS } = require('../config/tokens.config');
+const { PRIVATE_PROFILE_FIELDS } = require('../constants/profile-fields');
+const emailService = require('./email.service');
+const { deleteOldAvatar } = require('./upload.service');
 
 /**
  * Змінити пароль користувача
@@ -78,7 +41,7 @@ async function changePassword(userId, currentPassword, newPassword) {
   }
 
   // Хешуємо новий пароль
-  const hashedPassword = await bcrypt.hash(newPassword, 12);
+  const hashedPassword = await bcrypt.hash(newPassword, PASSWORD_HASH_ROUNDS);
 
   // Оновлюємо пароль та інвалідуємо всі сесії атомарно
   await prisma.$transaction(async (tx) => {
@@ -111,7 +74,6 @@ async function changePassword(userId, currentPassword, newPassword) {
  * @returns {Promise<Object>} - Результат операції
  */
 async function requestEmailChange(userId, password, newEmail) {
-  const emailService = require('./email.service');
   const normalizedNewEmail = typeof newEmail === 'string' ? newEmail.trim().toLowerCase() : newEmail;
   
   // Отримуємо користувача
@@ -151,7 +113,7 @@ async function requestEmailChange(userId, password, newEmail) {
 
   // Створюємо новий токен
   const { rawToken, tokenHash } = createRawAndHashedToken(32);
-  const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 хвилин
+  const expiresAt = new Date(Date.now() + TOKEN_TTL_MS.EMAIL_CHANGE);
 
   await prisma.emailChangeToken.create({
     data: {
@@ -287,7 +249,8 @@ async function deleteAccount(userId, password) {
   const timestamp = Date.now();
   const anonymousEmail = `deleted+${userId}+${timestamp}@deleted.local`;
   const anonymousUsername = `deleted_user_${userId}_${timestamp}`;
-  const anonymousPassword = await bcrypt.hash(require('crypto').randomBytes(32).toString('hex'), 10);
+  const anonymousRawPassword = crypto.randomBytes(32).toString('hex');
+  const anonymousPassword = await bcrypt.hash(anonymousRawPassword, PASSWORD_HASH_ROUNDS);
 
   // Виконуємо анонімізацію в транзакції
   await prisma.$transaction(async (tx) => {
@@ -357,7 +320,6 @@ async function deleteAccount(userId, password) {
   // Видаляємо аватар файл якщо є
   if (user.avatarUrl && user.avatarUrl.startsWith('/uploads/')) {
     try {
-      const { deleteOldAvatar } = require('./upload.service');
       await deleteOldAvatar(user.avatarUrl);
     } catch (e) {
       logger.error({ err: e }, 'Помилка видалення аватара');

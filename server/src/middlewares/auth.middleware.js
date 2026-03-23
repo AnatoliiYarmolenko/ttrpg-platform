@@ -79,9 +79,13 @@ const optionalAuthenticateToken = (req, res, next) => {
   }
 
   // Якщо токен є - верифікуємо його
-  jwt.verify(token, jwtSecret, (err, user) => {
+  jwt.verify(token, jwtSecret, async (err, user) => {
     if (err) {
       // Якщо токен невалідний - просто ігноруємо і продовжуємо без req.user
+      return next();
+    }
+
+    if (await isUserDeleted(user.id)) {
       return next();
     }
 

@@ -1,97 +1,75 @@
-const { query, validationResult } = require('express-validator');
-const { AppError, ERROR_CODES } = require('../constants/errors');
-
-// Middleware для перевірки помилок валідації
-const handleValidationErrors = (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    const errorMessages = errors.array().map(err => err.msg).join(', ');
-    throw new AppError(ERROR_CODES.VALIDATION_FAILED, errorMessages);
-  }
-  next();
-};
+const Joi = require('joi');
+const { validateQuery } = require('../middlewares/validation.middleware');
 
 // === Валідація для пошуку кампаній ===
 
-const validateSearchCampaigns = [
-  query('q')
-    .optional()
-    .trim()
-    .isLength({ max: 200 }).withMessage('Пошуковий запит не повинен перевищувати 200 символів'),
+const searchCampaignsQuerySchema = Joi.object({
+  q: Joi.string().trim().max(200).optional().messages({
+    'string.max': 'Пошуковий запит не повинен перевищувати 200 символів',
+  }),
+  system: Joi.string().trim().max(50).optional().messages({
+    'string.max': 'Система не повинна перевищувати 50 символів',
+  }),
+  limit: Joi.number().integer().min(1).max(50).optional().messages({
+    'number.base': 'Limit повинен бути від 1 до 50',
+    'number.min': 'Limit повинен бути від 1 до 50',
+    'number.max': 'Limit повинен бути від 1 до 50',
+  }),
+  offset: Joi.number().integer().min(0).optional().messages({
+    'number.base': 'Offset повинен бути невід\'ємним числом',
+    'number.min': 'Offset повинен бути невід\'ємним числом',
+  }),
+  sortBy: Joi.string().trim().valid('newest', 'popular', 'title').optional().messages({
+    'any.only': 'Невірне значення sortBy',
+  }),
+});
 
-  query('system')
-    .optional()
-    .trim()
-    .isLength({ max: 50 }).withMessage('Система не повинна перевищувати 50 символів'),
-
-  query('limit')
-    .optional()
-    .isInt({ min: 1, max: 50 }).withMessage('Limit повинен бути від 1 до 50'),
-
-  query('offset')
-    .optional()
-    .isInt({ min: 0 }).withMessage('Offset повинен бути невід\'ємним числом'),
-
-  query('sortBy')
-    .optional()
-    .trim()
-    .isIn(['newest', 'popular', 'title']).withMessage('Невірне значення sortBy'),
-
-  handleValidationErrors,
-];
+const validateSearchCampaigns = [validateQuery(searchCampaignsQuerySchema)];
 
 // === Валідація для пошуку сесій ===
 
-const validateSearchSessions = [
-  query('q')
-    .optional()
-    .trim()
-    .isLength({ max: 200 }).withMessage('Пошуковий запит не повинен перевищувати 200 символів'),
+const searchSessionsQuerySchema = Joi.object({
+  q: Joi.string().trim().max(200).optional().messages({
+    'string.max': 'Пошуковий запит не повинен перевищувати 200 символів',
+  }),
+  system: Joi.string().trim().max(50).optional().messages({
+    'string.max': 'Система не повинна перевищувати 50 символів',
+  }),
+  dateFrom: Joi.string().isoDate().optional().messages({
+    'string.isoDate': 'dateFrom повинна бути в форматі ISO8601',
+  }),
+  dateTo: Joi.string().isoDate().optional().messages({
+    'string.isoDate': 'dateTo повинна бути в форматі ISO8601',
+  }),
+  minPrice: Joi.number().min(0).optional().messages({
+    'number.base': 'minPrice повинна бути невід\'ємним числом',
+    'number.min': 'minPrice повинна бути невід\'ємним числом',
+  }),
+  maxPrice: Joi.number().min(0).optional().messages({
+    'number.base': 'maxPrice повинна бути невід\'ємним числом',
+    'number.min': 'maxPrice повинна бути невід\'ємним числом',
+  }),
+  hasAvailableSlots: Joi.string().valid('true', 'false').optional().messages({
+    'any.only': 'hasAvailableSlots повинна бути true або false',
+  }),
+  oneShot: Joi.string().valid('true', 'false').optional().messages({
+    'any.only': 'oneShot повинна бути true або false',
+  }),
+  limit: Joi.number().integer().min(1).max(50).optional().messages({
+    'number.base': 'Limit повинен бути від 1 до 50',
+    'number.min': 'Limit повинен бути від 1 до 50',
+    'number.max': 'Limit повинен бути від 1 до 50',
+  }),
+  offset: Joi.number().integer().min(0).optional().messages({
+    'number.base': 'Offset повинен бути невід\'ємним числом',
+    'number.min': 'Offset повинен бути невід\'ємним числом',
+  }),
+  sortBy: Joi.string().trim().valid('date', 'price', 'newest').optional().messages({
+    'any.only': 'Невірне значення sortBy',
+  }),
+});
 
-  query('system')
-    .optional()
-    .trim()
-    .isLength({ max: 50 }).withMessage('Система не повинна перевищувати 50 символів'),
-
-  query('dateFrom')
-    .optional()
-    .isISO8601().withMessage('dateFrom повинна бути в форматі ISO8601'),
-
-  query('dateTo')
-    .optional()
-    .isISO8601().withMessage('dateTo повинна бути в форматі ISO8601'),
-
-  query('minPrice')
-    .optional()
-    .isFloat({ min: 0 }).withMessage('minPrice повинна бути невід\'ємним числом'),
-
-  query('maxPrice')
-    .optional()
-    .isFloat({ min: 0 }).withMessage('maxPrice повинна бути невід\'ємним числом'),
-
-  query('hasAvailableSlots')
-    .optional()
-    .isIn(['true', 'false']).withMessage('hasAvailableSlots повинна бути true або false'),
-
-  query('oneShot')
-    .optional()
-    .isIn(['true', 'false']).withMessage('oneShot повинна бути true або false'),
-
-  query('limit')
-    .optional()
-    .isInt({ min: 1, max: 50 }).withMessage('Limit повинен бути від 1 до 50'),
-
-  query('offset')
-    .optional()
-    .isInt({ min: 0 }).withMessage('Offset повинен бути невід\'ємним числом'),
-
-  query('sortBy')
-    .optional()
-    .trim()
-    .isIn(['date', 'price', 'newest']).withMessage('Невірне значення sortBy'),
-
-  handleValidationErrors,
-];
+const validateSearchSessions = [validateQuery(searchSessionsQuerySchema)];
 
 module.exports = {
   validateSearchCampaigns,

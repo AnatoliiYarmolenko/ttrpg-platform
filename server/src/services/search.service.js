@@ -190,44 +190,59 @@ class SearchService {
         break;
     }
 
-    // Отримуємо сесії
-    const [sessions, total] = await Promise.all([
-      prisma.session.findMany({
-        where,
-        include: {
-          owner: {
-            select: { id: true, username: true, displayName: true, avatarUrl: true },
-          },
-          campaign: {
-            select: { id: true, title: true, system: true },
-          },
-          participants: {
-            select: { id: true, role: true, status: true },
-          },
-          _count: {
-            select: { participants: true },
-          },
+    const baseQuery = {
+      where,
+      include: {
+        owner: {
+          select: { id: true, username: true, displayName: true, avatarUrl: true },
         },
-        orderBy,
-        take: limit,
-        skip: offset,
-      }),
-      prisma.session.count({ where }),
-    ]);
+        campaign: {
+          select: { id: true, title: true, system: true },
+        },
+        participants: {
+          select: { id: true, role: true, status: true },
+        },
+        _count: {
+          select: { participants: true },
+        },
+      },
+      orderBy,
+    };
 
-    // Фільтрація по вільних місцях (після запиту, бо Prisma не підтримує такий фільтр)
-    let filteredSessions = sessions;
-    if (hasAvailableSlots === true) {
-      filteredSessions = sessions.filter(session => {
+    const hasAvailableSlotsFilter = hasAvailableSlots === true;
+
+    let sessions = [];
+    let total = 0;
+
+    if (hasAvailableSlotsFilter) {
+      // Prisma не може точно порахувати slots через relation aggregate + pagination,
+      // тому спочатку фільтруємо повний набір, а потім застосовуємо offset/limit.
+      const allMatchingSessions = await prisma.session.findMany(baseQuery);
+      const filteredBySlots = allMatchingSessions.filter((session) => {
         const confirmedParticipants = session.participants.filter(
-          p => p.status === 'CONFIRMED' && p.role === 'PLAYER'
+          (participant) => participant.status === 'CONFIRMED' && participant.role === 'PLAYER'
         ).length;
         return confirmedParticipants < session.maxPlayers;
       });
+
+      total = filteredBySlots.length;
+      sessions = filteredBySlots.slice(offset, offset + limit);
+    } else {
+      const [pagedSessions, countedTotal] = await Promise.all([
+        prisma.session.findMany({
+          ...baseQuery,
+          take: limit,
+          skip: offset,
+        }),
+        prisma.session.count({ where }),
+      ]);
+
+      sessions = pagedSessions;
+      total = countedTotal;
     }
 
     // Форматуємо результат для фронтенду
-    const formattedSessions = filteredSessions.map(session => {
+    const formattedSessions = sessions.map(session => {
       const confirmedPlayers = session.participants.filter(
         p => p.status === 'CONFIRMED' && p.role === 'PLAYER'
       ).length;
@@ -254,7 +269,7 @@ class SearchService {
 
     return {
       sessions: formattedSessions,
-      total: hasAvailableSlots ? formattedSessions.length : total,
+      total,
       hasMore: offset + formattedSessions.length < total,
       limit,
       offset,

@@ -4,6 +4,7 @@
  */
 
 const { nodeEnv } = require('../config/config');
+const { TOKEN_TTL_MS } = require('../config/tokens.config');
 
 // Визначаємо, чи ми в production
 const isProduction = nodeEnv === 'production';
@@ -24,8 +25,8 @@ const BASE_COOKIE_OPTIONS = {
  * Час життя токенів (в мілісекундах)
  */
 const TOKEN_EXPIRY = {
-  ACCESS_TOKEN: 15 * 60 * 1000,           // 15 хвилин
-  REFRESH_TOKEN: 30 * 24 * 60 * 60 * 1000, // 30 днів
+  ACCESS_TOKEN: TOKEN_TTL_MS.ACCESS_TOKEN,
+  REFRESH_TOKEN: TOKEN_TTL_MS.REFRESH_TOKEN,
 };
 
 /**

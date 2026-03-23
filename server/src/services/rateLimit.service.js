@@ -138,6 +138,24 @@ async function resetRateLimit(type, identifier) {
 }
 
 /**
+ * Декрементує лічильник rate limit (використовується для skipSuccessfulRequests)
+ * @param {string} type - Тип операції
+ * @param {string|number} identifier - Ідентифікатор
+ */
+async function decrementRateLimit(type, identifier) {
+  try {
+    const counterKey = getCounterKey(type, identifier);
+    const nextCount = await redis.decr(counterKey);
+
+    if (nextCount <= 0) {
+      await redis.del(counterKey);
+    }
+  } catch (err) {
+    logger.error({ err, type, identifier }, '[Rate Limit] Redis помилка decrementRateLimit');
+  }
+}
+
+/**
  * Отримує поточний стан rate limit для конкретного ідентифікатора
  * @param {string} type - Тип операції
  * @param {string|number} identifier - Ідентифікатор
@@ -171,6 +189,7 @@ module.exports = {
   checkRateLimit,
   checkRefreshRateLimit,
   resetRateLimit,
+  decrementRateLimit,
   getRateLimitStatus,
   getRateLimitConfig,
   RATE_LIMIT_CONFIG,

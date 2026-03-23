@@ -2,15 +2,37 @@ function createSessionParticipantsService({
   prisma,
   AppError,
   ERROR_CODES,
+  sessionQueryService,
   getSessionById,
   resolveSessionContext,
+  datetimeHelpers,
   assertNoSessionTimeConflict,
   permissionHelpers,
 }) {
+  const resolveGetSessionById = sessionQueryService?.getSessionById || getSessionById;
+  const resolveSessionContextFn = sessionQueryService?.resolveSessionContext || resolveSessionContext;
+  const assertNoSessionTimeConflictFn = assertNoSessionTimeConflict || (async (userId, targetStart, targetDuration, options = {}) => {
+    return datetimeHelpers._assertNoSessionTimeConflict(
+      { prisma, AppError, ERROR_CODES },
+      userId,
+      targetStart,
+      targetDuration,
+      options
+    );
+  });
+
+  if (
+    typeof resolveGetSessionById !== 'function'
+    || typeof resolveSessionContextFn !== 'function'
+    || typeof assertNoSessionTimeConflictFn !== 'function'
+  ) {
+    throw new Error('Session participants service requires session query dependencies');
+  }
+
   return {
     async joinSession(sessionId, userId, options = {}) {
       const { role = 'PLAYER' } = options;
-      const session = await getSessionById(sessionId, userId);
+      const session = await resolveGetSessionById(sessionId, userId);
 
       const normalizedRole = String(role || 'PLAYER').toUpperCase();
 
@@ -49,10 +71,15 @@ function createSessionParticipantsService({
         throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Ви вже приєднані до цієї сесії');
       }
 
-      await assertNoSessionTimeConflict(userId, session.date, session.duration, {
-        excludeSessionId: session.id,
-        conflictErrorCode: ERROR_CODES.SESSION_TIME_CONFLICT_PLAYER,
-      });
+      await assertNoSessionTimeConflictFn(
+        userId,
+        session.date,
+        session.duration,
+        {
+          excludeSessionId: session.id,
+          conflictErrorCode: ERROR_CODES.SESSION_TIME_CONFLICT_PLAYER,
+        }
+      );
 
       if (normalizedRole === 'PLAYER') {
         const playerCount = session.participants.filter((participant) => participant.role === 'PLAYER').length;
@@ -168,13 +195,13 @@ function createSessionParticipantsService({
     },
 
     async getSessionParticipants(sessionId, userId = null) {
-      const session = await getSessionById(sessionId, userId);
+      const session = await resolveGetSessionById(sessionId, userId);
       return session.participants;
     },
 
     async updateParticipantStatus(sessionId, participantId, requesterId, status, options = {}) {
       const { preloadedSession = null } = options;
-      const session = await resolveSessionContext(sessionId, requesterId, preloadedSession);
+      const session = await resolveSessionContextFn(sessionId, requesterId, preloadedSession);
 
       const validStatuses = ['PENDING', 'CONFIRMED', 'DECLINED'];
       if (!validStatuses.includes(status)) {
@@ -266,7 +293,7 @@ function createSessionParticipantsService({
 
     async removeParticipant(sessionId, participantId, requesterId, options = {}) {
       const { preloadedSession = null } = options;
-      const session = await resolveSessionContext(sessionId, requesterId, preloadedSession);
+      const session = await resolveSessionContextFn(sessionId, requesterId, preloadedSession);
 
       if (['FINISHED', 'CANCELED'].includes(session.status)) {
         throw new AppError(
@@ -320,7 +347,7 @@ function createSessionParticipantsService({
 
     async kickGm(sessionId, requesterId, options = {}) {
       const { preloadedSession = null } = options;
-      const session = await resolveSessionContext(sessionId, requesterId, preloadedSession);
+      const session = await resolveSessionContextFn(sessionId, requesterId, preloadedSession);
 
       const canKickGm = permissionHelpers._isSessionOwner(session, requesterId)
         || permissionHelpers._isCampaignOwnerOverride(session, requesterId);

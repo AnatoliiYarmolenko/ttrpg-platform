@@ -1,27 +1,6 @@
 const { prisma } = require('../lib/prisma');
 const { createError, AppError, ERROR_CODES } = require('../constants/errors');
-
-// Поля, які можна повертати публічно
-const PUBLIC_PROFILE_FIELDS = {
-  id: true,
-  username: true,
-  displayName: true,
-  avatarUrl: true,
-  bio: true,
-  createdAt: true,
-};
-
-// Поля для власного профілю (включає приватні дані)
-const PRIVATE_PROFILE_FIELDS = {
-  ...PUBLIC_PROFILE_FIELDS,
-  email: true,
-  role: true,
-  timezone: true,
-  language: true,
-  lastActiveAt: true,
-  updatedAt: true,
-  emailVerified: true,
-};
+const { PUBLIC_PROFILE_FIELDS, PRIVATE_PROFILE_FIELDS } = require('../constants/profile-fields');
 
 // Поля, які можна оновлювати
 const UPDATABLE_FIELDS = ['displayName', 'bio', 'timezone', 'language', 'avatarUrl'];

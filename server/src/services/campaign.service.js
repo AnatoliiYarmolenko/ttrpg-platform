@@ -45,6 +45,20 @@ class CampaignService {
     );
   }
 
+  _buildCampaignUpdateData(updateData, nextStatus) {
+    return {
+      title: updateData.title !== undefined ? updateData.title : undefined,
+      description: updateData.description !== undefined ? updateData.description : undefined,
+      imageUrl: updateData.imageUrl !== undefined ? updateData.imageUrl : undefined,
+      system: updateData.system !== undefined ? updateData.system : undefined,
+      visibility: updateData.visibility !== undefined ? updateData.visibility : undefined,
+      status: nextStatus !== undefined ? nextStatus : undefined,
+      ...(updateData.visibility === 'LINK_ONLY' && {
+        inviteCode: crypto.randomBytes(8).toString('hex'),
+      }),
+    };
+  }
+
   async createCampaign(data) {
     const { title, description, imageUrl, system, visibility, ownerId } = data;
 
@@ -231,6 +245,7 @@ class CampaignService {
 
     const campaignIdInt = parseInt(campaignId);
     const isFinishingCampaign = campaign.status !== 'FINISHED' && nextStatus === 'FINISHED';
+    const campaignUpdateData = this._buildCampaignUpdateData(updateData, nextStatus);
 
     if (isFinishingCampaign) {
       const [, , updatedCampaign] = await prisma.$transaction([
@@ -254,17 +269,7 @@ class CampaignService {
         }),
         prisma.campaign.update({
           where: { id: campaignIdInt },
-          data: {
-            title: updateData.title !== undefined ? updateData.title : undefined,
-            description: updateData.description !== undefined ? updateData.description : undefined,
-            imageUrl: updateData.imageUrl !== undefined ? updateData.imageUrl : undefined,
-            system: updateData.system !== undefined ? updateData.system : undefined,
-            visibility: updateData.visibility !== undefined ? updateData.visibility : undefined,
-            status: nextStatus,
-            ...(updateData.visibility === 'LINK_ONLY' && {
-              inviteCode: crypto.randomBytes(8).toString('hex'),
-            }),
-          },
+          data: campaignUpdateData,
           include: {
             owner: {
               select: { id: true, username: true, displayName: true },
@@ -285,17 +290,7 @@ class CampaignService {
 
     const updated = await prisma.campaign.update({
       where: { id: campaignIdInt },
-      data: {
-        title: updateData.title !== undefined ? updateData.title : undefined,
-        description: updateData.description !== undefined ? updateData.description : undefined,
-        imageUrl: updateData.imageUrl !== undefined ? updateData.imageUrl : undefined,
-        system: updateData.system !== undefined ? updateData.system : undefined,
-        visibility: updateData.visibility !== undefined ? updateData.visibility : undefined,
-        status: nextStatus !== undefined ? nextStatus : undefined,
-        ...(updateData.visibility === 'LINK_ONLY' && {
-          inviteCode: crypto.randomBytes(8).toString('hex'),
-        }),
-      },
+      data: campaignUpdateData,
       include: {
         owner: {
           select: { id: true, username: true, displayName: true },

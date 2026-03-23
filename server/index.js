@@ -43,7 +43,15 @@ const server = app.listen(port, () => {
 });
 
 // ========== GRACEFUL SHUTDOWN ==========
+let isShuttingDown = false;
+
 async function gracefulShutdown(signal) {
+  if (isShuttingDown) {
+    logger.warn({ signal }, 'Graceful shutdown вже виконується');
+    return;
+  }
+
+  isShuttingDown = true;
   logger.warn({ signal }, 'Отримано сигнал завершення. Завершуємо роботу');
   
   // Зупиняємо прийом нових з'єднань
@@ -74,3 +82,11 @@ async function gracefulShutdown(signal) {
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('unhandledRejection', (reason) => {
+  logger.error({ err: reason }, 'UNHANDLED_REJECTION');
+  gracefulShutdown('UNHANDLED_REJECTION');
+});
+process.on('uncaughtException', (err) => {
+  logger.fatal({ err }, 'UNCAUGHT_EXCEPTION');
+  gracefulShutdown('UNCAUGHT_EXCEPTION');
+});
