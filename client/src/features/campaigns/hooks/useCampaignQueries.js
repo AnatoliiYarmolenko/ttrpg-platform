@@ -17,19 +17,21 @@ import {
 } from '../api/campaignApi';
 
 // QUERIES
-export const useCampaignQuery = (campaignId) => {
+export const useCampaignQuery = (campaignId, inviteCode = null) => {
+  const isValidId = Number.isInteger(campaignId) && campaignId > 0;
   return useQuery({
-    queryKey: ['campaign', campaignId],
+    queryKey: ['campaign', campaignId, inviteCode || null],
     queryFn: async () => {
-      const res = await getCampaignById(campaignId);
+      const res = await getCampaignById(campaignId, inviteCode);
       if (!res.success) throw new Error(res.error || 'Failed to fetch campaign');
       return res.data;
     },
-    enabled: !!campaignId,
+    enabled: isValidId,
   });
 };
 
 export const useCampaignMembersQuery = (campaignId) => {
+  const isValidId = Number.isInteger(campaignId) && campaignId > 0;
   return useQuery({
     queryKey: ['campaign', campaignId, 'members'],
     queryFn: async () => {
@@ -37,12 +39,13 @@ export const useCampaignMembersQuery = (campaignId) => {
       if (!res.success) throw new Error(res.error || 'Failed to fetch members');
       return res.data || [];
     },
-    enabled: !!campaignId,
+    enabled: isValidId,
     staleTime: 30 * 1000,
   });
 };
 
 export const useCampaignJoinRequestsQuery = (campaignId, canModerate) => {
+  const isValidId = Number.isInteger(campaignId) && campaignId > 0;
   return useQuery({
     queryKey: ['campaign', campaignId, 'requests'],
     queryFn: async () => {
@@ -50,7 +53,7 @@ export const useCampaignJoinRequestsQuery = (campaignId, canModerate) => {
       if (!res.success) throw new Error(res.error || 'Failed to fetch requests');
       return res.data || [];
     },
-    enabled: !!campaignId && !!canModerate,
+    enabled: isValidId && !!canModerate,
     staleTime: 30 * 1000,
   });
 };

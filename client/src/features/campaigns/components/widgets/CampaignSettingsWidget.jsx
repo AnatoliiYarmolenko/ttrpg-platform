@@ -11,7 +11,7 @@ import { GAME_SYSTEMS } from '@/constants/gameSystems';
  * Дозволяє редагувати:
  * - Назву, опис
  * - Систему гри
- * - Видимість (PUBLIC, PRIVATE, LINK_ONLY)
+ * - Видимість (PUBLIC, LINK_ONLY)
  * - Завершити кампанію (без можливості повернути в ACTIVE)
  *
  * @param {Object} campaign — поточна кампанія
@@ -26,11 +26,13 @@ export default function CampaignSettingsWidget({
   canTransferOwnership = false,
   isLoading = false,
 }) {
+  const normalizeVisibility = (value) => (value === 'PRIVATE' ? 'LINK_ONLY' : value);
+
   const buildFormData = (c) => ({
     title: c?.title || '',
     description: c?.description || '',
     system: c?.system || '',
-    visibility: c?.visibility || 'PUBLIC',
+    visibility: normalizeVisibility(c?.visibility || 'PUBLIC'),
   });
 
   const [formData, setFormData] = useState(() => buildFormData(campaign));
@@ -74,7 +76,7 @@ export default function CampaignSettingsWidget({
     if (formData.title.trim()) data.title = formData.title.trim();
     if (formData.description.trim()) data.description = formData.description.trim();
     data.system = formData.system || null;
-    data.visibility = formData.visibility;
+    data.visibility = normalizeVisibility(formData.visibility);
 
     const result = await onSave?.(data);
     if (result?.success) {
@@ -174,9 +176,6 @@ export default function CampaignSettingsWidget({
               className={inputClasses}
               disabled={controlsDisabled}
             >
-              {formData.visibility === 'PRIVATE' && (
-                <option value="PRIVATE">🔒 Приватна (legacy)</option>
-              )}
               <option value="PUBLIC">За заявкою</option>
               <option value="LINK_ONLY">За посиланням</option>
             </select>

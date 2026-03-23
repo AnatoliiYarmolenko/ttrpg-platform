@@ -73,10 +73,13 @@ function createSessionLifecycleService({
 
       const hasDateChange = normalizedUpdateData.date !== undefined;
       const hasDurationChange = normalizedUpdateData.duration !== undefined;
+      let conflictingParticipantIds = [];
+
       if (hasDateChange || hasDurationChange) {
         const targetDate = hasDateChange ? normalizedUpdateData.date : session.date;
         const targetDuration = hasDurationChange ? normalizedUpdateData.duration : session.duration;
 
+        // Перевіряємо конфлікт для owner
         await datetimeHelpers._assertNoSessionTimeConflict(
           { prisma, AppError, ERROR_CODES },
           session.ownerId,
@@ -87,6 +90,39 @@ function createSessionLifecycleService({
             conflictErrorCode: ERROR_CODES.SESSION_TIME_CONFLICT_OWNER,
           }
         );
+
+        // Перевіряємо конфлікт для всіх CONFIRMED учасників
+        // Якщо конфлікт існує — знімаємо підтвердження і переводимо у PENDING
+        const confirmedParticipants = session.participants.filter(
+          (p) => p.status === 'CONFIRMED' && p.userId !== session.ownerId
+        );
+
+        const participantsWithConflicts = [];
+
+        for (const participant of confirmedParticipants) {
+          try {
+            await datetimeHelpers._assertNoSessionTimeConflict(
+              { prisma, AppError, ERROR_CODES },
+              participant.userId,
+              targetDate,
+              targetDuration,
+              {
+                excludeSessionId: session.id,
+                conflictErrorCode: ERROR_CODES.SESSION_TIME_CONFLICT_PLAYER,
+              }
+            );
+          } catch (conflictError) {
+            // Якщо виникла помилка конфлікту часу — помітимо учасника
+            if (conflictError.code === ERROR_CODES.SESSION_TIME_CONFLICT_PLAYER) {
+              participantsWithConflicts.push(participant);
+            } else {
+              throw conflictError;
+            }
+          }
+        }
+
+        // Якщо є конфлікти — знімаємо підтвердження з конфліктуючих учасників
+        conflictingParticipantIds = participantsWithConflicts.map((participant) => participant.id);
       }
 
       const nextStatus = normalizedUpdateData.status;
@@ -135,34 +171,47 @@ function createSessionLifecycleService({
       const hasField = (field) =>
         Object.prototype.hasOwnProperty.call(normalizedUpdateData, field);
 
-      const updated = await prisma.session.update({
-        where: { id: sessionQueryService.parsePositiveInt(sessionId, 'ID сесії') },
-        data: {
-          title: hasField('title') ? normalizedUpdateData.title : undefined,
-          description: hasField('description') ? normalizedUpdateData.description : undefined,
-          date: hasField('date') ? normalizedUpdateData.date : undefined,
-          duration: hasField('duration') ? normalizedUpdateData.duration : undefined,
-          maxPlayers: hasField('maxPlayers') ? normalizedUpdateData.maxPlayers : undefined,
-          price: hasField('price') ? normalizedUpdateData.price : undefined,
-          visibility: hasField('visibility') ? normalizedUpdateData.visibility : undefined,
-          status: hasField('status') ? normalizedUpdateData.status : undefined,
-          system: hasField('system') ? normalizedUpdateData.system : undefined,
-        },
-        include: {
-          owner: {
-            select: { id: true, username: true, displayName: true, avatarUrl: true },
+      const sessionIdInt = sessionQueryService.parsePositiveInt(sessionId, 'ID сесії');
+
+      const updated = await prisma.$transaction(async (tx) => {
+        if (conflictingParticipantIds.length > 0) {
+          await tx.sessionParticipant.updateMany({
+            where: {
+              id: { in: conflictingParticipantIds },
+            },
+            data: { status: 'PENDING' },
+          });
+        }
+
+        return tx.session.update({
+          where: { id: sessionIdInt },
+          data: {
+            title: hasField('title') ? normalizedUpdateData.title : undefined,
+            description: hasField('description') ? normalizedUpdateData.description : undefined,
+            date: hasField('date') ? normalizedUpdateData.date : undefined,
+            duration: hasField('duration') ? normalizedUpdateData.duration : undefined,
+            maxPlayers: hasField('maxPlayers') ? normalizedUpdateData.maxPlayers : undefined,
+            price: hasField('price') ? normalizedUpdateData.price : undefined,
+            visibility: hasField('visibility') ? normalizedUpdateData.visibility : undefined,
+            status: hasField('status') ? normalizedUpdateData.status : undefined,
+            system: hasField('system') ? normalizedUpdateData.system : undefined,
           },
-          campaign: {
-            select: { id: true, title: true, status: true, system: true },
-          },
-          participants: {
-            include: {
-              user: {
-                select: { id: true, username: true, displayName: true, avatarUrl: true },
+          include: {
+            owner: {
+              select: { id: true, username: true, displayName: true, avatarUrl: true },
+            },
+            campaign: {
+              select: { id: true, title: true, status: true, system: true },
+            },
+            participants: {
+              include: {
+                user: {
+                  select: { id: true, username: true, displayName: true, avatarUrl: true },
+                },
               },
             },
           },
-        },
+        });
       });
 
       return updated;
@@ -195,6 +244,20 @@ function createSessionLifecycleService({
       const { preloadedSession = null } = options;
       const session = await sessionQueryService.resolveSessionContext(sessionId, userId, preloadedSession);
 
+      if (session.status === 'FINISHED') {
+        throw new AppError(
+          ERROR_CODES.VALIDATION_FAILED,
+          'Не можна скасувати вже завершену сесію'
+        );
+      }
+
+      if (session.status === 'CANCELED') {
+        throw new AppError(
+          ERROR_CODES.VALIDATION_FAILED,
+          'Сесія вже скасована'
+        );
+      }
+
       const isOwner = permissionHelpers._isSessionOwner(session, userId);
       const isCampaignOwner = permissionHelpers._isCampaignOwnerOverride(session, userId);
       const isConfirmedGm = permissionHelpers._canChangeSessionStatus(session, userId);
@@ -208,20 +271,6 @@ function createSessionLifecycleService({
           ? 'Скасувати ACTIVE сесію може тільки підтверджений GM, власник сесії або власник кампанії'
           : 'Скасувати сесію може тільки власник сесії або власник кампанії';
         throw new AppError(errorCode, message);
-      }
-
-      if (session.status === 'FINISHED') {
-        throw new AppError(
-          ERROR_CODES.VALIDATION_FAILED,
-          'Не можна скасувати вже завершену сесію'
-        );
-      }
-
-      if (session.status === 'CANCELED') {
-        throw new AppError(
-          ERROR_CODES.VALIDATION_FAILED,
-          'Сесія вже скасована'
-        );
       }
 
       const updatedSession = await prisma.session.update({

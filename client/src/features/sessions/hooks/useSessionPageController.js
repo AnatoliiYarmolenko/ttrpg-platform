@@ -25,7 +25,18 @@ export default function useSessionPageController() {
 
   const user = useAuthStore((state) => state.user);
   
-  const { data: currentSession, isLoading, error } = useSessionQuery(sessionIdNumber);
+  // Validate that id is a proper positive integer
+  const isValidId = Number.isInteger(sessionIdNumber) && sessionIdNumber > 0;
+  const invalidIdError = !isValidId ? 'Сесія не знайдена' : null;
+  
+  const { data: currentSession, isLoading, error: queryError } = useSessionQuery(sessionIdNumber);
+  // Normalize error to string: extract message from Error objects
+  const normalizedError = queryError
+    ? typeof queryError === 'string'
+      ? queryError
+      : queryError.message || String(queryError)
+    : invalidIdError;
+  const error = normalizedError;
   const mutations = useSessionMutations(sessionIdNumber);
 
   // Таби та перегляд профілю — обидва в URL, щоб перемикання було атомарним (без миготіння)

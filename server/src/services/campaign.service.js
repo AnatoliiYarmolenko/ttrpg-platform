@@ -45,7 +45,10 @@ class CampaignService {
     );
   }
 
-  _buildCampaignUpdateData(updateData, nextStatus) {
+  _buildCampaignUpdateData(existingCampaign, updateData, nextStatus) {
+    const shouldRegenerateInviteCode = updateData.visibility === 'LINK_ONLY'
+      && existingCampaign.visibility !== 'LINK_ONLY';
+
     return {
       title: updateData.title !== undefined ? updateData.title : undefined,
       description: updateData.description !== undefined ? updateData.description : undefined,
@@ -53,7 +56,7 @@ class CampaignService {
       system: updateData.system !== undefined ? updateData.system : undefined,
       visibility: updateData.visibility !== undefined ? updateData.visibility : undefined,
       status: nextStatus !== undefined ? nextStatus : undefined,
-      ...(updateData.visibility === 'LINK_ONLY' && {
+      ...(shouldRegenerateInviteCode && {
         inviteCode: crypto.randomBytes(8).toString('hex'),
       }),
     };
@@ -151,7 +154,7 @@ class CampaignService {
     });
   }
 
-  async getCampaignById(campaignId, userId = null) {
+  async getCampaignById(campaignId, userId = null, inviteCode = null) {
     const campaign = await prisma.campaign.findUnique({
       where: { id: parseInt(campaignId) },
       include: {
@@ -189,11 +192,38 @@ class CampaignService {
       isMember = campaign.members.some((member) => member.userId === userId);
     }
 
-    if (campaign.visibility === 'PRIVATE') {
-      if (!userId || (!isOwner && !isMember)) {
+    const providedInviteCode = String(inviteCode || '').trim();
+    const hasValidInviteCode =
+      campaign.visibility === 'LINK_ONLY'
+      && providedInviteCode.length > 0
+      && campaign.inviteCode === providedInviteCode;
+
+    if (campaign.visibility === 'LINK_ONLY') {
+      if (!userId || (!isOwner && !isMember && !hasValidInviteCode)) {
         throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'У вас немає доступу до цієї кампанії');
       }
     }
+
+    let pendingJoinRequestStatus = null;
+    if (userId && !isOwner && !isMember) {
+      const myJoinRequest = await prisma.joinRequest.findUnique({
+        where: {
+          userId_campaignId: {
+            userId,
+            campaignId: campaign.id,
+          },
+        },
+        select: { status: true },
+      });
+
+      if (myJoinRequest?.status === 'PENDING') {
+        pendingJoinRequestStatus = 'PENDING';
+      }
+    }
+
+    campaign.viewer = {
+      pendingJoinRequestStatus,
+    };
 
     const requesterRole = this._getRequesterCampaignRole(campaign, userId);
     const canSeeJoinRequests = requesterRole === 'OWNER' || requesterRole === 'GM';
@@ -245,7 +275,7 @@ class CampaignService {
 
     const campaignIdInt = parseInt(campaignId);
     const isFinishingCampaign = campaign.status !== 'FINISHED' && nextStatus === 'FINISHED';
-    const campaignUpdateData = this._buildCampaignUpdateData(updateData, nextStatus);
+    const campaignUpdateData = this._buildCampaignUpdateData(campaign, updateData, nextStatus);
 
     if (isFinishingCampaign) {
       const [, , updatedCampaign] = await prisma.$transaction([
@@ -330,6 +360,10 @@ class CampaignService {
 
   async regenerateInviteCode(campaignId, userId) {
     return this.membersService.regenerateInviteCode(campaignId, userId);
+  }
+
+  async resolveInviteCode(inviteCode) {
+    return this.membersService.resolveInviteCode(inviteCode);
   }
 
   async joinByInviteCode(inviteCode, userId) {

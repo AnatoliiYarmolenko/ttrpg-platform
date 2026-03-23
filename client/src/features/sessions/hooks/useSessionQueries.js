@@ -15,6 +15,7 @@ import {
 
 // QUERIES
 export const useSessionQuery = (sessionId) => {
+  const isValidId = Number.isInteger(sessionId) && sessionId > 0;
   return useQuery({
     queryKey: ['session', sessionId],
     queryFn: async () => {
@@ -22,11 +23,12 @@ export const useSessionQuery = (sessionId) => {
       if (!res.success) throw new Error(res.error || 'Failed to fetch session');
       return res.data;
     },
-    enabled: !!sessionId,
+    enabled: isValidId,
   });
 };
 
 export const useSessionParticipantsQuery = (sessionId) => {
+  const isValidId = Number.isInteger(sessionId) && sessionId > 0;
   return useQuery({
     queryKey: ['session', sessionId, 'participants'],
     queryFn: async () => {
@@ -34,7 +36,7 @@ export const useSessionParticipantsQuery = (sessionId) => {
       if (!res.success) throw new Error(res.error || 'Failed to fetch participants');
       return res.data || [];
     },
-    enabled: !!sessionId,
+    enabled: isValidId,
     staleTime: 30 * 1000,
   });
 };

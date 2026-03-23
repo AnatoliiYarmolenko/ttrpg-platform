@@ -88,7 +88,7 @@ model Campaign {
   system      String?                           // D&D 5e, Pathfinder, тощо
   status      CampaignStatus @default(ACTIVE)
   
-  visibility  CampaignVisibility @default(PRIVATE)
+  visibility  CampaignVisibility @default(LINK_ONLY)
   inviteCode  String?   @unique                // Для LINK_ONLY
   
   ownerId     Int
@@ -109,7 +109,6 @@ enum CampaignStatus {
 
 enum CampaignVisibility {
   PUBLIC      // Видно в пошуку
-  PRIVATE     // Тільки для учасників
   LINK_ONLY   // Доступ за посиланням
 }
 
@@ -126,6 +125,7 @@ model CampaignMember {
   campaign   Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   
   @@unique([userId, campaignId])
+  @@index([campaignId])
 }
 
 enum CampaignRole {
@@ -143,7 +143,7 @@ model Session {
   duration    Int           @default(180)     // Тривалість в хвилинах
   
   status      SessionStatus @default(PLANNED) // Active, Planned, Finished
-  visibility  CampaignVisibility @default(PRIVATE)  // Наслідує від кампанії або окремо
+  visibility  SessionVisibility @default(PRIVATE)
   
   price       Float     @default(0.0)         // Ціна за гру
   maxPlayers  Int       @default(4)
@@ -165,6 +165,14 @@ model Session {
   updatedAt   DateTime  @updatedAt
   
   @@index([date, system])                     // Композитний індекс для фільтрації по даті ТА системі
+  @@index([status])
+  @@index([campaignId])
+}
+
+enum SessionVisibility {
+  PUBLIC
+  PRIVATE
+  LINK_ONLY
 }
 
 // Таблиця зв'язку: Хто є хто в сесії 
@@ -212,6 +220,7 @@ model JoinRequest {
   reviewer   User?            @relation("ReviewedBy", fields: [reviewedBy], references: [id])
   
   @@unique([userId, campaignId])
+  @@index([campaignId, status])
 }
 
 enum JoinRequestStatus {

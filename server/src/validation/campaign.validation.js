@@ -1,5 +1,6 @@
 const Joi = require('joi');
 const { validateBody, validateParams, validateQuery } = require('../middlewares/validation.middleware');
+const { GAME_SYSTEM_VALUES } = require('../constants/game-systems');
 
 // === Валідація для кампаній ===
 
@@ -16,10 +17,10 @@ const createCampaignBodySchema = Joi.object({
   imageUrl: Joi.string().trim().uri().optional().messages({
     'string.uri': 'imageUrl повинна бути коректною URL',
   }),
-  system: Joi.string().trim().max(50).optional().messages({
-    'string.max': 'System не повинна перевищувати 50 символів',
+  system: Joi.string().trim().valid(...GAME_SYSTEM_VALUES).empty('').optional().messages({
+    'any.only': 'Невірна ігрова система',
   }),
-  visibility: Joi.string().trim().valid('PUBLIC', 'PRIVATE', 'LINK_ONLY').required().messages({
+  visibility: Joi.string().trim().valid('PUBLIC', 'LINK_ONLY').required().messages({
     'any.only': 'Невірна видимість',
   }),
 });
@@ -44,10 +45,10 @@ const updateCampaignBodySchema = Joi.object({
   imageUrl: Joi.string().trim().uri().optional().messages({
     'string.uri': 'imageUrl повинна бути коректною URL',
   }),
-  system: Joi.string().trim().max(50).optional().messages({
-    'string.max': 'System не повинна перевищувати 50 символів',
+  system: Joi.string().trim().valid(...GAME_SYSTEM_VALUES).empty('').optional().messages({
+    'any.only': 'Невірна ігрова система',
   }),
-  visibility: Joi.string().trim().valid('PUBLIC', 'PRIVATE', 'LINK_ONLY').optional().messages({
+  visibility: Joi.string().trim().valid('PUBLIC', 'LINK_ONLY').optional().messages({
     'any.only': 'Невірна видимість',
   }),
   status: Joi.string().trim().valid('ACTIVE', 'FINISHED').optional().messages({

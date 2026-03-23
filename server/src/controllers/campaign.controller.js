@@ -50,8 +50,9 @@ class CampaignController {
     try {
       const { campaignId } = req.params;
       const userId = req.user?.id;
+      const inviteCode = req.query?.inviteCode;
 
-      const campaign = await campaignService.getCampaignById(campaignId, userId);
+      const campaign = await campaignService.getCampaignById(campaignId, userId, inviteCode);
 
       res.json({ 
         success: true, 
@@ -197,6 +198,22 @@ class CampaignController {
 
   // === Invite коди ===
 
+  // Отримати кампанію за invite кодом (без автоматичного приєднання)
+  async resolveInviteCode(req, res, next) {
+    try {
+      const { inviteCode } = req.params;
+
+      const campaign = await campaignService.resolveInviteCode(inviteCode);
+
+      res.json({
+        success: true,
+        data: campaign,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // Регенерувати invite код
   async regenerateInviteCode(req, res, next) {
     try {
@@ -221,12 +238,12 @@ class CampaignController {
       const { inviteCode } = req.params;
       const userId = req.user.id;
 
-      const joinRequest = await campaignService.joinByInviteCode(inviteCode, userId);
+      const member = await campaignService.joinByInviteCode(inviteCode, userId);
 
       res.json({ 
         success: true, 
-        message: 'Заявку на вступ відправлено!',
-        data: joinRequest 
+        message: 'Ви успішно приєдналися до кампанії!',
+        data: member 
       });
     } catch (error) {
       next(error);

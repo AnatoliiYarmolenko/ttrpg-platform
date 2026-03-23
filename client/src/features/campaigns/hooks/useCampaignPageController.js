@@ -22,19 +22,30 @@ export default function useCampaignPageController() {
   const { id } = useParams();
   const campaignIdNumber = Number(id);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const inviteCode = searchParams.get('inviteCode') || null;
 
   const user = useAuthStore((state) => state.user);
 
-  const { data: currentCampaign, isLoading: isCampaignLoading, error: campaignError } = useCampaignQuery(campaignIdNumber);
+  // Validate that id is a proper positive integer
+  const isValidId = Number.isInteger(campaignIdNumber) && campaignIdNumber > 0;
+  const invalidIdError = !isValidId ? 'Кампанія не знайдена' : null;
+
+  const { data: currentCampaign, isLoading: isCampaignLoading, error: campaignError } = useCampaignQuery(campaignIdNumber, inviteCode);
   const { data: campaignMembers = [], isLoading: isMembersLoading } = useCampaignMembersQuery(campaignIdNumber);
   
   const isLoading = isCampaignLoading || isMembersLoading;
-  const error = campaignError;
+  // Normalize error to string: extract message from Error objects
+  const normalizedError = campaignError
+    ? typeof campaignError === 'string'
+      ? campaignError
+      : campaignError.message || String(campaignError)
+    : invalidIdError;
+  const error = normalizedError;
 
   const mutations = useCampaignMutations(campaignIdNumber);
 
   // Таби та перегляд профілю — обидва в URL, щоб перемикання було атомарним (без миготіння)
-  const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || TABS.SESSIONS;
   const viewingUserId = Number(searchParams.get('viewing')) || null;
 
@@ -95,6 +106,14 @@ export default function useCampaignPageController() {
     if (amMember) return false;
     if (currentCampaign.status === 'FINISHED') return false;
     return true;
+  }, [currentCampaign, user, amMember]);
+
+  // Витягуємо статус pending-заявки поточного користувача (якщо він не член кампанії)
+  const pendingRequestStatus = useMemo(() => {
+    if (amMember) return null; // Вже місцевий — заявки немає
+    if (!currentCampaign || !user) return null;
+
+    return currentCampaign.viewer?.pendingJoinRequestStatus || null;
   }, [currentCampaign, user, amMember]);
 
   // === Дії ===
@@ -220,6 +239,7 @@ export default function useCampaignPageController() {
     isCampaignFinished,
     amMember,
     canJoin,
+  pendingRequestStatus,
 
     // Дії
     handleJoinRequest,

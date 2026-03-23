@@ -290,7 +290,16 @@ async function deleteAccount(userId, password) {
       await tx.wallet.delete({ where: { userId } });
     }
 
-    // 6. Анонімізуємо користувача
+    // 6. Видаляємо всі PENDING join-запити від цього користувача в чужих кампаніях
+    // (щоб власники кампаній не бачили "привид"-заявок від видаленого акаунту)
+    await tx.joinRequest.deleteMany({
+      where: {
+        userId,
+        status: 'PENDING'
+      }
+    });
+
+    // 7. Анонімізуємо користувача
     await tx.user.update({
       where: { id: userId },
       data: {
@@ -310,7 +319,7 @@ async function deleteAccount(userId, password) {
       }
     });
 
-    // 7. Видаляємо всю статистику (необов'язково, можна зберігти)
+    // 8. Видаляємо всю статистику (необов'язково, можна зберігти)
     await tx.userStats.deleteMany({ where: { userId } });
   });
 

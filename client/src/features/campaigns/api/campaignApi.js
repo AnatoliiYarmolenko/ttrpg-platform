@@ -24,9 +24,11 @@ export const getMyCampaigns = async (role = 'all') => {
 /**
  * Отримати деталі кампанії
  * @param {number} campaignId
+ * @param {string|null} inviteCode
  */
-export const getCampaignById = async (campaignId) => {
-  const response = await api.get(`/campaigns/${campaignId}`);
+export const getCampaignById = async (campaignId, inviteCode = null) => {
+  const params = inviteCode ? { inviteCode } : undefined;
+  const response = await api.get(`/campaigns/${campaignId}`, { params });
   return normalizeApiEnvelope(response.data);
 };
 
@@ -135,6 +137,15 @@ export const regenerateInviteCode = async (campaignId) => {
  */
 export const joinByInviteCode = async (inviteCode) => {
   const response = await api.post(`/campaigns/invite/${inviteCode}`, {});
+  return normalizeApiEnvelope(response.data);
+};
+
+/**
+ * Отримати кампанію за invite-кодом без приєднання
+ * @param {string} inviteCode
+ */
+export const resolveInviteCode = async (inviteCode) => {
+  const response = await api.get(`/campaigns/invite/${inviteCode}`);
   return normalizeApiEnvelope(response.data);
 };
 

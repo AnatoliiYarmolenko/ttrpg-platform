@@ -145,7 +145,7 @@ class AdminService {
       ];
     }
 
-    if (visibility && ['PUBLIC', 'PRIVATE', 'LINK_ONLY'].includes(visibility)) {
+    if (visibility && ['PUBLIC', 'LINK_ONLY'].includes(visibility)) {
       where.visibility = visibility;
     }
 

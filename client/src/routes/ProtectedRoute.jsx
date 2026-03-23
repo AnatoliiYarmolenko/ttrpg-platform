@@ -10,15 +10,18 @@ function ProtectedRoute({ children }) {
   // Використовуємо Zustand store
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isHydrated = useAuthStore((state) => state.isHydrated);
+  const isSessionValidated = useAuthStore((state) => state.isSessionValidated);
   const isLoading = useAuthStore((state) => state.isLoading);
   const setUser = useAuthStore((state) => state.setUser);
   const clearUser = useAuthStore((state) => state.clearUser);
   const setLoading = useAuthStore((state) => state.setLoading);
+  const setSessionValidated = useAuthStore((state) => state.setSessionValidated);
 
   const lastCheckRef = useRef(0);
   const hasCheckedRef = useRef(false);
 
   const checkAuth = useCallback(async (showLoading = false) => {
+    if (showLoading) setSessionValidated(false);
     if (showLoading) setLoading(true);
     
     try {
@@ -34,9 +37,10 @@ function ProtectedRoute({ children }) {
       // Очищаємо store при помилці автентифікації
       clearUser();
     } finally {
+      if (showLoading) setSessionValidated(true);
       if (showLoading) setLoading(false);
     }
-  }, [setUser, clearUser, setLoading]);
+  }, [setUser, clearUser, setLoading, setSessionValidated]);
   
   useEffect(() => {
     // Виконуємо перевірку тільки один раз при монтуванні
@@ -55,15 +59,15 @@ function ProtectedRoute({ children }) {
       }
     };
 
-    window.addEventListener('visibilitychange', tryCheckOnVisible);
+    document.addEventListener('visibilitychange', tryCheckOnVisible);
 
     return () => {
-      window.removeEventListener('visibilitychange', tryCheckOnVisible);
+      document.removeEventListener('visibilitychange', tryCheckOnVisible);
     };
   }, [checkAuth]);
 
-  // Показуємо завантаження доки стан не гідратувався або йде первинна перевірка і в нас ще немає користувача
-  if (!isHydrated || (isLoading && !isAuthenticated)) {
+  // Не рендеримо приватний екран, поки не завершено первинну серверну перевірку сесії.
+  if (!isHydrated || !isSessionValidated || isLoading) {
     return <FullPageLoader text="Перевірка доступу..." />;
   }
 

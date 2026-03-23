@@ -19,6 +19,7 @@ const PublicProfilePage = lazy(() => import("../features/profile/pages/PublicPro
 const ConfirmEmailChangePage = lazy(() => import("../features/security/pages/ConfirmEmailChangePage"));
 
 const CampaignPage = lazy(() => import("../features/campaigns/pages/CampaignPage"));
+const CampaignInviteJoinPage = lazy(() => import("../features/campaigns/pages/CampaignInviteJoinPage"));
 const SessionPage = lazy(() => import("../features/sessions/pages/SessionPage"));
 const AdminPage = lazy(() => import("../features/admin/pages/AdminPage"));
 
@@ -56,6 +57,15 @@ const AppRoutes = () => {
               <CampaignPage />
             </ProtectedRoute>
           } 
+        />
+
+        <Route
+          path="/campaign/join/:inviteCode"
+          element={
+            <ProtectedRoute>
+              <CampaignInviteJoinPage />
+            </ProtectedRoute>
+          }
         />
 
         {/* Деталі сесії */}

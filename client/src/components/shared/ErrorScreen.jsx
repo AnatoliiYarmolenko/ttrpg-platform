@@ -17,12 +17,19 @@ export default function ErrorScreen({
   onAction,
   actionLabel = 'На головну',
 }) {
+  // Normalize error message: extract from Error object, handle null/undefined
+  const errorMessage = message
+    ? typeof message === 'string'
+      ? message
+      : message.message || String(message)
+    : 'Сталася невідома помилка';
+
   return (
     <div className="min-h-screen bg-[#164A41] flex flex-col items-center justify-center text-white">
       <div className="w-16 h-16 mb-4 rounded-2xl border-2 border-white/40 bg-[#0f3a33] flex items-center justify-center">
         <Dice20 className="w-8 h-8 text-[#F1B24A]" />
       </div>
-      <p className="text-xl mb-4">{message}</p>
+      <p className="text-xl mb-4">{errorMessage}</p>
       {onAction && (
         <button
           onClick={onAction}

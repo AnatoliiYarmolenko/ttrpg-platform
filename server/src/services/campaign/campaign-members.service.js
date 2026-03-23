@@ -430,8 +430,8 @@ function createCampaignMembersService({
         'Не можна оновлювати invite-код завершеної кампанії'
       );
 
-      if (campaign.visibility === 'PRIVATE') {
-        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Приватні кампанії не використовують invite-коди');
+      if (campaign.visibility === 'LINK_ONLY') {
+        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Кампанії з обмеженим доступом не використовують invite-коди');
       }
 
       const newInviteCode = crypto.randomBytes(8).toString('hex');
@@ -444,6 +444,27 @@ function createCampaignMembersService({
       return updated;
     },
 
+    async resolveInviteCode(inviteCode) {
+      const campaign = await prisma.campaign.findUnique({
+        where: { inviteCode },
+        select: {
+          id: true,
+          title: true,
+          status: true,
+        },
+      });
+
+      if (!campaign) {
+        throw new AppError('INVITE_CODE_INVALID', 'Невірний invite код');
+      }
+
+      return {
+        campaignId: campaign.id,
+        title: campaign.title,
+        status: campaign.status,
+      };
+    },
+
     async joinByInviteCode(inviteCode, userId) {
       const campaign = await prisma.campaign.findUnique({
         where: { inviteCode },
@@ -452,13 +473,6 @@ function createCampaignMembersService({
 
       if (!campaign) {
         throw new AppError('INVITE_CODE_INVALID', 'Невірний invite код');
-      }
-
-      if (!['LINK_ONLY', 'PUBLIC'].includes(campaign.visibility)) {
-        throw new AppError(
-          ERROR_CODES.SECURITY_ACCESS_DENIED,
-          'Ця кампанія є приватною. Вступ можливий тільки через подачу заявки або запрошення власника.'
-        );
       }
 
       assertCampaignNotFinished(
@@ -479,7 +493,37 @@ function createCampaignMembersService({
         throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Ви вже член цієї кампанії');
       }
 
-      return upsertJoinRequest(campaign.id, userId, null);
+      const member = await prisma.$transaction(async (tx) => {
+        const createdMember = await tx.campaignMember.create({
+          data: {
+            userId,
+            campaignId: campaign.id,
+            role: 'PLAYER',
+          },
+          include: {
+            user: {
+              select: { id: true, username: true, displayName: true, avatarUrl: true },
+            },
+          },
+        });
+
+        await tx.joinRequest.updateMany({
+          where: {
+            userId,
+            campaignId: campaign.id,
+            status: 'PENDING',
+          },
+          data: {
+            status: 'APPROVED',
+            reviewedAt: new Date(),
+            reviewedBy: campaign.ownerId,
+          },
+        });
+
+        return createdMember;
+      });
+
+      return member;
     },
 
     async submitJoinRequest(campaignId, userId, message = null) {
@@ -543,8 +587,9 @@ function createCampaignMembersService({
     },
 
     async approveJoinRequest(requestId, userId, role = 'PLAYER') {
+      const requestIdInt = parseInt(requestId);
       const joinRequest = await prisma.joinRequest.findUnique({
-        where: { id: parseInt(requestId) },
+        where: { id: requestIdInt },
         select: { campaignId: true, userId: true, status: true },
       });
 
@@ -581,26 +626,60 @@ function createCampaignMembersService({
         );
       }
 
-      await prisma.joinRequest.update({
-        where: { id: parseInt(requestId) },
-        data: {
-          status: 'APPROVED',
-          reviewedAt: new Date(),
-          reviewedBy: userId,
-        },
-      });
-
-      const member = await prisma.campaignMember.create({
-        data: {
-          userId: joinRequest.userId,
-          campaignId: joinRequest.campaignId,
-          role: targetRole,
-        },
-        include: {
-          user: {
-            select: { id: true, username: true, displayName: true, avatarUrl: true },
+      const member = await prisma.$transaction(async (tx) => {
+        const updateResult = await tx.joinRequest.updateMany({
+          where: {
+            id: requestIdInt,
+            status: 'PENDING',
           },
-        },
+          data: {
+            status: 'APPROVED',
+            reviewedAt: new Date(),
+            reviewedBy: userId,
+          },
+        });
+
+        if (updateResult.count === 0) {
+          throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Заявка вже оброблена');
+        }
+
+        try {
+          return await tx.campaignMember.create({
+            data: {
+              userId: joinRequest.userId,
+              campaignId: joinRequest.campaignId,
+              role: targetRole,
+            },
+            include: {
+              user: {
+                select: { id: true, username: true, displayName: true, avatarUrl: true },
+              },
+            },
+          });
+        } catch (error) {
+          // If membership already exists due to a race, keep operation idempotent.
+          if (error?.code === 'P2002') {
+            const existingMember = await tx.campaignMember.findUnique({
+              where: {
+                userId_campaignId: {
+                  userId: joinRequest.userId,
+                  campaignId: joinRequest.campaignId,
+                },
+              },
+              include: {
+                user: {
+                  select: { id: true, username: true, displayName: true, avatarUrl: true },
+                },
+              },
+            });
+
+            if (existingMember) {
+              return existingMember;
+            }
+          }
+
+          throw error;
+        }
       });
 
       return member;

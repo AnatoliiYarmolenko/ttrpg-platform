@@ -6,10 +6,11 @@ import {
   PANEL_MODES,
 } from './dashboardConstants';
 
-const todayStr = new Date().toISOString().split('T')[0];
+// Helper to get today's date string (computed dynamically)
+const getTodayStr = () => new Date().toISOString().split('T')[0];
 
 const useDashboardStore = create((set, get) => ({
-  selectedDate: todayStr,
+  selectedDate: getTodayStr(),
   viewMode: VIEW_MODES.HOME,
   rightPanelMode: PANEL_MODES.LIST,
   currentMonth: new Date(),
@@ -23,7 +24,7 @@ const useDashboardStore = create((set, get) => ({
       [VIEW_MODES.PROFILE]: PANEL_MODES.LIST,
       [VIEW_MODES.SEARCH]: PANEL_MODES.FILTER,
     };
-    const initialDate = mode === VIEW_MODES.HOME ? todayStr : null;
+    const initialDate = mode === VIEW_MODES.HOME ? getTodayStr() : null;
 
     set({
       viewMode: mode,
@@ -111,7 +112,7 @@ const useDashboardStore = create((set, get) => ({
     set({
       viewMode: VIEW_MODES.HOME,
       rightPanelMode: PANEL_MODES.LIST,
-      selectedDate: todayStr,
+      selectedDate: getTodayStr(),
       currentMonth: new Date(),
       expandedSessionId: null,
       error: null,

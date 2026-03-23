@@ -24,6 +24,9 @@ const { validateGetCampaignSessions } = require('../validation/session.validatio
 
 // === Публічні маршути ===
 
+// GET /api/campaigns/invite/:inviteCode
+router.get('/invite/:inviteCode', [authenticateToken, ...validateInviteCode], (req, res, next) => campaignController.resolveInviteCode(req, res, next));
+
 // POST /api/campaigns/invite/:inviteCode
 router.post('/invite/:inviteCode', [authenticateToken, verifyCSRFToken, ...validateInviteCode], (req, res, next) => campaignController.joinByInviteCode(req, res, next));
 

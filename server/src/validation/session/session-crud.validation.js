@@ -1,5 +1,6 @@
 const Joi = require('joi');
 const { validateBody, validateParams, validateQuery } = require('../../middlewares/validation.middleware');
+const { GAME_SYSTEM_VALUES } = require('../../constants/game-systems');
 
 const STATUS_VALUES = ['PLANNED', 'ACTIVE', 'FINISHED', 'CANCELED'];
 const VISIBILITY_VALUES = ['PUBLIC', 'PRIVATE', 'LINK_ONLY'];
@@ -66,8 +67,8 @@ const createSessionBodySchema = Joi.object({
     'any.only': 'Невірна видимість',
     'any.invalid': '{{#message}}',
   }),
-  system: Joi.string().trim().max(100).optional().messages({
-    'string.max': 'Назва системи не повинна перевищувати 100 символів',
+  system: Joi.string().trim().valid(...GAME_SYSTEM_VALUES).empty('').optional().messages({
+    'any.only': 'Невірна ігрова система',
   }),
   isGm: Joi.boolean().optional().messages({
     'boolean.base': 'isGm повинен бути булевим значенням',
@@ -113,8 +114,8 @@ const updateSessionBodySchema = Joi.object({
   visibility: Joi.string().trim().valid(...VISIBILITY_VALUES).optional().messages({
     'any.only': 'Невірна видимість',
   }),
-  system: Joi.string().trim().max(100).optional().messages({
-    'string.max': 'Назва системи не повинна перевищувати 100 символів',
+  system: Joi.string().trim().valid(...GAME_SYSTEM_VALUES).empty('').optional().messages({
+    'any.only': 'Невірна ігрова система',
   }),
 });
 

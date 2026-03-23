@@ -163,8 +163,8 @@ export default function CreateSessionForm({ initialDate, campaignId, requireGmRo
       } else if (result.error) {
         toast.error(result.error);
       }
-    } catch (err) {
-      toast.error(err?.message || 'Помилка при створенні сесії');
+    } catch {
+      // Error toast is already handled in createMutation.onError.
     } finally {
       setIsSubmitting(false);
     }

@@ -1,5 +1,6 @@
 const Joi = require('joi');
 const { validateQuery } = require('../middlewares/validation.middleware');
+const { GAME_SYSTEM_VALUES } = require('../constants/game-systems');
 
 // === Валідація для пошуку кампаній ===
 
@@ -7,8 +8,8 @@ const searchCampaignsQuerySchema = Joi.object({
   q: Joi.string().trim().max(200).optional().messages({
     'string.max': 'Пошуковий запит не повинен перевищувати 200 символів',
   }),
-  system: Joi.string().trim().max(50).optional().messages({
-    'string.max': 'Система не повинна перевищувати 50 символів',
+  system: Joi.string().trim().valid(...GAME_SYSTEM_VALUES).empty('').optional().messages({
+    'any.only': 'Невірна ігрова система',
   }),
   limit: Joi.number().integer().min(1).max(50).optional().messages({
     'number.base': 'Limit повинен бути від 1 до 50',
@@ -32,8 +33,8 @@ const searchSessionsQuerySchema = Joi.object({
   q: Joi.string().trim().max(200).optional().messages({
     'string.max': 'Пошуковий запит не повинен перевищувати 200 символів',
   }),
-  system: Joi.string().trim().max(50).optional().messages({
-    'string.max': 'Система не повинна перевищувати 50 символів',
+  system: Joi.string().trim().valid(...GAME_SYSTEM_VALUES).empty('').optional().messages({
+    'any.only': 'Невірна ігрова система',
   }),
   dateFrom: Joi.string().isoDate().optional().messages({
     'string.isoDate': 'dateFrom повинна бути в форматі ISO8601',

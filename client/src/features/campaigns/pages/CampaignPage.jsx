@@ -52,6 +52,7 @@ export default function CampaignPage() {
     canUseOwnerSessionOverrides,
     isCampaignFinished,
     canJoin,
+    pendingRequestStatus,
     handleJoinRequest,
     handleLeave,
     handleRefreshCampaign,
@@ -99,6 +100,7 @@ export default function CampaignPage() {
           campaign={currentCampaign}
           onJoinRequest={handleJoinRequest}
           canJoin={canJoin}
+                   pendingRequestStatus={pendingRequestStatus}
           isLoading={isLoading}
         />
       );

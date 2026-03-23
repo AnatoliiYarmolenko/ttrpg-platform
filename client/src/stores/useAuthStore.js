@@ -27,6 +27,7 @@ const STORAGE_KEY = 'ttrpg_app_user';
  * @property {boolean} isAuthenticated - Чи авторизований користувач
  * @property {boolean} isLoading - Чи завантажуються дані
  * @property {boolean} isHydrated - Чи відновлено стан з localStorage
+ * @property {boolean} isSessionValidated - Чи підтверджена сесія сервером
  */
 
 /**
@@ -36,6 +37,7 @@ const STORAGE_KEY = 'ttrpg_app_user';
  * @property {() => void} clearUser - Очистити користувача (logout)
  * @property {(loading: boolean) => void} setLoading - Встановити стан завантаження
  * @property {() => void} setHydrated - Позначити, що стан відновлено
+ * @property {(validated: boolean) => void} setSessionValidated - Позначити результат серверної перевірки сесії
  */
 
 const useAuthStore = create(
@@ -46,6 +48,7 @@ const useAuthStore = create(
       isAuthenticated: false,
       isLoading: false,
       isHydrated: false,
+      isSessionValidated: false,
 
       // ===== ACTIONS =====
       
@@ -64,6 +67,7 @@ const useAuthStore = create(
           user, 
           isAuthenticated: true,
           isLoading: false,
+          isSessionValidated: true,
         });
       },
 
@@ -90,6 +94,7 @@ const useAuthStore = create(
           user: null, 
           isAuthenticated: false,
           isLoading: false,
+          isSessionValidated: true,
         });
       },
 
@@ -107,6 +112,14 @@ const useAuthStore = create(
       setHydrated: () => {
         set({ isHydrated: true });
       },
+
+      /**
+       * Позначити, що серверна перевірка сесії завершена
+       * @param {boolean} validated
+       */
+      setSessionValidated: (validated) => {
+        set({ isSessionValidated: validated });
+      },
     }),
     {
       name: STORAGE_KEY,
@@ -121,6 +134,8 @@ const useAuthStore = create(
           // Встановлюємо isAuthenticated на основі user
           state.isAuthenticated = !!state.user;
           state.isHydrated = true;
+          // Після гідратації обов'язково чекаємо реальної перевірки через API.
+          state.isSessionValidated = false;
         }
       },
     }
