@@ -1,4 +1,4 @@
-require('dotenv').config(); // <-- Додай це сюди
+require('dotenv').config();
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const { logger } = require('../src/lib/logger');
@@ -98,20 +98,34 @@ async function createCampaigns(usersByKey) {
     },
   });
 
+  const campaign4 = await prisma.campaign.create({
+    data: {
+      title: `${SEED_PREFIX} Frozen Ashes Chronicle`,
+      description: 'Завершена кампанія для перевірки lifecycle правил',
+      system: 'D&D 5e',
+      visibility: 'PUBLIC',
+      status: 'FINISHED',
+      ownerId: usersByKey.gm2.id,
+    },
+  });
+
   // Додаємо учасників базово
   await prisma.campaignMember.createMany({
     data: [
       { campaignId: campaign1.id, userId: usersByKey.gm1.id, role: 'OWNER' },
+      { campaignId: campaign1.id, userId: usersByKey.gm2.id, role: 'GM' },
       { campaignId: campaign1.id, userId: usersByKey.player1.id, role: 'PLAYER' },
       { campaignId: campaign1.id, userId: usersByKey.player2.id, role: 'PLAYER' },
       { campaignId: campaign2.id, userId: usersByKey.gm2.id, role: 'OWNER' },
       { campaignId: campaign2.id, userId: usersByKey.player3.id, role: 'PLAYER' },
       { campaignId: campaign3.id, userId: usersByKey.gm1.id, role: 'OWNER' },
       { campaignId: campaign3.id, userId: usersByKey.player4.id, role: 'PLAYER' },
+      { campaignId: campaign4.id, userId: usersByKey.gm2.id, role: 'OWNER' },
+      { campaignId: campaign4.id, userId: usersByKey.player3.id, role: 'PLAYER' },
     ],
   });
 
-  return [campaign1, campaign2, campaign3];
+  return [campaign1, campaign2, campaign3, campaign4];
 }
 
 async function createDynamicWeekSessions(usersByKey, campaigns) {
@@ -199,6 +213,69 @@ async function createDynamicWeekSessions(usersByKey, campaigns) {
       ownerId: usersByKey.gm1.id,
       extraParticipants: [
         { userId: usersByKey.gm1.id, role: 'GM', status: 'CONFIRMED' },
+      ],
+    }
+  );
+
+  // Явні сценарії для перевірки правил видимості/ролей/станів.
+  sessionsData.push(
+    {
+      title: `${SEED_PREFIX} Ref Campaign Private Planned`,
+      date: getDayOfCurrentWeek((currentDayIndex + 1) % 7, 21, 0),
+      duration: 180,
+      status: 'PLANNED',
+      visibility: 'PRIVATE',
+      system: 'D&D 5e',
+      campaignId: campaigns[0].id,
+      ownerId: usersByKey.gm1.id,
+      extraParticipants: [
+        { userId: usersByKey.gm1.id, role: 'GM', status: 'CONFIRMED' },
+        { userId: usersByKey.player5.id, role: 'PLAYER', status: 'CONFIRMED' },
+        { userId: usersByKey.player6.id, role: 'PLAYER', status: 'PENDING' },
+        { userId: usersByKey.gm2.id, role: 'GM', status: 'PENDING' },
+      ],
+    },
+    {
+      title: `${SEED_PREFIX} Ref Campaign Public Active`,
+      date: getDayOfCurrentWeek(currentDayIndex, 12, 0),
+      duration: 180,
+      status: 'ACTIVE',
+      visibility: 'PUBLIC',
+      system: 'Call of Cthulhu',
+      campaignId: campaigns[1].id,
+      ownerId: usersByKey.gm2.id,
+      extraParticipants: [
+        { userId: usersByKey.gm2.id, role: 'GM', status: 'CONFIRMED' },
+        { userId: usersByKey.player7.id, role: 'PLAYER', status: 'CONFIRMED' },
+        { userId: usersByKey.player8.id, role: 'PLAYER', status: 'PENDING', isGuest: true },
+      ],
+    },
+    {
+      title: `${SEED_PREFIX} Ref Finished Campaign Session`,
+      date: getDayOfCurrentWeek((currentDayIndex + 6) % 7, 19, 30),
+      duration: 180,
+      status: 'FINISHED',
+      visibility: 'PRIVATE',
+      system: 'D&D 5e',
+      campaignId: campaigns[3].id,
+      ownerId: usersByKey.gm2.id,
+      extraParticipants: [
+        { userId: usersByKey.gm2.id, role: 'GM', status: 'CONFIRMED' },
+        { userId: usersByKey.player3.id, role: 'PLAYER', status: 'DECLINED' },
+      ],
+    },
+    {
+      title: `${SEED_PREFIX} Ref One-shot Canceled`,
+      date: getDayOfCurrentWeek((currentDayIndex + 2) % 7, 22, 0),
+      duration: 120,
+      status: 'CANCELED',
+      visibility: 'PUBLIC',
+      system: 'Pathfinder 2e',
+      campaignId: null,
+      ownerId: usersByKey.gm1.id,
+      extraParticipants: [
+        { userId: usersByKey.gm1.id, role: 'GM', status: 'CONFIRMED' },
+        { userId: usersByKey.player4.id, role: 'PLAYER', status: 'PENDING' },
       ],
     }
   );
