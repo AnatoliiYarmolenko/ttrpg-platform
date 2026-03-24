@@ -70,6 +70,7 @@ model Campaign {
   visibility         CampaignVisibility @default(LINK_ONLY)
   inviteCode         String?            @unique
   shareTokenHash     String?            @unique
+  shareTokenEncrypted String?
   shareTokenCreatedAt DateTime?
   ownerId            Int
   owner              User               @relation("OwnerCampaigns", fields: [ownerId], references: [id])
@@ -118,6 +119,7 @@ model Session {
   status              SessionStatus     @default(PLANNED)
   visibility          SessionVisibility @default(PRIVATE)
   shareTokenHash      String?           @unique
+  shareTokenEncrypted String?
   shareTokenCreatedAt DateTime?
   price               Float             @default(0.0)
   maxPlayers          Int               @default(4)
