@@ -1,4 +1,5 @@
 import React from 'react';
+import { Navigate } from 'react-router-dom';
 
 // Controller hook — вся логіка сторінки інкапсульована тут
 import useSessionPageController from '../hooks/useSessionPageController';
@@ -33,6 +34,7 @@ export default function SessionPage() {
     currentSession,
     isLoading,
     error,
+    shouldRedirectToLogin,
     activeTab,
     setActiveTab,
     viewingUserId,
@@ -66,6 +68,10 @@ export default function SessionPage() {
     handleBackFromProfile,
     navigate,
   } = useSessionPageController();
+
+  if (shouldRedirectToLogin) {
+    return <Navigate to="/login" replace />;
+  }
 
   // === Error state ===
   if (error) {

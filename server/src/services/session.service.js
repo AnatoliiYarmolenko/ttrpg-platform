@@ -320,7 +320,10 @@ class SessionService {
     });
 
     if (!stored?.shareTokenEncrypted) {
-      throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Share link is not available');
+      return {
+        token: null,
+        shareUrl: null,
+      };
     }
 
     const token = decryptShareToken(stored.shareTokenEncrypted);

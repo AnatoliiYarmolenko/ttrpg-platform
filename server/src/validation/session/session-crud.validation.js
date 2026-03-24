@@ -55,7 +55,7 @@ const createSessionBodySchema = Joi.object({
   visibility: Joi.string().trim().valid(...VISIBILITY_VALUES).optional().messages({
     'any.only': 'Invalid visibility value',
   }),
-  system: Joi.string().trim().valid(...GAME_SYSTEM_VALUES).empty('').optional().messages({
+  system: Joi.string().trim().valid(...GAME_SYSTEM_VALUES).empty('').allow(null).optional().messages({
     'any.only': 'Invalid game system',
   }),
   isGm: Joi.boolean().optional().messages({
@@ -112,7 +112,7 @@ const updateSessionBodySchema = Joi.object({
   visibility: Joi.string().trim().valid(...VISIBILITY_VALUES).optional().messages({
     'any.only': 'Invalid visibility value',
   }),
-  system: Joi.string().trim().valid(...GAME_SYSTEM_VALUES).empty('').optional().messages({
+  system: Joi.string().trim().valid(...GAME_SYSTEM_VALUES).empty('').allow(null).optional().messages({
     'any.only': 'Invalid game system',
   }),
 });

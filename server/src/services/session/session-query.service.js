@@ -85,6 +85,8 @@ function createSessionQueryService({ prisma, AppError, ERROR_CODES }) {
       ...viewerCapabilities,
     };
 
+    session.hasShareLink = Boolean(session.shareTokenEncrypted);
+
     delete session.shareTokenHash;
     delete session.shareTokenEncrypted;
     delete session.shareTokenCreatedAt;

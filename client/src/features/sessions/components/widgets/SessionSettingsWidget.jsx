@@ -5,17 +5,77 @@ import Button from '@/components/ui/Button';
 import { ConfirmModal } from '@/components/shared';
 import { GAME_SYSTEMS } from '@/constants/gameSystems';
 
+function toDateTimeLocalValue(dateInput) {
+  if (!dateInput) return '';
+  const date = new Date(dateInput);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const pad = (num) => String(num).padStart(2, '0');
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
 function buildFormData(session) {
   return {
     title: session?.title || '',
     description: session?.description || '',
-    date: session?.date ? new Date(session.date).toISOString().slice(0, 16) : '',
+    date: toDateTimeLocalValue(session?.date),
     duration: session?.duration || '',
     maxPlayers: session?.maxPlayers || '',
     system: session?.system || session?.campaign?.system || '',
     visibility: session?.visibility || (session?.campaignId ? 'PRIVATE' : 'PUBLIC'),
     price: session?.price || '',
   };
+}
+
+function buildUpdatePayload(session, formData) {
+  const initial = buildFormData(session);
+  const data = {};
+
+  const normalizedTitle = formData.title.trim();
+  if (normalizedTitle !== initial.title.trim()) {
+    data.title = normalizedTitle;
+  }
+
+  const normalizedDescription = formData.description.trim();
+  if (normalizedDescription !== initial.description.trim()) {
+    if (normalizedDescription) {
+      data.description = normalizedDescription;
+    }
+  }
+
+  if (formData.date && formData.date !== initial.date) {
+    data.date = new Date(formData.date).toISOString();
+  }
+
+  if (formData.duration !== '' && String(formData.duration) !== String(initial.duration)) {
+    data.duration = Number(formData.duration);
+  }
+
+  if (formData.maxPlayers !== '' && String(formData.maxPlayers) !== String(initial.maxPlayers)) {
+    data.maxPlayers = Number(formData.maxPlayers);
+  }
+
+  if ((formData.system || '') !== (initial.system || '')) {
+    data.system = formData.system || null;
+  }
+
+  if ((formData.visibility || '') !== (initial.visibility || '')) {
+    data.visibility = formData.visibility;
+  }
+
+  if (String(formData.price) !== String(initial.price)) {
+    if (formData.price !== '') {
+      data.price = Number(formData.price);
+    }
+  }
+
+  return data;
 }
 
 function SessionSettingsWidgetContent({
@@ -50,20 +110,21 @@ function SessionSettingsWidgetContent({
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const data = {};
-    if (formData.title.trim()) data.title = formData.title.trim();
-    if (formData.description.trim()) data.description = formData.description.trim();
-    if (formData.date) data.date = new Date(formData.date).toISOString();
-    if (formData.duration) data.duration = Number(formData.duration);
-    if (formData.maxPlayers) data.maxPlayers = Number(formData.maxPlayers);
-    data.system = formData.system || null;
-    data.visibility = formData.visibility;
-    if (formData.price !== '') data.price = Number(formData.price);
-
-    const result = await onSave?.(data);
-    if (result?.success) {
+    const data = buildUpdatePayload(session, formData);
+    if (Object.keys(data).length === 0) {
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
+      return;
+    }
+
+    try {
+      const result = await onSave?.(data);
+      if (result?.success) {
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+      }
+    } catch {
+      // Mutation errors are handled centrally in the query hooks.
     }
   };
 

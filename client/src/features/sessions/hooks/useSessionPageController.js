@@ -49,6 +49,11 @@ export default function useSessionPageController() {
 
   const viewer = useMemo(() => currentSession?.viewer || {}, [currentSession]);
   const error = normalizePageError(queryError, invalidIdError);
+  const shouldRedirectToLogin = Boolean(
+    hasShareToken
+    && !user
+    && (queryError?.response?.status === 401 || queryError?.response?.status === 403)
+  );
 
   const activeSessionId = currentSession?.id ?? (isValidId ? sessionIdNumber : null);
   const mutations = useSessionMutations(activeSessionId, {
@@ -176,9 +181,15 @@ export default function useSessionPageController() {
     return !isGuestViewForPublicCampaignSession;
   }, [currentSession, viewer.isCampaignMember]);
 
-  const { data: shareLinkData } = useSessionShareLinkQuery(
+  const shouldAutoFetchShareLink = Boolean(
+    canManageShareLink
+    && !hasShareToken
+    && currentSession?.hasShareLink
+  );
+
+  const { data: shareLinkData, refetch: refetchShareLink } = useSessionShareLinkQuery(
     activeSessionId,
-    canManageShareLink && !hasShareToken
+    shouldAutoFetchShareLink
   );
 
   const currentShareLink = useMemo(() => {
@@ -264,18 +275,30 @@ export default function useSessionPageController() {
   }, [canManageShareLink, mutations]);
 
   const handleCopyShareLink = useCallback(async () => {
-    if (!currentShareLink) {
+    let shareLinkToCopy = currentShareLink;
+
+    if (!shareLinkToCopy && canManageShareLink) {
+      const fetchResult = await refetchShareLink();
+      const fetchedShareUrl = fetchResult?.data?.shareUrl || '';
+
+      if (fetchedShareUrl) {
+        shareLinkToCopy = fetchedShareUrl;
+        setLastGeneratedShareLink(fetchedShareUrl);
+      }
+    }
+
+    if (!shareLinkToCopy) {
       return { success: false, message: 'Спочатку згенеруйте нове share-посилання' };
     }
 
     try {
-      await navigator.clipboard.writeText(currentShareLink);
+      await navigator.clipboard.writeText(shareLinkToCopy);
       toast.success('Share-посилання скопійовано');
       return { success: true };
     } catch {
       return { success: false, message: 'Не вдалося скопіювати посилання' };
     }
-  }, [currentShareLink]);
+  }, [canManageShareLink, currentShareLink, refetchShareLink]);
 
   const handleViewProfile = useCallback((userId) => {
     setSearchParams(
@@ -306,6 +329,7 @@ export default function useSessionPageController() {
     currentSession,
     isLoading,
     error,
+    shouldRedirectToLogin,
     activeTab,
     setActiveTab,
     viewingUserId,

@@ -135,7 +135,9 @@ function canOpenCampaign(context = {}) {
   if (!rule) return false;
   if (isEntitledCampaignViewer(context)) return true;
   if (rule.outsiderCanOpenDirectly) return true;
-  if (rule.outsiderNeedsShareToken) return Boolean(context.hasValidShareToken);
+  if (rule.outsiderNeedsShareToken) {
+    return Boolean(context.userId && context.hasValidShareToken);
+  };
 
   return false;
 }
@@ -175,7 +177,9 @@ function canOpenSession(context = {}) {
   if (!rule) return false;
   if (isEntitledSessionViewer(context)) return true;
   if (rule.outsiderCanOpenDirectly) return true;
-  if (rule.outsiderNeedsShareToken) return Boolean(context.hasValidShareToken);
+  if (rule.outsiderNeedsShareToken) {
+    return Boolean(context.userId && context.hasValidShareToken);
+  }
 
   return false;
 }

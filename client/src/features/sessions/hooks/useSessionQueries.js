@@ -90,7 +90,12 @@ export const useSessionMutations = (sessionId, options = {}) => {
       }
     },
     onError: (err) => {
-      toast.error(err?.response?.data?.error || err?.message || 'Сталася помилка');
+      const apiError = err?.response?.data;
+      const validationMessage = Array.isArray(apiError?.details) && apiError.details.length > 0
+        ? apiError.details[0]?.message
+        : null;
+
+      toast.error(validationMessage || apiError?.error || err?.message || 'Сталася помилка');
     },
   });
 
