@@ -32,7 +32,10 @@ export default function useSessionPageController() {
   const user = useAuthStore((state) => state.user);
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentTimestamp, setCurrentTimestamp] = useState(() => Date.now());
-  const [lastGeneratedShareLink, setLastGeneratedShareLink] = useState('');
+  const [lastGeneratedShareLink, setLastGeneratedShareLink] = useState({
+    sessionId: null,
+    value: '',
+  });
 
   const hasShareToken = typeof routeShareToken === 'string' && routeShareToken.trim().length > 0;
   const isValidId = Number.isInteger(sessionIdNumber) && sessionIdNumber > 0;
@@ -78,8 +81,6 @@ export default function useSessionPageController() {
       { replace: true }
     );
   }, [setSearchParams]);
-
-  useEffect(() => {}, [activeSessionId]);
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -184,7 +185,6 @@ export default function useSessionPageController() {
   const shouldAutoFetchShareLink = Boolean(
     canManageShareLink
     && !hasShareToken
-    && currentSession?.hasShareLink
   );
 
   const { data: shareLinkData, refetch: refetchShareLink } = useSessionShareLinkQuery(
@@ -193,11 +193,13 @@ export default function useSessionPageController() {
   );
 
   const currentShareLink = useMemo(() => {
-    if (lastGeneratedShareLink) return lastGeneratedShareLink;
+    if (lastGeneratedShareLink.sessionId === activeSessionId && lastGeneratedShareLink.value) {
+      return lastGeneratedShareLink.value;
+    }
     if (shareLinkData?.shareUrl) return shareLinkData.shareUrl;
     if (hasShareToken) return buildSessionShareUrl(routeShareToken);
     return '';
-  }, [hasShareToken, routeShareToken, lastGeneratedShareLink, shareLinkData]);
+  }, [activeSessionId, hasShareToken, routeShareToken, lastGeneratedShareLink, shareLinkData]);
 
   const handleJoin = useCallback((payload = {}) => mutations.joinSession(payload), [mutations]);
   const handleApplyAsGm = useCallback(() => mutations.joinSession({ role: 'GM' }), [mutations]);
@@ -230,10 +232,13 @@ export default function useSessionPageController() {
     const result = await mutations.updateSession(sessionData);
     const token = result?.data?.shareToken;
     if (result?.success && token) {
-      setLastGeneratedShareLink(buildSessionShareUrl(token));
+      setLastGeneratedShareLink({
+        sessionId: activeSessionId,
+        value: buildSessionShareUrl(token),
+      });
     }
     return result;
-  }, [canManageSettings, isCampaignFinished, mutations]);
+  }, [activeSessionId, canManageSettings, isCampaignFinished, mutations]);
 
   const handleMarkAsFinished = useCallback(() => mutations.finishSession(), [mutations]);
 
@@ -262,7 +267,10 @@ export default function useSessionPageController() {
     }
 
     const nextLink = buildSessionShareUrl(token);
-    setLastGeneratedShareLink(nextLink);
+    setLastGeneratedShareLink({
+      sessionId: activeSessionId,
+      value: nextLink,
+    });
 
     try {
       await navigator.clipboard.writeText(nextLink);
@@ -272,7 +280,7 @@ export default function useSessionPageController() {
     }
 
     return { success: true, link: nextLink };
-  }, [canManageShareLink, mutations]);
+  }, [activeSessionId, canManageShareLink, mutations]);
 
   const handleCopyShareLink = useCallback(async () => {
     let shareLinkToCopy = currentShareLink;
@@ -283,7 +291,10 @@ export default function useSessionPageController() {
 
       if (fetchedShareUrl) {
         shareLinkToCopy = fetchedShareUrl;
-        setLastGeneratedShareLink(fetchedShareUrl);
+        setLastGeneratedShareLink({
+          sessionId: activeSessionId,
+          value: fetchedShareUrl,
+        });
       }
     }
 
@@ -298,7 +309,7 @@ export default function useSessionPageController() {
     } catch {
       return { success: false, message: 'Не вдалося скопіювати посилання' };
     }
-  }, [canManageShareLink, currentShareLink, refetchShareLink]);
+  }, [activeSessionId, canManageShareLink, currentShareLink, refetchShareLink]);
 
   const handleViewProfile = useCallback((userId) => {
     setSearchParams(

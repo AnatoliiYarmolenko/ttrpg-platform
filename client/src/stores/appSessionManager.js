@@ -10,6 +10,7 @@
  */
 
 import useDashboardStore from './useDashboardStore';
+import { queryClient } from '@/lib/queryClient';
 
 /**
  * Скидає всі feature-стори до початкового стану.
@@ -17,4 +18,5 @@ import useDashboardStore from './useDashboardStore';
  */
 export function resetAllStores() {
   useDashboardStore.getState().reset();
+  queryClient.clear();
 }

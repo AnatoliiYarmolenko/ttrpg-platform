@@ -71,7 +71,7 @@ function ProtectedRoute({ children }) {
   }, [checkAuth]);
 
   if (!isHydrated || !isSessionValidated || isLoading) {
-    return <FullPageLoader text="РџРµСЂРµРІС–СЂРєР° РґРѕСЃС‚СѓРїСѓ..." />;
+    return <FullPageLoader text="Завантаження..." />;
   }
 
   if (!isAuthenticated) {

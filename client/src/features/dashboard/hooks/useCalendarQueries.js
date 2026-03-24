@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { getCalendarStats, getSessionsByDayFiltered } from '@/features/sessions/api/sessionApi';
+import useAuthStore from '@/stores/useAuthStore';
 
 const buildSearchFilters = (searchFilters = {}) => {
   const filters = {};
@@ -18,11 +19,12 @@ const resolveScope = (viewMode, hasSearched) => {
 };
 
 export const useCalendarStatsQuery = ({ currentMonth, viewMode, searchFilters, hasSearched }) => {
+  const userId = useAuthStore((state) => state.user?.id ?? null);
   const monthDate = currentMonth instanceof Date && !isNaN(currentMonth) ? currentMonth : new Date();
   const monthKey = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
 
   return useQuery({
-    queryKey: ['calendar', monthKey, viewMode, searchFilters, hasSearched],
+    queryKey: ['calendar', userId, monthKey, viewMode, searchFilters, hasSearched],
     queryFn: async () => {
       const scope = resolveScope(viewMode, hasSearched);
       
@@ -41,8 +43,10 @@ export const useCalendarStatsQuery = ({ currentMonth, viewMode, searchFilters, h
 };
 
 export const useDaySessionsQuery = ({ date, viewMode, searchFilters, hasSearched }) => {
+  const userId = useAuthStore((state) => state.user?.id ?? null);
+
   return useQuery({
-    queryKey: ['sessions', 'daily', date, viewMode, searchFilters, hasSearched],
+    queryKey: ['sessions', 'daily', userId, date, viewMode, searchFilters, hasSearched],
     queryFn: async () => {
       if (!date) return [];
       const scope = resolveScope(viewMode, hasSearched);

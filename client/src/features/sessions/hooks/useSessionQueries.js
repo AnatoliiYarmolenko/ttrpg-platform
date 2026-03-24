@@ -77,6 +77,7 @@ export const useSessionMutations = (sessionId, options = {}) => {
 
   const invalidateSession = () => queryClient.invalidateQueries({ queryKey: ['session', sessionId] });
   const invalidateParticipants = () => queryClient.invalidateQueries({ queryKey: ['session', sessionId, 'participants'] });
+  const invalidateShareLink = () => queryClient.invalidateQueries({ queryKey: ['session', sessionId, 'share-link'] });
 
   const handleMutation = (successMessage, invalidateFns = []) => ({
     onSuccess: (res) => {
@@ -101,7 +102,7 @@ export const useSessionMutations = (sessionId, options = {}) => {
 
   const updateSessionMutation = useMutation({
     mutationFn: (data) => updateSession(sessionId, data),
-    ...handleMutation('Сесію успішно оновлено', [invalidateSession, invalidateParticipants]),
+    ...handleMutation('Сесію успішно оновлено', [invalidateSession, invalidateParticipants, invalidateShareLink]),
   });
 
   const deleteSessionMutation = useMutation({
@@ -121,7 +122,7 @@ export const useSessionMutations = (sessionId, options = {}) => {
 
   const regenerateShareLinkMutation = useMutation({
     mutationFn: () => regenerateSessionShareLink(sessionId),
-    ...handleMutation('Share link regenerated', [invalidateSession]),
+    ...handleMutation('Share-посилання оновлено', [invalidateSession, invalidateShareLink]),
   });
 
   const updateStatusMutation = useMutation({

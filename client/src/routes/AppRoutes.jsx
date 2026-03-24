@@ -22,7 +22,7 @@ const AdminPage = lazy(() => import("../features/admin/pages/AdminPage"));
 
 const AppRoutes = () => {
   return (
-    <Suspense fallback={<FullPageLoader text="Завантаження маршруту..." />}>
+    <Suspense fallback={<FullPageLoader text="Завантаження..." />}>
       <Routes>
         <Route
           path="/admin"

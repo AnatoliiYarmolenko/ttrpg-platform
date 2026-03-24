@@ -126,7 +126,7 @@ export const useCampaignMutations = (campaignId, options = {}) => {
 
   const regenerateShareLinkMutation = useMutation({
     mutationFn: () => regenerateShareLink(campaignId),
-    ...handleMutation('Share link regenerated', [invalidateCampaign]),
+    ...handleMutation('Share-посилання оновлено', [invalidateCampaign]),
   });
 
   const submitJoinRequestMutation = useMutation({
