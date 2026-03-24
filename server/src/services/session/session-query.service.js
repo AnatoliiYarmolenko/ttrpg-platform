@@ -61,18 +61,15 @@ function createSessionQueryService({ prisma, AppError, ERROR_CODES }) {
       userId,
       hasValidShareToken: Boolean(
         shareToken
-        && session.shareTokenHash
-        && session.shareTokenHash === hashToken(String(shareToken).trim())
+          && session.shareTokenHash
+          && session.shareTokenHash === hashToken(String(shareToken).trim())
       ),
       isCampaignMember,
     });
     const viewerCapabilities = getSessionViewerCapabilities(accessContext);
 
     if (!viewerCapabilities.canOpen) {
-      throw new AppError(
-        ERROR_CODES.SECURITY_ACCESS_DENIED,
-        'У вас немає доступу до цієї сесії'
-      );
+      throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED);
     }
 
     session.viewer = {

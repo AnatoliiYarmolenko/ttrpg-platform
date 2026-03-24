@@ -3,26 +3,15 @@ import DashboardCard from '@/components/ui/DashboardCard';
 import { EmptyState, ConfirmModal, ParticipantsList } from '@/components/shared';
 import MemberCard from '../ui/MemberCard';
 import ParticipantCard from '@/features/sessions/components/ui/ParticipantCard';
-import { useCampaignMembersQuery, useCampaignJoinRequestsQuery, useCampaignMutations } from '../../hooks/useCampaignQueries';
+import {
+  useCampaignMembersQuery,
+  useCampaignJoinRequestsQuery,
+  useCampaignMutations,
+} from '../../hooks/useCampaignQueries';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
 
 /**
- * CampaignMembersWidget — правий віджет на сторінці кампанії.
- *
- * Відображає:
- * - Список членів кампанії (з ролями)
- * - Для Owner — управління ролями та видалення
- * - Для Власника/Майстра — список заявок на вступ
- * - Клік на учасника → callback onViewProfile
- *
- * @param {number} campaignId — ID кампанії
- * @param {boolean} isOwner — чи є юзер Owner
- * @param {boolean} isGM — чи є юзер GM
- * @param {boolean} canAssignRoles — чи може юзер призначати ролі (тільки Owner)
- * @param {boolean} canModerateRequests — чи може юзер модерувати заявки (Owner/GM)
- * @param {boolean} canRemovePlayers — чи може юзер видаляти гравців (Owner/GM)
- * @param {number} currentUserId — ID поточного юзера
- * @param {Function} onViewProfile — колбек для перегляду профілю (userId)
+ * Правий віджет сторінки кампанії з учасниками та заявками на вступ.
  */
 export default function CampaignMembersWidget({
   campaignId,
@@ -53,8 +42,6 @@ export default function CampaignMembersWidget({
     setConfirmModal((prev) => ({ ...prev, isOpen: false }));
   }, []);
 
-  // Дані завантажуються автоматично через useQuery
-
   const handleRemove = (memberId) => {
     setConfirmModal({
       isOpen: true,
@@ -82,7 +69,7 @@ export default function CampaignMembersWidget({
 
   const visiblePendingRequests = useMemo(() => {
     if (!canModerateRequests) return [];
-    return joinRequests.filter((r) => r.status === 'PENDING');
+    return joinRequests.filter((request) => request.status === 'PENDING');
   }, [canModerateRequests, joinRequests]);
 
   const combinedItems = useMemo(() => {
@@ -137,7 +124,7 @@ export default function CampaignMembersWidget({
           <EmptyState
             icon={<GroupPeople className="w-10 h-10" />}
             title="Ще немає учасників"
-            description="Запросіть гравців за кодом запрошення"
+            description="Запросіть гравців через share-посилання кампанії"
           />
         ) : (
           <ParticipantsList

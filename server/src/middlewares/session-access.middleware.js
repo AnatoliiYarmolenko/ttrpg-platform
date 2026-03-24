@@ -16,7 +16,7 @@ function isCampaignOwnerOverride(session, userId) {
 
 async function loadSessionContext(req, res, next) {
   try {
-    const sessionId = parseInt(req.params.id);
+    const sessionId = parseInt(req.params.id, 10);
 
     if (!Number.isInteger(sessionId) || sessionId <= 0) {
       throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'ID сесії повинен бути позитивним числом');
@@ -95,7 +95,7 @@ function requireSessionOwnerOrGm(req, res, next) {
   const isConfirmedGm = hasConfirmedGm(session, userId);
 
   if (!isOwner && !isConfirmedGm) {
-    return next(new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'У вас немає прав для цієї дії')); 
+    return next(new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED));
   }
 
   return next();
@@ -124,7 +124,7 @@ function requireSessionOwnerOrCampaignOwner(req, res, next) {
   const isCampaignOwner = isCampaignOwnerOverride(session, userId);
 
   if (!isOwner && !isCampaignOwner) {
-    return next(new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'У вас немає прав для цієї дії'));
+    return next(new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED));
   }
 
   return next();
@@ -143,7 +143,7 @@ function requireSessionOwnerOrGmOrCampaignOwner(req, res, next) {
   const isCampaignOwner = isCampaignOwnerOverride(session, userId);
 
   if (!isOwner && !isConfirmedGm && !isCampaignOwner) {
-    return next(new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'У вас немає прав для цієї дії'));
+    return next(new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED));
   }
 
   return next();

@@ -208,7 +208,6 @@ class AdminService {
         system: true,
         status: true,
         visibility: true,
-        inviteCode: true,
         createdAt: true,
         updatedAt: true,
         owner: {

@@ -59,7 +59,7 @@ const ERROR_MESSAGES = {
 
   [ERROR_CODES.SECURITY_CSRF_INVALID]: 'Невалідний CSRF токен',
   [ERROR_CODES.SECURITY_CORS_BLOCKED]: 'Доступ заборонено (CORS)',
-  [ERROR_CODES.SECURITY_ACCESS_DENIED]: 'Доступ заборонено',
+  [ERROR_CODES.SECURITY_ACCESS_DENIED]: 'Недостатньо доступу',
 
   [ERROR_CODES.SERVER_ERROR]: 'Помилка сервера. Спробуйте пізніше.',
   [ERROR_CODES.SERVER_UNAVAILABLE]: 'Сервіс тимчасово недоступний',
