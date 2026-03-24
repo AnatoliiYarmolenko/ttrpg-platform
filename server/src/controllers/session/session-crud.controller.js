@@ -78,6 +78,22 @@ const sessionCrudController = {
     }
   },
 
+  async getSessionByShareToken(req, res, next) {
+    try {
+      const { shareToken } = req.params;
+      const userId = req.user?.id || null;
+
+      const session = await sessionService.getSessionByShareToken(shareToken, userId);
+
+      res.json({
+        success: true,
+        data: session,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
   async updateSession(req, res, next) {
     try {
       const { id: sessionId } = req.params;
@@ -193,6 +209,44 @@ const sessionCrudController = {
         success: true,
         message: 'Сесію позначено як проведену',
         data: session,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async regenerateShareToken(req, res, next) {
+    try {
+      const { id: sessionId } = req.params;
+      const userId = req.user.id;
+
+      const result = await sessionService.regenerateShareToken(sessionId, userId);
+
+      res.json({
+        success: true,
+        message: 'Share link regenerated successfully',
+        data: {
+          shareToken: result.token,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getSessionShareLink(req, res, next) {
+    try {
+      const { id: sessionId } = req.params;
+      const userId = req.user.id;
+
+      const result = await sessionService.getSessionShareLink(sessionId, userId);
+
+      res.json({
+        success: true,
+        data: {
+          shareToken: result.token,
+          shareUrl: result.shareUrl,
+        },
       });
     } catch (error) {
       next(error);

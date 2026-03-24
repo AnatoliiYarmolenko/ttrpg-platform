@@ -1,12 +1,12 @@
 function createCampaignMembersService({
   prisma,
-  crypto,
   AppError,
   ERROR_CODES,
   getCampaignById,
   permissionHelpers,
 }) {
   const errorDeps = { AppError, ERROR_CODES };
+
   const assertCampaignNotFinished = (
     campaign,
     message = 'Кампанія завершена. Ця дія недоступна.'
@@ -63,7 +63,7 @@ function createCampaignMembersService({
     });
   };
 
-  const membersService = {
+  return {
     async transferCampaignOwnership(campaignId, currentOwnerId, newOwnerId) {
       const campaignIdInt = parseInt(campaignId);
       const newOwnerIdInt = parseInt(newOwnerId);
@@ -198,7 +198,7 @@ function createCampaignMembersService({
 
       const canSeeSensitiveData = isOwner || requesterRole === 'GM' || requesterRole === 'OWNER';
 
-      const members = await prisma.campaignMember.findMany({
+      return prisma.campaignMember.findMany({
         where: { campaignId: campaignIdInt },
         include: {
           user: {
@@ -213,8 +213,6 @@ function createCampaignMembersService({
         },
         orderBy: [{ role: 'asc' }, { joinedAt: 'asc' }],
       });
-
-      return members;
     },
 
     async addMemberToCampaign(campaignId, userId, newMemberId, role = 'PLAYER') {
@@ -264,7 +262,7 @@ function createCampaignMembersService({
         throw new AppError(ERROR_CODES.USER_NOT_FOUND, 'Користувач не знайдений');
       }
 
-      const member = await prisma.campaignMember.create({
+      return prisma.campaignMember.create({
         data: {
           userId: parseInt(newMemberId),
           campaignId: parseInt(campaignId),
@@ -276,8 +274,6 @@ function createCampaignMembersService({
           },
         },
       });
-
-      return member;
     },
 
     async removeMemberFromCampaign(campaignId, userId, memberId) {
@@ -337,20 +333,18 @@ function createCampaignMembersService({
         throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'Неможливо видалити власника кампанії');
       }
 
-      if (requesterRole === 'GM') {
-        if (member.role !== 'PLAYER') {
-          throw new AppError(
-            ERROR_CODES.SECURITY_ACCESS_DENIED,
-            'Майстер може видаляти з кампанії тільки гравців'
-          );
-        }
+      if (requesterRole === 'GM' && member.role !== 'PLAYER') {
+        throw new AppError(
+          ERROR_CODES.SECURITY_ACCESS_DENIED,
+          'Майстер може видаляти з кампанії тільки гравців'
+        );
       }
 
       await prisma.campaignMember.delete({
         where: {
           userId_campaignId: {
-            userId: parseInt(memberId),
-            campaignId: parseInt(campaignId),
+            userId: memberIdInt,
+            campaignId: campaignIdInt,
           },
         },
       });
@@ -397,7 +391,7 @@ function createCampaignMembersService({
         throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Не можна змінити роль власника');
       }
 
-      const updated = await prisma.campaignMember.update({
+      return prisma.campaignMember.update({
         where: {
           userId_campaignId: {
             userId: memberIdInt,
@@ -411,128 +405,12 @@ function createCampaignMembersService({
           },
         },
       });
-
-      return updated;
     },
 
-    async regenerateInviteCode(campaignId, userId) {
-      const campaign = await getCampaignById(campaignId, userId);
-
-      permissionHelpers._requireCampaignOwner(
-        errorDeps,
-        campaign,
-        userId,
-        'Тільки власник може регенерувати код'
-      );
-
-      assertCampaignNotFinished(
-        campaign,
-        'Не можна оновлювати invite-код завершеної кампанії'
-      );
-
-      if (campaign.visibility === 'LINK_ONLY') {
-        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Кампанії з обмеженим доступом не використовують invite-коди');
-      }
-
-      const newInviteCode = crypto.randomBytes(8).toString('hex');
-
-      const updated = await prisma.campaign.update({
-        where: { id: parseInt(campaignId) },
-        data: { inviteCode: newInviteCode },
-      });
-
-      return updated;
-    },
-
-    async resolveInviteCode(inviteCode) {
-      const campaign = await prisma.campaign.findUnique({
-        where: { inviteCode },
-        select: {
-          id: true,
-          title: true,
-          status: true,
-        },
-      });
-
-      if (!campaign) {
-        throw new AppError('INVITE_CODE_INVALID', 'Невірний invite код');
-      }
-
-      return {
-        campaignId: campaign.id,
-        title: campaign.title,
-        status: campaign.status,
-      };
-    },
-
-    async joinByInviteCode(inviteCode, userId) {
-      const campaign = await prisma.campaign.findUnique({
-        where: { inviteCode },
-        select: { id: true, visibility: true, title: true, ownerId: true, status: true },
-      });
-
-      if (!campaign) {
-        throw new AppError('INVITE_CODE_INVALID', 'Невірний invite код');
-      }
-
-      assertCampaignNotFinished(
-        campaign,
-        'Не можна приєднатися до завершеної кампанії'
-      );
-
-      const existingMember = await prisma.campaignMember.findUnique({
-        where: {
-          userId_campaignId: {
-            userId,
-            campaignId: campaign.id,
-          },
-        },
-      });
-
-      if (existingMember) {
-        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Ви вже член цієї кампанії');
-      }
-
-      const member = await prisma.$transaction(async (tx) => {
-        const createdMember = await tx.campaignMember.create({
-          data: {
-            userId,
-            campaignId: campaign.id,
-            role: 'PLAYER',
-          },
-          include: {
-            user: {
-              select: { id: true, username: true, displayName: true, avatarUrl: true },
-            },
-          },
-        });
-
-        await tx.joinRequest.updateMany({
-          where: {
-            userId,
-            campaignId: campaign.id,
-            status: 'PENDING',
-          },
-          data: {
-            status: 'APPROVED',
-            reviewedAt: new Date(),
-            reviewedBy: campaign.ownerId,
-          },
-        });
-
-        return createdMember;
-      });
-
-      return member;
-    },
-
-    async submitJoinRequest(campaignId, userId, message = null) {
+    async submitJoinRequest(campaignId, userId, message = null, shareToken = null) {
       const campaignIdInt = parseInt(campaignId);
 
-      const campaign = await prisma.campaign.findUnique({
-        where: { id: campaignIdInt },
-        select: { id: true, visibility: true, ownerId: true, status: true },
-      });
+      const campaign = await getCampaignById(campaignIdInt, userId, shareToken);
 
       if (!campaign) {
         throw new AppError(ERROR_CODES.CAMPAIGN_NOT_FOUND, 'Кампанія не знайдена');
@@ -570,7 +448,7 @@ function createCampaignMembersService({
         'Ви не маєте права переглядати заявки'
       );
 
-      const joinRequests = await prisma.joinRequest.findMany({
+      return prisma.joinRequest.findMany({
         where: {
           campaignId: parseInt(campaignId),
           status: 'PENDING',
@@ -582,8 +460,6 @@ function createCampaignMembersService({
         },
         orderBy: { createdAt: 'desc' },
       });
-
-      return joinRequests;
     },
 
     async approveJoinRequest(requestId, userId, role = 'PLAYER') {
@@ -626,7 +502,7 @@ function createCampaignMembersService({
         );
       }
 
-      const member = await prisma.$transaction(async (tx) => {
+      return prisma.$transaction(async (tx) => {
         const updateResult = await tx.joinRequest.updateMany({
           where: {
             id: requestIdInt,
@@ -657,7 +533,6 @@ function createCampaignMembersService({
             },
           });
         } catch (error) {
-          // If membership already exists due to a race, keep operation idempotent.
           if (error?.code === 'P2002') {
             const existingMember = await tx.campaignMember.findUnique({
               where: {
@@ -681,8 +556,6 @@ function createCampaignMembersService({
           throw error;
         }
       });
-
-      return member;
     },
 
     async rejectJoinRequest(requestId, userId) {
@@ -715,8 +588,6 @@ function createCampaignMembersService({
       });
     },
   };
-
-  return membersService;
 }
 
 module.exports = createCampaignMembersService;

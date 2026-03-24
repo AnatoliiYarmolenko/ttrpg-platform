@@ -1,5 +1,10 @@
 const { prisma } = require('../lib/prisma');
 const { AppError, ERROR_CODES } = require('../constants/errors');
+const {
+  createRawEncryptedAndHashedShareToken,
+  decryptShareToken,
+} = require('../utils/token.helper');
+const { frontendUrl } = require('../config/config');
 
 const datetimeHelpers = require('./session/session-datetime.helpers');
 const permissionHelpers = require('./session/session-permission.helpers');
@@ -23,6 +28,7 @@ class SessionService {
     this.coreService = createSessionCoreService({
       ...this.sessionDeps,
       sessionQueryService: this.queryService,
+      createRawEncryptedAndHashedShareToken,
       assertNoSessionTimeConflict: (userId, targetStart, targetDuration, options = {}) => {
         return this._assertNoSessionTimeConflict(userId, targetStart, targetDuration, options);
       },
@@ -31,6 +37,7 @@ class SessionService {
     this.lifecycleService = createSessionLifecycleService({
       ...this.sessionDeps,
       sessionQueryService: this.queryService,
+      createRawEncryptedAndHashedShareToken,
     });
     this.participantsService = createSessionParticipantsService({
       ...this.sessionDeps,
@@ -199,8 +206,12 @@ class SessionService {
     return this.calendarService.getSessionsByDayFiltered(userId, dateString, scope, filters);
   }
 
-  async getSessionById(sessionId, userId = null) {
-    return this.queryService.getSessionById(sessionId, userId);
+  async getSessionById(sessionId, userId = null, options = {}) {
+    return this.queryService.getSessionById(sessionId, userId, options);
+  }
+
+  async getSessionByShareToken(rawToken, userId = null) {
+    return this.queryService.getSessionByShareToken(rawToken, userId);
   }
 
   async updateSession(sessionId, requesterId, updateData, options = {}) {
@@ -255,6 +266,69 @@ class SessionService {
 
   async markSessionAsFinished(sessionId, userId, options = {}) {
     return this.lifecycleService.markSessionAsFinished(sessionId, userId, options);
+  }
+
+  async regenerateShareToken(sessionId, userId) {
+    const session = await this.queryService.getSessionById(sessionId, userId);
+
+    if (session.visibility !== 'LINK_ONLY') {
+      throw new AppError(
+        ERROR_CODES.VALIDATION_FAILED,
+        'Посилання доступу доступне тільки для LINK_ONLY сесій'
+      );
+    }
+
+    if (!this._isSessionOwner(session, userId)) {
+      throw new AppError(ERROR_CODES.SESSION_OWNER_ONLY);
+    }
+
+    const { rawToken, tokenHash, tokenEncrypted } = createRawEncryptedAndHashedShareToken();
+    const sessionIdInt = this._parsePositiveInt(sessionId, 'ID сесії');
+
+    await prisma.session.update({
+      where: { id: sessionIdInt },
+      data: {
+        shareTokenHash: tokenHash,
+        shareTokenEncrypted: tokenEncrypted,
+        shareTokenCreatedAt: new Date(),
+      },
+    });
+
+    return {
+      token: rawToken,
+      sessionId: sessionIdInt,
+    };
+  }
+
+  async getSessionShareLink(sessionId, userId) {
+    const session = await this.queryService.getSessionById(sessionId, userId);
+
+    if (session.visibility !== 'LINK_ONLY') {
+      throw new AppError(
+        ERROR_CODES.VALIDATION_FAILED,
+        'Share link is available only for LINK_ONLY sessions'
+      );
+    }
+
+    if (!this._isSessionOwner(session, userId)) {
+      throw new AppError(ERROR_CODES.SESSION_OWNER_ONLY);
+    }
+
+    const stored = await prisma.session.findUnique({
+      where: { id: this._parsePositiveInt(sessionId, 'ID СЃРµСЃС–С—') },
+      select: { shareTokenEncrypted: true },
+    });
+
+    if (!stored?.shareTokenEncrypted) {
+      throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Share link is not available');
+    }
+
+    const token = decryptShareToken(stored.shareTokenEncrypted);
+
+    return {
+      token,
+      shareUrl: `${frontendUrl}/session/share/${token}`,
+    };
   }
 }
 

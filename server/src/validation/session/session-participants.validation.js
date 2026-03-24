@@ -23,6 +23,10 @@ const joinSessionBodySchema = Joi.object({
   role: Joi.string().trim().valid('PLAYER', 'GM').optional().messages({
     'any.only': 'role повинен бути PLAYER або GM',
   }),
+  shareToken: Joi.string().trim().min(10).max(255).optional().messages({
+    'string.min': 'shareToken must be between 10 and 255 characters',
+    'string.max': 'shareToken must be between 10 and 255 characters',
+  }),
 });
 
 const updateParticipantStatusBodySchema = Joi.object({

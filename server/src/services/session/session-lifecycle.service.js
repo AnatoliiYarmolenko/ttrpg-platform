@@ -5,6 +5,7 @@ function createSessionLifecycleService({
   permissionHelpers,
   datetimeHelpers,
   sessionQueryService,
+  createRawEncryptedAndHashedShareToken,
 }) {
   return {
     async updateSession(sessionId, requesterId, updateData, options = {}) {
@@ -37,20 +38,10 @@ function createSessionLifecycleService({
         throw new AppError(ERROR_CODES.SESSION_OWNER_ONLY);
       }
 
-      if (
-        session.campaignId
-        && normalizedUpdateData.visibility === 'LINK_ONLY'
-      ) {
-        throw new AppError(
-          ERROR_CODES.VALIDATION_FAILED,
-          'Для сесії в кампанії тип "LINK_ONLY" більше не підтримується'
-        );
-      }
-
       if (hasSettingsUpdate && session.campaign?.status === 'FINISHED') {
         throw new AppError(
           ERROR_CODES.CAMPAIGN_FINISHED,
-          'Неможливо змінювати налаштування сесії в завершеній кампанії'
+          'Cannot update session settings in a finished campaign'
         );
       }
 
@@ -62,7 +53,7 @@ function createSessionLifecycleService({
         if (!hasStatusUpdate) {
           throw new AppError(
             ERROR_CODES.VALIDATION_FAILED,
-            'Неможливо змінювати налаштування сесії, яка вже відбулася'
+            'Cannot update the settings of a session that already happened'
           );
         }
 
@@ -79,7 +70,6 @@ function createSessionLifecycleService({
         const targetDate = hasDateChange ? normalizedUpdateData.date : session.date;
         const targetDuration = hasDurationChange ? normalizedUpdateData.duration : session.duration;
 
-        // Перевіряємо конфлікт для owner
         await datetimeHelpers._assertNoSessionTimeConflict(
           { prisma, AppError, ERROR_CODES },
           session.ownerId,
@@ -91,10 +81,8 @@ function createSessionLifecycleService({
           }
         );
 
-        // Перевіряємо конфлікт для всіх CONFIRMED учасників
-        // Якщо конфлікт існує — знімаємо підтвердження і переводимо у PENDING
         const confirmedParticipants = session.participants.filter(
-          (p) => p.status === 'CONFIRMED' && p.userId !== session.ownerId
+          (participant) => participant.status === 'CONFIRMED' && participant.userId !== session.ownerId
         );
 
         const participantsWithConflicts = [];
@@ -112,7 +100,6 @@ function createSessionLifecycleService({
               }
             );
           } catch (conflictError) {
-            // Якщо виникла помилка конфлікту часу — помітимо учасника
             if (conflictError.code === ERROR_CODES.SESSION_TIME_CONFLICT_PLAYER) {
               participantsWithConflicts.push(participant);
             } else {
@@ -121,7 +108,6 @@ function createSessionLifecycleService({
           }
         }
 
-        // Якщо є конфлікти — знімаємо підтвердження з конфліктуючих учасників
         conflictingParticipantIds = participantsWithConflicts.map((participant) => participant.id);
       }
 
@@ -141,7 +127,7 @@ function createSessionLifecycleService({
         if (!allowedNextStatuses.includes(nextStatus)) {
           throw new AppError(
             ERROR_CODES.VALIDATION_FAILED,
-            `Невалідний перехід статусу: ${session.status} → ${nextStatus}`
+            `Invalid status transition: ${session.status} -> ${nextStatus}`
           );
         }
       }
@@ -170,8 +156,23 @@ function createSessionLifecycleService({
 
       const hasField = (field) =>
         Object.prototype.hasOwnProperty.call(normalizedUpdateData, field);
+      const targetVisibility = hasField('visibility')
+        ? normalizedUpdateData.visibility
+        : session.visibility;
+      if (session.campaignId && targetVisibility === 'LINK_ONLY') {
+        throw new AppError(
+          ERROR_CODES.VALIDATION_FAILED,
+          'LINK_ONLY is allowed only for one-shot sessions'
+        );
+      }
+      const isEnteringLinkOnly = targetVisibility === 'LINK_ONLY' && session.visibility !== 'LINK_ONLY';
+      const isLeavingLinkOnly = targetVisibility !== 'LINK_ONLY' && session.visibility === 'LINK_ONLY';
+      const needsInitialLinkOnlyToken = targetVisibility === 'LINK_ONLY' && !session.shareTokenHash;
+      const shareTokenData = (isEnteringLinkOnly || needsInitialLinkOnlyToken)
+        ? createRawEncryptedAndHashedShareToken()
+        : null;
 
-      const sessionIdInt = sessionQueryService.parsePositiveInt(sessionId, 'ID сесії');
+      const sessionIdInt = sessionQueryService.parsePositiveInt(sessionId, 'Session ID');
 
       const updated = await prisma.$transaction(async (tx) => {
         if (conflictingParticipantIds.length > 0) {
@@ -193,6 +194,15 @@ function createSessionLifecycleService({
             maxPlayers: hasField('maxPlayers') ? normalizedUpdateData.maxPlayers : undefined,
             price: hasField('price') ? normalizedUpdateData.price : undefined,
             visibility: hasField('visibility') ? normalizedUpdateData.visibility : undefined,
+            shareTokenHash: shareTokenData
+              ? shareTokenData.tokenHash
+              : (isLeavingLinkOnly ? null : undefined),
+            shareTokenEncrypted: shareTokenData
+              ? shareTokenData.tokenEncrypted
+              : (isLeavingLinkOnly ? null : undefined),
+            shareTokenCreatedAt: shareTokenData
+              ? new Date()
+              : (isLeavingLinkOnly ? null : undefined),
             status: hasField('status') ? normalizedUpdateData.status : undefined,
             system: hasField('system') ? normalizedUpdateData.system : undefined,
           },
@@ -214,6 +224,14 @@ function createSessionLifecycleService({
         });
       });
 
+      if (shareTokenData) {
+        updated.shareToken = shareTokenData.rawToken;
+      }
+
+      delete updated.shareTokenHash;
+      delete updated.shareTokenEncrypted;
+      delete updated.shareTokenCreatedAt;
+
       return updated;
     },
 
@@ -225,18 +243,18 @@ function createSessionLifecycleService({
         || permissionHelpers._isCampaignOwnerOverride(session, requesterId);
 
       if (!canDelete) {
-        throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'У вас немає прав на видалення сесії');
+        throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'You do not have permission to delete this session');
       }
 
       if (session.status !== 'PLANNED') {
         throw new AppError(
           ERROR_CODES.SESSION_DELETE_FORBIDDEN,
-          'Видаляти можна лише заплановані сесії'
+          'Only planned sessions can be deleted'
         );
       }
 
       await prisma.session.delete({
-        where: { id: sessionQueryService.parsePositiveInt(sessionId, 'ID сесії') },
+        where: { id: sessionQueryService.parsePositiveInt(sessionId, 'Session ID') },
       });
     },
 
@@ -247,14 +265,14 @@ function createSessionLifecycleService({
       if (session.status === 'FINISHED') {
         throw new AppError(
           ERROR_CODES.VALIDATION_FAILED,
-          'Не можна скасувати вже завершену сесію'
+          'Cannot cancel a finished session'
         );
       }
 
       if (session.status === 'CANCELED') {
         throw new AppError(
           ERROR_CODES.VALIDATION_FAILED,
-          'Сесія вже скасована'
+          'Session is already canceled'
         );
       }
 
@@ -268,13 +286,13 @@ function createSessionLifecycleService({
           ? ERROR_CODES.SESSION_GM_ONLY
           : ERROR_CODES.SESSION_OWNER_ONLY;
         const message = session.status === 'ACTIVE'
-          ? 'Скасувати ACTIVE сесію може тільки підтверджений GM, власник сесії або власник кампанії'
-          : 'Скасувати сесію може тільки власник сесії або власник кампанії';
+          ? 'Only a confirmed GM, the session owner, or the campaign owner can cancel an active session'
+          : 'Only the session owner or campaign owner can cancel this session';
         throw new AppError(errorCode, message);
       }
 
       const updatedSession = await prisma.session.update({
-        where: { id: sessionQueryService.parsePositiveInt(sessionId, 'ID сесії') },
+        where: { id: sessionQueryService.parsePositiveInt(sessionId, 'Session ID') },
         data: {
           status: 'CANCELED',
         },

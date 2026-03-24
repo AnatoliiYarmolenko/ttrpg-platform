@@ -1,9 +1,6 @@
 const campaignService = require('../services/campaign.service');
 
 class CampaignController {
-  // === CRUD Кампанії ===
-
-  // Створити нову кампанію
   async createCampaign(req, res, next) {
     try {
       const { title, description, imageUrl, system, visibility } = req.body;
@@ -18,52 +15,64 @@ class CampaignController {
         ownerId: userId,
       });
 
-      res.status(201).json({ 
-        success: true, 
+      res.status(201).json({
+        success: true,
         message: 'Кампанія створена успішно!',
-        data: campaign 
+        data: campaign,
       });
     } catch (error) {
       next(error);
     }
   }
 
-  // Отримати список моїх кампаній (як власник та як учасник)
   async getMyCampaigns(req, res, next) {
     try {
       const userId = req.user.id;
-      const { role = 'all' } = req.query; // all, owner, member
+      const { role = 'all' } = req.query;
 
       const campaigns = await campaignService.getMyCampaigns(userId, role);
 
-      res.json({ 
-        success: true, 
-        data: campaigns 
+      res.json({
+        success: true,
+        data: campaigns,
       });
     } catch (error) {
       next(error);
     }
   }
 
-  // Отримати деталі кампанії
   async getCampaignById(req, res, next) {
     try {
       const { campaignId } = req.params;
       const userId = req.user?.id;
-      const inviteCode = req.query?.inviteCode;
 
-      const campaign = await campaignService.getCampaignById(campaignId, userId, inviteCode);
+      const campaign = await campaignService.getCampaignById(campaignId, userId);
 
-      res.json({ 
-        success: true, 
-        data: campaign 
+      res.json({
+        success: true,
+        data: campaign,
       });
     } catch (error) {
       next(error);
     }
   }
 
-  // Оновити кампанію (тільки для власника)
+  async getCampaignByShareToken(req, res, next) {
+    try {
+      const { shareToken } = req.params;
+      const userId = req.user?.id || null;
+
+      const campaign = await campaignService.getCampaignByShareToken(shareToken, userId);
+
+      res.json({
+        success: true,
+        data: campaign,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async updateCampaign(req, res, next) {
     try {
       const { campaignId } = req.params;
@@ -79,17 +88,16 @@ class CampaignController {
         status,
       });
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: 'Кампанія оновлена успішно!',
-        data: campaign 
+        data: campaign,
       });
     } catch (error) {
       next(error);
     }
   }
 
-  // Передати власність кампанії іншому учаснику
   async transferCampaignOwnership(req, res, next) {
     try {
       const { campaignId } = req.params;
@@ -112,26 +120,22 @@ class CampaignController {
     }
   }
 
-  // === Управління учасниками ===
-
-  // Отримати список учасників кампанії
   async getCampaignMembers(req, res, next) {
     try {
       const { campaignId } = req.params;
-      // Беремо ID користувача (якщо він залогінений)
       const userId = req.user?.id;
 
       const members = await campaignService.getCampaignMembers(campaignId, userId);
 
-      res.json({ 
-        success: true, 
-        data: members 
+      res.json({
+        success: true,
+        data: members,
       });
     } catch (error) {
       next(error);
     }
   }
-  // Додати учасника в кампанію
+
   async addMemberToCampaign(req, res, next) {
     try {
       const { campaignId } = req.params;
@@ -145,17 +149,16 @@ class CampaignController {
         role
       );
 
-      res.status(201).json({ 
-        success: true, 
+      res.status(201).json({
+        success: true,
         message: 'Учасник додано успішно!',
-        data: member 
+        data: member,
       });
     } catch (error) {
       next(error);
     }
   }
 
-  // Видалити учасника з кампанії
   async removeMemberFromCampaign(req, res, next) {
     try {
       const { campaignId, memberId } = req.params;
@@ -163,16 +166,15 @@ class CampaignController {
 
       await campaignService.removeMemberFromCampaign(campaignId, userId, memberId);
 
-      res.json({ 
-        success: true, 
-        message: 'Учасник видалений успішно!' 
+      res.json({
+        success: true,
+        message: 'Учасник видалений успішно!',
       });
     } catch (error) {
       next(error);
     }
   }
 
-  // Змінити роль учасника
   async updateMemberRole(req, res, next) {
     try {
       const { campaignId, memberId } = req.params;
@@ -186,96 +188,77 @@ class CampaignController {
         role
       );
 
-      res.json({ 
-        success: true, 
-        message: 'Роль учасника оновлена успішно!',
-        data: member 
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // === Invite коди ===
-
-  // Отримати кампанію за invite кодом (без автоматичного приєднання)
-  async resolveInviteCode(req, res, next) {
-    try {
-      const { inviteCode } = req.params;
-
-      const campaign = await campaignService.resolveInviteCode(inviteCode);
-
       res.json({
         success: true,
-        data: campaign,
+        message: 'Роль учасника оновлена успішно!',
+        data: member,
       });
     } catch (error) {
       next(error);
     }
   }
 
-  // Регенерувати invite код
-  async regenerateInviteCode(req, res, next) {
+  async regenerateShareToken(req, res, next) {
     try {
       const { campaignId } = req.params;
       const userId = req.user.id;
 
-      const campaign = await campaignService.regenerateInviteCode(campaignId, userId);
+      const result = await campaignService.regenerateShareToken(campaignId, userId);
 
-      res.json({ 
-        success: true, 
-        message: 'Invite код змінено успішно!',
-        data: { inviteCode: campaign.inviteCode } 
+      res.json({
+        success: true,
+        message: 'Share link regenerated successfully',
+        data: {
+          shareToken: result.token,
+        },
       });
     } catch (error) {
       next(error);
     }
   }
 
-  // Приєднатися до кампанії за invite кодом
-  async joinByInviteCode(req, res, next) {
+  async getCampaignShareLink(req, res, next) {
     try {
-      const { inviteCode } = req.params;
+      const { campaignId } = req.params;
       const userId = req.user.id;
 
-      const member = await campaignService.joinByInviteCode(inviteCode, userId);
+      const result = await campaignService.getCampaignShareLink(campaignId, userId);
 
-      res.json({ 
-        success: true, 
-        message: 'Ви успішно приєдналися до кампанії!',
-        data: member 
+      res.json({
+        success: true,
+        data: {
+          shareToken: result.token,
+          shareUrl: result.shareUrl,
+        },
       });
     } catch (error) {
       next(error);
     }
   }
 
-  // === Заявки на вступ ===
-
-  // Подати заявку на вступ (для приватних/защищённых кампаній)
   async submitJoinRequest(req, res, next) {
     try {
       const { campaignId } = req.params;
       const userId = req.user.id;
-      const { message } = req.body || {};
+      const { message, shareToken = null } = req.body || {};
 
       const joinRequest = await campaignService.submitJoinRequest(
         campaignId,
         userId,
-        message
+        message,
+        shareToken
       );
 
-      res.status(201).json({ 
-        success: true, 
+      res.status(201).json({
+        success: true,
         message: 'Заявка на вступ відправлена!',
-        data: joinRequest 
+        data: joinRequest,
       });
     } catch (error) {
       next(error);
     }
   }
 
-  // Отримати заявки на вступ (для власника/GM)
   async getJoinRequests(req, res, next) {
     try {
       const { campaignId } = req.params;
@@ -283,16 +266,15 @@ class CampaignController {
 
       const joinRequests = await campaignService.getJoinRequests(campaignId, userId);
 
-      res.json({ 
-        success: true, 
-        data: joinRequests 
+      res.json({
+        success: true,
+        data: joinRequests,
       });
     } catch (error) {
       next(error);
     }
   }
 
-  // Схвалити заявку на вступ
   async approveJoinRequest(req, res, next) {
     try {
       const { requestId } = req.params;
@@ -305,17 +287,16 @@ class CampaignController {
         role
       );
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: 'Заявка схвалена!',
-        data: member 
+        data: member,
       });
     } catch (error) {
       next(error);
     }
   }
 
-  // Відхилити заявку на вступ
   async rejectJoinRequest(req, res, next) {
     try {
       const { requestId } = req.params;
@@ -323,9 +304,9 @@ class CampaignController {
 
       await campaignService.rejectJoinRequest(requestId, userId);
 
-      res.json({ 
-        success: true, 
-        message: 'Заявка відхилена.' 
+      res.json({
+        success: true,
+        message: 'Заявка відхилена.',
       });
     } catch (error) {
       next(error);

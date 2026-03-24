@@ -88,12 +88,6 @@ const SESSION_ACCESS_RULES = Object.freeze({
       outsiderNeedsShareToken: false,
       joinMode: JOIN_MODES.MEMBERS_ONLY,
     }),
-    [ACCESS_VISIBILITY.LINK_ONLY]: Object.freeze({
-      outsiderDiscoverable: false,
-      outsiderCanOpenDirectly: false,
-      outsiderNeedsShareToken: true,
-      joinMode: JOIN_MODES.REQUEST,
-    }),
   }),
 });
 

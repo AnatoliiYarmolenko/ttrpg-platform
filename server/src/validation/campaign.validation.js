@@ -2,8 +2,6 @@ const Joi = require('joi');
 const { validateBody, validateParams, validateQuery } = require('../middlewares/validation.middleware');
 const { GAME_SYSTEM_VALUES } = require('../constants/game-systems');
 
-// === Валідація для кампаній ===
-
 const createCampaignBodySchema = Joi.object({
   title: Joi.string().trim().min(3).max(100).required().messages({
     'string.empty': 'Назва кампанії обов\'язкова',
@@ -24,8 +22,6 @@ const createCampaignBodySchema = Joi.object({
     'any.only': 'Невірна видимість',
   }),
 });
-
-const validateCreateCampaign = [validateBody(createCampaignBodySchema)];
 
 const campaignIdParamsSchema = Joi.object({
   campaignId: Joi.number().integer().min(1).required().messages({
@@ -56,21 +52,12 @@ const updateCampaignBodySchema = Joi.object({
   }),
 });
 
-const validateUpdateCampaign = [validateParams(campaignIdParamsSchema), validateBody(updateCampaignBodySchema)];
-
-const validateCampaignId = [validateParams(campaignIdParamsSchema)];
-
 const transferCampaignOwnershipBodySchema = Joi.object({
   newOwnerId: Joi.number().integer().min(1).required().messages({
     'number.base': 'newOwnerId повинен бути позитивним числом',
     'number.min': 'newOwnerId повинен бути позитивним числом',
   }),
 });
-
-const validateTransferCampaignOwnership = [
-  validateParams(campaignIdParamsSchema),
-  validateBody(transferCampaignOwnershipBodySchema),
-];
 
 const addMemberBodySchema = Joi.object({
   newMemberId: Joi.number().integer().min(1).required().messages({
@@ -81,8 +68,6 @@ const addMemberBodySchema = Joi.object({
     'any.only': 'Невірна роль',
   }),
 });
-
-const validateAddMember = [validateParams(campaignIdParamsSchema), validateBody(addMemberBodySchema)];
 
 const removeMemberParamsSchema = Joi.object({
   campaignId: Joi.number().integer().min(1).required().messages({
@@ -95,23 +80,21 @@ const removeMemberParamsSchema = Joi.object({
   }),
 });
 
-const validateRemoveMember = [validateParams(removeMemberParamsSchema)];
-
 const updateMemberRoleBodySchema = Joi.object({
   role: Joi.string().trim().valid('GM', 'PLAYER').required().messages({
     'any.only': 'Невірна роль',
   }),
 });
 
-const validateUpdateMemberRole = [validateParams(removeMemberParamsSchema), validateBody(updateMemberRoleBodySchema)];
-
 const joinRequestBodySchema = Joi.object({
   message: Joi.string().trim().allow('').max(500).optional().messages({
     'string.max': 'Повідомлення не повинно перевищувати 500 символів',
   }),
+  shareToken: Joi.string().trim().min(10).max(255).optional().messages({
+    'string.min': 'shareToken повинен містити від 10 до 255 символів',
+    'string.max': 'shareToken повинен містити від 10 до 255 символів',
+  }),
 });
-
-const validateJoinRequest = [validateParams(campaignIdParamsSchema), validateBody(joinRequestBodySchema)];
 
 const requestIdParamsSchema = Joi.object({
   requestId: Joi.number().integer().min(1).required().messages({
@@ -126,28 +109,36 @@ const approveJoinRequestBodySchema = Joi.object({
   }),
 });
 
-const validateApproveJoinRequest = [validateParams(requestIdParamsSchema), validateBody(approveJoinRequestBodySchema)];
-
-const validateRejectJoinRequest = [validateParams(requestIdParamsSchema)];
-
 const getMyCampaignsQuerySchema = Joi.object({
   role: Joi.string().trim().valid('all', 'owner', 'member').optional().messages({
     'any.only': 'Невірна роль для фільтру',
   }),
 });
 
-const validateGetMyCampaigns = [validateQuery(getMyCampaignsQuerySchema)];
-
-const inviteCodeParamsSchema = Joi.object({
-  inviteCode: Joi.string().trim().min(3).max(20).required().messages({
-    'string.empty': 'inviteCode обов\'язковий',
-    'string.min': 'inviteCode повинен містити від 3 до 20 символів',
-    'string.max': 'inviteCode повинен містити від 3 до 20 символів',
-    'any.required': 'inviteCode обов\'язковий',
+const shareTokenParamsSchema = Joi.object({
+  shareToken: Joi.string().trim().min(10).max(255).required().messages({
+    'string.empty': 'shareToken обов\'язковий',
+    'string.min': 'shareToken повинен містити від 10 до 255 символів',
+    'string.max': 'shareToken повинен містити від 10 до 255 символів',
+    'any.required': 'shareToken обов\'язковий',
   }),
 });
 
-const validateInviteCode = [validateParams(inviteCodeParamsSchema)];
+const validateCreateCampaign = [validateBody(createCampaignBodySchema)];
+const validateUpdateCampaign = [validateParams(campaignIdParamsSchema), validateBody(updateCampaignBodySchema)];
+const validateCampaignId = [validateParams(campaignIdParamsSchema)];
+const validateTransferCampaignOwnership = [
+  validateParams(campaignIdParamsSchema),
+  validateBody(transferCampaignOwnershipBodySchema),
+];
+const validateAddMember = [validateParams(campaignIdParamsSchema), validateBody(addMemberBodySchema)];
+const validateRemoveMember = [validateParams(removeMemberParamsSchema)];
+const validateUpdateMemberRole = [validateParams(removeMemberParamsSchema), validateBody(updateMemberRoleBodySchema)];
+const validateJoinRequest = [validateParams(campaignIdParamsSchema), validateBody(joinRequestBodySchema)];
+const validateApproveJoinRequest = [validateParams(requestIdParamsSchema), validateBody(approveJoinRequestBodySchema)];
+const validateRejectJoinRequest = [validateParams(requestIdParamsSchema)];
+const validateGetMyCampaigns = [validateQuery(getMyCampaignsQuerySchema)];
+const validateShareToken = [validateParams(shareTokenParamsSchema)];
 
 module.exports = {
   validateCreateCampaign,
@@ -161,5 +152,5 @@ module.exports = {
   validateApproveJoinRequest,
   validateRejectJoinRequest,
   validateGetMyCampaigns,
-  validateInviteCode,
+  validateShareToken,
 };

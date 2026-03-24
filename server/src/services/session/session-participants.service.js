@@ -31,8 +31,8 @@ function createSessionParticipantsService({
 
   return {
     async joinSession(sessionId, userId, options = {}) {
-      const { role = 'PLAYER' } = options;
-      const session = await resolveGetSessionById(sessionId, userId);
+      const { role = 'PLAYER', shareToken = null } = options;
+      const session = await resolveGetSessionById(sessionId, userId, { shareToken });
 
       const normalizedRole = String(role || 'PLAYER').toUpperCase();
 

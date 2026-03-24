@@ -5,7 +5,17 @@ function createSessionCoreService({
   datetimeHelpers,
   sessionQueryService,
   assertNoSessionTimeConflict,
+  createRawEncryptedAndHashedShareToken,
 }) {
+  const assertSessionVisibilityForCreation = ({ campaignId, visibility }) => {
+    if (campaignId && visibility === 'LINK_ONLY') {
+      throw new AppError(
+        ERROR_CODES.VALIDATION_FAILED,
+        'LINK_ONLY is allowed only for one-shot sessions'
+      );
+    }
+  };
+
   const buildPublicCalendarVisibilityFilterForUser = (userId = null) => {
     if (!userId) {
       return [
@@ -28,9 +38,10 @@ function createSessionCoreService({
       {
         campaignId: null,
         visibility: 'LINK_ONLY',
-        participants: {
-          some: { userId },
-        },
+        OR: [
+          { ownerId: userId },
+          { participants: { some: { userId } } },
+        ],
       },
       {
         campaignId: { not: null },
@@ -57,14 +68,36 @@ function createSessionCoreService({
               some: { userId },
             },
           },
+          {
+            ownerId: userId,
+          },
         ],
       },
       {
         campaignId: { not: null },
         visibility: 'LINK_ONLY',
-        participants: {
-          some: { userId },
-        },
+        OR: [
+          {
+            campaign: {
+              ownerId: userId,
+            },
+          },
+          {
+            campaign: {
+              members: {
+                some: { userId },
+              },
+            },
+          },
+          {
+            participants: {
+              some: { userId },
+            },
+          },
+          {
+            ownerId: userId,
+          },
+        ],
       },
     ];
   };
@@ -101,16 +134,11 @@ function createSessionCoreService({
         conflictErrorCode: ERROR_CODES.SESSION_TIME_CONFLICT_OWNER,
       });
 
-      if (campaignId) {
-        if (visibility === 'LINK_ONLY') {
-          throw new AppError(
-            ERROR_CODES.VALIDATION_FAILED,
-            'Для сесії в кампанії тип "LINK_ONLY" більше не підтримується'
-          );
-        }
+      assertSessionVisibilityForCreation({ campaignId, visibility });
 
+      if (campaignId) {
         const campaign = await prisma.campaign.findUnique({
-          where: { id: sessionQueryService.parsePositiveInt(campaignId, 'ID кампанії') },
+          where: { id: sessionQueryService.parsePositiveInt(campaignId, 'Campaign ID') },
           include: {
             members: {
               where: { userId: ownerId },
@@ -120,13 +148,13 @@ function createSessionCoreService({
         });
 
         if (!campaign) {
-          throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Кампанія не знайдена');
+          throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Campaign not found');
         }
 
         if (campaign.status === 'FINISHED') {
           throw new AppError(
             ERROR_CODES.CAMPAIGN_FINISHED,
-            'Не можна створювати сесії в завершеній кампанії'
+            'Cannot create a session in a finished campaign'
           );
         }
 
@@ -134,7 +162,7 @@ function createSessionCoreService({
         if (!memberRole || !['OWNER', 'GM'].includes(memberRole)) {
           throw new AppError(
             ERROR_CODES.SECURITY_ACCESS_DENIED,
-            'Ви не маєте права створювати сесії в цій кампанії'
+            'You do not have permission to create sessions in this campaign'
           );
         }
 
@@ -142,6 +170,10 @@ function createSessionCoreService({
           sessionSystem = campaign.system;
         }
       }
+
+      const shareTokenData = visibility === 'LINK_ONLY'
+        ? createRawEncryptedAndHashedShareToken()
+        : null;
 
       const session = await prisma.session.create({
         data: {
@@ -152,9 +184,12 @@ function createSessionCoreService({
           maxPlayers,
           price,
           system: sessionSystem || null,
-          campaignId: campaignId ? sessionQueryService.parsePositiveInt(campaignId, 'ID кампанії') : null,
+          campaignId: campaignId ? sessionQueryService.parsePositiveInt(campaignId, 'Campaign ID') : null,
           ownerId,
           visibility,
+          shareTokenHash: shareTokenData?.tokenHash || null,
+          shareTokenEncrypted: shareTokenData?.tokenEncrypted || null,
+          shareTokenCreatedAt: shareTokenData ? new Date() : null,
           participants: {
             create: {
               userId: ownerId,
@@ -180,6 +215,14 @@ function createSessionCoreService({
           },
         },
       });
+
+      if (shareTokenData) {
+        session.shareToken = shareTokenData.rawToken;
+      }
+
+      delete session.shareTokenHash;
+      delete session.shareTokenEncrypted;
+      delete session.shareTokenCreatedAt;
 
       return session;
     },
@@ -256,7 +299,7 @@ function createSessionCoreService({
 
       if (type === 'MY') {
         if (!userId) {
-          throw new AppError(ERROR_CODES.AUTH_TOKEN_MISSING, 'Необхідна авторизація');
+          throw new AppError(ERROR_CODES.AUTH_TOKEN_MISSING, 'Authentication required');
         }
         whereCondition.participants = { some: { userId } };
       } else if (type === 'PUBLIC') {
@@ -298,7 +341,7 @@ function createSessionCoreService({
 
     async getCampaignSessions(campaignId, userId, options = {}) {
       const { limit = 20, offset = 0 } = options;
-      const campaignIdInt = sessionQueryService.parsePositiveInt(campaignId, 'ID кампанії');
+      const campaignIdInt = sessionQueryService.parsePositiveInt(campaignId, 'Campaign ID');
 
       const campaign = await prisma.campaign.findUnique({
         where: { id: campaignIdInt },
@@ -311,13 +354,13 @@ function createSessionCoreService({
       });
 
       if (!campaign) {
-        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Кампанія не знайдена');
+        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Campaign not found');
       }
 
       if (!campaign.members.length && campaign.ownerId !== userId) {
         throw new AppError(
           ERROR_CODES.SECURITY_ACCESS_DENIED,
-          'У вас немає доступу до цієї кампанії'
+          'You do not have access to this campaign'
         );
       }
 

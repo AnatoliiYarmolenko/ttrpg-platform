@@ -1,3 +1,7 @@
+const { hashToken } = require('../../utils/token.helper');
+const { buildSessionAccessContext } = require('../../domain/session/session-access.context');
+const { getSessionViewerCapabilities } = require('../../domain/session/session.policy');
+
 function createSessionQueryService({ prisma, AppError, ERROR_CODES }) {
   const parsePositiveInt = (value, label = 'ID') => {
     const parsed = Number.parseInt(value, 10);
@@ -9,8 +13,9 @@ function createSessionQueryService({ prisma, AppError, ERROR_CODES }) {
     return parsed;
   };
 
-  const getSessionById = async (sessionId, userId = null) => {
+  const getSessionById = async (sessionId, userId = null, options = {}) => {
     const sessionIdInt = parsePositiveInt(sessionId, 'ID сесії');
+    const { shareToken = null } = options;
 
     const session = await prisma.session.findUnique({
       where: { id: sessionIdInt },
@@ -36,15 +41,8 @@ function createSessionQueryService({ prisma, AppError, ERROR_CODES }) {
       throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Сесія не знайдена');
     }
 
-    const isCampaignSession = Boolean(session.campaignId);
-    const isParticipant = Boolean(
-      userId && session.participants.some((participant) => participant.userId === userId)
-    );
-    const isOwner = Boolean(userId && session.ownerId === userId);
-    const isCampaignOwner = Boolean(userId && session.campaign?.ownerId === userId);
-
     let isCampaignMember = false;
-    if (isCampaignSession && userId) {
+    if (session.campaignId && userId) {
       const campaignMembership = await prisma.campaignMember.findUnique({
         where: {
           userId_campaignId: {
@@ -52,42 +50,68 @@ function createSessionQueryService({ prisma, AppError, ERROR_CODES }) {
             campaignId: session.campaignId,
           },
         },
-        select: { userId: true },
+        select: { role: true },
       });
 
-      isCampaignMember = Boolean(campaignMembership) || isCampaignOwner;
+      isCampaignMember = Boolean(campaignMembership || session.campaign?.ownerId === userId);
     }
 
-    if (session.visibility === 'PRIVATE') {
-      if (!userId) {
-        throw new AppError(
-          ERROR_CODES.SECURITY_ACCESS_DENIED,
-          'У вас немає доступу до цієї сесії'
-        );
-      }
+    const accessContext = buildSessionAccessContext({
+      session,
+      userId,
+      hasValidShareToken: Boolean(
+        shareToken
+        && session.shareTokenHash
+        && session.shareTokenHash === hashToken(String(shareToken).trim())
+      ),
+      isCampaignMember,
+    });
+    const viewerCapabilities = getSessionViewerCapabilities(accessContext);
 
-      const canAccessPrivateSession = !isCampaignSession
-        || isParticipant
-        || isOwner
-        || isCampaignOwner
-        || isCampaignMember;
-
-      if (!canAccessPrivateSession) {
-        throw new AppError(
-          ERROR_CODES.SECURITY_ACCESS_DENIED,
-          'У вас немає доступу до цієї сесії'
-        );
-      }
+    if (!viewerCapabilities.canOpen) {
+      throw new AppError(
+        ERROR_CODES.SECURITY_ACCESS_DENIED,
+        'У вас немає доступу до цієї сесії'
+      );
     }
 
     session.viewer = {
-      isParticipant,
-      isCampaignMember,
-      isSessionOwner: isOwner,
-      isCampaignOwner,
+      isParticipant: accessContext.isParticipant,
+      isCampaignMember: accessContext.isCampaignMember,
+      isSessionOwner: accessContext.isOwner,
+      isCampaignOwner: Boolean(userId && session.campaign?.ownerId === userId),
+      role: accessContext.role,
+      participationStatus: accessContext.participationStatus,
+      ...viewerCapabilities,
     };
 
+    delete session.shareTokenHash;
+    delete session.shareTokenEncrypted;
+    delete session.shareTokenCreatedAt;
+
     return session;
+  };
+
+  const getSessionByShareToken = async (rawToken, userId = null) => {
+    const normalizedToken = String(rawToken || '').trim();
+
+    if (!normalizedToken) {
+      throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'Недійсне посилання доступу');
+    }
+
+    const session = await prisma.session.findFirst({
+      where: {
+        visibility: 'LINK_ONLY',
+        shareTokenHash: hashToken(normalizedToken),
+      },
+      select: { id: true },
+    });
+
+    if (!session) {
+      throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'Недійсне посилання доступу');
+    }
+
+    return getSessionById(session.id, userId, { shareToken: normalizedToken });
   };
 
   const resolveSessionContext = async (sessionId, userId, preloadedSession = null) => {
@@ -103,6 +127,7 @@ function createSessionQueryService({ prisma, AppError, ERROR_CODES }) {
   return {
     parsePositiveInt,
     getSessionById,
+    getSessionByShareToken,
     resolveSessionContext,
   };
 }

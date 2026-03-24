@@ -5,12 +5,12 @@ const sessionParticipantsController = {
     try {
       const { id: sessionId } = req.params;
       const userId = req.user.id;
-      const { role = 'PLAYER' } = req.body || {};
+      const { role = 'PLAYER', shareToken = null } = req.body || {};
 
       const participant = await sessionService.joinSession(
         sessionId,
         userId,
-        { role }
+        { role, shareToken }
       );
 
       const message = participant.status === 'CONFIRMED'
