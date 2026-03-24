@@ -1,3 +1,45 @@
+function buildEntitledCampaignSessionFilter(userId) {
+  return {
+    OR: [
+      {
+        campaign: {
+          ownerId: userId,
+        },
+      },
+      {
+        campaign: {
+          members: {
+            some: { userId },
+          },
+        },
+      },
+      {
+        participants: {
+          some: { userId },
+        },
+      },
+      {
+        ownerId: userId,
+      },
+    ],
+  };
+}
+
+function buildEntitledOneShotLinkOnlyFilter(userId) {
+  return {
+    OR: [
+      {
+        ownerId: userId,
+      },
+      {
+        participants: {
+          some: { userId },
+        },
+      },
+    ],
+  };
+}
+
 function buildCalendarVisibilityFilter(userId = null) {
   if (!userId) {
     return [
@@ -20,9 +62,7 @@ function buildCalendarVisibilityFilter(userId = null) {
     {
       campaignId: null,
       visibility: 'LINK_ONLY',
-      participants: {
-        some: { userId },
-      },
+      ...buildEntitledOneShotLinkOnlyFilter(userId),
     },
     {
       campaignId: { not: null },
@@ -31,32 +71,12 @@ function buildCalendarVisibilityFilter(userId = null) {
     {
       campaignId: { not: null },
       visibility: 'PRIVATE',
-      OR: [
-        {
-          campaign: {
-            ownerId: userId,
-          },
-        },
-        {
-          campaign: {
-            members: {
-              some: { userId },
-            },
-          },
-        },
-        {
-          participants: {
-            some: { userId },
-          },
-        },
-      ],
+      ...buildEntitledCampaignSessionFilter(userId),
     },
     {
       campaignId: { not: null },
       visibility: 'LINK_ONLY',
-      participants: {
-        some: { userId },
-      },
+      ...buildEntitledCampaignSessionFilter(userId),
     },
   ];
 }
