@@ -14,24 +14,6 @@ import GroupPeople from '@/components/ui/icons/GroupPeople';
 import Dice20 from '@/components/ui/icons/Dice20';
 import { getSessionStartState } from '../../utils/sessionStartRules';
 
-/**
- * SessionInfoWidget — лівий віджет у Full Mode (для учасників).
- *
- * Показує повну інформацію про сесію:
- * - Назву, статус, роль юзера
- * - Дату, час, тривалість
- * - Систему гри, кількість гравців
- * - Опис, нотатки GM
- * - Зв'язок з кампанією
- * - Дії: покинути сесію, управління статусом (GM)
- *
- * @param {Object} session — дані сесії
- * @param {string} myRole — роль юзера в сесії/кампанії (OWNER | GM | PLAYER)
- * @param {boolean} canManage — чи може юзер управляти сесією
- * @param {Function} onLeave — колбек виходу з сесії
- * @param {Function} onStatusChange — колбек зміни статусу (newStatus)
- * @param {boolean} isLoading — чи йде завантаження
- */
 export default function SessionInfoWidget({
   session,
   myRole,
@@ -39,10 +21,15 @@ export default function SessionInfoWidget({
   canStartSession = false,
   canFinishSession = false,
   canCancelSession = false,
+  canManageShareLink = false,
+  currentShareLink = '',
   onLeave,
   onStatusChange,
   onMarkAsFinished,
+  onRegenerateShareLink,
+  onCopyShareLink,
   showCampaignInfo = true,
+  canNavigateToCampaignDirectly = true,
   isLoading = false,
 }) {
   const navigate = useNavigate();
@@ -58,7 +45,6 @@ export default function SessionInfoWidget({
     setConfirmModal((prev) => ({ ...prev, isOpen: false }));
   }, []);
 
-  // Форматування тривалості
   const formatDuration = (minutes) => {
     if (!minutes) return '';
     const hours = Math.floor(minutes / 60);
@@ -102,6 +88,10 @@ export default function SessionInfoWidget({
     });
   };
 
+  if (!session) return null;
+
+  const startState = getSessionStartState(session?.date, session?.duration);
+
   const handleStatusChange = (newStatus) => {
     const statusLabels = {
       ACTIVE: 'розпочати',
@@ -116,7 +106,7 @@ export default function SessionInfoWidget({
 
     setConfirmModal({
       isOpen: true,
-      title: `Змінити статус?`,
+      title: 'Змінити статус?',
       message,
       variant: newStatus === 'CANCELED' ? 'danger' : 'primary',
       onConfirm: () => {
@@ -125,10 +115,6 @@ export default function SessionInfoWidget({
       },
     });
   };
-
-  if (!session) return null;
-
-  const startState = getSessionStartState(session?.date, session?.duration);
 
   const handleMarkAsFinished = () => {
     setConfirmModal({
@@ -147,10 +133,22 @@ export default function SessionInfoWidget({
     });
   };
 
+  const handleRotateShareLink = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Оновити share-посилання?',
+      message: 'Старе share-посилання перестане працювати. Нове посилання буде згенеровано та скопійовано.',
+      variant: 'danger',
+      onConfirm: () => {
+        closeConfirmModal();
+        onRegenerateShareLink?.();
+      },
+    });
+  };
+
   return (
     <DashboardCard title="Інформація про сесію">
       <div className="flex flex-col gap-5">
-        {/* Заголовок та статус */}
         <div>
           <div className="flex items-start justify-between mb-2">
             <h2 className="text-xl font-bold text-[#164A41] flex-1 pr-3">
@@ -161,26 +159,21 @@ export default function SessionInfoWidget({
           {displayMyRole && <RoleBadge role={displayMyRole} size="md" />}
         </div>
 
-        {/* Основна інформація */}
         <div className="grid grid-cols-2 gap-3 p-4 bg-[#9DC88D]/10 rounded-xl">
-          {/* Дата */}
           <div className="flex items-center gap-2 text-[#4D774E]">
             <Data className="w-4 h-4" />
             <DateTimeDisplay value={session.date} format="long" />
           </div>
-          {/* Час */}
           <div className="flex items-center gap-2 text-[#4D774E]">
             <Timer className="w-4 h-4" />
             <DateTimeDisplay value={session.date} format="time" />
           </div>
-          {/* Тривалість */}
           {session.duration && (
             <div className="flex items-center gap-2 text-[#4D774E]">
               <Timer className="w-4 h-4" />
               <span>{formatDuration(session.duration)}</span>
             </div>
           )}
-          {/* Гравці */}
           <div className="flex items-center gap-2 text-[#4D774E]">
             <GroupPeople className="w-4 h-4" />
             <span>
@@ -188,33 +181,22 @@ export default function SessionInfoWidget({
               {session.maxPlayers ? ` / ${session.maxPlayers}` : ''} гравців
             </span>
           </div>
-          {/* Система */}
           {session.system && (
             <div className="flex items-center gap-2 text-[#4D774E]">
               <span>{session.system}</span>
             </div>
           )}
-          {/* Вільних місць */}
           <div className="flex items-center gap-2 text-[#4D774E]">
             <span>Вільних: {getFreeSpots()}</span>
           </div>
-          {/* Організатор */}
           <div className="flex items-center gap-2 text-[#4D774E]">
             <span>Організатор: {organizerName}</span>
           </div>
-          {/* GM */}
           <div className="flex items-center gap-2 text-[#4D774E]">
             <span>GM: {confirmedGmName || 'Шукаємо GM'}</span>
           </div>
-          {/* Локація */}
-          {session.location && (
-            <div className="flex items-center gap-2 text-[#4D774E]">
-              <span>{session.location}</span>
-            </div>
-          )}
         </div>
 
-        {/* Опис */}
         {session.description && (
           <div className="border-t border-[#9DC88D]/20 pt-4">
             <h4 className="text-sm font-bold text-[#164A41] mb-2">Опис сесії</h4>
@@ -224,27 +206,57 @@ export default function SessionInfoWidget({
           </div>
         )}
 
-        {/* Нотатки GM */}
-        {session.notes && (
-          <div className="p-4 bg-[#F1B24A]/10 rounded-xl border-2 border-[#F1B24A]/30">
-            <h4 className="text-sm font-bold text-[#164A41] mb-2">Нотатки від GM</h4>
-            <p className="text-sm text-[#4D774E] whitespace-pre-wrap">
-              {session.notes}
-            </p>
+        {canManageShareLink && (
+          <div className="border-t border-[#9DC88D]/20 pt-4">
+            <h4 className="text-sm font-bold text-[#164A41] mb-3">Share-посилання</h4>
+            <div className="p-4 bg-[#9DC88D]/20 rounded-xl flex flex-col gap-3">
+              {currentShareLink ? (
+                <code className="px-3 py-2 bg-white rounded-lg font-mono text-[#164A41] text-xs break-all">
+                  {currentShareLink}
+                </code>
+              ) : (
+                <p className="text-sm text-[#4D774E]">
+                  Share-посилання буде доступне тут після завантаження або перевипуску.
+                </p>
+              )}
+              <div className="flex gap-3 flex-wrap">
+                {currentShareLink && (
+                  <Button
+                    onClick={onCopyShareLink}
+                    variant="secondary"
+                    fullWidth={false}
+                    className="px-5"
+                  >
+                    Копіювати посилання
+                  </Button>
+                )}
+                <Button
+                  onClick={handleRotateShareLink}
+                  variant="secondary"
+                  fullWidth={false}
+                  className="px-5"
+                >
+                  Оновити share-посилання
+                </Button>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Кампанія */}
         <div className="border-t border-[#9DC88D]/20 pt-4">
           {session.campaign && showCampaignInfo ? (
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-bold text-[#164A41]">Кампанія:</span>
-              <button
-                onClick={() => navigate(`/campaign/${session.campaign.id}`)}
-                className="text-sm text-[#4D774E] hover:text-[#164A41] underline transition-colors"
-              >
-                {session.campaign.title}
-              </button>
+              {canNavigateToCampaignDirectly ? (
+                <button
+                  onClick={() => navigate(`/campaign/${session.campaign.id}`)}
+                  className="text-sm text-[#4D774E] hover:text-[#164A41] underline transition-colors"
+                >
+                  {session.campaign.title}
+                </button>
+              ) : (
+                <span className="text-sm text-[#4D774E]">{session.campaign.title}</span>
+              )}
               {session.campaign.system && (
                 <span className="text-xs px-2 py-0.5 bg-[#9DC88D]/20 rounded">
                   {session.campaign.system}
@@ -259,16 +271,13 @@ export default function SessionInfoWidget({
           )}
         </div>
 
-        {/* Ціна */}
         {session.price > 0 && (
           <div className="text-sm font-bold text-[#164A41]">
             {session.price} грн
           </div>
         )}
 
-        {/* Дії */}
         <div className="border-t border-[#9DC88D]/20 pt-4 flex flex-col gap-3">
-          {/* Покинути сесію (не для Owner) */}
           {session.status === 'PLANNED' && myRole && myRole !== 'OWNER' && onLeave && (
             <Button
               onClick={handleLeave}
@@ -280,7 +289,6 @@ export default function SessionInfoWidget({
             </Button>
           )}
 
-          {/* Управління статусом (GM/Owner) */}
           {canManage && (
             <div className="pt-2 border-t border-[#9DC88D]/20">
               <h4 className="font-medium text-[#164A41] mb-2 text-sm">
@@ -333,7 +341,6 @@ export default function SessionInfoWidget({
         </div>
       </div>
 
-      {/* Модалка підтвердження */}
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         title={confirmModal.title}

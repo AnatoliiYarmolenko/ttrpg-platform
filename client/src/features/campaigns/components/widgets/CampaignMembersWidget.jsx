@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import DashboardCard from '@/components/ui/DashboardCard';
 import { EmptyState, ConfirmModal, ParticipantsList } from '@/components/shared';
 import MemberCard from '../ui/MemberCard';
@@ -26,6 +26,8 @@ import GroupPeople from '@/components/ui/icons/GroupPeople';
  */
 export default function CampaignMembersWidget({
   campaignId,
+  initialMembers = [],
+  canReadMembers = true,
   isOwner = false,
   isGM = false,
   canAssignRoles = false,
@@ -34,9 +36,10 @@ export default function CampaignMembersWidget({
   currentUserId,
   onViewProfile,
 }) {
-  const { data: campaignMembers = [] } = useCampaignMembersQuery(campaignId);
+  const { data: queriedMembers = [] } = useCampaignMembersQuery(campaignId, canReadMembers);
   const { data: joinRequests = [] } = useCampaignJoinRequestsQuery(campaignId, canModerateRequests);
   const mutations = useCampaignMutations(campaignId);
+  const campaignMembers = queriedMembers.length > 0 ? queriedMembers : initialMembers;
 
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,

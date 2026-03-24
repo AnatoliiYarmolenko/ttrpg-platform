@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import DashboardCard from '@/components/ui/DashboardCard';
 import { EmptyState, ConfirmModal, ParticipantsList } from '@/components/shared';
 import ParticipantCard from '../ui/ParticipantCard';
@@ -22,15 +22,17 @@ import GroupPeople from '@/components/ui/icons/GroupPeople';
 export default function SessionPageParticipantsWidget({
   sessionId,
   session,
+  initialParticipants = [],
+  canReadParticipants = true,
   canManage = false,
   canManageGmRequests = false,
-  onParticipantStatusChange,
   currentUserId,
   onViewProfile,
   maxPlayers,
 }) {
-  const { data: participants = [] } = useSessionParticipantsQuery(sessionId);
+  const { data: queriedParticipants = [] } = useSessionParticipantsQuery(sessionId, canReadParticipants);
   const mutations = useSessionMutations(sessionId);
+  const participants = queriedParticipants.length > 0 ? queriedParticipants : initialParticipants;
 
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,

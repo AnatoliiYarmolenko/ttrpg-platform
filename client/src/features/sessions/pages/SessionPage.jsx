@@ -38,6 +38,7 @@ export default function SessionPage() {
     viewingUserId,
     isPreviewMode,
     myRole,
+    canReadParticipants,
     canStartSession,
     canFinishSession,
     canCancelSession,
@@ -45,10 +46,13 @@ export default function SessionPage() {
     canManageStatus,
     canManageParticipants,
     canManageGmRequests,
+    canManageShareLink,
     canManageSettings,
     canJoin,
     canApplyAsGm,
     showCampaignInfo,
+    canNavigateToCampaignDirectly,
+    currentShareLink,
     handleJoin,
     handleLeave,
     handleStatusChange,
@@ -56,6 +60,8 @@ export default function SessionPage() {
     handleSaveSettings,
     handleDelete,
     handleParticipantStatusChange,
+    handleRegenerateShareLink,
+    handleCopyShareLink,
     handleViewProfile,
     handleBackFromProfile,
     navigate,
@@ -97,6 +103,7 @@ export default function SessionPage() {
           canJoin={canJoin}
           canApplyAsGm={canApplyAsGm}
           showCampaignInfo={showCampaignInfo}
+          canNavigateToCampaignDirectly={canNavigateToCampaignDirectly}
           isLoading={isLoading}
         />
       );
@@ -123,10 +130,15 @@ export default function SessionPage() {
             canStartSession={canStartSession}
             canFinishSession={canFinishSession}
             canCancelSession={canCancelSession}
+            canManageShareLink={canManageShareLink}
+            currentShareLink={currentShareLink}
             onLeave={handleLeave}
             onStatusChange={handleStatusChange}
             onMarkAsFinished={handleMarkAsFinished}
+            onRegenerateShareLink={handleRegenerateShareLink}
+            onCopyShareLink={handleCopyShareLink}
             showCampaignInfo={showCampaignInfo}
+            canNavigateToCampaignDirectly={canNavigateToCampaignDirectly}
             isLoading={isLoading}
           />
         );
@@ -141,10 +153,15 @@ export default function SessionPage() {
             canStartSession={canStartSession}
             canFinishSession={canFinishSession}
             canCancelSession={canCancelSession}
+            canManageShareLink={canManageShareLink}
+            currentShareLink={currentShareLink}
             onLeave={handleLeave}
             onStatusChange={handleStatusChange}
             onMarkAsFinished={handleMarkAsFinished}
+            onRegenerateShareLink={handleRegenerateShareLink}
+            onCopyShareLink={handleCopyShareLink}
             showCampaignInfo={showCampaignInfo}
+            canNavigateToCampaignDirectly={canNavigateToCampaignDirectly}
             isLoading={isLoading}
           />
         );
@@ -156,6 +173,8 @@ export default function SessionPage() {
     <SessionPageParticipantsWidget
       sessionId={id}
       session={currentSession}
+      initialParticipants={currentSession.participants || []}
+      canReadParticipants={canReadParticipants}
       canManage={canManageParticipants}
       canManageGmRequests={canManageGmRequests}
       onParticipantStatusChange={handleParticipantStatusChange}
@@ -190,14 +209,20 @@ export default function SessionPage() {
               {currentSession.campaign && showCampaignInfo && (
                 <>
                   <span className="text-white/40 hidden sm:inline">/</span>
-                  <button
-                    onClick={() =>
-                      navigate(`/campaign/${currentSession.campaign.id}`)
-                    }
-                    className="text-white/70 hover:text-[#F1B24A] transition-colors text-sm truncate max-w-[150px]"
-                  >
-                    {currentSession.campaign.title}
-                  </button>
+                  {canNavigateToCampaignDirectly ? (
+                    <button
+                      onClick={() =>
+                        navigate(`/campaign/${currentSession.campaign.id}`)
+                      }
+                      className="text-white/70 hover:text-[#F1B24A] transition-colors text-sm truncate max-w-[150px]"
+                    >
+                      {currentSession.campaign.title}
+                    </button>
+                  ) : (
+                    <span className="text-white/70 text-sm truncate max-w-[150px]">
+                      {currentSession.campaign.title}
+                    </span>
+                  )}
                 </>
               )}
               <span className="text-white/40 hidden sm:inline">/</span>

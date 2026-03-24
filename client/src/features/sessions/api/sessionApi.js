@@ -34,6 +34,11 @@ export const getSessionById = async (sessionId) => {
   return normalizeApiEnvelope(response.data);
 };
 
+export const getSessionByShareToken = async (shareToken) => {
+  const response = await api.get(`/sessions/share/${shareToken}`);
+  return normalizeApiEnvelope(response.data);
+};
+
 /**
  * Оновити сесію
  * @param {number} sessionId
@@ -68,6 +73,16 @@ export const cancelSession = async (sessionId) => {
  */
 export const markSessionAsFinished = async (sessionId) => {
   const response = await api.post(`/sessions/${sessionId}/mark-finished`);
+  return normalizeApiEnvelope(response.data);
+};
+
+export const regenerateSessionShareLink = async (sessionId) => {
+  const response = await api.post(`/sessions/${sessionId}/share/regenerate`, {});
+  return normalizeApiEnvelope(response.data);
+};
+
+export const getSessionShareLink = async (sessionId) => {
+  const response = await api.get(`/sessions/${sessionId}/share-link`);
   return normalizeApiEnvelope(response.data);
 };
 

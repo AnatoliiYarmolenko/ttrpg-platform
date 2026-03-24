@@ -27,6 +27,7 @@ export default function SessionPagePreviewWidget({
   canJoin = false,
   canApplyAsGm = false,
   showCampaignInfo = true,
+  canNavigateToCampaignDirectly = true,
 }) {
   const navigate = useNavigate();
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -150,11 +151,6 @@ export default function SessionPagePreviewWidget({
           <div className="flex items-center gap-2 text-[#4D774E]">
             <span>GM: {confirmedGmName || 'Шукаємо GM'}</span>
           </div>
-          {session.location && (
-            <div className="flex items-center gap-2 text-[#4D774E]">
-              <span>{session.location}</span>
-            </div>
-          )}
         </div>
 
         {/* Опис */}
@@ -172,12 +168,16 @@ export default function SessionPagePreviewWidget({
           {session.campaign && showCampaignInfo ? (
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-bold text-[#164A41]">Кампанія:</span>
-              <button
-                onClick={() => navigate(`/campaign/${session.campaign.id}`)}
-                className="text-sm text-[#4D774E] hover:text-[#164A41] underline transition-colors"
-              >
-                {session.campaign.title}
-              </button>
+              {canNavigateToCampaignDirectly ? (
+                <button
+                  onClick={() => navigate(`/campaign/${session.campaign.id}`)}
+                  className="text-sm text-[#4D774E] hover:text-[#164A41] underline transition-colors"
+                >
+                  {session.campaign.title}
+                </button>
+              ) : (
+                <span className="text-sm text-[#4D774E]">{session.campaign.title}</span>
+              )}
             </div>
           ) : (
             <div className="flex items-center gap-2 text-sm text-[#4D774E]">

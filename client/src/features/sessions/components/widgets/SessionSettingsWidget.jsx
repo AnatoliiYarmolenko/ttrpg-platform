@@ -5,53 +5,29 @@ import Button from '@/components/ui/Button';
 import { ConfirmModal } from '@/components/shared';
 import { GAME_SYSTEMS } from '@/constants/gameSystems';
 
-/**
- * SessionSettingsWidget — лівий віджет в табі "Налаштування" (GM/Owner only).
- *
- * Дозволяє редагувати:
- * - Назву, опис, нотатки GM
- * - Дату, тривалість
- * - Максимум гравців, систему гри
- * - Локацію, ціну
- * - Видалити сесію
- *
- * @param {Object} session — поточна сесія
- * @param {Function} onSave — колбек збереження (sessionData)
- * @param {Function} onDelete — колбек видалення сесії
- * @param {boolean} isLoading
- */
-export default function SessionSettingsWidget({
+function buildFormData(session) {
+  return {
+    title: session?.title || '',
+    description: session?.description || '',
+    date: session?.date ? new Date(session.date).toISOString().slice(0, 16) : '',
+    duration: session?.duration || '',
+    maxPlayers: session?.maxPlayers || '',
+    system: session?.system || session?.campaign?.system || '',
+    visibility: session?.visibility || (session?.campaignId ? 'PRIVATE' : 'PUBLIC'),
+    price: session?.price || '',
+  };
+}
+
+function SessionSettingsWidgetContent({
   session,
   onSave,
   onDelete,
   canDelete = true,
   isLoading = false,
 }) {
-  const buildFormData = (s) => ({
-    title: s?.title || '',
-    description: s?.description || '',
-    notes: s?.notes || '',
-    date: s?.date ? new Date(s.date).toISOString().slice(0, 16) : '',
-    duration: s?.duration || '',
-    maxPlayers: s?.maxPlayers || '',
-    system: s?.system || s?.campaign?.system || '',
-    visibility: s?.campaignId && s?.visibility === 'LINK_ONLY'
-      ? 'PRIVATE'
-      : (s?.visibility || (s?.campaignId ? 'PRIVATE' : 'PUBLIC')),
-    location: s?.location || '',
-    price: s?.price || '',
-  });
-
   const [formData, setFormData] = useState(() => buildFormData(session));
-  const [formSessionId, setFormSessionId] = useState(session?.id ?? null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
-
-  // Скидати форму при зміні сесії (обчислення під час рендеру, без effect)
-  if (session?.id !== formSessionId) {
-    setFormSessionId(session?.id ?? null);
-    setFormData(buildFormData(session));
-  }
 
   const isCampaignSession = Boolean(session?.campaignId);
   const visibilityOptions = isCampaignSession
@@ -65,26 +41,23 @@ export default function SessionSettingsWidget({
         { value: 'LINK_ONLY', label: 'За посиланням (без календаря, з підтвердженням)' },
       ];
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  const handleChange = (event) => {
+    const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     setSaveSuccess(false);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
-    // Підготовка даних — прибираємо порожні значення
     const data = {};
     if (formData.title.trim()) data.title = formData.title.trim();
     if (formData.description.trim()) data.description = formData.description.trim();
-    data.notes = formData.notes.trim() || null;
     if (formData.date) data.date = new Date(formData.date).toISOString();
     if (formData.duration) data.duration = Number(formData.duration);
     if (formData.maxPlayers) data.maxPlayers = Number(formData.maxPlayers);
     data.system = formData.system || null;
     data.visibility = formData.visibility;
-    data.location = formData.location.trim() || null;
     if (formData.price !== '') data.price = Number(formData.price);
 
     const result = await onSave?.(data);
@@ -99,15 +72,12 @@ export default function SessionSettingsWidget({
     onDelete?.();
   };
 
-  if (!session) return null;
-
   const inputClasses =
     'w-full p-3 border-2 border-[#9DC88D]/50 rounded-xl focus:border-[#164A41] outline-none text-[#164A41] bg-white transition-colors';
 
   return (
     <DashboardCard title="Налаштування сесії">
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        {/* Назва */}
         <FormField id="title" label="Назва сесії" required>
           <input
             id="title"
@@ -121,7 +91,6 @@ export default function SessionSettingsWidget({
           />
         </FormField>
 
-        {/* Опис */}
         <FormField id="description" label="Опис">
           <textarea
             id="description"
@@ -134,21 +103,6 @@ export default function SessionSettingsWidget({
           />
         </FormField>
 
-        {/* Нотатки GM */}
-        <FormField id="notes" label="Нотатки GM (видно тільки учасникам)">
-          <textarea
-            id="notes"
-            name="notes"
-            value={formData.notes}
-            onChange={handleChange}
-            className={`${inputClasses} resize-none bg-[#F1B24A]/5`}
-            rows={3}
-            maxLength={2000}
-            placeholder="Приватні нотатки для гравців..."
-          />
-        </FormField>
-
-        {/* Дата і Тривалість */}
         <div className="grid grid-cols-2 gap-3">
           <FormField id="date" label="Дата і час" required>
             <input
@@ -161,6 +115,7 @@ export default function SessionSettingsWidget({
               required
             />
           </FormField>
+
           <FormField id="duration" label="Тривалість (хв)">
             <input
               id="duration"
@@ -170,13 +125,12 @@ export default function SessionSettingsWidget({
               onChange={handleChange}
               className={inputClasses}
               min={30}
-              max={720}
+              max={480}
               placeholder="180"
             />
           </FormField>
         </div>
 
-        {/* Макс гравців та Система */}
         <div className="grid grid-cols-2 gap-3">
           <FormField id="maxPlayers" label="Макс. гравців">
             <input
@@ -191,6 +145,7 @@ export default function SessionSettingsWidget({
               placeholder="6"
             />
           </FormField>
+
           <FormField id="system" label="Ігрова система">
             <select
               id="system"
@@ -200,9 +155,9 @@ export default function SessionSettingsWidget({
               className={inputClasses}
             >
               <option value="">Не вказано</option>
-              {GAME_SYSTEMS.map((sys) => (
-                <option key={sys.value} value={sys.value}>
-                  {sys.icon} {sys.label}
+              {GAME_SYSTEMS.map((system) => (
+                <option key={system.value} value={system.value}>
+                  {system.icon} {system.label}
                 </option>
               ))}
             </select>
@@ -225,42 +180,25 @@ export default function SessionSettingsWidget({
           </select>
         </FormField>
 
-        {/* Локація та Ціна */}
-        <div className="grid grid-cols-2 gap-3">
-          <FormField id="location" label="Локація">
-            <input
-              id="location"
-              type="text"
-              name="location"
-              value={formData.location}
-              onChange={handleChange}
-              className={inputClasses}
-              placeholder="Онлайн / Адреса"
-              maxLength={200}
-            />
-          </FormField>
-          <FormField id="price" label="Ціна (грн)">
-            <input
-              id="price"
-              type="number"
-              name="price"
-              value={formData.price}
-              onChange={handleChange}
-              className={inputClasses}
-              min={0}
-              placeholder="0"
-            />
-          </FormField>
-        </div>
+        <FormField id="price" label="Ціна (грн)">
+          <input
+            id="price"
+            type="number"
+            name="price"
+            value={formData.price}
+            onChange={handleChange}
+            className={inputClasses}
+            min={0}
+            placeholder="0"
+          />
+        </FormField>
 
-        {/* Успішне збереження */}
         {saveSuccess && (
           <div className="text-sm text-green-600 p-3 bg-green-50 rounded-lg">
-            Зміни збережено!
+            Зміни збережено.
           </div>
         )}
 
-        {/* Кнопка збереження */}
         <Button
           type="submit"
           variant="primary"
@@ -270,7 +208,6 @@ export default function SessionSettingsWidget({
           Зберегти зміни
         </Button>
 
-        {/* Секція небезпечних дій */}
         {canDelete && (
           <div className="border-t border-red-200 pt-4 mt-2">
             <h4 className="text-sm font-bold text-red-600 mb-3">Небезпечна зона</h4>
@@ -284,7 +221,6 @@ export default function SessionSettingsWidget({
         )}
       </form>
 
-      {/* Модалка підтвердження видалення */}
       {canDelete && (
         <ConfirmModal
           isOpen={deleteModal}
@@ -297,4 +233,12 @@ export default function SessionSettingsWidget({
       )}
     </DashboardCard>
   );
+}
+
+export default function SessionSettingsWidget(props) {
+  const { session } = props;
+
+  if (!session) return null;
+
+  return <SessionSettingsWidgetContent key={session.id ?? 'new-session'} {...props} />;
 }

@@ -2,13 +2,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/stores/useToastStore';
 import {
   getCampaignById,
+  getCampaignByShareToken,
   getCampaignMembers,
   getJoinRequests,
   updateCampaign,
   transferCampaignOwnership,
   removeMemberFromCampaign,
   updateMemberRole,
-  regenerateInviteCode,
+  regenerateShareLink,
+  getCampaignShareLink,
   submitJoinRequest,
   approveJoinRequest,
   rejectJoinRequest,
@@ -16,41 +18,71 @@ import {
   deleteCampaignSession,
 } from '../api/campaignApi';
 
-// QUERIES
-export const useCampaignQuery = (campaignId, inviteCode = null) => {
+export const useCampaignQuery = ({ campaignId = null, shareToken = null } = {}) => {
   const isValidId = Number.isInteger(campaignId) && campaignId > 0;
+  const hasShareToken = typeof shareToken === 'string' && shareToken.trim().length > 0;
+
   return useQuery({
-    queryKey: ['campaign', campaignId, inviteCode || null],
+    queryKey: ['campaign', campaignId || null, shareToken || null],
     queryFn: async () => {
-      const res = await getCampaignById(campaignId, inviteCode);
-      if (!res.success) throw new Error(res.error || 'Failed to fetch campaign');
+      const res = hasShareToken
+        ? await getCampaignByShareToken(shareToken)
+        : await getCampaignById(campaignId);
+
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to fetch campaign');
+      }
+
       return res.data;
     },
-    enabled: isValidId,
+    enabled: isValidId || hasShareToken,
   });
 };
 
-export const useCampaignMembersQuery = (campaignId) => {
+export const useCampaignMembersQuery = (campaignId, enabled = true) => {
   const isValidId = Number.isInteger(campaignId) && campaignId > 0;
+
   return useQuery({
     queryKey: ['campaign', campaignId, 'members'],
     queryFn: async () => {
       const res = await getCampaignMembers(campaignId);
-      if (!res.success) throw new Error(res.error || 'Failed to fetch members');
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to fetch members');
+      }
       return res.data || [];
     },
-    enabled: isValidId,
+    enabled: isValidId && enabled,
+    staleTime: 30 * 1000,
+  });
+};
+
+export const useCampaignShareLinkQuery = (campaignId, enabled = true) => {
+  const isValidId = Number.isInteger(campaignId) && campaignId > 0;
+
+  return useQuery({
+    queryKey: ['campaign', campaignId, 'share-link'],
+    queryFn: async () => {
+      const res = await getCampaignShareLink(campaignId);
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to fetch share link');
+      }
+      return res.data || null;
+    },
+    enabled: isValidId && enabled,
     staleTime: 30 * 1000,
   });
 };
 
 export const useCampaignJoinRequestsQuery = (campaignId, canModerate) => {
   const isValidId = Number.isInteger(campaignId) && campaignId > 0;
+
   return useQuery({
     queryKey: ['campaign', campaignId, 'requests'],
     queryFn: async () => {
       const res = await getJoinRequests(campaignId);
-      if (!res.success) throw new Error(res.error || 'Failed to fetch requests');
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to fetch requests');
+      }
       return res.data || [];
     },
     enabled: isValidId && !!canModerate,
@@ -58,8 +90,8 @@ export const useCampaignJoinRequestsQuery = (campaignId, canModerate) => {
   });
 };
 
-// MUTATIONS
-export const useCampaignMutations = (campaignId) => {
+export const useCampaignMutations = (campaignId, options = {}) => {
+  const { shareToken = null } = options;
   const queryClient = useQueryClient();
 
   const invalidateCampaign = () => queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] });
@@ -71,7 +103,9 @@ export const useCampaignMutations = (campaignId) => {
       if (res?.success === false) {
         toast.error(res.error || res.message || 'Сталася помилка');
       } else {
-        if (successMessage) toast.success(successMessage);
+        if (successMessage) {
+          toast.success(successMessage);
+        }
         invalidateFns.forEach((fn) => fn());
       }
     },
@@ -90,14 +124,14 @@ export const useCampaignMutations = (campaignId) => {
     ...handleMutation('Власника кампанії змінено', [invalidateCampaign, invalidateMembers]),
   });
 
-  const regenerateCodeMutation = useMutation({
-    mutationFn: () => regenerateInviteCode(campaignId),
-    ...handleMutation('Код запрошення оновлено', [invalidateCampaign]),
+  const regenerateShareLinkMutation = useMutation({
+    mutationFn: () => regenerateShareLink(campaignId),
+    ...handleMutation('Share link regenerated', [invalidateCampaign]),
   });
 
   const submitJoinRequestMutation = useMutation({
-    mutationFn: (message) => submitJoinRequest(campaignId, message),
-    ...handleMutation('Заявку надіслано', [invalidateRequests]),
+    mutationFn: (message) => submitJoinRequest(campaignId, message, shareToken),
+    ...handleMutation('Заявку надіслано', [invalidateRequests, invalidateCampaign]),
   });
 
   const approveRequestMutation = useMutation({
@@ -117,7 +151,7 @@ export const useCampaignMutations = (campaignId) => {
 
   const changeMemberRoleMutation = useMutation({
     mutationFn: ({ memberId, role }) => updateMemberRole(campaignId, memberId, role),
-    ...handleMutation('Роль учасника змінено', [invalidateMembers]),
+    ...handleMutation('Роль учасника змінено', [invalidateMembers, invalidateCampaign]),
   });
 
   const cancelSessionMutation = useMutation({
@@ -133,7 +167,7 @@ export const useCampaignMutations = (campaignId) => {
   return {
     updateCampaign: updateCampaignMutation.mutateAsync,
     transferOwnership: transferOwnershipMutation.mutateAsync,
-    regenerateCode: regenerateCodeMutation.mutateAsync,
+    regenerateShareLink: regenerateShareLinkMutation.mutateAsync,
     submitJoinRequest: submitJoinRequestMutation.mutateAsync,
     approveRequest: approveRequestMutation.mutateAsync,
     rejectRequest: rejectRequestMutation.mutateAsync,

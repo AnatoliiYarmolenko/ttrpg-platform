@@ -5,72 +5,51 @@ import Button from '@/components/ui/Button';
 import { ConfirmModal, StatusBadge } from '@/components/shared';
 import { GAME_SYSTEMS } from '@/constants/gameSystems';
 
-/**
- * CampaignSettingsWidget — лівий віджет в табі "Налаштування" (тільки Власник).
- *
- * Дозволяє редагувати:
- * - Назву, опис
- * - Систему гри
- * - Видимість (PUBLIC, LINK_ONLY)
- * - Завершити кампанію (без можливості повернути в ACTIVE)
- *
- * @param {Object} campaign — поточна кампанія
- * @param {Function} onSave — колбек збереження (campaignData)
- * @param {boolean} canTransferOwnership — чи може юзер передати права (тільки Owner)
- * @param {boolean} isLoading
- */
-export default function CampaignSettingsWidget({
+const normalizeVisibility = (value) => (value === 'PRIVATE' ? 'LINK_ONLY' : value);
+
+function buildFormData(campaign) {
+  return {
+    title: campaign?.title || '',
+    description: campaign?.description || '',
+    system: campaign?.system || '',
+    visibility: normalizeVisibility(campaign?.visibility || 'PUBLIC'),
+  };
+}
+
+function CampaignSettingsWidgetContent({
   campaign,
   onSave,
   onTransferOwnership,
   canTransferOwnership = false,
   isLoading = false,
 }) {
-  const normalizeVisibility = (value) => (value === 'PRIVATE' ? 'LINK_ONLY' : value);
-
-  const buildFormData = (c) => ({
-    title: c?.title || '',
-    description: c?.description || '',
-    system: c?.system || '',
-    visibility: normalizeVisibility(c?.visibility || 'PUBLIC'),
-  });
-
   const [formData, setFormData] = useState(() => buildFormData(campaign));
-  const [formCampaignId, setFormCampaignId] = useState(campaign?.id ?? null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [finishModal, setFinishModal] = useState(false);
   const [transferModal, setTransferModal] = useState(false);
   const [selectedNewOwnerId, setSelectedNewOwnerId] = useState('');
+
   const isCampaignFinished = campaign?.status === 'FINISHED';
   const controlsDisabled = isLoading || isCampaignFinished;
 
-  // Скидати форму при зміні кампанії (обчислення під час рендеру, без effect)
-  if (campaign?.id !== formCampaignId) {
-    setFormCampaignId(campaign?.id ?? null);
-    setFormData(buildFormData(campaign));
-    setSelectedNewOwnerId('');
-  }
-
   const eligibleNewOwners = (campaign?.members || [])
     .filter((member) => member.userId !== campaign.ownerId)
-    .filter((member, index, array) => array.findIndex((m) => m.userId === member.userId) === index);
+    .filter((member, index, array) => array.findIndex((item) => item.userId === member.userId) === index);
 
   const selectedOwner = eligibleNewOwners.find(
     (member) => String(member.userId) === String(selectedNewOwnerId)
   );
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  const handleChange = (event) => {
+    const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     setSaveSuccess(false);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
-    if (isCampaignFinished) {
-      return;
-    }
+    if (isCampaignFinished) return;
 
     const data = {};
     if (formData.title.trim()) data.title = formData.title.trim();
@@ -88,9 +67,7 @@ export default function CampaignSettingsWidget({
   const handleFinishCampaign = async () => {
     setFinishModal(false);
 
-    if (isCampaignFinished) {
-      return;
-    }
+    if (isCampaignFinished) return;
 
     const result = await onSave?.({ status: 'FINISHED' });
     if (result?.success) {
@@ -103,14 +80,11 @@ export default function CampaignSettingsWidget({
     if (!canTransferOwnership || !selectedNewOwnerId || isCampaignFinished) return;
 
     const result = await onTransferOwnership?.(Number(selectedNewOwnerId));
-
     if (result?.success) {
       setTransferModal(false);
       setSelectedNewOwnerId('');
     }
   };
-
-  if (!campaign) return null;
 
   const inputClasses =
     'w-full p-3 border-2 border-[#9DC88D]/50 rounded-xl focus:border-[#164A41] outline-none text-[#164A41] bg-white transition-colors';
@@ -118,7 +92,6 @@ export default function CampaignSettingsWidget({
   return (
     <DashboardCard title="Налаштування кампанії">
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        {/* Назва */}
         <FormField id="title" label="Назва кампанії" required>
           <input
             id="title"
@@ -133,7 +106,6 @@ export default function CampaignSettingsWidget({
           />
         </FormField>
 
-        {/* Опис */}
         <FormField id="description" label="Опис">
           <textarea
             id="description"
@@ -148,7 +120,6 @@ export default function CampaignSettingsWidget({
           />
         </FormField>
 
-        {/* Система та Видимість */}
         <div className="grid grid-cols-2 gap-3">
           <FormField id="system" label="Ігрова система">
             <select
@@ -160,13 +131,14 @@ export default function CampaignSettingsWidget({
               disabled={controlsDisabled}
             >
               <option value="">Не вказано</option>
-              {GAME_SYSTEMS.map((sys) => (
-                <option key={sys.value} value={sys.value}>
-                  {sys.icon} {sys.label}
+              {GAME_SYSTEMS.map((system) => (
+                <option key={system.value} value={system.value}>
+                  {system.icon} {system.label}
                 </option>
               ))}
             </select>
           </FormField>
+
           <FormField id="visibility" label="Видимість">
             <select
               id="visibility"
@@ -198,14 +170,12 @@ export default function CampaignSettingsWidget({
           </div>
         )}
 
-        {/* Успішне збереження */}
         {saveSuccess && (
           <div className="text-sm text-green-600 p-3 bg-green-50 rounded-lg">
-            Зміни збережено!
+            Зміни збережено.
           </div>
         )}
 
-        {/* Кнопка збереження */}
         <Button
           type="submit"
           variant="primary"
@@ -216,7 +186,6 @@ export default function CampaignSettingsWidget({
           Зберегти зміни
         </Button>
 
-        {/* Секція небезпечних дій (тільки для Owner) */}
         {canTransferOwnership && (
           <div className="border-t border-red-200 pt-4 mt-2">
             <h4 className="text-sm font-bold text-red-600 mb-3">Небезпечна зона</h4>
@@ -236,45 +205,42 @@ export default function CampaignSettingsWidget({
               </div>
             )}
 
-            {canTransferOwnership && (
-              <div className="mb-5 p-3 border-2 border-[#9DC88D]/30 rounded-xl bg-[#9DC88D]/5">
-                <p className="text-xs text-[#4D774E] mb-3">
-                  Передача прав власності змінить Власника кампанії. Ви станете Майстром цієї кампанії.
-                </p>
+            <div className="mb-5 p-3 border-2 border-[#9DC88D]/30 rounded-xl bg-[#9DC88D]/5">
+              <p className="text-xs text-[#4D774E] mb-3">
+                Передача прав власності змінить власника кампанії. Ви станете майстром цієї кампанії.
+              </p>
 
-                {eligibleNewOwners.length > 0 ? (
-                  <div className="flex flex-col gap-3">
-                    <select
-                      value={selectedNewOwnerId}
-                      onChange={(event) => setSelectedNewOwnerId(event.target.value)}
-                      className={inputClasses}
-                      disabled={isCampaignFinished}
-                    >
-                      <option value="">Оберіть нового Власника</option>
-                      {eligibleNewOwners.map((member) => {
-                        const displayName = member.user?.displayName || member.user?.username || `User #${member.userId}`;
-                        return (
-                          <option key={member.id} value={member.userId}>
-                            {displayName}
-                          </option>
-                        );
-                      })}
-                    </select>
+              {eligibleNewOwners.length > 0 ? (
+                <div className="flex flex-col gap-3">
+                  <select
+                    value={selectedNewOwnerId}
+                    onChange={(event) => setSelectedNewOwnerId(event.target.value)}
+                    className={inputClasses}
+                    disabled={isCampaignFinished}
+                  >
+                    <option value="">Оберіть нового власника</option>
+                    {eligibleNewOwners.map((member) => {
+                      const displayName = member.user?.displayName || member.user?.username || `User #${member.userId}`;
+                      return (
+                        <option key={member.id} value={member.userId}>
+                          {displayName}
+                        </option>
+                      );
+                    })}
+                  </select>
 
-                    <Button
-                      variant="outline"
-                      disabled={!selectedNewOwnerId || isLoading || isCampaignFinished}
-                      onClick={() => setTransferModal(true)}
-                    >
-                      Передати права кампанії
-                    </Button>
-                  </div>
-                ) : (
-                  <p className="text-xs text-[#4D774E]">Немає доступних учасників для передачі прав.</p>
-                )}
-              </div>
-            )}
-
+                  <Button
+                    variant="outline"
+                    disabled={!selectedNewOwnerId || isLoading || isCampaignFinished}
+                    onClick={() => setTransferModal(true)}
+                  >
+                    Передати права кампанії
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-xs text-[#4D774E]">Немає доступних учасників для передачі прав.</p>
+              )}
+            </div>
           </div>
         )}
       </form>
@@ -293,7 +259,7 @@ export default function CampaignSettingsWidget({
           isOpen={transferModal}
           title="Передати права кампанії?"
           message={selectedOwner
-            ? `Новим власником стане ${selectedOwner.user?.displayName || selectedOwner.user?.username || `User #${selectedOwner.userId}`}. Після підтвердження ви втратите роль Власника.`
+            ? `Новим власником стане ${selectedOwner.user?.displayName || selectedOwner.user?.username || `User #${selectedOwner.userId}`}. Після підтвердження ви втратите роль власника.`
             : 'Підтвердити передачу прав кампанії?'}
           onConfirm={handleTransferOwnership}
           onCancel={() => setTransferModal(false)}
@@ -301,4 +267,12 @@ export default function CampaignSettingsWidget({
       )}
     </DashboardCard>
   );
+}
+
+export default function CampaignSettingsWidget(props) {
+  const { campaign } = props;
+
+  if (!campaign) return null;
+
+  return <CampaignSettingsWidgetContent key={campaign.id ?? 'new-campaign'} {...props} />;
 }

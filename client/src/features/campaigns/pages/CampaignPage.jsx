@@ -1,33 +1,18 @@
 import React from 'react';
 
-// Controller hook — вся логіка сторінки інкапсульована тут
 import useCampaignPageController from '../hooks/useCampaignPageController';
-
-// Layout & Navigation
 import CampaignLayout from '../components/layout/CampaignLayout';
 import CampaignNavigation, { TABS } from '../components/navigation/CampaignNavigation';
-
-// Widgets
 import CampaignSessionsWidget from '../components/widgets/CampaignSessionsWidget';
 import CampaignInfoWidget from '../components/widgets/CampaignInfoWidget';
 import CampaignSettingsWidget from '../components/widgets/CampaignSettingsWidget';
 import CampaignMembersWidget from '../components/widgets/CampaignMembersWidget';
 import CampaignCreateSessionWidget from '../components/widgets/CampaignCreateSessionWidget';
 import CampaignPreviewWidget from '../components/widgets/CampaignPreviewWidget';
-
-// Shared
 import { UserProfilePreview } from '@/components/shared';
 import FullPageLoader from '@/components/shared/FullPageLoader';
 import ErrorScreen from '@/components/shared/ErrorScreen';
 
-/**
- * CampaignPage — тонкий shell-компонент для /campaign/:id.
- *
- * Вся логіка (завантаження, ролі, дії) делегується в useCampaignPageController.
- * Компонент відповідає лише за:
- * - підключення до layout
- * - вибір віджетів за станом
- */
 export default function CampaignPage() {
   const {
     id,
@@ -43,20 +28,23 @@ export default function CampaignPage() {
     myRole,
     isOwner,
     isGM,
+    canReadMembers,
     canManageCampaignSettings,
     canAssignCampaignRoles,
     canModerateJoinRequests,
     canRemovePlayers,
     canCreateCampaignSessions,
-    canManageInviteCode,
+    canManageShareLink,
     canUseOwnerSessionOverrides,
     isCampaignFinished,
     canJoin,
     pendingRequestStatus,
+    currentShareLink,
     handleJoinRequest,
     handleLeave,
     handleRefreshCampaign,
-    handleRegenerateCode,
+    handleRegenerateShareLink,
+    handleCopyShareLink,
     handleSaveSettings,
     handleTransferOwnership,
     handleCancelForeignSession,
@@ -66,7 +54,6 @@ export default function CampaignPage() {
     navigate,
   } = useCampaignPageController();
 
-  // === Error state ===
   if (error) {
     return (
       <ErrorScreen
@@ -77,12 +64,10 @@ export default function CampaignPage() {
     );
   }
 
-  // === Loading state ===
   if (!currentCampaign) {
     return <FullPageLoader text="Завантаження кампанії..." />;
   }
 
-  // === Left panel ===
   const renderLeftPanel = () => {
     if (viewingUserId) {
       return (
@@ -100,7 +85,7 @@ export default function CampaignPage() {
           campaign={currentCampaign}
           onJoinRequest={handleJoinRequest}
           canJoin={canJoin}
-                   pendingRequestStatus={pendingRequestStatus}
+          pendingRequestStatus={pendingRequestStatus}
           isLoading={isLoading}
         />
       );
@@ -134,9 +119,11 @@ export default function CampaignPage() {
           <CampaignInfoWidget
             campaign={currentCampaign}
             myRole={myRole}
-            canManageInviteCode={canManageInviteCode}
+            canManageShareLink={canManageShareLink}
+            currentShareLink={currentShareLink}
             onLeave={handleLeave}
-            onRegenerateCode={handleRegenerateCode}
+            onRegenerateShareLink={handleRegenerateShareLink}
+            onCopyShareLink={handleCopyShareLink}
             isLoading={isLoading}
           />
         );
@@ -155,7 +142,6 @@ export default function CampaignPage() {
     }
   };
 
-  // === Right panel ===
   const renderRightPanel = () => {
     if (!isPreviewMode && activeTab === TABS.SESSIONS && !viewingUserId) {
       return (
@@ -171,6 +157,8 @@ export default function CampaignPage() {
     return (
       <CampaignMembersWidget
         campaignId={id}
+        initialMembers={campaignMembers}
+        canReadMembers={canReadMembers}
         isOwner={isOwner}
         isGM={isGM}
         canAssignRoles={canAssignCampaignRoles}

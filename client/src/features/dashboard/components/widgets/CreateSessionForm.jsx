@@ -6,22 +6,21 @@ import Dropdown from '@/components/ui/Dropdown';
 import Button from '@/components/ui/Button';
 import { toast } from '@/stores/useToastStore';
 
-/**
- * Форма створення нової сесії
- * 
- * @param {Object} props
- * @param {string} props.initialDate - Початкова дата (з календаря)
- * @param {number} [props.campaignId] - ID кампанії (для створення сесії в кампанії)
- * @param {boolean} [props.requireGmRole=false] - У режимі кампанії забороняє створення без GM
- * @param {Function} props.onSuccess - Callback при успішному створенні
- * @param {Function} [props.onCancel] - Callback при скасуванні (опціонально)
- */
-export default function CreateSessionForm({ initialDate, campaignId, requireGmRole = false, onSuccess, onCancel }) {
+export default function CreateSessionForm({
+  initialDate,
+  campaignId,
+  requireGmRole = false,
+  onSuccess,
+  onCancel,
+}) {
   const queryClient = useQueryClient();
+  const isCampaignSession = Boolean(campaignId);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const createMutation = useMutation({
     mutationFn: (data) => createSession(data),
     onSuccess: () => {
-      toast.success('Сесію успішно створено!');
+      toast.success('Сесію успішно створено');
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard', 'games'] });
       queryClient.invalidateQueries({ queryKey: ['calendar'] });
@@ -31,19 +30,14 @@ export default function CreateSessionForm({ initialDate, campaignId, requireGmRo
     },
     onError: (err) => {
       toast.error(err?.response?.data?.error || err?.message || 'Помилка при створенні сесії');
-    }
+    },
   });
 
-  const isCampaignSession = Boolean(campaignId);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Форматуємо початкову дату для input datetime-local
   const getDefaultDateTime = () => {
     if (initialDate) {
-      // Додаємо час 18:00 за замовчуванням
       return `${initialDate}T18:00`;
     }
-    // Якщо дата не вибрана — беремо сьогодні + 18:00
+
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -62,6 +56,7 @@ export default function CreateSessionForm({ initialDate, campaignId, requireGmRo
     system: '',
     isGm: true,
   });
+  const [errors, setErrors] = useState({});
 
   const visibilityOptions = isCampaignSession
     ? [
@@ -76,113 +71,119 @@ export default function CreateSessionForm({ initialDate, campaignId, requireGmRo
 
   const visibilityHint = isCampaignSession
     ? {
-        PRIVATE: 'Звичайна: вхід тільки для учасників, приєднання без підтвердження.',
-        PUBLIC: 'Гостьова: видима користувачам поза кампанією, приєднання для всіх через підтвердження.',
+        PRIVATE: 'Звичайна: доступна в межах кампанії за її стандартними правилами.',
+        PUBLIC: 'Гостьова: видима користувачам поза кампанією, приєднання через заявку.',
       }[formData.visibility]
     : {
-        PUBLIC: 'Публічна: відображатиметься для інших користувачів, приєднання без підтвердження.',
-        PRIVATE: 'За підтвердженням: відображатиметься для інших користувачів, з підтвердженням.',
-        LINK_ONLY: 'За посиланням: відображатиметься тільки за посиланням, з підтвердженням.',
+        PUBLIC: 'Публічна: відображається користувачам, заявки гравців підтверджуються автоматично.',
+        PRIVATE: 'За підтвердженням: відображається користувачам, приєднання потребує схвалення.',
+        LINK_ONLY: 'За посиланням: не відображається на платформі, доступ лише через secret link.',
       }[formData.visibility];
 
-  const [errors, setErrors] = useState({});
-
-  // Валідація форми
   const validateForm = () => {
-    const newErrors = {};
-    
+    const nextErrors = {};
+
     if (!formData.title.trim()) {
-      newErrors.title = 'Назва сесії обов\'язкова';
+      nextErrors.title = 'Назва сесії обовʼязкова';
     } else if (formData.title.trim().length < 3) {
-      newErrors.title = 'Назва повинна містити мінімум 3 символи';
+      nextErrors.title = 'Назва повинна містити мінімум 3 символи';
     }
-    
+
     if (!formData.date) {
-      newErrors.date = 'Дата сесії обов\'язкова';
+      nextErrors.date = 'Дата сесії обовʼязкова';
     } else if (new Date(formData.date) < new Date()) {
-      newErrors.date = 'Дата не може бути в минулому';
+      nextErrors.date = 'Дата не може бути в минулому';
     }
-    
+
     if (formData.duration < 30 || formData.duration > 480) {
-      newErrors.duration = 'Тривалість від 30 до 480 хвилин';
+      nextErrors.duration = 'Тривалість від 30 до 480 хвилин';
     }
-    
+
     if (formData.maxPlayers < 1 || formData.maxPlayers > 20) {
-      newErrors.maxPlayers = 'Кількість гравців від 1 до 20';
+      nextErrors.maxPlayers = 'Кількість гравців від 1 до 20';
     }
-    
+
     if (formData.price < 0 || formData.price > 10000) {
-      newErrors.price = 'Ціна від 0 до 10000 грн';
+      nextErrors.price = 'Ціна від 0 до 10000 грн';
     }
-    
-    setErrors(newErrors);
-    if (Object.keys(newErrors).length > 0) {
-      // Додатково показуємо першу помилку у toast, щоб її було видно без скролу форми.
-      const firstError = Object.values(newErrors)[0];
+
+    setErrors(nextErrors);
+
+    if (Object.keys(nextErrors).length > 0) {
+      const firstError = Object.values(nextErrors)[0];
       if (firstError) {
         toast.error(firstError);
       }
     }
-    return Object.keys(newErrors).length === 0;
+
+    return Object.keys(nextErrors).length === 0;
   };
 
-  // Обробник зміни полів
-  const handleChange = (e) => {
-    const { name, value, type } = e.target;
-    setFormData(prev => ({
+  const handleChange = (event) => {
+    const { name, value, type } = event.target;
+    setFormData((prev) => ({
       ...prev,
       [name]: type === 'number' ? parseFloat(value) || 0 : value,
     }));
-    
-    // Очищуємо помилку для цього поля
+
     if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: null }));
+      setErrors((prev) => ({ ...prev, [name]: null }));
     }
   };
 
-  // Обробник відправки форми
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
     if (!validateForm()) {
       return;
     }
-    
+
     setIsSubmitting(true);
-    
+
     try {
-      const result = await createMutation.mutateAsync({
-        ...formData,
-        isGm: requireGmRole ? true : formData.isGm,
+      const payload = {
+        title: formData.title.trim(),
         date: new Date(formData.date).toISOString(),
+        duration: formData.duration,
+        maxPlayers: formData.maxPlayers,
+        price: formData.price,
+        visibility: formData.visibility,
+        isGm: requireGmRole ? true : formData.isGm,
         ...(campaignId ? { campaignId: Number(campaignId) } : {}),
-      });
-      
+      };
+
+      if (formData.description.trim()) {
+        payload.description = formData.description.trim();
+      }
+
+      if (formData.system) {
+        payload.system = formData.system;
+      }
+
+      const result = await createMutation.mutateAsync(payload);
+
       if (result.success) {
         onSuccess?.();
       } else if (result.error) {
         toast.error(result.error);
       }
     } catch {
-      // Error toast is already handled in createMutation.onError.
+      // toast handled in mutation.onError
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Стилі для інпутів
   const inputClass = (fieldName) => `
-    w-full px-3 py-2 rounded-lg border-2 
-    ${errors[fieldName] 
-      ? 'border-red-300 focus:border-red-500' 
-      : 'border-[#9DC88D]/30 focus:border-[#164A41]'
-    }
+    w-full px-3 py-2 rounded-lg border-2
+    ${errors[fieldName]
+      ? 'border-red-300 focus:border-red-500'
+      : 'border-[#9DC88D]/30 focus:border-[#164A41]'}
     focus:outline-none transition-colors
   `;
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      {/* Назва */}
       <div>
         <label htmlFor="title" className="block text-sm font-medium text-[#164A41] mb-1">
           Назва сесії *
@@ -197,12 +198,9 @@ export default function CreateSessionForm({ initialDate, campaignId, requireGmRo
           className={inputClass('title')}
           maxLength={150}
         />
-        {errors.title && (
-          <p className="text-red-500 text-xs mt-1">{errors.title}</p>
-        )}
+        {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title}</p>}
       </div>
-      
-      {/* Опис */}
+
       <div>
         <label htmlFor="description" className="block text-sm font-medium text-[#164A41] mb-1">
           Опис
@@ -218,17 +216,16 @@ export default function CreateSessionForm({ initialDate, campaignId, requireGmRo
           maxLength={2000}
         />
       </div>
-      
-      {/* Система */}
+
       <div>
         <Dropdown
           label="Ігрова система"
           options={GAME_SYSTEMS}
           value={formData.system}
           onChange={(option) => {
-            setFormData(prev => ({ ...prev, system: option.value }));
+            setFormData((prev) => ({ ...prev, system: option.value }));
             if (errors.system) {
-              setErrors(prev => ({ ...prev, system: null }));
+              setErrors((prev) => ({ ...prev, system: null }));
             }
           }}
           placeholder="Оберіть систему"
@@ -236,7 +233,6 @@ export default function CreateSessionForm({ initialDate, campaignId, requireGmRo
         />
       </div>
 
-      {/* Роль організатора */}
       {!requireGmRole && (
         <div>
           <p className="block text-sm font-medium text-[#164A41] mb-2">
@@ -272,8 +268,7 @@ export default function CreateSessionForm({ initialDate, campaignId, requireGmRo
           </div>
         </div>
       )}
-      
-      {/* Дата та час */}
+
       <div>
         <label htmlFor="date" className="block text-sm font-medium text-[#164A41] mb-1">
           Дата і час *
@@ -286,12 +281,9 @@ export default function CreateSessionForm({ initialDate, campaignId, requireGmRo
           onChange={handleChange}
           className={`${inputClass('date')} accent-[#164A41] cursor-pointer`}
         />
-        {errors.date && (
-          <p className="text-red-500 text-xs mt-1">{errors.date}</p>
-        )}
+        {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date}</p>}
       </div>
-      
-      {/* Тривалість та Гравці в одному рядку */}
+
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Dropdown
@@ -310,15 +302,15 @@ export default function CreateSessionForm({ initialDate, campaignId, requireGmRo
             ]}
             value={formData.duration}
             onChange={(option) => {
-              setFormData(prev => ({ ...prev, duration: option.value }));
+              setFormData((prev) => ({ ...prev, duration: option.value }));
               if (errors.duration) {
-                setErrors(prev => ({ ...prev, duration: null }));
+                setErrors((prev) => ({ ...prev, duration: null }));
               }
             }}
             error={errors.duration}
           />
         </div>
-        
+
         <div>
           <label htmlFor="maxPlayers" className="block text-sm font-medium text-[#164A41] mb-1">
             Макс. гравців
@@ -333,13 +325,10 @@ export default function CreateSessionForm({ initialDate, campaignId, requireGmRo
             max={20}
             className={inputClass('maxPlayers')}
           />
-          {errors.maxPlayers && (
-            <p className="text-red-500 text-xs mt-1">{errors.maxPlayers}</p>
-          )}
+          {errors.maxPlayers && <p className="text-red-500 text-xs mt-1">{errors.maxPlayers}</p>}
         </div>
       </div>
-      
-      {/* Ціна та Видимість */}
+
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label htmlFor="price" className="block text-sm font-medium text-[#164A41] mb-1">
@@ -356,20 +345,18 @@ export default function CreateSessionForm({ initialDate, campaignId, requireGmRo
             step={100}
             className={inputClass('price')}
           />
-          {errors.price && (
-            <p className="text-red-500 text-xs mt-1">{errors.price}</p>
-          )}
+          {errors.price && <p className="text-red-500 text-xs mt-1">{errors.price}</p>}
         </div>
-        
+
         <div>
           <Dropdown
             label={isCampaignSession ? 'Тип сесії' : 'Видимість'}
             options={visibilityOptions}
             value={formData.visibility}
             onChange={(option) => {
-              setFormData(prev => ({ ...prev, visibility: option.value }));
+              setFormData((prev) => ({ ...prev, visibility: option.value }));
               if (errors.visibility) {
-                setErrors(prev => ({ ...prev, visibility: null }));
+                setErrors((prev) => ({ ...prev, visibility: null }));
               }
             }}
             error={errors.visibility}
@@ -380,8 +367,7 @@ export default function CreateSessionForm({ initialDate, campaignId, requireGmRo
       <div className="text-xs text-[#4D774E] bg-[#9DC88D]/10 border border-[#9DC88D]/30 rounded-lg px-3 py-2">
         {visibilityHint}
       </div>
-      
-      {/* Кнопки */}
+
       <div className="flex gap-3 mt-4">
         {onCancel && (
           <Button
