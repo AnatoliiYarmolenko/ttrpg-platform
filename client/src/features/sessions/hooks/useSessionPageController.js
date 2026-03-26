@@ -105,7 +105,8 @@ export default function useSessionPageController() {
   const isOwner = Boolean(viewer.isSessionOwner || (currentSession && user && currentSession.ownerId === user.id));
   const amParticipant = Boolean(viewer.isParticipant || myParticipant);
   const isCampaignMember = Boolean(viewer.isCampaignMember);
-  const isEntitledViewer = Boolean(isOwner || amParticipant || isCampaignMember);
+  const hasSessionMembership = Boolean(isOwner || amParticipant);
+  const isEntitledViewer = Boolean(hasSessionMembership || isCampaignMember);
   const isCampaignFinished = currentSession?.campaign?.status === 'FINISHED';
   const isGM = myParticipant?.role === 'GM';
   const isConfirmedGm = isGM && myParticipant?.status === 'CONFIRMED';
@@ -135,7 +136,18 @@ export default function useSessionPageController() {
     && currentSession
     && (viewer.canOpen || currentSession.visibility !== 'LINK_ONLY' || isEntitledViewer)
   );
-  const { isPreviewMode } = usePreviewMode({ isMember: isEntitledViewer, isLoading });
+  const { isPreviewMode } = usePreviewMode({ isMember: hasSessionMembership, isLoading });
+
+  const canUseJoinFlow = useMemo(() => {
+    if (!currentSession || !user) return false;
+    if (hasSessionMembership) return false;
+
+    if (viewer.joinMode === 'MEMBERS_ONLY') {
+      return isCampaignMember;
+    }
+
+    return viewer.joinMode === 'OPEN' || viewer.joinMode === 'REQUEST';
+  }, [currentSession, user, hasSessionMembership, isCampaignMember, viewer.joinMode]);
 
   useEffect(() => {
     if (activeTab === TABS.SETTINGS && !canManageSettings) {
@@ -145,7 +157,7 @@ export default function useSessionPageController() {
 
   const canJoin = useMemo(() => {
     if (!currentSession || !user) return false;
-    if (isEntitledViewer) return false;
+    if (hasSessionMembership) return false;
     if (currentSession.status !== 'PLANNED') return false;
     if (currentSession.campaign?.status === 'FINISHED') return false;
     if (currentSession.maxPlayers) {
@@ -154,12 +166,12 @@ export default function useSessionPageController() {
       if (currentPlayers >= currentSession.maxPlayers) return false;
     }
 
-    return viewer.joinMode === 'OPEN' || viewer.joinMode === 'REQUEST';
-  }, [currentSession, user, isEntitledViewer, viewer.joinMode]);
+    return canUseJoinFlow;
+  }, [canUseJoinFlow, currentSession, user, hasSessionMembership]);
 
   const canApplyAsGm = useMemo(() => {
     if (!currentSession || !user) return false;
-    if (isEntitledViewer) return false;
+    if (hasSessionMembership) return false;
     if (currentSession.status !== 'PLANNED') return false;
     if (currentSession.campaign?.status === 'FINISHED') return false;
     if (new Date(currentSession.date) < new Date()) return false;
@@ -169,8 +181,8 @@ export default function useSessionPageController() {
     );
 
     if (hasConfirmedGm) return false;
-    return viewer.joinMode === 'OPEN' || viewer.joinMode === 'REQUEST';
-  }, [currentSession, user, isEntitledViewer, viewer.joinMode]);
+    return canUseJoinFlow;
+  }, [canUseJoinFlow, currentSession, user, hasSessionMembership]);
 
   const showCampaignInfo = useMemo(() => {
     if (!currentSession?.campaign) return false;
