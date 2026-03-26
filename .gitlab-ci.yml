@@ -1,0 +1,47 @@
+stages:
+  - build
+  - test
+
+# Кешування папок node_modules для швидкості
+cache:
+  key: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - server/node_modules/
+    - client/node_modules/
+
+# --- ЕТАП BUILD ---
+build_server:
+  stage: build
+  tags: [student]
+  script:
+    - cd server
+    - npm install
+    - npx prisma generate
+  artifacts:
+    paths:
+      - server/node_modules/
+      - server/prisma/
+    expire_in: 1 hour
+
+build_client:
+  stage: build
+  tags: [student]
+  script:
+    - cd client
+    - npm install
+    - npm run build
+  artifacts:
+    paths:
+      - client/node_modules/
+      - client/dist/
+    expire_in: 1 hour
+
+# --- ЕТАП TEST ---
+lint_client:
+  stage: test
+  tags: [student]
+  dependencies:
+    - build_client
+  script:
+    - cd client
+    - npm run lint
