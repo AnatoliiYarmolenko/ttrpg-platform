@@ -19,7 +19,6 @@ build_server:
     - npx prisma generate
   artifacts:
     paths:
-      - server/node_modules/
       - server/prisma/
     expire_in: 1 hour
 
@@ -32,7 +31,6 @@ build_client:
     - npm run build
   artifacts:
     paths:
-      - client/node_modules/
       - client/dist/
     expire_in: 1 hour
 
