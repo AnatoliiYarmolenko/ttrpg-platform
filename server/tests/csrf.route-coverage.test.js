@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 const adminRoutes = require('../src/routes/admin.routes');
 const campaignRoutes = require('../src/routes/campaign.routes');
+const clientLogsRoutes = require('../src/routes/clientLogs.routes');
 const sessionRoutes = require('../src/routes/session.routes');
 
 function collectRouteMiddleware(router) {
@@ -69,4 +70,13 @@ test('Admin write routes enforce CSRF verification', () => {
     { method: 'delete', path: '/campaigns/:id' },
     { method: 'delete', path: '/sessions/:id' },
   ]);
+});
+
+test('Client log ingest route enforces CSRF verification and optional auth', () => {
+  const routes = collectRouteMiddleware(clientLogsRoutes);
+  const route = routes.find(({ path, methods }) => path === '/' && methods.includes('post'));
+
+  assert.ok(route, 'Route POST / should exist');
+  assert.ok(route.middlewareNames.includes('verifyCSRFToken'));
+  assert.ok(route.middlewareNames.includes('optionalAuthenticateToken'));
 });
