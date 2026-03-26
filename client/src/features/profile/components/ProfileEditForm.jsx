@@ -3,6 +3,7 @@ import { useMyProfileQuery, useProfileMutations } from '../hooks/useProfileQueri
 import Button from '@/components/ui/Button';
 import Dropdown from '@/components/ui/Dropdown';
 import { toast } from '@/stores/useToastStore';
+import { normalizeTimeZoneValue } from '@/utils/timeZone';
 
 // Список часових поясів для вибору
 const TIMEZONES = [
@@ -33,7 +34,7 @@ export default function ProfileEditForm({ onSuccess }) {
       setFormData({
         displayName: profile.displayName || '',
         bio: profile.bio || '',
-        timezone: profile.timezone || '',
+        timezone: normalizeTimeZoneValue(profile.timezone || ''),
         language: profile.language || 'uk',
       });
     }
@@ -53,7 +54,9 @@ export default function ProfileEditForm({ onSuccess }) {
       const dataToSend = {};
       Object.keys(formData).forEach(key => {
         if (formData[key] !== '' && formData[key] !== null) {
-          dataToSend[key] = formData[key];
+          dataToSend[key] = key === 'timezone'
+            ? normalizeTimeZoneValue(formData[key])
+            : formData[key];
         }
       });
 

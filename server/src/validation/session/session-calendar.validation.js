@@ -1,5 +1,6 @@
 const Joi = require('joi');
 const { validateParams, validateQuery } = require('../../middlewares/validation.middleware');
+const { timezoneRule } = require('../profile.validation');
 
 const sessionDateParamSchema = Joi.object({
   date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required().messages({
@@ -21,6 +22,7 @@ const getCalendarQuerySchema = Joi.object({
   type: Joi.string().trim().valid('MY', 'PUBLIC', 'ALL').optional().messages({
     'any.only': 'Невірний тип фільтра',
   }),
+  timeZone: timezoneRule.optional(),
 });
 
 const jsonFiltersRule = Joi.alternatives().try(
@@ -44,6 +46,7 @@ const getCalendarStatsQuerySchema = Joi.object({
   scope: Joi.string().trim().valid('global', 'user', 'search').optional().messages({
     'any.only': 'Невірний scope (global | user | search)',
   }),
+  timeZone: timezoneRule.optional(),
   filters: jsonFiltersRule.optional(),
 });
 
@@ -51,6 +54,7 @@ const getSessionsByDayFilteredQuerySchema = Joi.object({
   scope: Joi.string().trim().valid('global', 'user', 'search').optional().messages({
     'any.only': 'Невірний scope (global | user | search)',
   }),
+  timeZone: timezoneRule.optional(),
   filters: jsonFiltersRule.optional(),
 });
 

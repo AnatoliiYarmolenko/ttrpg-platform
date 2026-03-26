@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { getCalendarStats, getSessionsByDayFiltered } from '@/features/sessions/api/sessionApi';
 import useAuthStore from '@/stores/useAuthStore';
+import { normalizeTimeZoneValue } from '@/utils/timeZone';
 
 const buildSearchFilters = (searchFilters = {}) => {
   const filters = {};
@@ -18,17 +19,26 @@ const resolveScope = (viewMode, hasSearched) => {
   return 'global';
 };
 
+const getBrowserTimeZone = () => {
+  try {
+    return normalizeTimeZoneValue(Intl.DateTimeFormat().resolvedOptions().timeZone || null);
+  } catch {
+    return null;
+  }
+};
+
 export const useCalendarStatsQuery = ({ currentMonth, viewMode, searchFilters, hasSearched }) => {
   const userId = useAuthStore((state) => state.user?.id ?? null);
   const monthDate = currentMonth instanceof Date && !isNaN(currentMonth) ? currentMonth : new Date();
   const monthKey = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
+  const timeZone = getBrowserTimeZone();
 
   return useQuery({
-    queryKey: ['calendar', userId, monthKey, viewMode, searchFilters, hasSearched],
+    queryKey: ['calendar', userId, monthKey, viewMode, searchFilters, hasSearched, timeZone],
     queryFn: async () => {
       const scope = resolveScope(viewMode, hasSearched);
       
-      const params = { month: `${monthKey}-01`, scope };
+      const params = { month: `${monthKey}-01`, scope, ...(timeZone ? { timeZone } : {}) };
       if (scope === 'search') {
         const filters = buildSearchFilters(searchFilters);
         if (filters) params.filters = filters;
@@ -44,15 +54,16 @@ export const useCalendarStatsQuery = ({ currentMonth, viewMode, searchFilters, h
 
 export const useDaySessionsQuery = ({ date, viewMode, searchFilters, hasSearched }) => {
   const userId = useAuthStore((state) => state.user?.id ?? null);
+  const timeZone = getBrowserTimeZone();
 
   return useQuery({
-    queryKey: ['sessions', 'daily', userId, date, viewMode, searchFilters, hasSearched],
+    queryKey: ['sessions', 'daily', userId, date, viewMode, searchFilters, hasSearched, timeZone],
     queryFn: async () => {
       if (!date) return [];
       const scope = resolveScope(viewMode, hasSearched);
       const filters = scope === 'search' ? buildSearchFilters(searchFilters) : null;
       
-      const res = await getSessionsByDayFiltered(date, scope, filters);
+      const res = await getSessionsByDayFiltered(date, scope, filters, timeZone);
       if (!res.success) throw new Error(res.error || 'Failed to fetch day sessions');
       return res.data || [];
     },

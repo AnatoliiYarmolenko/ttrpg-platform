@@ -4,7 +4,7 @@ const sessionCalendarController = {
   async getCalendar(req, res, next) {
     try {
       const userId = req.user?.id;
-      let { year, month, type = 'MY' } = req.query;
+      let { year, month, type = 'MY', timeZone = null } = req.query;
 
       if (!userId) {
         type = 'PUBLIC';
@@ -14,6 +14,7 @@ const sessionCalendarController = {
         year: year ? parseInt(year) : new Date().getFullYear(),
         month: month ? parseInt(month) : new Date().getMonth() + 1,
         type,
+        timeZone,
       });
 
       res.json({
@@ -28,7 +29,7 @@ const sessionCalendarController = {
   async getCalendarStats(req, res, next) {
     try {
       const userId = req.user?.id;
-      let { month, scope = 'global', filters } = req.query;
+      let { month, scope = 'global', filters, timeZone = null } = req.query;
 
       if (!month) {
         const now = new Date();
@@ -51,6 +52,7 @@ const sessionCalendarController = {
       const stats = await sessionService.getCalendarStats(userId, {
         month,
         scope,
+        timeZone,
         filters: parsedFilters,
       });
 
@@ -67,7 +69,7 @@ const sessionCalendarController = {
     try {
       const { date } = req.params;
       const userId = req.user?.id;
-      let { scope = 'global', filters } = req.query;
+      let { scope = 'global', filters, timeZone = null } = req.query;
 
       if (scope === 'user' && !userId) {
         scope = 'global';
@@ -86,7 +88,8 @@ const sessionCalendarController = {
         userId,
         date,
         scope,
-        parsedFilters
+        parsedFilters,
+        timeZone
       );
 
       res.json({

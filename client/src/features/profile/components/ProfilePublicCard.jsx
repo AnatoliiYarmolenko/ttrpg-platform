@@ -2,20 +2,21 @@ import React from 'react';
 import { UserAvatar } from '@/components/shared';
 import Timer from '@/components/ui/icons/Timer';
 import Dice20 from '@/components/ui/icons/Dice20';
+import { formatTimeZoneLabel } from '@/utils/timeZone';
 
 /**
- * ProfilePublicCard — презентаційний компонент публічного профілю гравця.
+ * ProfilePublicCard вЂ” презентаційний компонент публічного профілю гравця.
  *
- * Не містить логіки завантаження — очікує готові дані ззовні.
+ * Не містить логіки завантаження вЂ” очікує готові дані ззовні.
  * Обгортку (DashboardCard, сторінковий лейаут) визначає батьківський компонент.
  *
  * @param {Object}  props
  * @param {import('../profileModel').ProfileShape|null} props.profile
  * @param {boolean} props.isLoading
  * @param {string|null} props.error
- * @param {boolean} [props.showStats=true]       — бейджі «сесій / годин»
- * @param {boolean} [props.showContactInfo=true] — timezone, мова, місто
- * @param {React.ReactNode} [props.shareButton]  — кнопка «поділитися» (CopyProfileLinkButton або null)
+ * @param {boolean} [props.showStats=true]       вЂ” бейджі «сесій / годин»
+ * @param {boolean} [props.showContactInfo=true] вЂ” timezone, мова, місто
+ * @param {React.ReactNode} [props.shareButton]  вЂ” кнопка «поділитися» (CopyProfileLinkButton або null)
  */
 export default function ProfilePublicCard({
   profile,
@@ -53,10 +54,8 @@ export default function ProfilePublicCard({
 
   return (
     <div className="flex flex-col items-center gap-5 py-4">
-      {/* Аватар */}
       <UserAvatar src={profile.avatarUrl} name={displayName} size="lg" />
 
-      {/* Ім'я */}
       <div className="text-center">
         <h2 className="text-2xl font-bold text-[#164A41]">{displayName}</h2>
         {profile.username && (
@@ -64,7 +63,6 @@ export default function ProfilePublicCard({
         )}
       </div>
 
-      {/* Статистика */}
       {showStats && (
         <div className="flex gap-3 text-sm flex-wrap justify-center">
           <div className="bg-[#9DC88D]/20 px-3 py-1 rounded-full text-[#164A41] flex items-center gap-1.5">
@@ -78,7 +76,6 @@ export default function ProfilePublicCard({
         </div>
       )}
 
-      {/* Bio */}
       {profile.bio && (
         <div className="w-full border-t border-[#9DC88D]/20 pt-4">
           <h4 className="text-sm font-bold text-[#164A41] mb-2">Про гравця</h4>
@@ -86,12 +83,11 @@ export default function ProfilePublicCard({
         </div>
       )}
 
-      {/* Контактна / додаткова інформація */}
       {hasContactInfo && (
         <div className="w-full border-t border-[#9DC88D]/20 pt-4 space-y-2">
           {profile.timezone && (
             <div className="flex items-center gap-2 text-sm text-[#4D774E]">
-              <span>Часовий пояс: {profile.timezone}</span>
+              <span>Часовий пояс: {formatTimeZoneLabel(profile.timezone)}</span>
             </div>
           )}
           {profile.language && (
@@ -113,7 +109,6 @@ export default function ProfilePublicCard({
         </div>
       )}
 
-      {/* Слот для кнопки поділитися */}
       {shareButton}
     </div>
   );

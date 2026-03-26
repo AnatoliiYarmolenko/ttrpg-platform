@@ -202,8 +202,8 @@ class SessionService {
     return this.calendarService.getCalendarStats(userId, options);
   }
 
-  async getSessionsByDayFiltered(userId, dateString, scope = 'global', filters = {}) {
-    return this.calendarService.getSessionsByDayFiltered(userId, dateString, scope, filters);
+  async getSessionsByDayFiltered(userId, dateString, scope = 'global', filters = {}, timeZone = null) {
+    return this.calendarService.getSessionsByDayFiltered(userId, dateString, scope, filters, timeZone);
   }
 
   async getSessionById(sessionId, userId = null, options = {}) {

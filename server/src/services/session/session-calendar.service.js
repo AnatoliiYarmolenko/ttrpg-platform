@@ -124,14 +124,111 @@ function buildCampaignSelectForViewer(userId = null) {
   return campaignSelect;
 }
 
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_TIME_ZONE = 'UTC';
+
+function isValidTimeZone(timeZone) {
+  if (!timeZone) return false;
+
+  try {
+    Intl.DateTimeFormat('en-US', { timeZone }).format(new Date());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function resolveCalendarTimeZone(prisma, userId = null, requestedTimeZone = null) {
+  if (isValidTimeZone(requestedTimeZone)) {
+    return requestedTimeZone;
+  }
+
+  if (userId && prisma.user?.findUnique) {
+    const viewer = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { timezone: true },
+    });
+
+    if (isValidTimeZone(viewer?.timezone)) {
+      return viewer.timezone;
+    }
+  }
+
+  return DEFAULT_TIME_ZONE;
+}
+
+function getDateKeyInTimeZone(dateValue, timeZone = DEFAULT_TIME_ZONE) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(dateValue));
+}
+
+function getMonthKeyFromDateKey(dateKey) {
+  return dateKey.slice(0, 7);
+}
+
+function createExpandedMonthRange(monthKey) {
+  const [year, month] = monthKey.split('-').map(Number);
+  const monthStartUtc = Date.UTC(year, month - 1, 1, 0, 0, 0, 0);
+  const nextMonthStartUtc = Date.UTC(year, month, 1, 0, 0, 0, 0);
+
+  return {
+    startDate: new Date(monthStartUtc - DAY_IN_MS),
+    endDate: new Date(nextMonthStartUtc + DAY_IN_MS - 1),
+  };
+}
+
+function createExpandedDayRange(dateKey) {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  const dayStartUtc = Date.UTC(year, month - 1, day, 0, 0, 0, 0);
+
+  return {
+    startDate: new Date(dayStartUtc - DAY_IN_MS),
+    endDate: new Date(dayStartUtc + DAY_IN_MS * 2 - 1),
+  };
+}
+
+function appendAndClause(whereCondition, clause) {
+  whereCondition.AND = whereCondition.AND || [];
+  whereCondition.AND.push(clause);
+}
+
+function applySearchFilters(whereCondition, filters = {}) {
+  if (!filters) return;
+
+  if (filters.system) {
+    appendAndClause(whereCondition, {
+      OR: [
+        { system: { contains: filters.system, mode: 'insensitive' } },
+        {
+          campaign: {
+            system: { contains: filters.system, mode: 'insensitive' },
+          },
+        },
+      ],
+    });
+  }
+
+  if (filters.searchQuery) {
+    appendAndClause(whereCondition, {
+      OR: [
+        { title: { contains: filters.searchQuery, mode: 'insensitive' } },
+        { description: { contains: filters.searchQuery, mode: 'insensitive' } },
+      ],
+    });
+  }
+}
+
 function createSessionCalendarService({ prisma, AppError, ERROR_CODES }) {
   return {
     async getCalendar(userId, options = {}) {
-      const { year, month, type = 'MY' } = options;
-
-      const startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
-      const lastDayOfMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
-      const endDate = new Date(Date.UTC(year, month - 1, lastDayOfMonth, 23, 59, 59, 999));
+      const { year, month, type = 'MY', timeZone: requestedTimeZone = null } = options;
+      const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+      const { startDate, endDate } = createExpandedMonthRange(monthKey);
+      const timeZone = await resolveCalendarTimeZone(prisma, userId, requestedTimeZone);
 
       const whereCondition = {
         date: {
@@ -165,7 +262,10 @@ function createSessionCalendarService({ prisma, AppError, ERROR_CODES }) {
 
       const calendar = {};
       sessions.forEach((session) => {
-        const dateKey = session.date.toISOString().split('T')[0];
+        const dateKey = getDateKeyInTimeZone(session.date, timeZone);
+        if (getMonthKeyFromDateKey(dateKey) !== monthKey) {
+          return;
+        }
         calendar[dateKey] = (calendar[dateKey] || 0) + 1;
       });
 
@@ -173,15 +273,15 @@ function createSessionCalendarService({ prisma, AppError, ERROR_CODES }) {
     },
 
     async getCalendarStats(userId, options = {}) {
-      const { month, scope = 'global', filters = {} } = options;
-
-      const monthDate = new Date(month);
-      const year = monthDate.getUTCFullYear();
-      const monthNum = monthDate.getUTCMonth();
-
-      const startDate = new Date(Date.UTC(year, monthNum, 1, 0, 0, 0, 0));
-      const lastDayOfMonth = new Date(Date.UTC(year, monthNum + 1, 0)).getUTCDate();
-      const endDate = new Date(Date.UTC(year, monthNum, lastDayOfMonth, 23, 59, 59, 999));
+      const {
+        month,
+        scope = 'global',
+        filters = {},
+        timeZone: requestedTimeZone = null,
+      } = options;
+      const monthKey = String(month).slice(0, 7);
+      const { startDate, endDate } = createExpandedMonthRange(monthKey);
+      const timeZone = await resolveCalendarTimeZone(prisma, userId, requestedTimeZone);
 
       const whereCondition = {
         date: {
@@ -205,42 +305,7 @@ function createSessionCalendarService({ prisma, AppError, ERROR_CODES }) {
         applyCalendarVisibilityFilter(whereCondition, userId);
       }
 
-      if (filters) {
-        if (filters.system) {
-          whereCondition.OR = whereCondition.OR || [];
-          whereCondition.OR.push(
-            { system: { contains: filters.system, mode: 'insensitive' } },
-            {
-              campaign: {
-                system: { contains: filters.system, mode: 'insensitive' },
-              },
-            }
-          );
-        }
-
-        if (filters.dateFrom) {
-          whereCondition.date = {
-            ...whereCondition.date,
-            gte: new Date(filters.dateFrom),
-          };
-        }
-
-        if (filters.dateTo) {
-          whereCondition.date = {
-            ...whereCondition.date,
-            lte: new Date(filters.dateTo),
-          };
-        }
-
-        if (filters.searchQuery) {
-          const existingOr = whereCondition.OR || [];
-          whereCondition.OR = [
-            ...existingOr,
-            { title: { contains: filters.searchQuery, mode: 'insensitive' } },
-            { description: { contains: filters.searchQuery, mode: 'insensitive' } },
-          ];
-        }
-      }
+      applySearchFilters(whereCondition, filters);
 
       const sessions = await prisma.session.findMany({
         where: whereCondition,
@@ -258,7 +323,16 @@ function createSessionCalendarService({ prisma, AppError, ERROR_CODES }) {
 
       const stats = {};
       sessions.forEach((session) => {
-        const dateKey = session.date.toISOString().split('T')[0];
+        const dateKey = getDateKeyInTimeZone(session.date, timeZone);
+        if (getMonthKeyFromDateKey(dateKey) !== monthKey) {
+          return;
+        }
+        if (filters.dateFrom && dateKey < filters.dateFrom) {
+          return;
+        }
+        if (filters.dateTo && dateKey > filters.dateTo) {
+          return;
+        }
         if (!stats[dateKey]) {
           stats[dateKey] = {
             count: 0,
@@ -281,15 +355,20 @@ function createSessionCalendarService({ prisma, AppError, ERROR_CODES }) {
       return stats;
     },
 
-    async getSessionsByDayFiltered(userId, dateString, scope = 'global', filters = {}) {
-      const [year, month, day] = dateString.split('-').map(Number);
-      const dayStart = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
-      const dayEnd = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+    async getSessionsByDayFiltered(
+      userId,
+      dateString,
+      scope = 'global',
+      filters = {},
+      requestedTimeZone = null
+    ) {
+      const { startDate, endDate } = createExpandedDayRange(dateString);
+      const timeZone = await resolveCalendarTimeZone(prisma, userId, requestedTimeZone);
 
       const whereCondition = {
         date: {
-          gte: dayStart,
-          lte: dayEnd,
+          gte: startDate,
+          lte: endDate,
         },
         status: { not: 'CANCELED' },
       };
@@ -303,28 +382,7 @@ function createSessionCalendarService({ prisma, AppError, ERROR_CODES }) {
         applyCalendarVisibilityFilter(whereCondition, userId);
       }
 
-      if (filters) {
-        if (filters.system) {
-          whereCondition.OR = whereCondition.OR || [];
-          whereCondition.OR.push(
-            { system: { contains: filters.system, mode: 'insensitive' } },
-            {
-              campaign: {
-                system: { contains: filters.system, mode: 'insensitive' },
-              },
-            }
-          );
-        }
-
-        if (filters.searchQuery) {
-          const existingOr = whereCondition.OR || [];
-          whereCondition.OR = [
-            ...existingOr,
-            { title: { contains: filters.searchQuery, mode: 'insensitive' } },
-            { description: { contains: filters.searchQuery, mode: 'insensitive' } },
-          ];
-        }
-      }
+      applySearchFilters(whereCondition, filters);
 
       const sessions = await prisma.session.findMany({
         where: whereCondition,
@@ -346,7 +404,9 @@ function createSessionCalendarService({ prisma, AppError, ERROR_CODES }) {
         orderBy: { date: 'asc' },
       });
 
-      return sessions.map((session) => {
+      return sessions
+        .filter((session) => getDateKeyInTimeZone(session.date, timeZone) === dateString)
+        .map((session) => {
         const hideCampaignInfo = isCampaignInfoHiddenForViewer(session, userId);
         const myParticipation = userId
           ? session.participants.find((participant) => participant.userId === userId)
@@ -370,7 +430,7 @@ function createSessionCalendarService({ prisma, AppError, ERROR_CODES }) {
           myStatus: myParticipation?.status || null,
           currentPlayers: session.participants.filter((participant) => participant.role === 'PLAYER').length,
         };
-      });
+        });
     },
   };
 }

@@ -133,10 +133,13 @@ export const getSessionsByDay = async (date, params = {}) => {
  * @param {string} [scope] - 'global' | 'user' | 'search'
  * @param {Object} [filters] - Об'єкт з фільтрами для пошуку
  */
-export const getSessionsByDayFiltered = async (date, scope = 'global', filters = null) => {
+export const getSessionsByDayFiltered = async (date, scope = 'global', filters = null, timeZone = null) => {
   const params = { scope };
   if (filters) {
     params.filters = JSON.stringify(filters);
+  }
+  if (timeZone) {
+    params.timeZone = timeZone;
   }
   const response = await api.get(`/sessions/day-filtered/${date}`, { params });
   return normalizeApiEnvelope(response.data);
