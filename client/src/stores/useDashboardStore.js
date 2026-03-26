@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { getLocalDateKey } from '@/components/shared/dateTime.utils';
 import useSearchStore from './useSearchStore';
 import {
   DASHBOARD_VIEWS,
@@ -7,7 +8,7 @@ import {
 } from './dashboardConstants';
 
 // Helper to get today's date string (computed dynamically)
-const getTodayStr = () => new Date().toISOString().split('T')[0];
+const getTodayStr = () => getLocalDateKey(new Date());
 
 const useDashboardStore = create((set, get) => ({
   selectedDate: getTodayStr(),
@@ -95,8 +96,7 @@ const useDashboardStore = create((set, get) => ({
     const today = new Date();
     set({ currentMonth: today });
 
-    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    get().selectDate(dateStr);
+    get().selectDate(getTodayStr());
   },
 
   toggleSessionExpanded: (sessionId) => {

@@ -24,6 +24,28 @@ function formatRelative(date) {
   return date.toLocaleDateString(LOCALE, FORMAT_OPTIONS.long);
 }
 
+export function getLocalDateKey(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (Number.isNaN(date.getTime())) return '';
+
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+export function getMillisecondsUntilNextLocalDay(now = new Date()) {
+  const nextMidnight = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() + 1,
+    0,
+    0,
+    1,
+    0
+  );
+
+  return Math.max(1000, nextMidnight.getTime() - now.getTime());
+}
+
 export function formatDate(value, format = 'long') {
   if (!value) return '';
   const date = value instanceof Date ? value : new Date(value);

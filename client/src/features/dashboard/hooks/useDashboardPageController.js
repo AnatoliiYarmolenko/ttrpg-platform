@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getLocalDateKey, getMillisecondsUntilNextLocalDay } from '@/components/shared/dateTime.utils';
 import useAuthStore from '@/stores/useAuthStore';
 import useDashboardStore from '@/stores/useDashboardStore';
 import { VIEW_MODES } from '@/stores/dashboardConstants';
@@ -28,6 +29,10 @@ export default function useDashboardPageController() {
   const viewMode = useDashboardStore((state) => state.viewMode);
   const setViewMode = useDashboardStore((state) => state.setViewMode);
   const rightPanelMode = useDashboardStore((state) => state.rightPanelMode);
+  const selectedDate = useDashboardStore((state) => state.selectedDate);
+  const currentMonth = useDashboardStore((state) => state.currentMonth);
+  const selectDate = useDashboardStore((state) => state.selectDate);
+  const setCurrentMonth = useDashboardStore((state) => state.setCurrentMonth);
 
   const [profileSection, setProfileSection] = useState(PROFILE_SECTIONS.INFO);
 
@@ -37,6 +42,34 @@ export default function useDashboardPageController() {
       setProfileSection(PROFILE_SECTIONS.INFO);
     }
   }, [viewMode]);
+
+  useEffect(() => {
+    const now = new Date();
+    const currentTodayKey = getLocalDateKey(now);
+    const timeoutId = window.setTimeout(() => {
+      const nextNow = new Date();
+      const nextTodayKey = getLocalDateKey(nextNow);
+      const shouldAdvanceSelectedDay =
+        viewMode === VIEW_MODES.HOME && selectedDate === currentTodayKey;
+      const shouldAdvanceCurrentMonth =
+        currentMonth instanceof Date
+        && !Number.isNaN(currentMonth.getTime())
+        && currentMonth.getFullYear() === now.getFullYear()
+        && currentMonth.getMonth() === now.getMonth();
+
+      if (shouldAdvanceCurrentMonth) {
+        setCurrentMonth(nextNow);
+      }
+
+      if (shouldAdvanceSelectedDay && nextTodayKey) {
+        selectDate(nextTodayKey);
+      }
+    }, getMillisecondsUntilNextLocalDay(now));
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [currentMonth, selectDate, selectedDate, setCurrentMonth, viewMode]);
 
   const handleProfileUpdate = useCallback(
     (updatedData) => {

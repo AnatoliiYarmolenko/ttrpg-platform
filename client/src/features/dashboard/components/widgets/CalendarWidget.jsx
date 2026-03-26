@@ -1,4 +1,4 @@
-import React, { useMemo, memo } from 'react';
+import React, { useEffect, useMemo, useState, memo } from 'react';
 import DashboardCard from '@/components/ui/DashboardCard';
 import CalendarDayCell from '../ui/CalendarDayCell';
 import useDashboardStore from '@/stores/useDashboardStore';
@@ -6,6 +6,7 @@ import useSearchStore from '@/stores/useSearchStore';
 import { VIEW_MODES } from '@/stores/dashboardConstants';
 import Button from '@/components/ui/Button';
 import { formatDate } from '@/components/shared';
+import { getLocalDateKey, getMillisecondsUntilNextLocalDay } from '@/components/shared/dateTime.utils';
 import Arrow from '@/components/ui/icons/Arrow';
 import { useCalendarStatsQuery } from '../../hooks/useCalendarQueries';
 
@@ -29,6 +30,26 @@ const CalendarWidget = memo(function CalendarWidget({ title, showTodayButton }) 
   const hasSearched = useSearchStore((state) => state.hasSearched);
 
   const shouldShowTodayButton = showTodayButton ?? (viewMode === VIEW_MODES.MY_GAMES || viewMode === VIEW_MODES.HOME);
+  const [todayKey, setTodayKey] = useState(() => getLocalDateKey());
+
+  useEffect(() => {
+    let timeoutId = null;
+
+    const scheduleNextTick = () => {
+      timeoutId = window.setTimeout(() => {
+        setTodayKey(getLocalDateKey());
+        scheduleNextTick();
+      }, getMillisecondsUntilNextLocalDay());
+    };
+
+    scheduleNextTick();
+
+    return () => {
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, []);
 
   // Отримуємо статистику через React Query
   const { data: calendarStats = {} } = useCalendarStatsQuery({
@@ -53,9 +74,6 @@ const CalendarWidget = memo(function CalendarWidget({ title, showTodayButton }) 
     startDayOfWeek = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
     
     // Сьогоднішня дата для порівняння
-    const now = new Date();
-    const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    
     const days = [];
     
     // Додаємо порожні клітинки для днів попереднього місяця
@@ -70,7 +88,7 @@ const CalendarWidget = memo(function CalendarWidget({ title, showTodayButton }) 
     }
     
     return days;
-  }, [currentMonth]);
+  }, [currentMonth, todayKey]);
 
   // Форматуємо назву місяця
   const monthName = useMemo(() => {
