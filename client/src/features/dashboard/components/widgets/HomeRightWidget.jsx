@@ -27,7 +27,6 @@ import Dice20 from '@/components/ui/icons/Dice20';
 export default function HomeRightWidget() {
   const {
     selectedDate,
-    currentMonth,
     viewMode,
     rightPanelMode,
     expandedSessionId,

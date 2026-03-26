@@ -22,7 +22,7 @@ export const useProfileByUserIdQuery = (userId, participants = []) => {
       try {
         const result = await getProfileByUserId(userId);
         if (result?.profile) return result.profile;
-      } catch (e) {
+      } catch {
         // Fallback 1: via participant username
       }
 
@@ -31,7 +31,7 @@ export const useProfileByUserIdQuery = (userId, participants = []) => {
         try {
           const result = await getProfileByUsername(participant.user.username);
           if (result?.profile) return result.profile;
-        } catch (e) {
+        } catch {
           // Fallback 2: via participant object
         }
       }

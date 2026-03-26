@@ -3,7 +3,6 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useSecurityMutations } from '../hooks/useSecurityMutations';
 import AuthLayout from '@/features/auth/components/AuthLayout';
 import Button from '@/components/ui/Button';
-import { toast } from '@/stores/useToastStore';
 
 export default function ConfirmEmailChangePage() {
   const [searchParams] = useSearchParams();

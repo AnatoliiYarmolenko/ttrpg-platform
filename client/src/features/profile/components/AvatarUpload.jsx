@@ -28,7 +28,9 @@ export default function AvatarUpload({ currentAvatarUrl, username, onUpdate }) {
       if (onUpdate && result?.profile) {
         onUpdate(result.profile);
       }
-    } catch {} finally {
+    } catch (error) {
+      toast.error(error?.response?.data?.error || error?.message || 'Не вдалося оновити аватар');
+    } finally {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -42,7 +44,9 @@ export default function AvatarUpload({ currentAvatarUrl, username, onUpdate }) {
       if (onUpdate && result?.profile) {
         onUpdate(result.profile);
       }
-    } catch {}
+    } catch (error) {
+      toast.error(error?.response?.data?.error || error?.message || 'Не вдалося видалити аватар');
+    }
   };
 
   return (

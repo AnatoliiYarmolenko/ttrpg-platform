@@ -1,0 +1,36 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install and Build Server
+        run: |
+          cd server
+          npm install
+          npx prisma generate
+
+      - name: Install and Build Client
+        run: |
+          cd client
+          npm install
+          npm run build
+
+      - name: Lint Client
+        run: |
+          cd client
+          npm run lint

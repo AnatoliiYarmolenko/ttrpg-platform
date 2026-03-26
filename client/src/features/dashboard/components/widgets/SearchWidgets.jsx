@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import useDashboardStore from '@/stores/useDashboardStore';
 import useSearchStore from '@/stores/useSearchStore';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchCampaignsQuery, useSearchSessionsQuery } from '@/features/search/hooks/useSearchQueries';
@@ -12,6 +11,7 @@ import Dice20 from '@/components/ui/icons/Dice20';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
 import Data from '@/components/ui/icons/Data';
 import { GAME_SYSTEMS } from '@/constants/gameSystems';
+import { toast } from '@/stores/useToastStore';
 
 function mapSearchFiltersToLocal(searchFilters) {
   return {
@@ -32,9 +32,6 @@ function mapSearchFiltersToLocal(searchFilters) {
  * Використовує useDashboardStore для централізованого управління станом
  */
 export function SearchFiltersWidget({ onSearch }) {
-  const currentMonth = useDashboardStore((state) => state.currentMonth);
-  const viewMode = useDashboardStore((state) => state.viewMode);
-
   const { 
     searchFilters, 
     setSearchFilters, 
