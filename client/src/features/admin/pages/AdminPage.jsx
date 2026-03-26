@@ -454,7 +454,6 @@ export default function AdminPage() {
         message={`Ви впевнені, що хочете видалити "${deleteModal.title}"? Цю дію неможливо скасувати.`}
         onConfirm={handleDelete}
         onCancel={() => setDeleteModal({ open: false, type: '', id: null, title: '' })}
-        isLoading={deleting}
       />
     </>
   );

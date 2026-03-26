@@ -21,6 +21,7 @@ export default function VerifyEmailPage() {
   const verifyMutation = useMutation({
     mutationFn: (token) => verifyEmail(token),
   });
+  const { mutate: verifyEmailMutation } = verifyMutation;
 
   useEffect(() => {
     if (!token) return;
@@ -28,7 +29,7 @@ export default function VerifyEmailPage() {
     if (verifyCalled.current) return;
     verifyCalled.current = true;
 
-    verifyMutation.mutate(token, {
+    verifyEmailMutation(token, {
       onSuccess: (data) => {
         setStatus("success");
         const successMessage = data.message || "Email успішно підтверджено! Тепер ви можете увійти.";
@@ -43,7 +44,7 @@ export default function VerifyEmailPage() {
         toast.error(errorMessage);
       }
     });
-  }, [token, navigate]);
+  }, [token, navigate, verifyEmailMutation]);
   
   return (
     <AuthLayout title="Підтвердження email">

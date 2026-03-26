@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import DashboardCard from '@/components/ui/DashboardCard';
 import { ViewProfileButton } from '@/components/shared';
 import { useProfileByUsernameQuery } from '@/features/profile/hooks/useProfileQueries';
