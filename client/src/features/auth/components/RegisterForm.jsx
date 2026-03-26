@@ -8,6 +8,7 @@ import AuthButton from "../ui/AuthButton";
 import PasswordStrength from "../ui/PasswordStrength";
 import { VALIDATION_RULES } from "../../../utils/validationRules";
 import { toast } from "@/stores/useToastStore";
+import logger from "../../../lib/clientLogger";
 
 function RegisterForm({ onSuccess }) {
   const { 
@@ -28,7 +29,7 @@ function RegisterForm({ onSuccess }) {
       
     } catch (error) {
       const resp = error.response?.data;
-      console.log("Помилка реєстрації:", resp); 
+      logger.error("Помилка реєстрації:", resp);
 
       // 1. Обробка ліміту запитів
       if (error.response?.status === 429) {

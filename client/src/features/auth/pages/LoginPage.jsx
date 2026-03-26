@@ -5,13 +5,14 @@ import LoginForm from "../components/LoginForm";
 import AuthLayout from "../components/AuthLayout"; // Імпортуємо обгортку
 import { fetchCsrfToken } from "../api/authApi";
 import useAuthStore from '../../../stores/useAuthStore';
+import logger from "../../../lib/clientLogger";
 
 function LoginPage() {
   const navigate = useNavigate();
   const setUser = useAuthStore((state) => state.setUser);
 
   useEffect(() => {
-    fetchCsrfToken().catch(console.error);
+    fetchCsrfToken().catch((error) => logger.error(error));
   }, []);
 
   return (

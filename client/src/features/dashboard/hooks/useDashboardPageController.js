@@ -5,6 +5,7 @@ import useDashboardStore from '@/stores/useDashboardStore';
 import { VIEW_MODES } from '@/stores/dashboardConstants';
 import { logoutUser } from '@/features/auth/api/authApi';
 import { PROFILE_SECTIONS } from '../components/widgets/profileSections';
+import logger from '@/lib/clientLogger';
 
 /**
  * useDashboardPageController — основна логіка DashboardPage.
@@ -48,7 +49,7 @@ export default function useDashboardPageController() {
     try {
       await logoutUser();
     } catch (error) {
-      console.error('Logout error', error);
+      logger.error('Logout error', error);
     } finally {
       clearUser();
       navigate('/login');

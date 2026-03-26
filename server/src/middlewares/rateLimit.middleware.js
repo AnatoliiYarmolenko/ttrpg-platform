@@ -183,6 +183,15 @@ const publicProfileLimiter = createRedisLimiter({
   statusCode: 429,
 });
 
+// Ліміт для інжесту клієнтських логів
+const clientLogLimiter = createRedisLimiter({
+  type: 'client_log_ingest',
+  windowMs: 60 * 1000, // 1 хвилина
+  max: 30, // 30 логів/хвилину на IP
+  message: { message: 'Занадто багато логів з клієнта. Спробуйте пізніше.' },
+  statusCode: 429,
+});
+
 module.exports = {
   loginLimiter,
   registerLimiter,
@@ -199,4 +208,5 @@ module.exports = {
   usernameChangeLimiter,
   avatarUploadLimiter,
   publicProfileLimiter,
+  clientLogLimiter,
 };
