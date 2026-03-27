@@ -24,6 +24,11 @@ jobs:
           npm install
           npx prisma generate
 
+      - name: Test Server
+        run: |
+          cd server
+          npm run test
+
       - name: Install and Build Client
         run: |
           cd client

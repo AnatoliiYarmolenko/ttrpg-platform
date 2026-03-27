@@ -43,3 +43,12 @@ lint_client:
   script:
     - cd client
     - npm run lint
+
+test_server:
+  stage: test
+  tags: [student]
+  dependencies:
+    - build_server
+  script:
+    - cd server
+    - npm run test 
