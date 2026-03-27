@@ -25,6 +25,9 @@ jobs:
           npx prisma generate
 
       - name: Test Server
+        env:
+          JWT_SECRET: "super_secret_dummy_token_for_tests_123"
+          DATABASE_URL: "postgresql://dummy_user:dummy_pass@localhost:5432/dummy_db"
         run: |
           cd server
           npm run test

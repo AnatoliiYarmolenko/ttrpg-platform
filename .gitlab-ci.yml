@@ -49,6 +49,9 @@ test_server:
   tags: [student]
   dependencies:
     - build_server
+  variables:
+    JWT_SECRET: "super_secret_dummy_token_for_tests_123"
+    DATABASE_URL: "postgresql://dummy_user:dummy_pass@localhost:5432/dummy_db"  
   script:
     - cd server
     - npm run test 
