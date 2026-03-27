@@ -80,3 +80,25 @@ test('Client log ingest route enforces CSRF verification and optional auth', () 
   assert.ok(route.middlewareNames.includes('verifyCSRFToken'));
   assert.ok(route.middlewareNames.includes('optionalAuthenticateToken'));
 });
+
+test('Dashboard calendar routes require auth instead of silently falling back to anonymous mode', () => {
+  const routes = collectRouteMiddleware(sessionRoutes);
+  const protectedRoutes = [
+    { method: 'get', path: '/calendar-stats' },
+    { method: 'get', path: '/day-filtered/:date' },
+  ];
+
+  for (const expectedRoute of protectedRoutes) {
+    const route = routes.find(({ path, methods }) => path === expectedRoute.path && methods.includes(expectedRoute.method));
+
+    assert.ok(route, `Route ${expectedRoute.method.toUpperCase()} ${expectedRoute.path} should exist`);
+    assert.ok(
+      route.middlewareNames.includes('authenticateToken'),
+      `Route ${expectedRoute.method.toUpperCase()} ${expectedRoute.path} should include authenticateToken`
+    );
+    assert.ok(
+      !route.middlewareNames.includes('optionalAuthenticateToken'),
+      `Route ${expectedRoute.method.toUpperCase()} ${expectedRoute.path} should not include optionalAuthenticateToken`
+    );
+  }
+});

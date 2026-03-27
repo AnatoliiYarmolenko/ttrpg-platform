@@ -48,7 +48,7 @@ router.get(
 
 router.get(
   '/calendar-stats',
-  [optionalAuthenticateToken, ...validateGetCalendarStats],
+  [authenticateToken, ...validateGetCalendarStats],
   (req, res, next) => sessionCalendarController.getCalendarStats(req, res, next)
 );
 
@@ -60,7 +60,7 @@ router.get(
 
 router.get(
   '/day-filtered/:date',
-  [optionalAuthenticateToken, ...validateGetSessionsByDayFiltered],
+  [authenticateToken, ...validateGetSessionsByDayFiltered],
   (req, res, next) => sessionCalendarController.getSessionsByDayFiltered(req, res, next)
 );
 
