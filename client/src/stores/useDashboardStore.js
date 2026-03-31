@@ -9,12 +9,13 @@ import {
 
 // Helper to get today's date string (computed dynamically)
 const getTodayStr = () => getLocalDateKey(new Date());
+const getMonthStart = (date) => new Date(date.getFullYear(), date.getMonth(), 1);
 
 const useDashboardStore = create((set, get) => ({
   selectedDate: getTodayStr(),
   viewMode: VIEW_MODES.HOME,
   rightPanelMode: PANEL_MODES.LIST,
-  currentMonth: new Date(),
+  currentMonth: getMonthStart(new Date()),
   expandedSessionId: null,
   error: null,
 
@@ -25,14 +26,21 @@ const useDashboardStore = create((set, get) => ({
       [VIEW_MODES.PROFILE]: PANEL_MODES.LIST,
       [VIEW_MODES.SEARCH]: PANEL_MODES.FILTER,
     };
+    const now = new Date();
     const initialDate = mode === VIEW_MODES.HOME ? getTodayStr() : null;
 
-    set({
+    const nextState = {
       viewMode: mode,
       rightPanelMode: defaultPanelModes[mode] || PANEL_MODES.LIST,
       selectedDate: initialDate,
       expandedSessionId: null,
-    });
+    };
+
+    if (mode === VIEW_MODES.HOME) {
+      nextState.currentMonth = getMonthStart(now);
+    }
+
+    set(nextState);
 
     useSearchStore.getState().setHasSearched(false);
   },
@@ -75,26 +83,32 @@ const useDashboardStore = create((set, get) => ({
   },
 
   setCurrentMonth: (date) => {
-    set({ currentMonth: date });
+    set({ currentMonth: getMonthStart(date) });
   },
 
   goToNextMonth: () => {
     const { currentMonth } = get();
-    const nextMonth = new Date(currentMonth);
-    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    const nextMonth = new Date(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth() + 1,
+      1,
+    );
     set({ currentMonth: nextMonth });
   },
 
   goToPrevMonth: () => {
     const { currentMonth } = get();
-    const prevMonth = new Date(currentMonth);
-    prevMonth.setMonth(prevMonth.getMonth() - 1);
+    const prevMonth = new Date(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth() - 1,
+      1,
+    );
     set({ currentMonth: prevMonth });
   },
 
   goToToday: () => {
     const today = new Date();
-    set({ currentMonth: today });
+    set({ currentMonth: getMonthStart(today) });
 
     get().selectDate(getTodayStr());
   },
@@ -113,7 +127,7 @@ const useDashboardStore = create((set, get) => ({
       viewMode: VIEW_MODES.HOME,
       rightPanelMode: PANEL_MODES.LIST,
       selectedDate: getTodayStr(),
-      currentMonth: new Date(),
+      currentMonth: getMonthStart(new Date()),
       expandedSessionId: null,
       error: null,
     });

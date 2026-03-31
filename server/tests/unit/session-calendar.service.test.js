@@ -1,7 +1,7 @@
-const test = require('node:test');
+﻿const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const createSessionCalendarService = require('../src/services/session/session-calendar.service');
+const createSessionCalendarService = require('../../src/services/session/session-calendar.service');
 
 class AppError extends Error {
   constructor(code, message) {
@@ -140,3 +140,4 @@ test('day-filtered query combines system and search text filters via AND clauses
     ],
   });
 });
+

@@ -1,8 +1,8 @@
-const test = require('node:test');
+﻿const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const campaignService = require('../src/services/campaign.service');
-const { prisma } = require('../src/lib/prisma');
+const campaignService = require('../../src/services/campaign.service');
+const { prisma } = require('../../src/lib/prisma');
 
 function withMockedCampaignLifecyclePrisma(mocks, callback) {
   const originalCampaignFindUnique = prisma.campaign.findUnique;
@@ -72,3 +72,4 @@ test('Finishing campaign transitions session statuses', async () => {
     }
   );
 });
+

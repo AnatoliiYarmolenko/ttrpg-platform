@@ -1,10 +1,10 @@
-const test = require('node:test');
+﻿const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const sessionService = require('../src/services/session.service');
-const createSessionCalendarService = require('../src/services/session/session-calendar.service');
-const { prisma } = require('../src/lib/prisma');
-const permissionHelpers = require('../src/services/session/session-permission.helpers');
+const sessionService = require('../../src/services/session.service');
+const createSessionCalendarService = require('../../src/services/session/session-calendar.service');
+const { prisma } = require('../../src/lib/prisma');
+const permissionHelpers = require('../../src/services/session/session-permission.helpers');
 
 class CalendarAppError extends Error {
   constructor(code, message) {
@@ -161,7 +161,7 @@ test('Cannot update session settings when campaign is finished', async () => {
   };
 
   await assert.rejects(
-    () => sessionService.updateSession(preloadedSession.id, 11, { title: 'Новий заголовок' }, { preloadedSession }),
+    () => sessionService.updateSession(preloadedSession.id, 11, { title: 'РќРѕРІРёР№ Р·Р°РіРѕР»РѕРІРѕРє' }, { preloadedSession }),
     (error) => error?.code === 'CAMPAIGN_FINISHED'
   );
 });
@@ -335,3 +335,4 @@ test('Day sessions keep campaign info for campaign member in PUBLIC session of L
   assert.equal(sessions[0].campaign?.id, 78);
   assert.equal(sessions[0].campaign?.title, 'Visible For Members');
 });
+

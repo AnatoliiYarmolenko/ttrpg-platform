@@ -5,6 +5,15 @@ import { GAME_SYSTEMS } from '@/constants/gameSystems';
 import Dropdown from '@/components/ui/Dropdown';
 import Button from '@/components/ui/Button';
 import { toast } from '@/stores/useToastStore';
+import { getDateTimeLocalIssue, toIsoDateTimeLocalValue } from '@/utils/dateTimeLocal';
+
+const DATE_ERROR_MESSAGES = {
+  empty: 'Дата сесії обовʼязкова',
+  invalid: 'Некоректна дата сесії',
+  nonexistent: 'Обраний час не існує у вашому часовому поясі через переведення годинника',
+  ambiguous: 'Обраний час повторюється через переведення годинника. Вкажіть іншу годину, щоб уникнути помилки',
+  past: 'Дата не може бути в минулому',
+};
 
 export default function CreateSessionForm({
   initialDate,
@@ -89,10 +98,9 @@ export default function CreateSessionForm({
       nextErrors.title = 'Назва повинна містити мінімум 3 символи';
     }
 
-    if (!formData.date) {
-      nextErrors.date = 'Дата сесії обовʼязкова';
-    } else if (new Date(formData.date) < new Date()) {
-      nextErrors.date = 'Дата не може бути в минулому';
+    const dateIssue = getDateTimeLocalIssue(formData.date);
+    if (dateIssue) {
+      nextErrors.date = DATE_ERROR_MESSAGES[dateIssue];
     }
 
     if (formData.duration < 30 || formData.duration > 480) {
@@ -141,9 +149,17 @@ export default function CreateSessionForm({
     setIsSubmitting(true);
 
     try {
+      const sessionDateIso = toIsoDateTimeLocalValue(formData.date);
+      if (!sessionDateIso) {
+        const dateError = DATE_ERROR_MESSAGES[getDateTimeLocalIssue(formData.date) || 'invalid'];
+        setErrors((prev) => ({ ...prev, date: dateError }));
+        toast.error(dateError);
+        return;
+      }
+
       const payload = {
         title: formData.title.trim(),
-        date: new Date(formData.date).toISOString(),
+        date: sessionDateIso,
         duration: formData.duration,
         maxPlayers: formData.maxPlayers,
         price: formData.price,

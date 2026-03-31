@@ -9,6 +9,18 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: './src/test/setupTests.js',
+    coverage: {
+      provider: 'v8',
+      reportsDirectory: './coverage',
+      reporter: ['text-summary', 'lcov', 'html', 'json-summary'],
+      include: ['src/**/*.{js,jsx}'],
+      exclude: ['src/main.jsx', 'src/test/**'],
+    },
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"), // Кажемо, що @ це папка src

@@ -1,13 +1,22 @@
 stages:
   - build
   - test
+  - sonar
 
-# Кешування папок node_modules для швидкості
+variables:
+  # На Windows runner довгі шляхи в .npm/_cacache можуть ламати cleanup перед job.
+  GIT_CLEAN_FLAGS: "-ffdx -e .npm/"
+  GIT_CONFIG_COUNT: "1"
+  GIT_CONFIG_KEY_0: "core.longpaths"
+  GIT_CONFIG_VALUE_0: "true"
+
 cache:
-  key: "$CI_COMMIT_REF_SLUG"
+  key:
+    files:
+      - client/package-lock.json
+      - server/package-lock.json
   paths:
-    - server/node_modules/
-    - client/node_modules/
+    - .npm/
 
 # --- ЕТАП BUILD ---
 build_server:
@@ -15,11 +24,11 @@ build_server:
   tags: [student]
   script:
     - cd server
-    - npm install
+    - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline
     - npx prisma generate
   artifacts:
     paths:
-      - server/prisma/
+      - server/node_modules/.prisma/
     expire_in: 1 hour
 
 build_client:
@@ -27,31 +36,81 @@ build_client:
   tags: [student]
   script:
     - cd client
-    - npm install
+    - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline
     - npm run build
-  artifacts:
-    paths:
-      - client/dist/
-    expire_in: 1 hour
 
 # --- ЕТАП TEST ---
 lint_client:
   stage: test
   tags: [student]
-  dependencies:
-    - build_client
+  dependencies: []
   script:
     - cd client
+    - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline
     - npm run lint
 
-test_server:
+coverage_client:
   stage: test
   tags: [student]
-  dependencies:
-    - build_server
+  dependencies: []
+  script:
+    - cd client
+    - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline
+    - npm run test:coverage
+  coverage: '/Lines\s*:\s*([0-9.]+)%/'
+  artifacts:
+    paths:
+      - client/coverage/
+    expire_in: 7 days
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+
+coverage_server:
+  stage: test
+  tags: [student]
+  dependencies: []
   variables:
-    JWT_SECRET: "super_secret_dummy_token_for_tests_123"
-    DATABASE_URL: "postgresql://dummy_user:dummy_pass@localhost:5432/dummy_db"  
+    JWT_SECRET: "dummy_secret"
+    DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
   script:
     - cd server
-    - npm run test 
+    - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline
+    - npx prisma generate
+    - npm run test:coverage
+  coverage: '/Lines\s*:\s*([0-9.]+)%/'
+  artifacts:
+    paths:
+      - server/coverage/
+    expire_in: 7 days
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+
+sonarcloud_scan:
+  stage: sonar
+  tags: [student]
+  dependencies:
+    - coverage_client
+    - coverage_server
+  variables:
+    GIT_DEPTH: "0"
+  script:
+    - $ErrorActionPreference = "Stop"
+    - $toolsDir = "$env:CI_PROJECT_DIR\.ci-tools"
+    - $javaHome = "$toolsDir\jdk-17"
+    - if (!(Test-Path "$javaHome\bin\java.exe")) { New-Item -ItemType Directory -Path $toolsDir -Force | Out-Null }
+    - if (!(Test-Path "$javaHome\bin\java.exe")) { Invoke-WebRequest -Uri "https://aka.ms/download-jdk/microsoft-jdk-17.0.11-windows-x64.zip" -OutFile "$toolsDir\jdk17.zip" }
+    - if (!(Test-Path "$javaHome\bin\java.exe")) { Expand-Archive -Path "$toolsDir\jdk17.zip" -DestinationPath "$toolsDir\jdk17-unpacked" -Force }
+    - if (!(Test-Path "$javaHome\bin\java.exe")) { $extracted = Get-ChildItem -Path "$toolsDir\jdk17-unpacked" -Directory | Select-Object -First 1; Move-Item -Path $extracted.FullName -Destination $javaHome }
+    - $env:JAVA_HOME = $javaHome
+    - $env:Path = "$env:JAVA_HOME\bin;$env:Path"
+    - java -version
+    - $env:CI_MERGE_REQUEST_IID = ""
+    - npx sonarqube-scanner "-Dsonar.host.url=https://sonarcloud.io" "-Dsonar.token=$env:SONAR_TOKEN" "-Dsonar.branch.name=$env:CI_COMMIT_REF_NAME"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_BRANCH == "develop"'

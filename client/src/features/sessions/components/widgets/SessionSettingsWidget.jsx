@@ -4,27 +4,25 @@ import FormField from '@/components/ui/FormField';
 import Button from '@/components/ui/Button';
 import { ConfirmModal } from '@/components/shared';
 import { GAME_SYSTEMS } from '@/constants/gameSystems';
+import {
+  formatDateTimeLocalValue,
+  getDateTimeLocalIssue,
+  toIsoDateTimeLocalValue,
+} from '@/utils/dateTimeLocal';
 
-function toDateTimeLocalValue(dateInput) {
-  if (!dateInput) return '';
-  const date = new Date(dateInput);
-  if (Number.isNaN(date.getTime())) return '';
-
-  const pad = (num) => String(num).padStart(2, '0');
-  const year = date.getFullYear();
-  const month = pad(date.getMonth() + 1);
-  const day = pad(date.getDate());
-  const hours = pad(date.getHours());
-  const minutes = pad(date.getMinutes());
-
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-}
+const DATE_ERROR_MESSAGES = {
+  empty: 'Дата сесії обовʼязкова',
+  invalid: 'Некоректна дата сесії',
+  nonexistent: 'Обраний час не існує у вашому часовому поясі через переведення годинника',
+  ambiguous: 'Обраний час повторюється через переведення годинника. Вкажіть іншу годину, щоб уникнути помилки',
+  past: 'Дата не може бути в минулому',
+};
 
 function buildFormData(session) {
   return {
     title: session?.title || '',
     description: session?.description || '',
-    date: toDateTimeLocalValue(session?.date),
+    date: formatDateTimeLocalValue(session?.date),
     duration: session?.duration || '',
     maxPlayers: session?.maxPlayers || '',
     system: session?.system || session?.campaign?.system || '',
@@ -50,7 +48,7 @@ function buildUpdatePayload(session, formData) {
   }
 
   if (formData.date && formData.date !== initial.date) {
-    data.date = new Date(formData.date).toISOString();
+    data.date = toIsoDateTimeLocalValue(formData.date);
   }
 
   if (formData.duration !== '' && String(formData.duration) !== String(initial.duration)) {
@@ -88,6 +86,7 @@ function SessionSettingsWidgetContent({
   const [formData, setFormData] = useState(() => buildFormData(session));
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
+  const [dateError, setDateError] = useState('');
 
   const isCampaignSession = Boolean(session?.campaignId);
   const visibilityOptions = isCampaignSession
@@ -105,10 +104,23 @@ function SessionSettingsWidgetContent({
     const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     setSaveSuccess(false);
+
+    if (name === 'date' && dateError) {
+      setDateError('');
+    }
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    const hasDateChanged = formData.date !== buildFormData(session).date;
+    if (hasDateChanged) {
+      const issue = getDateTimeLocalIssue(formData.date);
+      if (issue) {
+        setDateError(DATE_ERROR_MESSAGES[issue]);
+        return;
+      }
+    }
 
     const data = buildUpdatePayload(session, formData);
     if (Object.keys(data).length === 0) {
@@ -175,6 +187,9 @@ function SessionSettingsWidgetContent({
               className={inputClasses}
               required
             />
+            {dateError && (
+              <p className="mt-2 text-sm text-red-600">{dateError}</p>
+            )}
           </FormField>
 
           <FormField id="duration" label="Тривалість (хв)">
