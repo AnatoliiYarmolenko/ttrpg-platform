@@ -1,7 +1,7 @@
-const test = require('node:test');
+﻿const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const createSessionParticipantsService = require('../src/services/session/session-participants.service');
+const createSessionParticipantsService = require('../../src/services/session/session-participants.service');
 
 class AppError extends Error {
   constructor(code, message) {
@@ -210,3 +210,4 @@ test('cannot join session when status is not PLANNED', async () => {
 
   assert.equal(state.createdParticipants.length, 0);
 });
+

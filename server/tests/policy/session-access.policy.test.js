@@ -1,7 +1,7 @@
-const test = require('node:test');
+﻿const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { getSessionViewerCapabilities } = require('../src/domain/session/session.policy');
+const { getSessionViewerCapabilities } = require('../../src/domain/session/session.policy');
 
 test('campaign member can open private campaign session with MEMBERS_ONLY join mode', () => {
   const capabilities = getSessionViewerCapabilities({
@@ -55,3 +55,4 @@ test('outsider can open public one-shot session with OPEN join mode', () => {
   assert.equal(capabilities.canOpen, true);
   assert.equal(capabilities.joinMode, 'OPEN');
 });
+

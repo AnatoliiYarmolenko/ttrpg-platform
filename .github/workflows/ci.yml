@@ -7,7 +7,7 @@ on:
     branches: [main, develop]
 
 jobs:
-  build_and_test:
+  build_server:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -17,28 +17,137 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
 
-      - name: Install and Build Server
+      - name: Install and build server prerequisites
         run: |
           cd server
-          npm install
+          npm ci
           npx prisma generate
 
-      - name: Test Server
-        env:
-          JWT_SECRET: "super_secret_dummy_token_for_tests_123"
-          DATABASE_URL: "postgresql://dummy_user:dummy_pass@localhost:5432/dummy_db"
-        run: |
-          cd server
-          npm run test
+  build_client:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Install and Build Client
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install and build client
         run: |
           cd client
-          npm install
+          npm ci
           npm run build
 
-      - name: Lint Client
-        run: |
-          cd client
-          npm run lint
+  lint_client:
+    runs-on: ubuntu-latest
+    needs: build_client
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install client dependencies
+        run: npm --prefix client ci
+
+      - name: Lint client
+        run: npm --prefix client run lint
+
+  coverage_client:
+    runs-on: ubuntu-latest
+    needs: build_client
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install client dependencies
+        run: npm --prefix client ci
+
+      - name: Generate client coverage
+        run: npm --prefix client run test:coverage
+
+      - name: Upload client coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-coverage
+          path: client/coverage/
+          if-no-files-found: error
+
+  coverage_server:
+    runs-on: ubuntu-latest
+    needs: build_server
+    env:
+      JWT_SECRET: super_secret_dummy_token_for_tests_123
+      DATABASE_URL: postgresql://dummy_user:dummy_pass@localhost:5432/dummy_db
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install server dependencies
+        run: npm --prefix server ci
+
+      - name: Generate server coverage
+        run: npm --prefix server run test:coverage
+
+      - name: Upload server coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-coverage
+          path: server/coverage/
+          if-no-files-found: error
+
+  sonarcloud:
+    runs-on: ubuntu-latest
+    needs: [coverage_client, coverage_server]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Обов'язково для SonarCloud, щоб він бачив історію комітів
+
+      - name: Download client coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: client-coverage
+          path: .
+
+      - name: Download server coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: server-coverage
+          path: .
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: >
+            -Dsonar.host.url=https://sonarcloud.io

@@ -1,8 +1,8 @@
-const test = require('node:test');
+﻿const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { ERROR_CODES } = require('../src/constants/errors');
-const { verifyCSRFToken } = require('../src/middlewares/csrf.middleware');
+const { ERROR_CODES } = require('../../src/constants/errors');
+const { verifyCSRFToken } = require('../../src/middlewares/csrf.middleware');
 
 function createMockResponse() {
   return {

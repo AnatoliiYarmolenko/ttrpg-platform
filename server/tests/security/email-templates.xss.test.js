@@ -1,7 +1,7 @@
-const test = require('node:test');
+﻿const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { renderEmailTemplate } = require('../src/services/email/email-template-renderer');
+const { renderEmailTemplate } = require('../../src/services/email/email-template-renderer');
 
 test('password reset template escapes userName and blocks javascript href', () => {
   const payload = {
@@ -28,3 +28,4 @@ test('email verification template renders escaped fallback text for invalid link
   assert.doesNotMatch(html, /href="javascript:/i);
   assert.doesNotMatch(html, /<p class="link-text">javascript:alert\(1\)<\/p>/);
 });
+

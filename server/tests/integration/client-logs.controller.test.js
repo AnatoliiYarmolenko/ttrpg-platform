@@ -1,8 +1,8 @@
-const test = require('node:test');
+﻿const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { ingestClientLog } = require('../src/controllers/clientLogs.controller');
-const { logger } = require('../src/lib/logger');
+const { ingestClientLog } = require('../../src/controllers/clientLogs.controller');
+const { logger } = require('../../src/lib/logger');
 
 function createMockResponse() {
   return {
@@ -142,3 +142,4 @@ test('ingestClientLog rejects empty message payloads', async () => {
   assert.equal(res.statusCode, 400);
   assert.deepEqual(res.body, { error: 'message is required' });
 });
+

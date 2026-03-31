@@ -1,10 +1,10 @@
-const test = require('node:test');
+﻿const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const adminRoutes = require('../src/routes/admin.routes');
-const campaignRoutes = require('../src/routes/campaign.routes');
-const clientLogsRoutes = require('../src/routes/clientLogs.routes');
-const sessionRoutes = require('../src/routes/session.routes');
+const adminRoutes = require('../../src/routes/admin.routes');
+const campaignRoutes = require('../../src/routes/campaign.routes');
+const clientLogsRoutes = require('../../src/routes/clientLogs.routes');
+const sessionRoutes = require('../../src/routes/session.routes');
 
 function collectRouteMiddleware(router) {
   return router.stack
@@ -102,3 +102,4 @@ test('Dashboard calendar routes require auth instead of silently falling back to
     );
   }
 });
+

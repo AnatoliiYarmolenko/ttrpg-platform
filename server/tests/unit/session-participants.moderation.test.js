@@ -1,7 +1,7 @@
-const test = require('node:test');
+﻿const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const createSessionParticipantsService = require('../src/services/session/session-participants.service');
+const createSessionParticipantsService = require('../../src/services/session/session-participants.service');
 
 class AppError extends Error {
   constructor(code, message) {
@@ -221,3 +221,4 @@ test('cannot moderate participants in FINISHED session', async () => {
   assert.equal(state.updateCalls.length, 0);
   assert.equal(state.deleteCalls.length, 0);
 });
+

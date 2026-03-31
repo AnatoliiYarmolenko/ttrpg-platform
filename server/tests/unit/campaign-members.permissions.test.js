@@ -1,7 +1,7 @@
-const test = require('node:test');
+﻿const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const createCampaignMembersService = require('../src/services/campaign/campaign-members.service');
+const createCampaignMembersService = require('../../src/services/campaign/campaign-members.service');
 
 class AppError extends Error {
   constructor(code, message) {
@@ -401,7 +401,7 @@ test('Cannot submit join request to finished campaign', async () => {
   });
 
   await assert.rejects(
-    () => service.submitJoinRequest(10, 55, 'Хочу приєднатись'),
+    () => service.submitJoinRequest(10, 55, 'РҐРѕС‡Сѓ РїСЂРёС”РґРЅР°С‚РёСЃСЊ'),
     (error) => error instanceof AppError
       && error.code === ERROR_CODES.CAMPAIGN_FINISHED
   );
@@ -457,7 +457,7 @@ test('submitJoinRequest for LINK_ONLY campaign with share token creates pending 
     existingMember: null,
   });
 
-  const result = await service.submitJoinRequest(10, 55, 'Хочу приєднатись через лінк', 'valid-share-token');
+  const result = await service.submitJoinRequest(10, 55, 'РҐРѕС‡Сѓ РїСЂРёС”РґРЅР°С‚РёСЃСЊ С‡РµСЂРµР· Р»С–РЅРє', 'valid-share-token');
 
   assert.equal(state.createdMembers.length, 0);
   assert.equal(state.createdJoinRequests.length, 1);
@@ -473,13 +473,13 @@ test('submitJoinRequest for PUBLIC campaign creates pending request and does not
     existingMember: null,
   });
 
-  const result = await service.submitJoinRequest(10, 77, 'Хочу приєднатись');
+  const result = await service.submitJoinRequest(10, 77, 'РҐРѕС‡Сѓ РїСЂРёС”РґРЅР°С‚РёСЃСЊ');
 
   assert.equal(state.createdMembers.length, 0);
   assert.equal(state.createdJoinRequests.length, 1);
   assert.equal(state.createdJoinRequests[0].data.userId, 77);
   assert.equal(state.createdJoinRequests[0].data.campaignId, 10);
-  assert.equal(state.createdJoinRequests[0].data.message, 'Хочу приєднатись');
+  assert.equal(state.createdJoinRequests[0].data.message, 'РҐРѕС‡Сѓ РїСЂРёС”РґРЅР°С‚РёСЃСЊ');
   assert.equal(result.status, 'PENDING');
 });
 
@@ -495,13 +495,13 @@ test('submitJoinRequest reopens reviewed request back to pending', async () => {
     },
   });
 
-  await service.submitJoinRequest(10, 66, 'Повторна заявка');
+  await service.submitJoinRequest(10, 66, 'РџРѕРІС‚РѕСЂРЅР° Р·Р°СЏРІРєР°');
 
   assert.equal(state.createdJoinRequests.length, 0);
   assert.equal(state.updatedJoinRequests.length, 1);
   assert.equal(state.updatedJoinRequests[0].where.id, 321);
   assert.equal(state.updatedJoinRequests[0].data.status, 'PENDING');
-  assert.equal(state.updatedJoinRequests[0].data.message, 'Повторна заявка');
+  assert.equal(state.updatedJoinRequests[0].data.message, 'РџРѕРІС‚РѕСЂРЅР° Р·Р°СЏРІРєР°');
 });
 
 test('rejectJoinRequest removes pending request record instead of marking REJECTED', async () => {
@@ -517,3 +517,4 @@ test('rejectJoinRequest removes pending request record instead of marking REJECT
   assert.equal(state.deletedJoinRequests[0].where.id, 100);
   assert.equal(state.updatedJoinRequests.length, 0);
 });
+
