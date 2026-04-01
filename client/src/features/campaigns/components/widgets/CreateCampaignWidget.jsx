@@ -1,8 +1,32 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
+import DashboardCard from '@/components/ui/DashboardCard';
 import Button from '@/components/ui/Button';
+import Dropdown from '@/components/ui/Dropdown';
+import { BackButton } from '@/components/shared';
 import { GAME_SYSTEMS } from '@/constants/gameSystems';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createCampaign } from '@/features/campaigns/api/campaignApi';
+import { toast } from '@/stores/useToastStore';
+
+const VISIBILITY_OPTIONS = [
+  { value: 'PUBLIC', label: 'За заявкою' },
+  { value: 'LINK_ONLY', label: 'За посиланням' },
+];
+
+const VISIBILITY_HINTS = {
+  PUBLIC: 'Кампанія буде видима в пошуку. Приєднання відбувається після ручного схвалення заявки.',
+  LINK_ONLY: 'Кампанія не відображається в пошуку. Доступ відбувається лише через посилання, після схвалення заявки.',
+};
+
+const SYSTEM_OPTIONS = [
+  { value: '', label: 'Не вказано' },
+  ...GAME_SYSTEMS.map((system) => ({
+    value: system.value,
+    label: system.label,
+  })),
+];
+
 /**
  * Віджет створення нової кампанії для правого вікна
  * 
@@ -15,10 +39,14 @@ export default function CreateCampaignWidget({ onSuccess, onCancel }) {
   const createMutation = useMutation({
     mutationFn: (data) => createCampaign(data),
     onSuccess: () => {
+      toast.success('Кампанію успішно створено');
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard', 'campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['calendar'] });
-    }
+    },
+    onError: (err) => {
+      toast.error(err?.response?.data?.error || err?.message || 'Помилка при створенні кампанії');
+    },
   });
 
   const [formData, setFormData] = useState({
@@ -44,6 +72,14 @@ export default function CreateCampaignWidget({ onSuccess, onCancel }) {
       newErrors.description = 'Максимум 1000 символів';
     }
     setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
+      const firstError = Object.values(newErrors)[0];
+      if (firstError) {
+        toast.error(firstError);
+      }
+    }
+
     return Object.keys(newErrors).length === 0;
   };
 
@@ -73,7 +109,11 @@ export default function CreateCampaignWidget({ onSuccess, onCancel }) {
         setFormData({ title: '', description: '', system: '', visibility: 'PUBLIC' });
         setErrors({});
         onSuccess?.(result.data);
+      } else if (result.error) {
+        toast.error(result.error);
       }
+    } catch {
+      // toast handled in mutation.onError
     } finally {
       setIsSubmitting(false);
     }
@@ -87,130 +127,112 @@ export default function CreateCampaignWidget({ onSuccess, onCancel }) {
     }`;
 
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-lg max-h-screen overflow-y-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-5 sticky top-0 bg-white">
-        <h2 className="text-lg font-bold text-[#164A41]">Нова кампанія</h2>
-        <button
-          onClick={onCancel}
-          className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-          aria-label="Закрити"
-        >
-          ✕
-        </button>
-      </div>
-
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        {/* Назва */}
-        <div>
-          <label htmlFor="title" className="block text-sm font-medium text-[#164A41] mb-1">
-            Назва кампанії <span className="text-red-500">*</span>
-          </label>
-          <input
-            id="title"
-            type="text"
-            name="title"
-            value={formData.title}
-            onChange={handleChange}
-            placeholder="Наприклад: Загублені копальні"
-            className={inputClass('title')}
-            maxLength={100}
-          />
-          {errors.title && (
-            <p className="text-xs text-red-500 mt-1">{errors.title}</p>
-          )}
-        </div>
-
-        {/* Опис */}
-        <div>
-          <label htmlFor="description" className="block text-sm font-medium text-[#164A41] mb-1">
-            Опис
-          </label>
-          <textarea
-            id="description"
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            placeholder="Коротко опишіть кампанію..."
-            className={`${inputClass('description')} resize-none`}
-            rows={4}
-            maxLength={1000}
-          />
-          {errors.description && (
-            <p className="text-xs text-red-500 mt-1">{errors.description}</p>
-          )}
-          <p className="text-xs text-[#4D774E]/60 mt-1 text-right">
-            {formData.description.length}/1000
-          </p>
-        </div>
-
-        {/* Система та Видимість */}
-        <div className="grid grid-cols-2 gap-3">
+    <DashboardCard
+      title="Нова кампанія"
+      actions={<BackButton label="Назад" onClick={onCancel} variant="dark" />}
+    >
+      <form onSubmit={handleSubmit} className="flex min-h-full flex-col gap-6">
+        <section className="space-y-5">
           <div>
-            <label htmlFor="system" className="block text-sm font-medium text-[#164A41] mb-1">
-              Ігрова система
+            <label htmlFor="title" className="block text-sm font-medium text-[#164A41] mb-2">
+              Назва кампанії <span className="text-red-500">*</span>
             </label>
-            <select
-              id="system"
-              name="system"
+            <input
+              id="title"
+              type="text"
+              name="title"
+              value={formData.title}
+              onChange={handleChange}
+              placeholder="Наприклад: Загублені копальні"
+              className={inputClass('title')}
+              maxLength={100}
+            />
+            {errors.title && (
+              <p className="text-xs text-red-500 mt-1">{errors.title}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="description" className="block text-sm font-medium text-[#164A41] mb-2">
+              Опис
+            </label>
+            <textarea
+              id="description"
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              placeholder="Коротко опишіть сюжет, тон і очікування від кампанії"
+              className={`${inputClass('description')} resize-none`}
+              rows={5}
+              maxLength={1000}
+            />
+            {errors.description && (
+              <p className="text-xs text-red-500 mt-1">{errors.description}</p>
+            )}
+            <p className="text-xs text-[#4D774E]/60 mt-1 text-right">
+              {formData.description.length}/1000
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Dropdown
+              label="Ігрова система"
+              options={SYSTEM_OPTIONS}
               value={formData.system}
-              onChange={handleChange}
-              className={inputClass('system')}
-            >
-              <option value="">Не вказано</option>
-              {GAME_SYSTEMS.map((sys) => (
-                <option key={sys.value} value={sys.value}>
-                  {sys.icon} {sys.label}
-                </option>
-              ))}
-            </select>
-          </div>
+              onChange={(option) => {
+                setFormData((prev) => ({ ...prev, system: option.value }));
+                if (errors.system) setErrors((prev) => ({ ...prev, system: null }));
+              }}
+              placeholder="Оберіть систему"
+              error={errors.system}
+            />
 
-          <div>
-            <label htmlFor="visibility" className="block text-sm font-medium text-[#164A41] mb-1">
-              Видимість <span className="text-red-500">*</span>
-            </label>
-            <select
-              id="visibility"
-              name="visibility"
+            <Dropdown
+              label="Видимість"
+              options={VISIBILITY_OPTIONS}
               value={formData.visibility}
-              onChange={handleChange}
-              className={inputClass('visibility')}
-            >
-              <option value="PUBLIC">📝 За заявкою</option>
-              <option value="LINK_ONLY">🔗 За посиланням</option>
-            </select>
+              onChange={(option) => {
+                setFormData((prev) => ({ ...prev, visibility: option.value }));
+                if (errors.visibility) setErrors((prev) => ({ ...prev, visibility: null }));
+              }}
+              placeholder="Оберіть видимість"
+              error={errors.visibility}
+            />
           </div>
-        </div>
 
-        {/* Підказка по видимості */}
-        <div className="text-xs text-[#4D774E]/70 p-3 bg-[#9DC88D]/10 rounded-xl">
-          {formData.visibility === 'PUBLIC' && '📝 Кампанія буде видна в пошуку. Вступ — тільки після ручного схвалення заявки.'}
-          {formData.visibility === 'LINK_ONLY' && '🔗 Кампанія доступна за посиланням. Вступ — після ручного схвалення заявки.'}
-        </div>
+          <div className="text-xs text-[#4D774E] bg-[#9DC88D]/10 border border-[#9DC88D]/30 rounded-xl px-4 py-3">
+            {VISIBILITY_HINTS[formData.visibility]}
+          </div>
+        </section>
 
-        {/* Кнопки */}
-        <div className="flex gap-3 pt-2">
-          <button
+        <div className="mt-auto border-t border-[#9DC88D]/20 pt-4 flex flex-col gap-3 sm:flex-row">
+          <Button
             type="button"
             onClick={onCancel}
             disabled={isSubmitting}
-            className="flex-1 py-3 border-2 border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50 transition-colors font-semibold disabled:opacity-50"
+            variant="outline"
+            fullWidth={false}
+            className="sm:flex-1"
           >
             Скасувати
-          </button>
+          </Button>
           <Button
             type="submit"
-            variant="secondary"
+            variant="primary"
             isLoading={isSubmitting}
             loadingText="Створення..."
             fullWidth={false}
-            className="flex-1"
+            className="sm:flex-1"
           >
             Створити
           </Button>
         </div>
       </form>
-    </div>
+    </DashboardCard>
   );
 }
+
+CreateCampaignWidget.propTypes = {
+  onSuccess: PropTypes.func,
+  onCancel: PropTypes.func,
+};

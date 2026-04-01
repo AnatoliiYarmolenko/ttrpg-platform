@@ -46,7 +46,7 @@ function SessionCard({ session, navigate, formatDuration }) {
 }
 
 /**
- * MyGamesListWidget — ліва панель для "Мої ігри" view.
+ * MyGamesListWidget — ліва панель для "Мої сесії" view.
  *
  * Три розділи:
  * 1. Мої кампанії
@@ -89,7 +89,7 @@ export default function MyGamesListWidget() {
 
   if (isLoading) {
     return (
-      <DashboardCard title="Мої ігри">
+      <DashboardCard title="Мої сесії">
         <div className="animate-pulse space-y-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="p-4 border-2 border-gray-100 rounded-xl space-y-2">
@@ -104,11 +104,11 @@ export default function MyGamesListWidget() {
 
   if (isEmpty) {
     return (
-      <DashboardCard title="Мої ігри">
+      <DashboardCard title="Мої сесії">
         <EmptyState
           icon={<Dice20 className="w-10 h-10" />}
-          title="У вас ще немає ігор"
-          description="Приєднайтесь до сесії або створіть свою на вкладці Головна"
+          title="У вас ще немає сесій"
+          description="Приєднайтесь до сесії або створіть свою на вкладці Календар"
           className="h-full"
         />
       </DashboardCard>
@@ -116,7 +116,7 @@ export default function MyGamesListWidget() {
   }
 
   return (
-    <DashboardCard title="Мої ігри">
+    <DashboardCard title="Мої сесії">
       <div className="flex flex-col gap-6">
         {/* === Розділ: Мої кампанії === */}
         {campaigns.length > 0 && (
