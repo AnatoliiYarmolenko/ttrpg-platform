@@ -94,38 +94,48 @@ export default function HomeRightWidget() {
     ? getDateTitle(selectedDate) 
     : 'Сесії на сьогодні';
 
+  let sessionsContent;
+
+  if (isLoading) {
+    sessionsContent = (
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-pulse text-[#164A41] font-medium">Завантаження сесій...</div>
+      </div>
+    );
+  } else if (daySessions.length === 0) {
+    sessionsContent = (
+      <EmptyState
+        icon={<Dice20 className="w-14 h-14" />}
+        title="Немає запланованих сесій"
+        description="на цей день"
+        className="h-full"
+      />
+    );
+  } else {
+    sessionsContent = (
+      <div className="flex flex-col gap-3">
+        {daySessions.map((session) => {
+          const isExpanded = expandedSessionId === session.id;
+
+          return (
+            <SessionCard
+              key={session.id}
+              session={session}
+              isExpanded={isExpanded}
+              onToggle={() => toggleSessionExpanded(session.id)}
+            />
+          );
+        })}
+      </div>
+    );
+  }
+
   // Якщо дата не вибрана — показуємо підказку
 return (
     <DashboardCard title={title}>
       <div className="flex flex-col h-full">
         <div className="flex-1 overflow-y-auto min-h-0">
-          {isLoading ? ( 
-            <div className="flex items-center justify-center h-full">
-              <div className="animate-pulse text-[#164A41] font-medium">Завантаження сесій...</div>
-            </div>
-          ) : daySessions.length === 0 ? (
-            <EmptyState
-              icon={<Dice20 className="w-14 h-14" />}
-              title="Немає запланованих сесій"
-              description="на цей день"
-              className="h-full"
-            />
-          ) : (
-            <div className="flex flex-col gap-3">
-              {daySessions.map((session) => {
-                const isExpanded = expandedSessionId === session.id;
-                
-                return (
-                  <SessionCard
-                    key={session.id}
-                    session={session}
-                    isExpanded={isExpanded}
-                    onToggle={() => toggleSessionExpanded(session.id)}
-                  />
-                );
-              })}
-            </div>
-          )}
+          {sessionsContent}
         </div>
         
         {/* Sticky Footer */}

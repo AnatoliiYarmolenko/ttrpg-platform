@@ -189,6 +189,12 @@ class CampaignService {
           orderBy: { date: 'asc' },
           take: 5,
         },
+        _count: {
+          select: {
+            sessions: true,
+            members: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -201,7 +207,12 @@ class CampaignService {
         const myMembership = campaign.members?.find((member) => member.userId === userId);
         myRole = myMembership?.role || null;
       }
-      return { ...campaign, myRole };
+      return {
+        ...campaign,
+        myRole,
+        sessionsCount: campaign._count?.sessions ?? campaign.sessions?.length ?? 0,
+        membersCount: campaign._count?.members ?? campaign.members?.length ?? 0,
+      };
     });
   }
 

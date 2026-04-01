@@ -90,8 +90,8 @@ export default function MyCampaignsWidget() {
                     {/* Статистика */}
                     <div className="flex items-center gap-4 text-sm text-[#4D774E]">
                       {campaign.system && <span className="flex items-center gap-1"><Dice20 className="w-4 h-4" /> {campaign.system}</span>}
-                      <span className="flex items-center gap-1"><GroupPeople className="w-4 h-4" /> {campaign.members?.length || 0}</span>
-                      <span className="flex items-center gap-1"><Data className="w-4 h-4" /> {campaign.sessions?.length || 0} сесій</span>
+                      <span className="flex items-center gap-1"><GroupPeople className="w-4 h-4" /> {campaign.membersCount || campaign.members?.length || 0}</span>
+                      <span className="flex items-center gap-1"><Data className="w-4 h-4" /> {campaign.sessionsCount || campaign.sessions?.length || 0} сесій</span>
                     </div>
 
                     {/* Заявки (якщо власник/GM і є pending) */}
