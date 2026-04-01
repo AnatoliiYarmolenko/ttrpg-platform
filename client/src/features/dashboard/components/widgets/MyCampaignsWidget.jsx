@@ -47,9 +47,11 @@ export default function MyCampaignsWidget() {
     );
   } else if (error) {
     content = (
-      <div className="flex flex-col items-center justify-center h-full text-red-500">
-        <p>{error}</p>
-      </div>
+      <EmptyState
+        title="Не вдалося завантажити кампанії"
+        description={error?.message || 'Спробуйте оновити сторінку ще раз'}
+        className="h-full"
+      />
     );
   } else {
     content = (
@@ -59,7 +61,7 @@ export default function MyCampaignsWidget() {
             <EmptyState
               icon={<Dice20 className="w-14 h-14" />}
               title="Немає кампаній"
-              description=" "
+              description="Створіть нову кампанію, щоб почати гру"
               className="h-full"
             />
           ) : (
@@ -93,13 +95,6 @@ export default function MyCampaignsWidget() {
                       <span className="flex items-center gap-1"><GroupPeople className="w-4 h-4" /> {campaign.membersCount || campaign.members?.length || 0}</span>
                       <span className="flex items-center gap-1"><Data className="w-4 h-4" /> {campaign.sessionsCount || campaign.sessions?.length || 0} сесій</span>
                     </div>
-
-                    {/* Заявки (якщо власник/GM і є pending) */}
-                    {campaign.joinRequests?.length > 0 && (
-                      <div className="mt-2 px-2 py-1 bg-[#F1B24A]/20 rounded-lg text-sm text-[#164A41]">
-                        {campaign.joinRequests.length} заявок на приєднання
-                      </div>
-                    )}
                   </button>
                 );
               })}

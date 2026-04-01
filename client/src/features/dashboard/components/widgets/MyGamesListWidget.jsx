@@ -64,15 +64,14 @@ SessionCard.propTypes = {
 /**
  * MyGamesListWidget — ліва панель для "Мої сесії" view.
  *
- * Три розділи:
- * 1. Мої кампанії
- * 2. Сесії в кампаніях (згруповані по кампанії)
- * 3. Мої сесії (one-shot)
+ * Два розділи:
+ * 1. Сесії в кампаніях (згруповані по кампанії)
+ * 2. Мої сесії (one-shot)
  */
 export default function MyGamesListWidget() {
   const navigate = useNavigate();
 
-  const { data: sessions = [], isLoading: isLoadingSessions } = useMySessionsQuery();
+  const { data: sessions = [], isLoading: isLoadingSessions, error } = useMySessionsQuery();
   const isLoading = isLoadingSessions;
 
   // Розбиваємо сесії на one-shot та сесії всередині кампаній
@@ -113,6 +112,18 @@ export default function MyGamesListWidget() {
             </div>
           ))}
         </div>
+      </DashboardCard>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardCard title="Мої сесії">
+        <EmptyState
+          title="Не вдалося завантажити сесії"
+          description={error?.message || 'Спробуйте оновити сторінку ще раз'}
+          className="h-full"
+        />
       </DashboardCard>
     );
   }
