@@ -1,3 +1,217 @@
+const VALID_PARTICIPANT_STATUSES = ['PENDING', 'CONFIRMED', 'DECLINED'];
+const JOINABLE_SESSION_STATUSES = ['PLANNED'];
+
+function parseId(value) {
+  return parseInt(value, 10);
+}
+
+function normalizeJoinRole(role, AppError, ERROR_CODES) {
+  const normalizedRole = String(role || 'PLAYER').toUpperCase();
+
+  if (!['PLAYER', 'GM'].includes(normalizedRole)) {
+    throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Invalid role for join request');
+  }
+
+  return normalizedRole;
+}
+
+function assertJoinableSession(session, AppError, ERROR_CODES) {
+  if (!JOINABLE_SESSION_STATUSES.includes(session.status)) {
+    throw new AppError(
+      ERROR_CODES.VALIDATION_FAILED,
+      `Cannot join a session with status ${session.status}`
+    );
+  }
+
+  if (session.campaign?.status === 'FINISHED') {
+    throw new AppError(
+      ERROR_CODES.CAMPAIGN_FINISHED,
+      'Cannot join a session in a finished campaign'
+    );
+  }
+
+  if (new Date(session.date) < new Date()) {
+    throw new AppError(
+      ERROR_CODES.VALIDATION_FAILED,
+      'Cannot join a session that has already started'
+    );
+  }
+}
+
+async function assertUserNotJoinedYet({ prisma, sessionId, userId, AppError, ERROR_CODES }) {
+  const existingParticipant = await prisma.sessionParticipant.findUnique({
+    where: {
+      userId_sessionId: { userId, sessionId: parseId(sessionId) },
+    },
+  });
+
+  if (existingParticipant) {
+    throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'User has already joined this session');
+  }
+}
+
+function assertPlayerCapacity({ normalizedRole, session, AppError, ERROR_CODES }) {
+  if (normalizedRole !== 'PLAYER') {
+    return;
+  }
+
+  const playerCount = session.participants.filter((participant) => participant.role === 'PLAYER').length;
+  if (playerCount >= session.maxPlayers) {
+    throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'No free player slots are available');
+  }
+}
+
+function assertGmCanJoin({ normalizedRole, session, permissionHelpers, AppError, ERROR_CODES }) {
+  if (normalizedRole !== 'GM') {
+    return;
+  }
+
+  const confirmedGm = permissionHelpers._getConfirmedGm(session);
+  if (confirmedGm) {
+    throw new AppError(ERROR_CODES.SESSION_GM_ALREADY_EXISTS);
+  }
+}
+
+function assertCampaignPlayerAccess({
+  normalizedRole,
+  session,
+  AppError,
+  ERROR_CODES,
+}) {
+  const isCampaignSession = Boolean(session.campaignId);
+  const isCampaignMember = Boolean(session.viewer?.isCampaignMember);
+
+  if (
+    normalizedRole === 'PLAYER'
+    && isCampaignSession
+    && session.visibility === 'PRIVATE'
+    && !isCampaignMember
+  ) {
+    throw new AppError(
+      ERROR_CODES.SECURITY_ACCESS_DENIED,
+      'Only campaign members can join a private campaign session as players'
+    );
+  }
+}
+
+function resolveJoinStatus({ normalizedRole, session }) {
+  const isCampaignSession = Boolean(session.campaignId);
+  const isCampaignMember = Boolean(session.viewer?.isCampaignMember);
+
+  if (normalizedRole !== 'PLAYER') {
+    return 'PENDING';
+  }
+
+  if (!isCampaignSession && session.visibility === 'PUBLIC') {
+    return 'CONFIRMED';
+  }
+
+  if (isCampaignSession && session.visibility === 'PRIVATE' && isCampaignMember) {
+    return 'CONFIRMED';
+  }
+
+  return 'PENDING';
+}
+
+function resolveGuestFlag({ normalizedRole, session }) {
+  return normalizedRole === 'PLAYER'
+    && Boolean(session.campaignId)
+    && session.visibility === 'PUBLIC'
+    && !session.viewer?.isCampaignMember;
+}
+
+function assertValidParticipantStatus(status, AppError, ERROR_CODES) {
+  if (!VALID_PARTICIPANT_STATUSES.includes(status)) {
+    throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Invalid participant status');
+  }
+}
+
+function assertSessionIsActiveForParticipantManagement(session, AppError, ERROR_CODES) {
+  if (['FINISHED', 'CANCELED'].includes(session.status)) {
+    throw new AppError(
+      ERROR_CODES.VALIDATION_FAILED,
+      'Participant management is unavailable for finished or canceled sessions'
+    );
+  }
+}
+
+async function findParticipantOrThrow({ prisma, participantId, sessionId, AppError, ERROR_CODES }) {
+  const participant = await prisma.sessionParticipant.findUnique({
+    where: { id: parseId(participantId) },
+  });
+
+  if (!participant || participant.sessionId !== parseId(sessionId)) {
+    throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Participant not found');
+  }
+
+  return participant;
+}
+
+async function declinePendingParticipant({
+  prisma,
+  participant,
+  participantId,
+  AppError,
+  ERROR_CODES,
+}) {
+  if (participant.status !== 'PENDING') {
+    throw new AppError(
+      ERROR_CODES.VALIDATION_FAILED,
+      'Only pending participants can be declined'
+    );
+  }
+
+  await prisma.sessionParticipant.delete({
+    where: { id: parseId(participantId) },
+  });
+
+  return {
+    ...participant,
+    status: 'DECLINED',
+  };
+}
+
+async function confirmGmParticipant({
+  prisma,
+  participantId,
+  sessionId,
+}) {
+  const participantIdInt = parseId(participantId);
+  const sessionIdInt = parseId(sessionId);
+
+  const [updatedParticipant] = await prisma.$transaction([
+    prisma.sessionParticipant.update({
+      where: { id: participantIdInt },
+      data: { status: 'CONFIRMED' },
+      include: {
+        user: {
+          select: { id: true, username: true, displayName: true, avatarUrl: true },
+        },
+      },
+    }),
+    prisma.sessionParticipant.deleteMany({
+      where: {
+        sessionId: sessionIdInt,
+        role: 'GM',
+        status: 'PENDING',
+        NOT: { id: participantIdInt },
+      },
+    }),
+  ]);
+
+  return updatedParticipant;
+}
+
+async function updateParticipantStatusRecord({ prisma, participantId, status }) {
+  return prisma.sessionParticipant.update({
+    where: { id: parseId(participantId) },
+    data: { status },
+    include: {
+      user: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+    },
+  });
+}
+
 function createSessionParticipantsService({
   prisma,
   AppError,
@@ -33,43 +247,10 @@ function createSessionParticipantsService({
     async joinSession(sessionId, userId, options = {}) {
       const { role = 'PLAYER', shareToken = null } = options;
       const session = await resolveGetSessionById(sessionId, userId, { shareToken });
+      const normalizedRole = normalizeJoinRole(role, AppError, ERROR_CODES);
 
-      const normalizedRole = String(role || 'PLAYER').toUpperCase();
-
-      if (!['PLAYER', 'GM'].includes(normalizedRole)) {
-        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Невалідна роль для заявки');
-      }
-
-      if (session.status !== 'PLANNED') {
-        throw new AppError(
-          ERROR_CODES.VALIDATION_FAILED,
-          `Не можна приєднатися до сесії зі статусом ${session.status}`
-        );
-      }
-
-      if (session.campaign?.status === 'FINISHED') {
-        throw new AppError(
-          ERROR_CODES.CAMPAIGN_FINISHED,
-          'Не можна приєднатися до сесії в завершеній кампанії'
-        );
-      }
-
-      if (new Date(session.date) < new Date()) {
-        throw new AppError(
-          ERROR_CODES.VALIDATION_FAILED,
-          'Не можна приєднатися до сесії, яка вже минула'
-        );
-      }
-
-      const existingParticipant = await prisma.sessionParticipant.findUnique({
-        where: {
-          userId_sessionId: { userId, sessionId: parseInt(sessionId) },
-        },
-      });
-
-      if (existingParticipant) {
-        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Ви вже приєднані до цієї сесії');
-      }
+      assertJoinableSession(session, AppError, ERROR_CODES);
+      await assertUserNotJoinedYet({ prisma, sessionId, userId, AppError, ERROR_CODES });
 
       await assertNoSessionTimeConflictFn(
         userId,
@@ -81,78 +262,28 @@ function createSessionParticipantsService({
         }
       );
 
-      if (normalizedRole === 'PLAYER') {
-        const playerCount = session.participants.filter((participant) => participant.role === 'PLAYER').length;
-        if (playerCount >= session.maxPlayers) {
-          throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Місць у сесії більше немає');
-        }
-      }
+      assertPlayerCapacity({ normalizedRole, session, AppError, ERROR_CODES });
+      assertGmCanJoin({ normalizedRole, session, permissionHelpers, AppError, ERROR_CODES });
+      assertCampaignPlayerAccess({ normalizedRole, session, AppError, ERROR_CODES });
 
-      if (normalizedRole === 'GM') {
-        const confirmedGm = permissionHelpers._getConfirmedGm(session);
-        if (confirmedGm) {
-          throw new AppError(ERROR_CODES.SESSION_GM_ALREADY_EXISTS);
-        }
-      }
-
-      const isCampaignSession = Boolean(session.campaignId);
-      const isCampaignMember = Boolean(session.viewer?.isCampaignMember);
-
-      if (
-        normalizedRole === 'PLAYER'
-        && isCampaignSession
-        && session.visibility === 'PRIVATE'
-        && !isCampaignMember
-      ) {
-        throw new AppError(
-          ERROR_CODES.SECURITY_ACCESS_DENIED,
-          'Для звичайної сесії кампанії спочатку потрібно бути учасником кампанії'
-        );
-      }
-
-      let status = 'PENDING';
-      if (normalizedRole === 'PLAYER') {
-        if (!isCampaignSession && session.visibility === 'PUBLIC') {
-          // One-shot: публічні сесії підтверджуються автоматично.
-          status = 'CONFIRMED';
-        }
-
-        if (isCampaignSession && session.visibility === 'PRIVATE' && isCampaignMember) {
-          // Кампанійна "звичайна" сесія: члени кампанії входять одразу.
-          status = 'CONFIRMED';
-        }
-
-        if (isCampaignSession && session.visibility === 'PUBLIC') {
-          // Кампанійна "гостьова" сесія: вхід через підтвердження.
-          status = 'PENDING';
-        }
-      }
-
-      const isGuest = normalizedRole === 'PLAYER'
-        && isCampaignSession
-        && session.visibility === 'PUBLIC'
-        && !isCampaignMember;
-
-      const participant = await prisma.sessionParticipant.create({
+      return prisma.sessionParticipant.create({
         data: {
           userId,
-          sessionId: parseInt(sessionId),
+          sessionId: parseId(sessionId),
           role: normalizedRole,
-          status,
-          isGuest,
+          status: resolveJoinStatus({ normalizedRole, session }),
+          isGuest: resolveGuestFlag({ normalizedRole, session }),
         },
         include: {
           user: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
         },
       });
-
-      return participant;
     },
 
     async leaveSession(sessionId, userId) {
       const participant = await prisma.sessionParticipant.findUnique({
         where: {
-          userId_sessionId: { userId, sessionId: parseInt(sessionId) },
+          userId_sessionId: { userId, sessionId: parseId(sessionId) },
         },
         include: {
           session: {
@@ -166,30 +297,30 @@ function createSessionParticipantsService({
       });
 
       if (!participant) {
-        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Ви не є учасником цієї сесії');
+        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'User is not a participant of this session');
       }
 
       if (['FINISHED', 'CANCELED'].includes(participant.session.status)) {
         throw new AppError(
           ERROR_CODES.VALIDATION_FAILED,
-          'Не можна вийти з завершеної або скасованої сесії'
+          'Cannot leave a finished or canceled session'
         );
       }
 
       if (participant.session.status === 'ACTIVE') {
         throw new AppError(
           ERROR_CODES.VALIDATION_FAILED,
-          'Гра вже триває, вихід неможливий'
+          'The session is already active, leaving is not allowed'
         );
       }
 
       if (participant.role === 'GM' && participant.session.ownerId === userId) {
-        throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'GM не може вийти з власної сесії');
+        throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'The owner GM cannot leave the session');
       }
 
       await prisma.sessionParticipant.delete({
         where: {
-          userId_sessionId: { userId, sessionId: parseInt(sessionId) },
+          userId_sessionId: { userId, sessionId: parseId(sessionId) },
         },
       });
     },
@@ -203,92 +334,47 @@ function createSessionParticipantsService({
       const { preloadedSession = null } = options;
       const session = await resolveSessionContextFn(sessionId, requesterId, preloadedSession);
 
-      const validStatuses = ['PENDING', 'CONFIRMED', 'DECLINED'];
-      if (!validStatuses.includes(status)) {
-        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Невалідний статус учасника');
-      }
+      assertValidParticipantStatus(status, AppError, ERROR_CODES);
+      assertSessionIsActiveForParticipantManagement(session, AppError, ERROR_CODES);
 
-      if (['FINISHED', 'CANCELED'].includes(session.status)) {
-        throw new AppError(
-          ERROR_CODES.VALIDATION_FAILED,
-          'Не можна змінювати статус учасника для завершеної або скасованої сесії'
-        );
-      }
-
-      const participant = await prisma.sessionParticipant.findUnique({
-        where: { id: parseInt(participantId) },
+      const participant = await findParticipantOrThrow({
+        prisma,
+        participantId,
+        sessionId,
+        AppError,
+        ERROR_CODES,
       });
 
-      if (!participant || participant.sessionId !== parseInt(sessionId)) {
-        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Учасник не знайдений');
-      }
-
-      // Rejection flow means removing the pending application instead of storing DECLINED.
       if (status === 'DECLINED') {
-        if (participant.status !== 'PENDING') {
-          throw new AppError(
-            ERROR_CODES.VALIDATION_FAILED,
-            'Відхиляти можна тільки заявки зі статусом PENDING'
-          );
-        }
-
-        await prisma.sessionParticipant.delete({
-          where: { id: parseInt(participantId) },
+        return declinePendingParticipant({
+          prisma,
+          participant,
+          participantId,
+          AppError,
+          ERROR_CODES,
         });
-
-        return {
-          ...participant,
-          status: 'DECLINED',
-        };
       }
-
-      const sessionIdInt = parseInt(sessionId);
-      const participantIdInt = parseInt(participantId);
 
       if (participant.role === 'GM') {
         if (!permissionHelpers._isSessionOwner(session, requesterId)) {
-          throw new AppError(ERROR_CODES.SESSION_OWNER_ONLY, 'Тільки власник сесії може керувати заявками GM');
+          throw new AppError(ERROR_CODES.SESSION_OWNER_ONLY, 'Only the owner can manage GM requests');
         }
 
         if (status === 'CONFIRMED') {
-          const [updatedParticipant] = await prisma.$transaction([
-            prisma.sessionParticipant.update({
-              where: { id: participantIdInt },
-              data: { status },
-              include: {
-                user: {
-                  select: { id: true, username: true, displayName: true, avatarUrl: true },
-                },
-              },
-            }),
-            prisma.sessionParticipant.deleteMany({
-              where: {
-                sessionId: sessionIdInt,
-                role: 'GM',
-                status: 'PENDING',
-                NOT: { id: participantIdInt },
-              },
-            }),
-          ]);
-
-          return updatedParticipant;
+          return confirmGmParticipant({
+            prisma,
+            participantId,
+            sessionId,
+          });
         }
       } else if (!permissionHelpers._canManageParticipants(session, requesterId)) {
         throw new AppError(
           ERROR_CODES.SESSION_GM_ONLY,
-          'Тільки підтверджений GM або власник може керувати гравцями'
+          'Only a confirmed GM or the owner can manage players'
         );
       }
 
-      const updated = await prisma.sessionParticipant.update({
-        where: { id: participantIdInt },
-        data: { status },
-        include: {
-          user: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-        },
-      });
-
-      return updated;
+      return updateParticipantStatusRecord({ prisma, participantId, status });
     },
 
     async removeParticipant(sessionId, participantId, requesterId, options = {}) {
@@ -298,21 +384,21 @@ function createSessionParticipantsService({
       if (['FINISHED', 'CANCELED'].includes(session.status)) {
         throw new AppError(
           ERROR_CODES.VALIDATION_FAILED,
-          'Не можна видаляти учасників із завершеної сесії'
+          'Participant removal is unavailable for finished or canceled sessions'
         );
       }
 
       const participant = await prisma.sessionParticipant.findUnique({
-        where: { id: parseInt(participantId) },
+        where: { id: parseId(participantId) },
       });
 
-      if (!participant || participant.sessionId !== parseInt(sessionId)) {
-        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Учасник не знайдений');
+      if (!participant || participant.sessionId !== parseId(sessionId)) {
+        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Participant not found');
       }
 
       const requesterIsSessionOwner = permissionHelpers._isSessionOwner(session, requesterId);
       if (participant.userId === session.ownerId && !requesterIsSessionOwner) {
-        throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'Майстер не може видаляти власника сесії');
+        throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'You cannot remove the session owner');
       }
 
       if (participant.role === 'GM') {
@@ -320,28 +406,28 @@ function createSessionParticipantsService({
           || permissionHelpers._isCampaignOwnerOverride(session, requesterId);
 
         if (!canManageGm) {
-          throw new AppError(ERROR_CODES.SESSION_OWNER_ONLY, 'Тільки власник сесії може керувати GM');
+          throw new AppError(ERROR_CODES.SESSION_OWNER_ONLY, 'Only the owner can remove a GM');
         }
 
         if (session.status !== 'PLANNED') {
           throw new AppError(
             ERROR_CODES.SESSION_NO_GM_KICK_ACTIVE,
-            'Керувати роллю GM можна тільки для запланованої сесії'
+            'A GM can be removed only while the session is planned'
           );
         }
 
         if (participant.userId === session.ownerId) {
-          throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'Не можна видаляти Owner з ролі GM');
+          throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'Cannot remove the owner from the GM role');
         }
       } else if (!permissionHelpers._canManageParticipants(session, requesterId)) {
         throw new AppError(
           ERROR_CODES.SESSION_GM_ONLY,
-          'Тільки підтверджений GM або власник може видаляти учасників'
+          'Only a confirmed GM or the owner can remove participants'
         );
       }
 
       await prisma.sessionParticipant.delete({
-        where: { id: parseInt(participantId) },
+        where: { id: parseId(participantId) },
       });
     },
 
@@ -353,21 +439,21 @@ function createSessionParticipantsService({
         || permissionHelpers._isCampaignOwnerOverride(session, requesterId);
 
       if (!canKickGm) {
-        throw new AppError(ERROR_CODES.SESSION_OWNER_ONLY, 'Тільки власник сесії може кікнути GM');
+        throw new AppError(ERROR_CODES.SESSION_OWNER_ONLY, 'Only the owner can remove the GM');
       }
 
       if (session.status !== 'PLANNED') {
-        throw new AppError(ERROR_CODES.SESSION_NO_GM_KICK_ACTIVE, 'Кікнути GM можна тільки для запланованої сесії');
+        throw new AppError(ERROR_CODES.SESSION_NO_GM_KICK_ACTIVE, 'A GM can be removed only while the session is planned');
       }
 
       const confirmedGm = permissionHelpers._getConfirmedGm(session);
 
       if (!confirmedGm) {
-        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'У сесії немає підтвердженого GM');
+        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'There is no confirmed GM in this session');
       }
 
       if (confirmedGm.userId === session.ownerId) {
-        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Неможливо кікнути GM, якщо ним є власник сесії');
+        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Cannot remove the owner GM');
       }
 
       await prisma.sessionParticipant.delete({

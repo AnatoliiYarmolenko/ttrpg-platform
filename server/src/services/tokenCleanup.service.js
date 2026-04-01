@@ -15,8 +15,7 @@ class TokenCleanupService {
   async cleanupExpiredTokens() {
     try {
       const now = new Date();
-      
-      // Видаляємо токени, які прострочилися
+
       const result = await prisma.refreshToken.deleteMany({
         where: {
           expiresAt: {
@@ -59,7 +58,7 @@ class TokenCleanupService {
    */
   async cleanupRevokedTokens(daysOld = 1) {
     const timestamp = new Date().toISOString();
-    
+
     try {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - daysOld);
@@ -99,9 +98,11 @@ class TokenCleanupService {
    */
   async performFullCleanup() {
     logger.info('Token Cleanup: Початок повної очистки токенів');
-    
-    const expiredResult = await this.cleanupExpiredTokens();
-    const revokedResult = await this.cleanupRevokedTokens();
+
+    const [expiredResult, revokedResult] = await Promise.all([
+      Promise.resolve(this.cleanupExpiredTokens()),
+      Promise.resolve(this.cleanupRevokedTokens()),
+    ]);
 
     return {
       expired: expiredResult,
@@ -113,12 +114,12 @@ class TokenCleanupService {
   /**
    * Запускає cron job для автоматичної очистки
    * @param {string} schedule - Cron розклад (за замовченням щодня о 2:00 AM)
-   * 
-   * Приклади розкладу:
-   * "0 2 * * *" - 02:00 кожного дня
-   * "0 asterisk/6 * * *" - кожні 6 годин
-   * "0 0 * * 0" - щонеділі о 00:00
-   * "asterisk/15 * * * *" - кожні 15 хвилин
+   *
+    * Приклади розкладу:
+    * - щодня о 02:00
+    * - кожні 6 годин
+    * - щонеділі о 00:00
+    * - кожні 15 хвилин
    */
   startCleanupJob(schedule = '0 2 * * *') {
     if (this.cronJob) {
@@ -147,7 +148,7 @@ class TokenCleanupService {
   }
 
   /**
-   * Зупиняє cron job
+   * Stops the cron job.
    */
   stopCleanupJob() {
     if (this.cronJob) {
@@ -208,5 +209,4 @@ class TokenCleanupService {
   }
 }
 
-// Експортуємо singleton
 module.exports = new TokenCleanupService();

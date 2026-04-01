@@ -1,3 +1,109 @@
+function findStoredRefreshToken(prisma, tokenCandidates) {
+  return prisma.refreshToken.findFirst({
+    where: { token: { in: tokenCandidates } },
+    select: { id: true, userId: true, expiresAt: true },
+  });
+}
+
+function assertRefreshTokenPresence({ prisma, logger, createError, oldRefreshToken }) {
+  if (!prisma || !prisma.refreshToken) {
+    logger.error('Prisma client or refreshToken model is unavailable');
+    throw createError.serverError();
+  }
+
+  if (!oldRefreshToken) {
+    throw createError.refreshTokenMissing();
+  }
+}
+
+function assertTokenCandidates(tokenCandidates, createError) {
+  if (tokenCandidates.length === 0) {
+    throw createError.refreshTokenInvalid();
+  }
+}
+
+function assertStoredToken(storedToken, createError) {
+  if (!storedToken) {
+    throw createError.refreshTokenInvalid();
+  }
+
+  if (new Date() > storedToken.expiresAt) {
+    throw createError.refreshTokenExpired();
+  }
+}
+
+async function acquireUserRefreshLock({
+  acquireRefreshLock,
+  createError,
+  logger,
+  userId,
+}) {
+  try {
+    const lockValue = await acquireRefreshLock(userId, 5000);
+
+    if (!lockValue) {
+      throw createError.rateLimitExceeded(5);
+    }
+
+    return lockValue;
+  } catch (err) {
+    if (err && err.status === 429) {
+      throw err;
+    }
+
+    logger.error({ err, userId }, '[Auth] Redis lock is unavailable');
+    return null;
+  }
+}
+
+async function loadRefreshUser({ prisma, createError, isUserDeleted, userId }) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, username: true, email: true, role: true },
+  });
+
+  if (!user || await isUserDeleted(user.id)) {
+    throw createError.userNotFound();
+  }
+
+  return user;
+}
+
+function createAccessToken({ jwt, jwtSecret, user }) {
+  return jwt.sign(
+    { id: user.id, username: user.username, role: user.role },
+    jwtSecret,
+    { expiresIn: '15m' }
+  );
+}
+
+function createSafeUser(user) {
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    role: user.role,
+    createdAt: new Date(),
+  };
+}
+
+async function releaseUserRefreshLock({
+  releaseRefreshLock,
+  logger,
+  userId,
+  lockValue,
+}) {
+  if (!lockValue) {
+    return;
+  }
+
+  try {
+    await releaseRefreshLock(userId, lockValue);
+  } catch (err) {
+    logger.error({ err, userId }, '[Auth] Failed to release Redis lock');
+  }
+}
+
 function createAuthTokenService({
   prisma,
   jwt,
@@ -14,118 +120,72 @@ function createAuthTokenService({
 }) {
   return {
     async refreshTokens(oldRefreshToken) {
-      if (!prisma || !prisma.refreshToken) {
-        logger.error('Prisma Client або модель refreshToken недоступні');
-        throw createError.serverError();
-      }
-
-      if (!oldRefreshToken) {
-        throw createError.refreshTokenMissing();
-      }
+      assertRefreshTokenPresence({ prisma, logger, createError, oldRefreshToken });
 
       const tokenCandidates = getTokenCandidates(oldRefreshToken);
-      if (tokenCandidates.length === 0) {
-        throw createError.refreshTokenInvalid();
-      }
+      assertTokenCandidates(tokenCandidates, createError);
 
-      let stored = await prisma.refreshToken.findFirst({
-        where: { token: { in: tokenCandidates } },
-        select: { id: true, userId: true, expiresAt: true },
-      });
-
-      if (!stored) {
-        throw createError.refreshTokenInvalid();
-      }
-
-      if (new Date() > stored.expiresAt) {
-        throw createError.refreshTokenExpired();
-      }
+      let stored = await findStoredRefreshToken(prisma, tokenCandidates);
+      assertStoredToken(stored, createError);
 
       await checkRefreshRateLimit(stored.userId);
 
-      let lockValue = null;
-      try {
-        lockValue = await acquireRefreshLock(stored.userId, 5000);
-        if (!lockValue) {
-          throw createError.rateLimitExceeded(5);
-        }
-      } catch (err) {
-        if (err && err.status === 429) {
-          throw err;
-        }
-        logger.error({ err, userId: stored.userId }, '[Auth] Redis lock недоступний');
-      }
+      const lockValue = await acquireUserRefreshLock({
+        acquireRefreshLock,
+        createError,
+        logger,
+        userId: stored.userId,
+      });
 
       try {
-        const storedAgain = await prisma.refreshToken.findFirst({
-          where: { token: { in: tokenCandidates } },
-          select: { id: true, userId: true, expiresAt: true },
-        });
-
-        if (!storedAgain) {
-          throw createError.refreshTokenInvalid();
-        }
+        stored = await findStoredRefreshToken(prisma, tokenCandidates);
+        assertStoredToken(stored, createError);
 
         const now = new Date();
         await prisma.refreshToken.deleteMany({
-          where: { userId: storedAgain.userId, expiresAt: { lt: now } },
+          where: { userId: stored.userId, expiresAt: { lt: now } },
         });
 
-        const user = await prisma.user.findUnique({
-          where: { id: storedAgain.userId },
-          select: { id: true, username: true, email: true, role: true },
+        const user = await loadRefreshUser({
+          prisma,
+          createError,
+          isUserDeleted,
+          userId: stored.userId,
         });
 
-        if (!user) {
-          throw createError.userNotFound();
-        }
+        await prisma.refreshToken.delete({ where: { id: stored.id } });
 
-        if (await isUserDeleted(user.id)) {
-          throw createError.userNotFound();
-        }
-
-        await prisma.refreshToken.delete({ where: { id: storedAgain.id } });
-
-        const accessToken = jwt.sign(
-          { id: user.id, username: user.username, role: user.role },
-          jwtSecret,
-          { expiresIn: '15m' }
-        );
-
-        const { rawToken: newRefreshToken, tokenHash: newRefreshTokenHash } = createRawAndHashedToken(64);
+        const accessToken = createAccessToken({ jwt, jwtSecret, user });
+        const { rawToken: newRefreshToken, tokenHash: newRefreshTokenHash } =
+          createRawAndHashedToken(64);
         const expiresAt = new Date(Date.now() + TOKEN_TTL_MS.REFRESH_TOKEN);
 
         await prisma.refreshToken.create({
           data: { token: newRefreshTokenHash, userId: user.id, expiresAt },
         });
 
-        const safeUser = {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          role: user.role,
-          createdAt: new Date(),
+        return {
+          accessToken,
+          refreshToken: newRefreshToken,
+          user: createSafeUser(user),
         };
-
-        return { accessToken, refreshToken: newRefreshToken, user: safeUser };
       } finally {
-        if (lockValue) {
-          try {
-            await releaseRefreshLock(stored.userId, lockValue);
-          } catch (err) {
-            logger.error({ err, userId: stored.userId }, '[Auth] Не вдалося звільнити Redis lock');
-          }
-        }
+        await releaseUserRefreshLock({
+          releaseRefreshLock,
+          logger,
+          userId: stored.userId,
+          lockValue,
+        });
       }
     },
 
     async revokeRefreshToken(refreshToken) {
-      if (!refreshToken) return;
+      if (!refreshToken || !prisma || !prisma.refreshToken) {
+        return;
+      }
 
       const tokenCandidates = getTokenCandidates(refreshToken);
-      if (tokenCandidates.length === 0) return;
-
-      if (!prisma || !prisma.refreshToken) {
+      if (tokenCandidates.length === 0) {
         return;
       }
 
@@ -136,7 +196,7 @@ function createAuthTokenService({
           },
         });
       } catch (error) {
-        // ignore logout revoke errors
+        // Ignore logout revoke errors.
       }
     },
   };
