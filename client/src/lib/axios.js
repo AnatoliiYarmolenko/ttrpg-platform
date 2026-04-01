@@ -1,9 +1,9 @@
 import axios from 'axios';
 
-// 1. Створюємо інстанс
+// Shared axios instance configuration.
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api', // Перевір свій URL
-  withCredentials: true, // Важливо для cookies
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -16,15 +16,15 @@ const RECOVERABLE_AUTH_ERROR_CODES = new Set([
   'AUTH_TOKEN_INVALID',
 ]);
 
-// === CSRF Logic ===
 const getCSRFToken = () => {
-  // Твій код без змін
-  if (typeof document === 'undefined') return null; // Перевірка на всяк випадок
+  if (typeof document === 'undefined') return null;
+
   const cookies = document.cookie.split(';');
-  for (let cookie of cookies) {
+  for (const cookie of cookies) {
     const [name, value] = cookie.trim().split('=');
     if (name === 'XSRF-TOKEN') return decodeURIComponent(value);
   }
+
   return null;
 };
 
@@ -55,32 +55,66 @@ const shouldAttemptRefresh = (error) => {
   return RECOVERABLE_AUTH_ERROR_CODES.has(code);
 };
 
-// === Interceptors: Request ===
-api.interceptors.request.use(
-    (config) => {
-      const csrfToken = getCSRFToken();
-      if (csrfToken) config.headers['X-CSRF-Token'] = csrfToken;
-      
-      // Запобігаємо кешуванню для профілю/автентифікації без маніпуляції URL.
-      if (config.url?.startsWith('/profile') || config.url?.startsWith('/auth/')) {
-        config.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
-        config.headers.Pragma = 'no-cache';
-      }
-      
-      return config;
-    },
-    (error) => Promise.reject(error)
-  );
+const shouldRetryCsrf = (error, originalRequest) => (
+  Boolean(originalRequest)
+  && isCsrfError(error)
+  && !originalRequest._csrfRetry
+  && !originalRequest._skipCsrfRetry
+  && !originalRequest.url?.includes('/auth/csrf-token')
+);
 
-// === Refresh Token Logic ===
+const shouldHandleRefresh = (error, originalRequest) => (
+  shouldAttemptRefresh(error)
+  && !originalRequest?._retry
+  && !originalRequest?.url?.includes('/auth/refresh')
+  && !originalRequest?.url?.includes('/auth/login')
+);
+
+const isLoginRoute = (originalRequest) => (
+  originalRequest?.url?.includes('/auth/login')
+);
+
+const clearExpiredAuthState = () => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  if (window.localStorage) {
+    window.localStorage.removeItem('ttrpg_app_user');
+  }
+
+  window.dispatchEvent(
+    new CustomEvent('app:auth-expired', { detail: { redirectTo: '/login' } })
+  );
+};
+
+api.interceptors.request.use(
+  (config) => {
+    const csrfToken = getCSRFToken();
+    if (csrfToken) {
+      config.headers['X-CSRF-Token'] = csrfToken;
+    }
+
+    if (config.url?.startsWith('/profile') || config.url?.startsWith('/auth/')) {
+      config.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+      config.headers.Pragma = 'no-cache';
+    }
+
+    return config;
+  },
+  (error) => {
+    throw error;
+  }
+);
+
 let isRefreshing = false;
 let failedQueue = [];
 let csrfBootstrapPromise = null;
 
 const processQueue = (error, token = null) => {
-  failedQueue.forEach((prom) => {
-    if (error) prom.reject(error);
-    else prom.resolve(token);
+  failedQueue.forEach((promiseHandlers) => {
+    if (error) promiseHandlers.reject(error);
+    else promiseHandlers.resolve(token);
   });
   failedQueue = [];
 };
@@ -97,82 +131,65 @@ const ensureCsrfCookie = async () => {
   return csrfBootstrapPromise;
 };
 
-// === Interceptors: Response ===
+const retryWithFreshCsrf = async (originalRequest) => {
+  originalRequest._csrfRetry = true;
+  await ensureCsrfCookie();
+  return api(originalRequest);
+};
+
+const waitForRefreshAndRetry = (originalRequest) => (
+  new Promise((resolve, reject) => {
+    failedQueue.push({ resolve, reject });
+  }).then(() => api(originalRequest))
+);
+
+const handleRefreshFailure = (refreshError, originalRequest) => {
+  processQueue(refreshError, null);
+
+  const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+  if (currentPath !== '/login' && !isLoginRoute(originalRequest)) {
+    clearExpiredAuthState();
+  }
+
+  throw refreshError;
+};
+
+const refreshAndRetryRequest = async (originalRequest) => {
+  if (isRefreshing) {
+    return waitForRefreshAndRetry(originalRequest);
+  }
+
+  originalRequest._retry = true;
+  isRefreshing = true;
+
+  try {
+    await api.post('/auth/refresh');
+    processQueue(null, null);
+    return api(originalRequest);
+  } catch (refreshError) {
+    return handleRefreshFailure(refreshError, originalRequest);
+  } finally {
+    isRefreshing = false;
+  }
+};
+
+const handleResponseError = async (error) => {
+  const originalRequest = error.config;
+
+  if (shouldRetryCsrf(error, originalRequest)) {
+    return retryWithFreshCsrf(originalRequest);
+  }
+
+  if (shouldHandleRefresh(error, originalRequest)) {
+    return refreshAndRetryRequest(originalRequest);
+  }
+
+  throw error;
+};
+
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-
-    if (
-      originalRequest &&
-      isCsrfError(error) &&
-      !originalRequest._csrfRetry &&
-      !originalRequest._skipCsrfRetry &&
-      !originalRequest.url?.includes('/auth/csrf-token')
-    ) {
-      originalRequest._csrfRetry = true;
-
-      try {
-        await ensureCsrfCookie();
-        return api(originalRequest);
-      } catch (csrfError) {
-        return Promise.reject(csrfError);
-      }
-    }
-
-    // Перевіряємо помилки 401/403 і щоб це не був сам запит на рефреш/логін
-    if (
-      shouldAttemptRefresh(error) &&
-      !originalRequest._retry &&
-      !originalRequest.url?.includes('/auth/refresh') &&
-      !originalRequest.url?.includes('/auth/login')
-    ) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then(() => api(originalRequest))
-          .catch((err) => Promise.reject(err));
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        // Тут ми викликаємо рефреш через сам інстанс або окремий axios,
-        // але важливо, щоб шляхи збігалися з бекендом
-        await api.post('/auth/refresh'); 
-        
-        processQueue(null, null);
-        isRefreshing = false;
-        
-        // Повторюємо оригінальний запит
-        return api(originalRequest);
-      } catch (refreshError) {
-        processQueue(refreshError, null);
-        isRefreshing = false;
-        
-        // Тільки тут ми робимо редірект або чистку
-        // Уникаємо циклу - не робимо редірект, якщо вже на сторінці логіну
-        // або якщо це запит зі сторінки логіну
-        const currentPath = window.location.pathname;
-        if (currentPath !== '/login' && !originalRequest.url?.includes('/auth/login')) {
-          // Очищаємо localStorage перед редіректом
-          if (typeof window !== 'undefined' && window.localStorage) {
-            window.localStorage.removeItem('ttrpg_app_user');
-          }
-
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(
-              new CustomEvent('app:auth-expired', { detail: { redirectTo: '/login' } })
-            );
-          }
-        }
-        return Promise.reject(refreshError);
-      }
-    }
-    return Promise.reject(error);
-  }
+  handleResponseError
 );
 
 export default api;

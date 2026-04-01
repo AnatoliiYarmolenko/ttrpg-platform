@@ -1,3 +1,358 @@
+const SESSION_SETTINGS_FIELDS = [
+  'title',
+  'description',
+  'date',
+  'duration',
+  'maxPlayers',
+  'price',
+  'visibility',
+  'system',
+];
+
+const ALLOWED_STATUS_TRANSITIONS = {
+  PLANNED: ['ACTIVE', 'FINISHED', 'CANCELED'],
+  ACTIVE: ['FINISHED', 'CANCELED'],
+  FINISHED: [],
+  CANCELED: [],
+};
+
+function hasOwnField(data, field) {
+  return Object.prototype.hasOwnProperty.call(data, field);
+}
+
+function buildSessionUpdateMeta(session, normalizedUpdateData) {
+  const sessionDate = new Date(session.date);
+
+  return {
+    sessionDate,
+    isSessionInPast:
+      !Number.isNaN(sessionDate.getTime()) && sessionDate.getTime() < Date.now(),
+    hasSettingsUpdate: SESSION_SETTINGS_FIELDS.some((field) => hasOwnField(normalizedUpdateData, field)),
+    hasStatusUpdate: hasOwnField(normalizedUpdateData, 'status'),
+  };
+}
+
+function assertSessionUpdatePermissions({
+  session,
+  requesterId,
+  updateMeta,
+  permissionHelpers,
+  AppError,
+  ERROR_CODES,
+}) {
+  if (updateMeta.hasSettingsUpdate && !permissionHelpers._canEditSessionSettings(session, requesterId)) {
+    throw new AppError(ERROR_CODES.SESSION_OWNER_ONLY);
+  }
+
+  if (updateMeta.hasSettingsUpdate && session.campaign?.status === 'FINISHED') {
+    throw new AppError(
+      ERROR_CODES.CAMPAIGN_FINISHED,
+      'Cannot update session settings in a finished campaign'
+    );
+  }
+
+  if (updateMeta.hasStatusUpdate && !permissionHelpers._canChangeSessionStatus(session, requesterId)) {
+    throw new AppError(ERROR_CODES.SESSION_GM_ONLY);
+  }
+}
+
+function removePastSessionSettingsUpdates({
+  normalizedUpdateData,
+  updateMeta,
+  AppError,
+  ERROR_CODES,
+}) {
+  if (!updateMeta.isSessionInPast || !updateMeta.hasSettingsUpdate) {
+    return;
+  }
+
+  if (!updateMeta.hasStatusUpdate) {
+    throw new AppError(
+      ERROR_CODES.VALIDATION_FAILED,
+      'Cannot update the settings of a session that already happened'
+    );
+  }
+
+  SESSION_SETTINGS_FIELDS.forEach((field) => {
+    delete normalizedUpdateData[field];
+  });
+}
+
+function resolveTargetTiming(session, normalizedUpdateData) {
+  const hasDateChange = normalizedUpdateData.date !== undefined;
+  const hasDurationChange = normalizedUpdateData.duration !== undefined;
+
+  return {
+    hasDateChange,
+    hasDurationChange,
+    targetDate: hasDateChange ? normalizedUpdateData.date : session.date,
+    targetDuration: hasDurationChange ? normalizedUpdateData.duration : session.duration,
+  };
+}
+
+async function assertOwnerTimeConflict({
+  prisma,
+  AppError,
+  ERROR_CODES,
+  datetimeHelpers,
+  session,
+  targetDate,
+  targetDuration,
+}) {
+  await datetimeHelpers._assertNoSessionTimeConflict(
+    { prisma, AppError, ERROR_CODES },
+    session.ownerId,
+    targetDate,
+    targetDuration,
+    {
+      excludeSessionId: session.id,
+      conflictErrorCode: ERROR_CODES.SESSION_TIME_CONFLICT_OWNER,
+    }
+  );
+}
+
+async function collectConflictingParticipantIds({
+  prisma,
+  AppError,
+  ERROR_CODES,
+  datetimeHelpers,
+  session,
+  targetDate,
+  targetDuration,
+}) {
+  const confirmedParticipants = session.participants.filter(
+    (participant) => participant.status === 'CONFIRMED' && participant.userId !== session.ownerId
+  );
+  const conflictingParticipantIds = [];
+
+  for (const participant of confirmedParticipants) {
+    try {
+      await datetimeHelpers._assertNoSessionTimeConflict(
+        { prisma, AppError, ERROR_CODES },
+        participant.userId,
+        targetDate,
+        targetDuration,
+        {
+          excludeSessionId: session.id,
+          conflictErrorCode: ERROR_CODES.SESSION_TIME_CONFLICT_PLAYER,
+        }
+      );
+    } catch (conflictError) {
+      if (conflictError.code !== ERROR_CODES.SESSION_TIME_CONFLICT_PLAYER) {
+        throw conflictError;
+      }
+
+      conflictingParticipantIds.push(participant.id);
+    }
+  }
+
+  return conflictingParticipantIds;
+}
+
+async function resolveTimingConflicts({
+  prisma,
+  AppError,
+  ERROR_CODES,
+  datetimeHelpers,
+  session,
+  normalizedUpdateData,
+}) {
+  const timing = resolveTargetTiming(session, normalizedUpdateData);
+
+  if (!timing.hasDateChange && !timing.hasDurationChange) {
+    return [];
+  }
+
+  await assertOwnerTimeConflict({
+    prisma,
+    AppError,
+    ERROR_CODES,
+    datetimeHelpers,
+    session,
+    targetDate: timing.targetDate,
+    targetDuration: timing.targetDuration,
+  });
+
+  return collectConflictingParticipantIds({
+    prisma,
+    AppError,
+    ERROR_CODES,
+    datetimeHelpers,
+    session,
+    targetDate: timing.targetDate,
+    targetDuration: timing.targetDuration,
+  });
+}
+
+function assertValidStatusTransition({
+  session,
+  nextStatus,
+  AppError,
+  ERROR_CODES,
+}) {
+  if (!nextStatus || nextStatus === session.status) {
+    return;
+  }
+
+  const allowedNextStatuses = ALLOWED_STATUS_TRANSITIONS[session.status] || [];
+  if (!allowedNextStatuses.includes(nextStatus)) {
+    throw new AppError(
+      ERROR_CODES.VALIDATION_FAILED,
+      `Invalid status transition: ${session.status} -> ${nextStatus}`
+    );
+  }
+}
+
+async function assertPlannedToActiveTransitionAllowed({
+  prisma,
+  AppError,
+  ERROR_CODES,
+  datetimeHelpers,
+  requesterId,
+  sessionDate,
+}) {
+  const now = new Date();
+  const requester = await prisma.user.findUnique({
+    where: { id: requesterId },
+    select: { timezone: true },
+  });
+  const userTimeZone = requester?.timezone || 'Europe/Kyiv';
+
+  if (!datetimeHelpers._isSameDayInTimeZone(now, sessionDate, userTimeZone)) {
+    throw new AppError(ERROR_CODES.SESSION_START_ONLY_ON_SCHEDULED_DAY);
+  }
+}
+
+function assertPlannedToFinishedTransitionAllowed({
+  AppError,
+  ERROR_CODES,
+  datetimeHelpers,
+  session,
+}) {
+  const now = new Date();
+  const finishAllowedAt = datetimeHelpers._getSessionEndWithGrace(session.date, session.duration, 2);
+
+  if (now < finishAllowedAt) {
+    throw new AppError(ERROR_CODES.SESSION_MARK_FINISHED_TOO_EARLY);
+  }
+}
+
+async function assertStatusTransitionRules({
+  prisma,
+  AppError,
+  ERROR_CODES,
+  datetimeHelpers,
+  session,
+  requesterId,
+  normalizedUpdateData,
+  sessionDate,
+}) {
+  const nextStatus = normalizedUpdateData.status;
+
+  assertValidStatusTransition({ session, nextStatus, AppError, ERROR_CODES });
+
+  if (session.status === 'PLANNED' && nextStatus === 'ACTIVE') {
+    await assertPlannedToActiveTransitionAllowed({
+      prisma,
+      AppError,
+      ERROR_CODES,
+      datetimeHelpers,
+      requesterId,
+      sessionDate,
+    });
+  }
+
+  if (session.status === 'PLANNED' && nextStatus === 'FINISHED') {
+    assertPlannedToFinishedTransitionAllowed({
+      AppError,
+      ERROR_CODES,
+      datetimeHelpers,
+      session,
+    });
+  }
+}
+
+function resolveShareTokenState({
+  session,
+  normalizedUpdateData,
+  createRawEncryptedAndHashedShareToken,
+  AppError,
+  ERROR_CODES,
+}) {
+  const targetVisibility = hasOwnField(normalizedUpdateData, 'visibility')
+    ? normalizedUpdateData.visibility
+    : session.visibility;
+
+  if (session.campaignId && targetVisibility === 'LINK_ONLY') {
+    throw new AppError(
+      ERROR_CODES.VALIDATION_FAILED,
+      'LINK_ONLY is allowed only for one-shot sessions'
+    );
+  }
+
+  const isEnteringLinkOnly = targetVisibility === 'LINK_ONLY' && session.visibility !== 'LINK_ONLY';
+  const isLeavingLinkOnly = targetVisibility !== 'LINK_ONLY' && session.visibility === 'LINK_ONLY';
+  const needsInitialLinkOnlyToken = targetVisibility === 'LINK_ONLY' && !session.shareTokenHash;
+  const shouldCreateShareToken = isEnteringLinkOnly || needsInitialLinkOnlyToken;
+
+  return {
+    isLeavingLinkOnly,
+    shareTokenData: shouldCreateShareToken
+      ? createRawEncryptedAndHashedShareToken()
+      : null,
+  };
+}
+
+function resolveShareTokenFieldValue({ shareTokenData, isLeavingLinkOnly, field }) {
+  if (shareTokenData) {
+    return shareTokenData[field];
+  }
+
+  return isLeavingLinkOnly ? null : undefined;
+}
+
+function buildSessionUpdatePayload({
+  normalizedUpdateData,
+  shareTokenState,
+}) {
+  return {
+    title: hasOwnField(normalizedUpdateData, 'title') ? normalizedUpdateData.title : undefined,
+    description: hasOwnField(normalizedUpdateData, 'description') ? normalizedUpdateData.description : undefined,
+    date: hasOwnField(normalizedUpdateData, 'date') ? normalizedUpdateData.date : undefined,
+    duration: hasOwnField(normalizedUpdateData, 'duration') ? normalizedUpdateData.duration : undefined,
+    maxPlayers: hasOwnField(normalizedUpdateData, 'maxPlayers') ? normalizedUpdateData.maxPlayers : undefined,
+    price: hasOwnField(normalizedUpdateData, 'price') ? normalizedUpdateData.price : undefined,
+    visibility: hasOwnField(normalizedUpdateData, 'visibility') ? normalizedUpdateData.visibility : undefined,
+    shareTokenHash: resolveShareTokenFieldValue({
+      shareTokenData: shareTokenState.shareTokenData,
+      isLeavingLinkOnly: shareTokenState.isLeavingLinkOnly,
+      field: 'tokenHash',
+    }),
+    shareTokenEncrypted: resolveShareTokenFieldValue({
+      shareTokenData: shareTokenState.shareTokenData,
+      isLeavingLinkOnly: shareTokenState.isLeavingLinkOnly,
+      field: 'tokenEncrypted',
+    }),
+    shareTokenCreatedAt: shareTokenState.shareTokenData
+      ? new Date()
+      : (shareTokenState.isLeavingLinkOnly ? null : undefined),
+    status: hasOwnField(normalizedUpdateData, 'status') ? normalizedUpdateData.status : undefined,
+    system: hasOwnField(normalizedUpdateData, 'system') ? normalizedUpdateData.system : undefined,
+  };
+}
+
+function attachPublicShareToken(updatedSession, shareTokenState) {
+  if (shareTokenState.shareTokenData) {
+    updatedSession.shareToken = shareTokenState.shareTokenData.rawToken;
+  }
+
+  delete updatedSession.shareTokenHash;
+  delete updatedSession.shareTokenEncrypted;
+  delete updatedSession.shareTokenCreatedAt;
+
+  return updatedSession;
+}
+
 function createSessionLifecycleService({
   prisma,
   AppError,
@@ -12,166 +367,51 @@ function createSessionLifecycleService({
       const { preloadedSession = null } = options;
       const session = await sessionQueryService.resolveSessionContext(sessionId, requesterId, preloadedSession);
       const normalizedUpdateData = { ...updateData };
+      const updateMeta = buildSessionUpdateMeta(session, normalizedUpdateData);
 
-      const sessionDate = new Date(session.date);
-      const isSessionInPast =
-        !Number.isNaN(sessionDate.getTime()) && sessionDate.getTime() < Date.now();
-      const settingsFields = [
-        'title',
-        'description',
-        'date',
-        'duration',
-        'maxPlayers',
-        'price',
-        'visibility',
-        'system',
-      ];
-      const hasSettingsUpdate = settingsFields.some((field) =>
-        Object.prototype.hasOwnProperty.call(normalizedUpdateData, field)
-      );
-      const hasStatusUpdate = Object.prototype.hasOwnProperty.call(
+      assertSessionUpdatePermissions({
+        session,
+        requesterId,
+        updateMeta,
+        permissionHelpers,
+        AppError,
+        ERROR_CODES,
+      });
+
+      removePastSessionSettingsUpdates({
         normalizedUpdateData,
-        'status'
-      );
+        updateMeta,
+        AppError,
+        ERROR_CODES,
+      });
 
-      if (hasSettingsUpdate && !permissionHelpers._canEditSessionSettings(session, requesterId)) {
-        throw new AppError(ERROR_CODES.SESSION_OWNER_ONLY);
-      }
+      const conflictingParticipantIds = await resolveTimingConflicts({
+        prisma,
+        AppError,
+        ERROR_CODES,
+        datetimeHelpers,
+        session,
+        normalizedUpdateData,
+      });
 
-      if (hasSettingsUpdate && session.campaign?.status === 'FINISHED') {
-        throw new AppError(
-          ERROR_CODES.CAMPAIGN_FINISHED,
-          'Cannot update session settings in a finished campaign'
-        );
-      }
+      await assertStatusTransitionRules({
+        prisma,
+        AppError,
+        ERROR_CODES,
+        datetimeHelpers,
+        session,
+        requesterId,
+        normalizedUpdateData,
+        sessionDate: updateMeta.sessionDate,
+      });
 
-      if (hasStatusUpdate && !permissionHelpers._canChangeSessionStatus(session, requesterId)) {
-        throw new AppError(ERROR_CODES.SESSION_GM_ONLY);
-      }
-
-      if (isSessionInPast && hasSettingsUpdate) {
-        if (!hasStatusUpdate) {
-          throw new AppError(
-            ERROR_CODES.VALIDATION_FAILED,
-            'Cannot update the settings of a session that already happened'
-          );
-        }
-
-        settingsFields.forEach((field) => {
-          delete normalizedUpdateData[field];
-        });
-      }
-
-      const hasDateChange = normalizedUpdateData.date !== undefined;
-      const hasDurationChange = normalizedUpdateData.duration !== undefined;
-      let conflictingParticipantIds = [];
-
-      if (hasDateChange || hasDurationChange) {
-        const targetDate = hasDateChange ? normalizedUpdateData.date : session.date;
-        const targetDuration = hasDurationChange ? normalizedUpdateData.duration : session.duration;
-
-        await datetimeHelpers._assertNoSessionTimeConflict(
-          { prisma, AppError, ERROR_CODES },
-          session.ownerId,
-          targetDate,
-          targetDuration,
-          {
-            excludeSessionId: session.id,
-            conflictErrorCode: ERROR_CODES.SESSION_TIME_CONFLICT_OWNER,
-          }
-        );
-
-        const confirmedParticipants = session.participants.filter(
-          (participant) => participant.status === 'CONFIRMED' && participant.userId !== session.ownerId
-        );
-
-        const participantsWithConflicts = [];
-
-        for (const participant of confirmedParticipants) {
-          try {
-            await datetimeHelpers._assertNoSessionTimeConflict(
-              { prisma, AppError, ERROR_CODES },
-              participant.userId,
-              targetDate,
-              targetDuration,
-              {
-                excludeSessionId: session.id,
-                conflictErrorCode: ERROR_CODES.SESSION_TIME_CONFLICT_PLAYER,
-              }
-            );
-          } catch (conflictError) {
-            if (conflictError.code === ERROR_CODES.SESSION_TIME_CONFLICT_PLAYER) {
-              participantsWithConflicts.push(participant);
-            } else {
-              throw conflictError;
-            }
-          }
-        }
-
-        conflictingParticipantIds = participantsWithConflicts.map((participant) => participant.id);
-      }
-
-      const nextStatus = normalizedUpdateData.status;
-      const isPlannedToActiveTransition = session.status === 'PLANNED' && nextStatus === 'ACTIVE';
-      const isPlannedToFinishedTransition = session.status === 'PLANNED' && nextStatus === 'FINISHED';
-
-      if (nextStatus && nextStatus !== session.status) {
-        const allowedStatusTransitions = {
-          PLANNED: ['ACTIVE', 'FINISHED', 'CANCELED'],
-          ACTIVE: ['FINISHED', 'CANCELED'],
-          FINISHED: [],
-          CANCELED: [],
-        };
-
-        const allowedNextStatuses = allowedStatusTransitions[session.status] || [];
-        if (!allowedNextStatuses.includes(nextStatus)) {
-          throw new AppError(
-            ERROR_CODES.VALIDATION_FAILED,
-            `Invalid status transition: ${session.status} -> ${nextStatus}`
-          );
-        }
-      }
-
-      if (isPlannedToActiveTransition) {
-        const now = new Date();
-        const requester = await prisma.user.findUnique({
-          where: { id: requesterId },
-          select: { timezone: true },
-        });
-        const userTimeZone = requester?.timezone || 'Europe/Kyiv';
-
-        if (!datetimeHelpers._isSameDayInTimeZone(now, sessionDate, userTimeZone)) {
-          throw new AppError(ERROR_CODES.SESSION_START_ONLY_ON_SCHEDULED_DAY);
-        }
-      }
-
-      if (isPlannedToFinishedTransition) {
-        const now = new Date();
-        const finishAllowedAt = datetimeHelpers._getSessionEndWithGrace(session.date, session.duration, 2);
-
-        if (now < finishAllowedAt) {
-          throw new AppError(ERROR_CODES.SESSION_MARK_FINISHED_TOO_EARLY);
-        }
-      }
-
-      const hasField = (field) =>
-        Object.prototype.hasOwnProperty.call(normalizedUpdateData, field);
-      const targetVisibility = hasField('visibility')
-        ? normalizedUpdateData.visibility
-        : session.visibility;
-      if (session.campaignId && targetVisibility === 'LINK_ONLY') {
-        throw new AppError(
-          ERROR_CODES.VALIDATION_FAILED,
-          'LINK_ONLY is allowed only for one-shot sessions'
-        );
-      }
-      const isEnteringLinkOnly = targetVisibility === 'LINK_ONLY' && session.visibility !== 'LINK_ONLY';
-      const isLeavingLinkOnly = targetVisibility !== 'LINK_ONLY' && session.visibility === 'LINK_ONLY';
-      const needsInitialLinkOnlyToken = targetVisibility === 'LINK_ONLY' && !session.shareTokenHash;
-      const shareTokenData = (isEnteringLinkOnly || needsInitialLinkOnlyToken)
-        ? createRawEncryptedAndHashedShareToken()
-        : null;
-
+      const shareTokenState = resolveShareTokenState({
+        session,
+        normalizedUpdateData,
+        createRawEncryptedAndHashedShareToken,
+        AppError,
+        ERROR_CODES,
+      });
       const sessionIdInt = sessionQueryService.parsePositiveInt(sessionId, 'Session ID');
 
       const updated = await prisma.$transaction(async (tx) => {
@@ -186,26 +426,10 @@ function createSessionLifecycleService({
 
         return tx.session.update({
           where: { id: sessionIdInt },
-          data: {
-            title: hasField('title') ? normalizedUpdateData.title : undefined,
-            description: hasField('description') ? normalizedUpdateData.description : undefined,
-            date: hasField('date') ? normalizedUpdateData.date : undefined,
-            duration: hasField('duration') ? normalizedUpdateData.duration : undefined,
-            maxPlayers: hasField('maxPlayers') ? normalizedUpdateData.maxPlayers : undefined,
-            price: hasField('price') ? normalizedUpdateData.price : undefined,
-            visibility: hasField('visibility') ? normalizedUpdateData.visibility : undefined,
-            shareTokenHash: shareTokenData
-              ? shareTokenData.tokenHash
-              : (isLeavingLinkOnly ? null : undefined),
-            shareTokenEncrypted: shareTokenData
-              ? shareTokenData.tokenEncrypted
-              : (isLeavingLinkOnly ? null : undefined),
-            shareTokenCreatedAt: shareTokenData
-              ? new Date()
-              : (isLeavingLinkOnly ? null : undefined),
-            status: hasField('status') ? normalizedUpdateData.status : undefined,
-            system: hasField('system') ? normalizedUpdateData.system : undefined,
-          },
+          data: buildSessionUpdatePayload({
+            normalizedUpdateData,
+            shareTokenState,
+          }),
           include: {
             owner: {
               select: { id: true, username: true, displayName: true, avatarUrl: true },
@@ -224,15 +448,7 @@ function createSessionLifecycleService({
         });
       });
 
-      if (shareTokenData) {
-        updated.shareToken = shareTokenData.rawToken;
-      }
-
-      delete updated.shareTokenHash;
-      delete updated.shareTokenEncrypted;
-      delete updated.shareTokenCreatedAt;
-
-      return updated;
+      return attachPublicShareToken(updated, shareTokenState);
     },
 
     async deleteSession(sessionId, requesterId, options = {}) {
@@ -291,7 +507,7 @@ function createSessionLifecycleService({
         throw new AppError(errorCode, message);
       }
 
-      const updatedSession = await prisma.session.update({
+      return prisma.session.update({
         where: { id: sessionQueryService.parsePositiveInt(sessionId, 'Session ID') },
         data: {
           status: 'CANCELED',
@@ -305,8 +521,6 @@ function createSessionLifecycleService({
           },
         },
       });
-
-      return updatedSession;
     },
 
     async markSessionAsFinished(sessionId, userId, options = {}) {

@@ -8,7 +8,6 @@ const prisma = new PrismaClient();
 const SEED_PREFIX = '[SEED]';
 const TEST_PASSWORD = 'Test12345!';
 
-// Залишаємо базових юзерів (Адмін, 2 Майстра, 8 Гравців)
 const usersSeed = [
   { key: 'admin', email: 'admin@seed.ttrpg.local', username: 'seed_admin', role: 'ADMIN', displayName: 'Seed Admin', timezone: 'Europe/Kyiv' },
   { key: 'gm1', email: 'gm.alex@seed.ttrpg.local', username: 'seed_gm_alex', role: 'USER', displayName: 'Alex GM', timezone: 'Europe/Kyiv' },
@@ -24,13 +23,12 @@ const usersSeed = [
 ];
 
 /**
- * Отримує дату для конкретного дня поточного тижня
- * @param {number} dayIndex 0 = Понеділок, 1 = Вівторок ... 6 = Неділя
+ * @param {number} dayIndex
  */
 function getDayOfCurrentWeek(dayIndex, hours = 19, minutes = 0) {
   const now = new Date();
   const currentDay = now.getDay();
-  // Переводимо неділю(0) в кінець тижня, щоб понеділок був 0, а неділя 6
+
   const jsDayToMondayFirst = currentDay === 0 ? 6 : currentDay - 1;
   const diff = dayIndex - jsDayToMondayFirst;
 
@@ -38,6 +36,87 @@ function getDayOfCurrentWeek(dayIndex, hours = 19, minutes = 0) {
   targetDate.setDate(now.getDate() + diff);
   targetDate.setHours(hours, minutes, 0, 0);
   return targetDate;
+}
+
+function getCurrentDayIndex(now = new Date()) {
+  return now.getDay() === 0 ? 6 : now.getDay() - 1;
+}
+
+function resolveSessionStatus({ now, currentDayIndex, day, sessionDate, pastDayStatus = 'FINISHED' }) {
+  const isPast = day < currentDayIndex;
+  const isToday = day === currentDayIndex;
+
+  if (isToday && now > sessionDate) {
+    return 'ACTIVE';
+  }
+
+  if (isPast) {
+    return typeof pastDayStatus === 'function' ? pastDayStatus(day) : pastDayStatus;
+  }
+
+  return 'PLANNED';
+}
+
+function buildWeeklyCampaignSessions({ now, currentDayIndex, usersByKey, campaigns }) {
+  return Array.from({ length: 7 }, (_, day) => {
+    const dndDate = getDayOfCurrentWeek(day, 18, 0);
+    const cocDate = getDayOfCurrentWeek(day, 20, 30);
+
+    return [
+      {
+        title: `${SEED_PREFIX} D&D Session (Day ${day + 1})`,
+        date: dndDate,
+        duration: 180,
+        status: resolveSessionStatus({ now, currentDayIndex, day, sessionDate: dndDate }),
+        visibility: day % 2 === 0 ? 'PRIVATE' : 'PUBLIC',
+        system: 'D&D 5e',
+        campaignId: campaigns[0].id,
+        ownerId: usersByKey.gm1.id,
+      },
+      {
+        title: `${SEED_PREFIX} CoC Session (Day ${day + 1})`,
+        date: cocDate,
+        duration: 240,
+        status: resolveSessionStatus({
+          now,
+          currentDayIndex,
+          day,
+          sessionDate: cocDate,
+          pastDayStatus: (dayIndex) => (dayIndex % 2 === 0 ? 'FINISHED' : 'CANCELED'),
+        }),
+        visibility: 'PUBLIC',
+        system: 'Call of Cthulhu',
+        campaignId: campaigns[1].id,
+        ownerId: usersByKey.gm2.id,
+      },
+    ];
+  }).flat();
+}
+
+function buildDefaultParticipants({ data, sessionId, usersByKey }) {
+  return [
+    { userId: data.ownerId, role: 'GM', status: 'CONFIRMED' },
+    { userId: usersByKey.player1.id, role: 'PLAYER', status: 'CONFIRMED' },
+    {
+      userId: usersByKey.player2.id,
+      role: 'PLAYER',
+      status: data.status === 'FINISHED' ? 'DECLINED' : 'PENDING',
+    },
+  ].map((participant) => ({
+    sessionId,
+    ...participant,
+  }));
+}
+
+function buildParticipantsForSession({ data, sessionId, usersByKey }) {
+  if (data.extraParticipants) {
+    return data.extraParticipants.map((participant) => ({
+      sessionId,
+      ...participant,
+    }));
+  }
+
+  return buildDefaultParticipants({ data, sessionId, usersByKey });
 }
 
 async function cleanupPreviousSeedData() {
@@ -109,7 +188,6 @@ async function createCampaigns(usersByKey) {
     },
   });
 
-  // Додаємо учасників базово
   await prisma.campaignMember.createMany({
     data: [
       { campaignId: campaign1.id, userId: usersByKey.gm1.id, role: 'OWNER' },
@@ -130,52 +208,9 @@ async function createCampaigns(usersByKey) {
 
 async function createDynamicWeekSessions(usersByKey, campaigns) {
   const now = new Date();
-  const currentDayIndex = now.getDay() === 0 ? 6 : now.getDay() - 1; // 0-6 (Пн-Нд)
-  
-  const sessionsData = [];
-
-  // Генеруємо по 2 сесії на кожен день поточного тижня
-  for (let day = 0; day <= 6; day++) {
-    const isPast = day < currentDayIndex;
-    const isToday = day === currentDayIndex;
-    
-    // Сесія 1: Зазвичай кампанія 1 (D&D)
-    const time1 = getDayOfCurrentWeek(day, 18, 0); // 18:00
-    let status1 = 'PLANNED';
-    if (isPast) status1 = 'FINISHED';
-    if (isToday && now > time1) status1 = 'ACTIVE';
-
-    sessionsData.push({
-      title: `${SEED_PREFIX} D&D Session (Day ${day + 1})`,
-      date: time1,
-      duration: 180,
-      status: status1,
-      visibility: day % 2 === 0 ? 'PRIVATE' : 'PUBLIC',
-      system: 'D&D 5e',
-      campaignId: campaigns[0].id,
-      ownerId: usersByKey.gm1.id,
-    });
-
-    // Сесія 2: Зазвичай кампанія 2 (Call of Cthulhu)
-    const time2 = getDayOfCurrentWeek(day, 20, 30); // 20:30
-    let status2 = 'PLANNED';
-    if (isPast) status2 = day % 2 === 0 ? 'FINISHED' : 'CANCELED'; // Трохи різноманіття
-    if (isToday && now > time2) status2 = 'ACTIVE';
-
-    sessionsData.push({
-      title: `${SEED_PREFIX} CoC Session (Day ${day + 1})`,
-      date: time2,
-      duration: 240,
-      status: status2,
-      visibility: 'PUBLIC',
-      system: 'Call of Cthulhu',
-      campaignId: campaigns[1].id,
-      ownerId: usersByKey.gm2.id,
-    });
-  }
-
-  // Додаємо one-shot сесії для візуальної перевірки правил календаря.
-  sessionsData.push(
+  const currentDayIndex = getCurrentDayIndex(now); // 0-6 (Пн-Нд)
+  const sessionsData = [
+    ...buildWeeklyCampaignSessions({ now, currentDayIndex, usersByKey, campaigns }),
     {
       title: `${SEED_PREFIX} One-shot Public`,
       date: getDayOfCurrentWeek((currentDayIndex + 1) % 7, 15, 0),
@@ -214,11 +249,7 @@ async function createDynamicWeekSessions(usersByKey, campaigns) {
       extraParticipants: [
         { userId: usersByKey.gm1.id, role: 'GM', status: 'CONFIRMED' },
       ],
-    }
-  );
-
-  // Явні сценарії для перевірки правил видимості/ролей/станів.
-  sessionsData.push(
+    },
     {
       title: `${SEED_PREFIX} Ref Campaign Private Planned`,
       date: getDayOfCurrentWeek((currentDayIndex + 1) % 7, 21, 0),
@@ -277,25 +308,18 @@ async function createDynamicWeekSessions(usersByKey, campaigns) {
         { userId: usersByKey.gm1.id, role: 'GM', status: 'CONFIRMED' },
         { userId: usersByKey.player4.id, role: 'PLAYER', status: 'PENDING' },
       ],
-    }
-  );
+    },
+  ];
 
-  // Створюємо всі сесії
-  const createdSessions = [];
   for (const data of sessionsData) {
     const { extraParticipants, ...sessionData } = data;
     const session = await prisma.session.create({ data: sessionData });
-    createdSessions.push(session);
-    
-    // Додаємо учасників до кожної сесії
-    const participants = (extraParticipants || [
-      { userId: data.ownerId, role: 'GM', status: 'CONFIRMED' },
-      { userId: usersByKey.player1.id, role: 'PLAYER', status: 'CONFIRMED' },
-      { userId: usersByKey.player2.id, role: 'PLAYER', status: data.status === 'FINISHED' ? 'DECLINED' : 'PENDING' },
-    ]).map((participant) => ({
+
+    const participants = buildParticipantsForSession({
+      data: { ...sessionData, extraParticipants },
       sessionId: session.id,
-      ...participant,
-    }));
+      usersByKey,
+    });
 
     await prisma.sessionParticipant.createMany({ data: participants });
   }

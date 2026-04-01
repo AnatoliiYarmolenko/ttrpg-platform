@@ -1,8 +1,6 @@
 import { useForm, useWatch } from "react-hook-form";
 import { Link } from "react-router-dom";
 import { registerUser } from "../api/authApi";
-
-// Імпорти твоїх UI компонентів
 import AuthInput from "../ui/AuthInput";
 import AuthButton from "../ui/AuthButton";
 import PasswordStrength from "../ui/PasswordStrength";
@@ -10,89 +8,107 @@ import { VALIDATION_RULES } from "../../../utils/validationRules";
 import { toast } from "@/stores/useToastStore";
 import logger from "../../../lib/clientLogger";
 
+function applyRegisterValidationErrors(errors, setError) {
+  if (!Array.isArray(errors)) {
+    return false;
+  }
+
+  errors.forEach((entry) => {
+    if (entry.path) {
+      setError(entry.path, { type: 'server', message: entry.message });
+    }
+  });
+
+  return true;
+}
+
+function applyRegisterFieldError(errorText, setError) {
+  const normalizedText = errorText.toLowerCase();
+  let handled = false;
+
+  if (normalizedText.includes('email') || normalizedText.includes('пошта')) {
+    setError('email', {
+      type: 'server',
+      message: 'Цей email вже використовується',
+    });
+    handled = true;
+  }
+
+  if (normalizedText.includes('nickname') || normalizedText.includes('username') || normalizedText.includes('нікнейм')) {
+    setError('username', {
+      type: 'server',
+      message: 'Цей нікнейм зайнятий',
+    });
+    handled = true;
+  }
+
+  return handled;
+}
+
+function handleRegisterSubmitError(error, setError) {
+  const responseData = error.response?.data;
+  logger.error('Помилка реєстрації:', responseData);
+
+  if (error.response?.status === 429) {
+    toast.error(responseData?.error || 'Занадто багато спроб. Спробуйте пізніше.');
+    return;
+  }
+
+  if (applyRegisterValidationErrors(responseData?.errors, setError)) {
+    return;
+  }
+
+  if (responseData?.error) {
+    if (!applyRegisterFieldError(responseData.error, setError)) {
+      toast.error(responseData.error);
+    }
+    return;
+  }
+
+  toast.error('Помилка реєстрації. Спробуйте пізніше.');
+}
+
 function RegisterForm({ onSuccess }) {
-  const { 
-    register, 
-    handleSubmit, 
-    setError, 
+  const {
+    register,
+    handleSubmit,
+    setError,
     control,
-    formState: { isSubmitting, errors } // errors тут є
-  } = useForm({ mode: 'onChange' });
-  
-  // Стежимо за паролем для шкали сили пароля
-  const password = useWatch({ control, name: 'password', defaultValue: '' });
+    formState: { isSubmitting, errors },
+  } = useForm({ mode: "onChange" });
+
+  const password = useWatch({ control, name: "password", defaultValue: "" });
 
   const onSubmit = async (data) => {
     try {
       await registerUser(data);
       if (onSuccess) onSuccess(data.email);
-      
     } catch (error) {
-      const resp = error.response?.data;
-      logger.error("Помилка реєстрації:", resp);
-
-      // 1. Обробка ліміту запитів
-      if (error.response?.status === 429) {
-        toast.error(resp?.error || 'Занадто багато спроб. Спробуйте пізніше.');
-        return;
-      }
-      
-      // 2. Валідація (масив помилок з бекенду)
-      if (resp?.errors && Array.isArray(resp.errors)) {
-        resp.errors.forEach(e => {
-          if (e.path) setError(e.path, { type: 'server', message: e.message });
-        });
-        return;
-      }
-
-      // 3. Валідація (одиночні помилки)
-      if (resp?.error) {
-         const errorText = resp.error.toLowerCase();
-         let handled = false;
-
-         if (errorText.includes('email') || errorText.includes('пошта')) {
-           setError('email', { type: 'server', message: 'Цей email вже використовується' });
-           handled = true;
-         } 
-         
-         if (errorText.includes('нікнейм') || errorText.includes('username')) {
-           setError('username', { type: 'server', message: 'Цей нікнейм зайнятий' });
-           handled = true;
-         } 
-
-         if (handled) return;
-
-         toast.error(resp.error);
-         return;
-      }
-      
-      toast.error('Помилка реєстрації. Спробуйте пізніше.');
+      handleRegisterSubmitError(error, setError);
     }
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      {/* Поле Нікнейм */}
       <AuthInput
         name="username"
-        type="text" // змінив з 'username' на 'text', бо type="username" не існує в HTML
+        type="text"
         placeholder="Нікнейм"
         register={register}
         error={errors.username}
         rules={VALIDATION_RULES.username}
       />
 
-      {/* Поле Email */}
       <AuthInput
         name="email"
         type="email"
         placeholder="Email"
         register={register}
         error={errors.email}
-        rules={VALIDATION_RULES.email}      />
+        rules={VALIDATION_RULES.email}
+      />
 
-      {/* Поле Пароль */}
-     <AuthInput
+      <AuthInput
         name="password"
         type="password"
         placeholder="Пароль"
@@ -101,7 +117,6 @@ function RegisterForm({ onSuccess }) {
         rules={VALIDATION_RULES.password}
       />
 
-      {/* Індикатор сили пароля */}
       <PasswordStrength password={password} />
 
       <AuthButton isLoading={isSubmitting} loadingText="Реєстрація...">

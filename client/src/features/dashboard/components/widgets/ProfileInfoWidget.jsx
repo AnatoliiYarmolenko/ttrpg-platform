@@ -1,25 +1,32 @@
-import React from 'react';
-import DashboardCard from '@/components/ui/DashboardCard';
-import { ViewProfileButton } from '@/components/shared';
-import { useProfileByUsernameQuery } from '@/features/profile/hooks/useProfileQueries';
-import ProfilePublicCard from '@/features/profile/components/ProfilePublicCard';
-import useAuthStore from '@/stores/useAuthStore';
+import React from "react";
+import DashboardCard from "@/components/ui/DashboardCard";
+import { ViewProfileButton } from "@/components/shared";
+import { useProfileByUsernameQuery } from "@/features/profile/hooks/useProfileQueries";
+import ProfilePublicCard from "@/features/profile/components/ProfilePublicCard";
+import useAuthStore from "@/stores/useAuthStore";
 
-/**
- * ProfileInfoWidget — «Перегляд профілю» у власному кабінеті.
- *
- * Відповідає виключно за логіку отримання даних:
- *   - mode='me'       → бере профіль з authStore (без фетчу)
- *   - mode='username' → завантажує публічний профіль за username
- *
- * Рендер повністю делегується ProfilePublicCard, щоб власник
- * бачив свій профіль так само, як його бачать інші.
- *
- * @param {'me'|'username'} mode
- * @param {string}  [username]
- * @param {Object}  [profile]   — зовнішній профіль (пропускає фетч)
- * @param {string}  [title]
- */
+function resolveWidgetProfile({ mode, profileProp, authUser, fetchedProfile }) {
+  if (profileProp) {
+    return profileProp;
+  }
+
+  return mode === "me" ? authUser : fetchedProfile;
+}
+
+function resolveWidgetError({ shouldFetch, fetchError, profileProp, mode, username }) {
+  if (shouldFetch && fetchError) {
+    return fetchError.response?.status === 404
+      ? 'Користувача не знайдено'
+      : 'Не вдалося завантажити профіль';
+  }
+
+  if (!profileProp && mode === 'username' && !username) {
+    return 'Не вказано username';
+  }
+
+  return null;
+}
+
 export default function ProfileInfoWidget({
   mode = 'me',
   username,
@@ -27,29 +34,30 @@ export default function ProfileInfoWidget({
   title = 'Інформація про гравця',
 }) {
   const authUser = useAuthStore((state) => state.user);
-  
-  const shouldFetch = mode === 'username' && !profileProp && !!username;
+
+  const shouldFetch = mode === "username" && !profileProp && Boolean(username);
   const {
     data: fetchedProfile,
     isLoading: isFetching,
     error: fetchError,
-    isRefetching
+    isRefetching,
   } = useProfileByUsernameQuery(shouldFetch ? username : null);
 
-  let profile = profileProp;
-  if (!profile) {
-    if (mode === 'me') {
-      profile = authUser;
-    } else {
-      profile = fetchedProfile;
-    }
-  }
-
+  const profile = resolveWidgetProfile({
+    mode,
+    profileProp,
+    authUser,
+    fetchedProfile,
+  });
   const isLoading = shouldFetch && isFetching;
   const isRefreshing = shouldFetch && isRefetching;
-  const error = shouldFetch && fetchError
-    ? (fetchError.response?.status === 404 ? 'Користувача не знайдено' : 'Не вдалося завантажити профіль')
-    : (!profileProp && mode === 'username' && !username ? 'Не вказано username' : null);
+  const error = resolveWidgetError({
+    shouldFetch,
+    fetchError,
+    profileProp,
+    mode,
+    username,
+  });
 
   return (
     <DashboardCard title={title}>
@@ -62,11 +70,7 @@ export default function ProfileInfoWidget({
         error={error}
         showStats
         showContactInfo
-        shareButton={
-          profile?.username
-            ? <ViewProfileButton username={profile.username} />
-            : null
-        }
+        shareButton={profile?.username ? <ViewProfileButton username={profile.username} /> : null}
       />
     </DashboardCard>
   );

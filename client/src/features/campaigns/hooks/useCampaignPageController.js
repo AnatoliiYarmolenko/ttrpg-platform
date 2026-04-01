@@ -1,15 +1,15 @@
-import { useEffect, useCallback, useMemo, useState } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { toast } from '@/stores/useToastStore';
+import { useCallback, useMemo, useState } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { toast } from "@/stores/useToastStore";
 import {
   useCampaignQuery,
   useCampaignMembersQuery,
   useCampaignMutations,
   useCampaignShareLinkQuery,
-} from './useCampaignQueries';
-import useAuthStore from '@/stores/useAuthStore';
-import usePreviewMode from '@/hooks/usePreviewMode';
-import { TABS } from '../components/navigation/CampaignNavigation';
+} from "./useCampaignQueries";
+import useAuthStore from "@/stores/useAuthStore";
+import usePreviewMode from "@/hooks/usePreviewMode";
+import { TABS } from "../components/navigation/CampaignNavigation";
 
 function buildCampaignShareUrl(token) {
   return `${window.location.origin}/campaign/share/${token}`;
@@ -17,7 +17,7 @@ function buildCampaignShareUrl(token) {
 
 function normalizePageError(error, fallbackMessage) {
   if (!error) return fallbackMessage;
-  if (typeof error === 'string') return error;
+  if (typeof error === "string") return error;
 
   const responseData = error.response?.data;
   const apiMessage = responseData?.error || responseData?.message;
@@ -30,15 +30,71 @@ function normalizePageError(error, fallbackMessage) {
   return error.message || String(error);
 }
 
+function resolveCampaignRole({ currentCampaign, user, viewer }) {
+  if (!currentCampaign || !user) return null;
+  if (viewer.role) return viewer.role;
+  if (viewer.isOwner || currentCampaign.ownerId === user.id) return "OWNER";
+
+  const member = currentCampaign.members?.find((entry) => entry.userId === user.id);
+  return member?.role || null;
+}
+
+function canReadCampaignMembers(currentCampaign, viewer) {
+  if (!currentCampaign) return false;
+  if (currentCampaign.visibility === "PUBLIC") return true;
+  return Boolean(viewer.isOwner || viewer.isMember || viewer.canManage);
+}
+
+function resolvePendingRequestStatus({ amMember, currentCampaign, user, viewer }) {
+  if (amMember || !currentCampaign || !user) {
+    return null;
+  }
+
+  return viewer.pendingJoinRequestStatus || null;
+}
+
+function canJoinCampaign({ currentCampaign, user, amMember, pendingRequestStatus, viewer }) {
+  if (!currentCampaign || !user) return false;
+  if (amMember || pendingRequestStatus) return false;
+  if (currentCampaign.status === "FINISHED") return false;
+  return viewer.joinMode === "REQUEST";
+}
+
+function updateSearchParams(setSearchParams, updater) {
+  setSearchParams(
+    (prev) => {
+      const next = new URLSearchParams(prev);
+      updater(next);
+      return next;
+    },
+    { replace: true }
+  );
+}
+
+async function copyText(text, successMessage, fallbackMessage) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success(successMessage);
+    return true;
+  } catch {
+    if (fallbackMessage) {
+      toast.info(fallbackMessage);
+      return false;
+    }
+
+    return false;
+  }
+}
+
 export default function useCampaignPageController() {
   const { id, shareToken: routeShareToken } = useParams();
   const campaignIdNumber = Number(id);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const user = useAuthStore((state) => state.user);
-  const [lastGeneratedShareLink, setLastGeneratedShareLink] = useState('');
+  const [lastGeneratedShareLink, setLastGeneratedShareLink] = useState("");
 
-  const hasShareToken = typeof routeShareToken === 'string' && routeShareToken.trim().length > 0;
+  const hasShareToken = typeof routeShareToken === "string" && routeShareToken.trim().length > 0;
   const isValidId = Number.isInteger(campaignIdNumber) && campaignIdNumber > 0;
   const invalidIdError = !hasShareToken && !isValidId ? 'Кампанія не знайдена' : null;
 
@@ -52,25 +108,19 @@ export default function useCampaignPageController() {
   });
 
   const viewer = useMemo(() => currentCampaign?.viewer || {}, [currentCampaign]);
-
-  const myRole = useMemo(() => {
-    if (!currentCampaign || !user) return null;
-    if (viewer.role) return viewer.role;
-    if (viewer.isOwner || currentCampaign.ownerId === user.id) return 'OWNER';
-    const member = currentCampaign.members?.find((m) => m.userId === user.id);
-    return member?.role || null;
-  }, [currentCampaign, user, viewer]);
+  const myRole = useMemo(
+    () => resolveCampaignRole({ currentCampaign, user, viewer }),
+    [currentCampaign, user, viewer]
+  );
 
   const isOwner = Boolean(viewer.isOwner || (currentCampaign && user && currentCampaign.ownerId === user.id));
-  const isGM = myRole === 'GM';
+  const isGM = myRole === "GM";
   const amMember = Boolean(viewer.isOwner || viewer.isMember || isOwner);
-  const isCampaignFinished = currentCampaign?.status === 'FINISHED';
-
-  const canReadMembers = useMemo(() => {
-    if (!currentCampaign) return false;
-    if (currentCampaign.visibility === 'PUBLIC') return true;
-    return Boolean(viewer.isOwner || viewer.isMember || viewer.canManage);
-  }, [currentCampaign, viewer]);
+  const isCampaignFinished = currentCampaign?.status === "FINISHED";
+  const canReadMembers = useMemo(
+    () => canReadCampaignMembers(currentCampaign, viewer),
+    [currentCampaign, viewer]
+  );
 
   const { data: queriedMembers = [], isLoading: isMembersLoading } = useCampaignMembersQuery(
     currentCampaign?.id ?? null,
@@ -84,35 +134,28 @@ export default function useCampaignPageController() {
 
   const isLoading = isCampaignLoading || (canReadMembers && !hasShareToken && isMembersLoading);
   const error = normalizePageError(campaignError, invalidIdError);
-
   const activeCampaignId = currentCampaign?.id ?? (isValidId ? campaignIdNumber : null);
   const mutations = useCampaignMutations(activeCampaignId, {
     shareToken: hasShareToken ? routeShareToken : null,
   });
 
-  const activeTab = searchParams.get('tab') || TABS.SESSIONS;
-  const viewingUserId = Number(searchParams.get('viewing')) || null;
+  const activeTab = searchParams.get("tab") || TABS.SESSIONS;
+  const viewingUserId = Number(searchParams.get("viewing")) || null;
 
   const setActiveTab = useCallback(
     (tab) => {
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          next.delete('viewing');
-          if (tab === TABS.SESSIONS) {
-            next.delete('tab');
-          } else {
-            next.set('tab', tab);
-          }
-          return next;
-        },
-        { replace: true }
-      );
+      updateSearchParams(setSearchParams, (next) => {
+        next.delete("viewing");
+
+        if (tab === TABS.SESSIONS) {
+          next.delete("tab");
+        } else {
+          next.set("tab", tab);
+        }
+      });
     },
     [setSearchParams]
   );
-
-  useEffect(() => {}, [activeCampaignId]);
 
   const canManageCampaignSettings = Boolean(viewer.canManage);
   const canManageCampaignVisibility = canManageCampaignSettings;
@@ -120,7 +163,8 @@ export default function useCampaignPageController() {
   const canModerateJoinRequests = (isOwner || isGM) && !isCampaignFinished;
   const canRemovePlayers = (isOwner || isGM) && !isCampaignFinished;
   const canCreateCampaignSessions = (isOwner || isGM) && !isCampaignFinished;
-  const canManageShareLink = isOwner && currentCampaign?.visibility === 'LINK_ONLY' && !isCampaignFinished;
+  const canManageShareLink =
+    isOwner && currentCampaign?.visibility === "LINK_ONLY" && !isCampaignFinished;
   const canUseOwnerSessionOverrides = isOwner;
   const { isPreviewMode } = usePreviewMode({ isMember: amMember, isLoading });
   const { data: shareLinkData } = useCampaignShareLinkQuery(
@@ -128,30 +172,30 @@ export default function useCampaignPageController() {
     canManageShareLink && !hasShareToken
   );
 
-  const pendingRequestStatus = useMemo(() => {
-    if (amMember || !currentCampaign || !user) return null;
-    return viewer.pendingJoinRequestStatus || null;
-  }, [amMember, currentCampaign, user, viewer.pendingJoinRequestStatus]);
-
-  const canJoin = useMemo(() => {
-    if (!currentCampaign || !user) return false;
-    if (amMember || pendingRequestStatus) return false;
-    if (currentCampaign.status === 'FINISHED') return false;
-    return viewer.joinMode === 'REQUEST';
-  }, [currentCampaign, user, amMember, pendingRequestStatus, viewer.joinMode]);
+  const pendingRequestStatus = useMemo(
+    () => resolvePendingRequestStatus({ amMember, currentCampaign, user, viewer }),
+    [amMember, currentCampaign, user, viewer]
+  );
+  const canJoin = useMemo(
+    () => canJoinCampaign({ currentCampaign, user, amMember, pendingRequestStatus, viewer }),
+    [currentCampaign, user, amMember, pendingRequestStatus, viewer]
+  );
 
   const currentShareLink = useMemo(() => {
     if (lastGeneratedShareLink) return lastGeneratedShareLink;
     if (shareLinkData?.shareUrl) return shareLinkData.shareUrl;
     if (hasShareToken) return buildCampaignShareUrl(routeShareToken);
-    return '';
+    return "";
   }, [hasShareToken, routeShareToken, lastGeneratedShareLink, shareLinkData]);
 
-  const handleJoinRequest = useCallback(async (message) => {
-    const result = await mutations.submitJoinRequest(message);
-    if (result?.success) return { success: true };
-    return { success: false, error: result?.error || 'Помилка при подачі заявки' };
-  }, [mutations]);
+  const handleJoinRequest = useCallback(
+    async (message) => {
+      const result = await mutations.submitJoinRequest(message);
+      if (result?.success) return { success: true };
+      return { success: false, error: result?.error || 'Помилка при подачі заявки' };
+    },
+    [mutations]
+  );
 
   const handleLeave = useCallback(async () => {
     if (isCampaignFinished) {
@@ -159,18 +203,18 @@ export default function useCampaignPageController() {
     }
 
     const myMember = campaignMembers.find((member) => member.userId === user?.id);
-    if (myMember) {
-      await mutations.removeMember(myMember.userId);
-      navigate('/');
-      return { success: true };
+    if (!myMember) {
+      return { success: false, message: 'Учасника кампанії не знайдено' };
     }
 
-    return { success: false, message: 'Учасника кампанії не знайдено' };
+    await mutations.removeMember(myMember.userId);
+    navigate("/");
+    return { success: true };
   }, [campaignMembers, user, isCampaignFinished, mutations, navigate]);
 
   const handleRegenerateShareLink = useCallback(async () => {
     if (!canManageShareLink) {
-      return { success: false, message: 'Тільки власник може керувати share-посиланням' };
+      return { success: false, message: 'Лише власник може керувати share-посиланням' };
     }
 
     const result = await mutations.regenerateShareLink();
@@ -182,13 +226,7 @@ export default function useCampaignPageController() {
 
     const nextLink = buildCampaignShareUrl(token);
     setLastGeneratedShareLink(nextLink);
-
-    try {
-      await navigator.clipboard.writeText(nextLink);
-      toast.success('Нове share-посилання скопійовано');
-    } catch {
-      toast.info('Нове share-посилання згенеровано');
-    }
+    await copyText(nextLink, 'Нове share-посилання скопійовано', 'Нове share-посилання згенеровано');
 
     return { success: true, link: nextLink };
   }, [canManageShareLink, mutations]);
@@ -198,66 +236,69 @@ export default function useCampaignPageController() {
       return { success: false, message: 'Спочатку згенеруйте нове share-посилання' };
     }
 
-    try {
-      await navigator.clipboard.writeText(currentShareLink);
-      toast.success('Share-посилання скопійовано');
-      return { success: true };
-    } catch {
-      return { success: false, message: 'Не вдалося скопіювати посилання' };
-    }
+    const copied = await copyText(currentShareLink, 'Share-посилання скопійовано');
+
+    return copied
+      ? { success: true }
+      : { success: false, message: 'Не вдалося скопіювати посилання' };
   }, [currentShareLink]);
 
   const handleRefreshCampaign = useCallback(async () => {}, []);
 
-  const handleSaveSettings = useCallback(async (campaignData) => {
-    if (!canManageCampaignSettings) {
-      return { success: false, message: 'Тільки власник може змінювати налаштування кампанії' };
-    }
+  const handleSaveSettings = useCallback(
+    async (campaignData) => {
+      if (!canManageCampaignSettings) {
+        return { success: false, message: 'Лише власник може оновлювати налаштування кампанії' };
+      }
 
-    const result = await mutations.updateCampaign(campaignData);
-    const token = result?.data?.shareToken;
-    if (result?.success && token) {
-      setLastGeneratedShareLink(buildCampaignShareUrl(token));
-    }
-    return result;
-  }, [canManageCampaignSettings, mutations]);
+      const result = await mutations.updateCampaign(campaignData);
+      const token = result?.data?.shareToken;
+      if (result?.success && token) {
+        setLastGeneratedShareLink(buildCampaignShareUrl(token));
+      }
+      return result;
+    },
+    [canManageCampaignSettings, mutations]
+  );
 
-  const handleTransferOwnership = useCallback(async (newOwnerId) => {
-    if (!isOwner) {
-      return { success: false, message: 'Тільки власник може передавати права кампанії' };
-    }
-    return mutations.transferOwnership(Number(newOwnerId));
-  }, [isOwner, mutations]);
+  const handleTransferOwnership = useCallback(
+    async (newOwnerId) => {
+      if (!isOwner) {
+        return { success: false, message: 'Лише власник може передати права кампанії' };
+      }
 
-  const handleCancelForeignSession = useCallback((sessionId) => {
-    return mutations.cancelSession(Number(sessionId));
-  }, [mutations]);
+      return mutations.transferOwnership(Number(newOwnerId));
+    },
+    [isOwner, mutations]
+  );
 
-  const handleDeleteForeignSession = useCallback((sessionId) => {
-    return mutations.deleteSession(Number(sessionId));
-  }, [mutations]);
+  const handleCancelForeignSession = useCallback(
+    (sessionId) => mutations.cancelSession(Number(sessionId)),
+    [mutations]
+  );
 
-  const handleViewProfile = useCallback((userId) => {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        next.set('viewing', userId);
-        return next;
-      },
-      { replace: true }
-    );
-  }, [setSearchParams]);
+  const handleDeleteForeignSession = useCallback(
+    (sessionId) => mutations.deleteSession(Number(sessionId)),
+    [mutations]
+  );
 
-  const handleBackFromProfile = useCallback(() => {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        next.delete('viewing');
-        return next;
-      },
-      { replace: true }
-    );
-  }, [setSearchParams]);
+  const handleViewProfile = useCallback(
+    (userId) => {
+      updateSearchParams(setSearchParams, (next) => {
+        next.set("viewing", userId);
+      });
+    },
+    [setSearchParams]
+  );
+
+  const handleBackFromProfile = useCallback(
+    () => {
+      updateSearchParams(setSearchParams, (next) => {
+        next.delete("viewing");
+      });
+    },
+    [setSearchParams]
+  );
 
   return {
     id: activeCampaignId,

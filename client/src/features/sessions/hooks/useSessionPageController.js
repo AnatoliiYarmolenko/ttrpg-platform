@@ -25,6 +25,96 @@ function normalizePageError(error, fallbackMessage) {
   return error.message || String(error);
 }
 
+function resolveSessionRole({ currentSession, user, viewer, myParticipant }) {
+  if (!currentSession || !user) return null;
+  if (viewer.isSessionOwner || currentSession.ownerId === user.id) return 'OWNER';
+  if (viewer.role) return viewer.role;
+  return myParticipant?.role || null;
+}
+
+function canUseSessionJoinFlow({ currentSession, user, hasSessionMembership, isCampaignMember, viewer }) {
+  if (!currentSession || !user || hasSessionMembership) {
+    return false;
+  }
+
+  if (viewer.joinMode === 'MEMBERS_ONLY') {
+    return isCampaignMember;
+  }
+
+  return viewer.joinMode === 'OPEN' || viewer.joinMode === 'REQUEST';
+}
+
+function canJoinSession({ currentSession, user, hasSessionMembership, canUseJoinFlow }) {
+  if (!currentSession || !user || hasSessionMembership) return false;
+  if (currentSession.status !== 'PLANNED') return false;
+  if (currentSession.campaign?.status === 'FINISHED') return false;
+
+  if (currentSession.maxPlayers) {
+    const currentPlayers =
+      currentSession.participants?.filter((participant) => participant.role === 'PLAYER').length || 0;
+
+    if (currentPlayers >= currentSession.maxPlayers) {
+      return false;
+    }
+  }
+
+  return canUseJoinFlow;
+}
+
+function canApplyAsSessionGm({ currentSession, user, hasSessionMembership, canUseJoinFlow }) {
+  if (!currentSession || !user || hasSessionMembership) return false;
+  if (currentSession.status !== 'PLANNED') return false;
+  if (currentSession.campaign?.status === 'FINISHED') return false;
+  if (new Date(currentSession.date) < new Date()) return false;
+
+  const hasConfirmedGm = currentSession.participants?.some(
+    (participant) => participant.role === 'GM' && participant.status === 'CONFIRMED'
+  );
+
+  if (hasConfirmedGm) {
+    return false;
+  }
+
+  return canUseJoinFlow;
+}
+
+function shouldShowCampaignInfo(currentSession, viewer) {
+  if (!currentSession?.campaign) {
+    return false;
+  }
+
+  const isGuestViewForPublicCampaignSession = currentSession.visibility === 'PUBLIC'
+    && currentSession.campaign?.visibility === 'LINK_ONLY'
+    && viewer.isCampaignMember === false;
+
+  return !isGuestViewForPublicCampaignSession;
+}
+
+function updateSearchParams(setSearchParams, updater) {
+  setSearchParams(
+    (prev) => {
+      const next = new URLSearchParams(prev);
+      updater(next);
+      return next;
+    },
+    { replace: true }
+  );
+}
+
+async function copyText(text, successMessage, fallbackMessage) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success(successMessage);
+    return true;
+  } catch {
+    if (fallbackMessage) {
+      toast.info(fallbackMessage);
+    }
+
+    return false;
+  }
+}
+
 export default function useSessionPageController() {
   const { id, shareToken: routeShareToken } = useParams();
   const sessionIdNumber = Number(id);
@@ -67,19 +157,15 @@ export default function useSessionPageController() {
   const viewingUserId = Number(searchParams.get('viewing')) || null;
 
   const setActiveTab = useCallback((tab) => {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        next.delete('viewing');
-        if (tab === TABS.DETAILS) {
-          next.delete('tab');
-        } else {
-          next.set('tab', tab);
-        }
-        return next;
-      },
-      { replace: true }
-    );
+    updateSearchParams(setSearchParams, (next) => {
+      next.delete('viewing');
+
+      if (tab === TABS.DETAILS) {
+        next.delete('tab');
+      } else {
+        next.set('tab', tab);
+      }
+    });
   }, [setSearchParams]);
 
   useEffect(() => {
@@ -95,12 +181,10 @@ export default function useSessionPageController() {
     return currentSession.participants?.find((participant) => participant.userId === user.id) || null;
   }, [currentSession, user]);
 
-  const myRole = useMemo(() => {
-    if (!currentSession || !user) return null;
-    if (viewer.isSessionOwner || currentSession.ownerId === user.id) return 'OWNER';
-    if (viewer.role) return viewer.role;
-    return myParticipant?.role || null;
-  }, [currentSession, user, viewer, myParticipant]);
+  const myRole = useMemo(
+    () => resolveSessionRole({ currentSession, user, viewer, myParticipant }),
+    [currentSession, user, viewer, myParticipant]
+  );
 
   const isOwner = Boolean(viewer.isSessionOwner || (currentSession && user && currentSession.ownerId === user.id));
   const amParticipant = Boolean(viewer.isParticipant || myParticipant);
@@ -138,16 +222,10 @@ export default function useSessionPageController() {
   );
   const { isPreviewMode } = usePreviewMode({ isMember: hasSessionMembership, isLoading });
 
-  const canUseJoinFlow = useMemo(() => {
-    if (!currentSession || !user) return false;
-    if (hasSessionMembership) return false;
-
-    if (viewer.joinMode === 'MEMBERS_ONLY') {
-      return isCampaignMember;
-    }
-
-    return viewer.joinMode === 'OPEN' || viewer.joinMode === 'REQUEST';
-  }, [currentSession, user, hasSessionMembership, isCampaignMember, viewer.joinMode]);
+  const canUseJoinFlow = useMemo(
+    () => canUseSessionJoinFlow({ currentSession, user, hasSessionMembership, isCampaignMember, viewer }),
+    [currentSession, user, hasSessionMembership, isCampaignMember, viewer]
+  );
 
   useEffect(() => {
     if (activeTab === TABS.SETTINGS && !canManageSettings) {
@@ -155,50 +233,20 @@ export default function useSessionPageController() {
     }
   }, [activeTab, canManageSettings, setActiveTab]);
 
-  const canJoin = useMemo(() => {
-    if (!currentSession || !user) return false;
-    if (hasSessionMembership) return false;
-    if (currentSession.status !== 'PLANNED') return false;
-    if (currentSession.campaign?.status === 'FINISHED') return false;
-    if (currentSession.maxPlayers) {
-      const currentPlayers =
-        currentSession.participants?.filter((participant) => participant.role === 'PLAYER').length || 0;
-      if (currentPlayers >= currentSession.maxPlayers) return false;
-    }
-
-    return canUseJoinFlow;
-  }, [canUseJoinFlow, currentSession, user, hasSessionMembership]);
-
-  const canApplyAsGm = useMemo(() => {
-    if (!currentSession || !user) return false;
-    if (hasSessionMembership) return false;
-    if (currentSession.status !== 'PLANNED') return false;
-    if (currentSession.campaign?.status === 'FINISHED') return false;
-    if (new Date(currentSession.date) < new Date()) return false;
-
-    const hasConfirmedGm = currentSession.participants?.some(
-      (participant) => participant.role === 'GM' && participant.status === 'CONFIRMED'
-    );
-
-    if (hasConfirmedGm) return false;
-    return canUseJoinFlow;
-  }, [canUseJoinFlow, currentSession, user, hasSessionMembership]);
-
-  const showCampaignInfo = useMemo(() => {
-    if (!currentSession?.campaign) return false;
-
-    const isGuestViewForPublicCampaignSession = currentSession.visibility === 'PUBLIC'
-      && currentSession.campaign?.visibility === 'LINK_ONLY'
-      && viewer.isCampaignMember === false;
-
-    return !isGuestViewForPublicCampaignSession;
-  }, [currentSession, viewer.isCampaignMember]);
-
-  const shouldAutoFetchShareLink = Boolean(
-    canManageShareLink
-    && !hasShareToken
+  const canJoin = useMemo(
+    () => canJoinSession({ currentSession, user, hasSessionMembership, canUseJoinFlow }),
+    [currentSession, user, hasSessionMembership, canUseJoinFlow]
+  );
+  const canApplyAsGm = useMemo(
+    () => canApplyAsSessionGm({ currentSession, user, hasSessionMembership, canUseJoinFlow }),
+    [currentSession, user, hasSessionMembership, canUseJoinFlow]
+  );
+  const showCampaignInfo = useMemo(
+    () => shouldShowCampaignInfo(currentSession, viewer),
+    [currentSession, viewer]
   );
 
+  const shouldAutoFetchShareLink = Boolean(canManageShareLink && !hasShareToken);
   const { data: shareLinkData, refetch: refetchShareLink } = useSessionShareLinkQuery(
     activeSessionId,
     shouldAutoFetchShareLink
@@ -268,7 +316,7 @@ export default function useSessionPageController() {
 
   const handleRegenerateShareLink = useCallback(async () => {
     if (!canManageShareLink) {
-      return { success: false, message: 'Тільки власник може керувати share-посиланням' };
+      return { success: false, message: 'Лише власник може керувати share-посиланням' };
     }
 
     const result = await mutations.regenerateShareLink();
@@ -284,12 +332,11 @@ export default function useSessionPageController() {
       value: nextLink,
     });
 
-    try {
-      await navigator.clipboard.writeText(nextLink);
-      toast.success('Нове share-посилання скопійовано');
-    } catch {
-      toast.info('Нове share-посилання згенеровано');
-    }
+    await copyText(
+      nextLink,
+      'Нове share-посилання скопійовано',
+      'Нове share-посилання згенеровано'
+    );
 
     return { success: true, link: nextLink };
   }, [activeSessionId, canManageShareLink, mutations]);
@@ -314,35 +361,26 @@ export default function useSessionPageController() {
       return { success: false, message: 'Спочатку згенеруйте нове share-посилання' };
     }
 
-    try {
-      await navigator.clipboard.writeText(shareLinkToCopy);
-      toast.success('Share-посилання скопійовано');
-      return { success: true };
-    } catch {
-      return { success: false, message: 'Не вдалося скопіювати посилання' };
-    }
+    const copied = await copyText(
+      shareLinkToCopy,
+      'Share-посилання скопійовано'
+    );
+
+    return copied
+      ? { success: true }
+      : { success: false, message: 'Не вдалося скопіювати посилання' };
   }, [activeSessionId, canManageShareLink, currentShareLink, refetchShareLink]);
 
   const handleViewProfile = useCallback((userId) => {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        next.set('viewing', userId);
-        return next;
-      },
-      { replace: true }
-    );
+    updateSearchParams(setSearchParams, (next) => {
+      next.set('viewing', userId);
+    });
   }, [setSearchParams]);
 
   const handleBackFromProfile = useCallback(() => {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        next.delete('viewing');
-        return next;
-      },
-      { replace: true }
-    );
+    updateSearchParams(setSearchParams, (next) => {
+      next.delete('viewing');
+    });
   }, [setSearchParams]);
 
   return {
