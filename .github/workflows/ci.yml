@@ -112,6 +112,9 @@ jobs:
       - name: Install server dependencies
         run: npm --prefix server ci
 
+      - name: Generate Prisma client
+        run: cd server && npx prisma generate
+
       - name: Generate server coverage
         run: npm --prefix server run test:coverage
 
