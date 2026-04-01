@@ -228,7 +228,7 @@ function createSessionCoreService({
     },
 
     async getMySessions(userId, options = {}) {
-      const { status, role = 'ALL', limit = 20, offset = 0 } = options;
+      const { status, role = 'ALL', limit, offset = 0 } = options;
 
       const whereCondition = {
         participants: {
@@ -251,6 +251,18 @@ function createSessionCoreService({
         };
       }
 
+      const queryOptions = {
+        orderBy: { date: 'asc' },
+      };
+
+      if (Number.isInteger(offset) && offset > 0) {
+        queryOptions.skip = offset;
+      }
+
+      if (Number.isInteger(limit) && limit > 0) {
+        queryOptions.take = limit;
+      }
+
       const sessions = await prisma.session.findMany({
         where: whereCondition,
         include: {
@@ -268,9 +280,7 @@ function createSessionCoreService({
             },
           },
         },
-        orderBy: { date: 'asc' },
-        skip: offset,
-        take: limit,
+        ...queryOptions,
       });
 
       return sessions.map((session) => {

@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import DashboardCard from '@/components/ui/DashboardCard';
 import {
@@ -7,7 +8,7 @@ import {
   DateTimeDisplay,
   EmptyState,
 } from '@/components/shared';
-import { useMyCampaignsQuery, useMySessionsQuery } from '../../hooks/useDashboardQueries';
+import { useMySessionsQuery } from '../../hooks/useDashboardQueries';
 import Dice20 from '@/components/ui/icons/Dice20';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
 import Data from '@/components/ui/icons/Data';
@@ -45,20 +46,33 @@ function SessionCard({ session, navigate, formatDuration }) {
   );
 }
 
+SessionCard.propTypes = {
+  session: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    title: PropTypes.string.isRequired,
+    status: PropTypes.string,
+    myRole: PropTypes.string,
+    date: PropTypes.oneOfType([PropTypes.string, PropTypes.instanceOf(Date)]),
+    duration: PropTypes.number,
+    currentPlayers: PropTypes.number,
+    maxPlayers: PropTypes.number,
+  }).isRequired,
+  navigate: PropTypes.func.isRequired,
+  formatDuration: PropTypes.func.isRequired,
+};
+
 /**
- * MyGamesListWidget — ліва панель для "Мої ігри" view.
+ * MyGamesListWidget — ліва панель для "Мої сесії" view.
  *
- * Три розділи:
- * 1. Мої кампанії
- * 2. Сесії в кампаніях (згруповані по кампанії)
- * 3. Мої сесії (one-shot)
+ * Два розділи:
+ * 1. Сесії в кампаніях (згруповані по кампанії)
+ * 2. Мої сесії (one-shot)
  */
 export default function MyGamesListWidget() {
   const navigate = useNavigate();
 
-  const { data: campaigns = [], isLoading: isLoadingCampaigns } = useMyCampaignsQuery('all');
-  const { data: sessions = [], isLoading: isLoadingSessions } = useMySessionsQuery();
-  const isLoading = isLoadingCampaigns || isLoadingSessions;
+  const { data: sessions = [], isLoading: isLoadingSessions, error } = useMySessionsQuery();
+  const isLoading = isLoadingSessions;
 
   // Розбиваємо сесії на one-shot та сесії всередині кампаній
   const oneShotSessions = sessions.filter((s) => !s.campaignId);
@@ -75,7 +89,7 @@ export default function MyGamesListWidget() {
   }, {});
   const campaignGroups = Object.values(sessionsByCampaign);
 
-  const isEmpty = campaigns.length === 0 && oneShotSessions.length === 0 && campaignSessions.length === 0;
+  const isEmpty = oneShotSessions.length === 0 && campaignSessions.length === 0;
 
   // Форматування тривалості
   const formatDuration = (minutes) => {
@@ -89,7 +103,7 @@ export default function MyGamesListWidget() {
 
   if (isLoading) {
     return (
-      <DashboardCard title="Мої ігри">
+      <DashboardCard title="Мої сесії">
         <div className="animate-pulse space-y-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="p-4 border-2 border-gray-100 rounded-xl space-y-2">
@@ -102,13 +116,25 @@ export default function MyGamesListWidget() {
     );
   }
 
+  if (error) {
+    return (
+      <DashboardCard title="Мої сесії">
+        <EmptyState
+          title="Не вдалося завантажити сесії"
+          description={error?.message || 'Спробуйте оновити сторінку ще раз'}
+          className="h-full"
+        />
+      </DashboardCard>
+    );
+  }
+
   if (isEmpty) {
     return (
-      <DashboardCard title="Мої ігри">
+      <DashboardCard title="Мої сесії">
         <EmptyState
           icon={<Dice20 className="w-10 h-10" />}
-          title="У вас ще немає ігор"
-          description="Приєднайтесь до сесії або створіть свою на вкладці Головна"
+          title="У вас ще немає сесій"
+          description="Приєднайтесь до сесії або створіть свою на вкладці Календар"
           className="h-full"
         />
       </DashboardCard>
@@ -116,49 +142,8 @@ export default function MyGamesListWidget() {
   }
 
   return (
-    <DashboardCard title="Мої ігри">
+    <DashboardCard title="Мої сесії">
       <div className="flex flex-col gap-6">
-        {/* === Розділ: Мої кампанії === */}
-        {campaigns.length > 0 && (
-          <section>
-            <h3 className="text-lg font-bold text-[#164A41] mb-3 flex items-center gap-2">
-              Мої кампанії
-            </h3>
-            <div className="flex flex-col gap-2">
-              {campaigns.map((campaign) => {
-                const myRole = campaign.myRole;
-                const membersCount = campaign.membersCount || campaign.members?.length || 0;
-
-                return (
-                  <button
-                    key={campaign.id}
-                    onClick={() => navigate(`/campaign/${campaign.id}`)}
-                    className="w-full text-left p-4 border-2 border-[#9DC88D]/30 rounded-xl hover:border-[#164A41]/40 hover:shadow-md transition-all"
-                  >
-                    <div className="flex items-start justify-between mb-1">
-                      <h4 className="font-bold text-[#164A41] flex items-center gap-2">
-                        <span className="truncate">{campaign.title}</span>
-                      </h4>
-                      <StatusBadge status={campaign.status || 'ACTIVE'} size="sm" />
-                    </div>
-                    <div className="flex items-center gap-3 text-sm text-[#4D774E] mt-1">
-                      <RoleBadge role={myRole} />
-                      <span className="flex items-center gap-1">
-                        <GroupPeople className="w-4 h-4" /> {membersCount} учасників
-                      </span>
-                      {campaign.system && (
-                        <span className="text-xs px-2 py-0.5 bg-[#9DC88D]/20 rounded">
-                          {campaign.system}
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
         {/* === Розділ: Сесії в кампаніях === */}
         {campaignGroups.length > 0 && (
           <section>

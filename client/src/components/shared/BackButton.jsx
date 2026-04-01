@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import Arrow from '@/components/ui/icons/Arrow';
 
@@ -33,7 +34,7 @@ export default function BackButton({
     if (fallbackTo) {
       const fromSameSite =
         document.referrer &&
-        new URL(document.referrer).origin === window.location.origin;
+        new URL(document.referrer).origin === globalThis.location.origin;
       return fromSameSite ? navigate(-1) : navigate(fallbackTo);
     }
 
@@ -56,3 +57,12 @@ export default function BackButton({
     </button>
   );
 }
+
+BackButton.propTypes = {
+  to: PropTypes.string,
+  fallbackTo: PropTypes.string,
+  label: PropTypes.string,
+  variant: PropTypes.oneOf(['light', 'dark']),
+  onClick: PropTypes.func,
+  className: PropTypes.string,
+};
