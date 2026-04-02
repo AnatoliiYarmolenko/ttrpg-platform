@@ -48,7 +48,7 @@ export default function AvatarCropModal({
         </h3>
 
         <p className="mb-4 text-sm text-[#4D774E]">
-          Перетягніть фото та виберіть масштаб. Буде збережено квадратну область.
+          Перетягніть фото та виберіть масштаб.
         </p>
 
         <div className="relative h-[320px] w-full overflow-hidden rounded-xl bg-[#0F2E29]">
