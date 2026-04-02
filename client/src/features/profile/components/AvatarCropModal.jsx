@@ -36,12 +36,11 @@ export default function AvatarCropModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      {/* eslint-disable-next-line jsx-a11y/prefer-tag-over-role */}
-      <div
-        role="dialog"
+      <dialog
+        open
         aria-modal="true"
         aria-labelledby="avatar-crop-modal-title"
-        className="w-full max-w-xl rounded-2xl bg-white p-4 shadow-xl sm:p-6"
+        className="m-0 w-full max-w-xl rounded-2xl bg-white p-4 shadow-xl sm:p-6"
       >
         <h3 id="avatar-crop-modal-title" className="mb-2 text-lg font-bold text-[#164A41]">
           Обрізати аватар
@@ -103,7 +102,7 @@ export default function AvatarCropModal({
             Застосувати
           </Button>
         </div>
-      </div>
+      </dialog>
     </div>
   );
 }

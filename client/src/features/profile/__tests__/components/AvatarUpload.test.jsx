@@ -35,7 +35,7 @@ vi.mock('../../components/AvatarCropModal', () => ({
 }));
 
 vi.mock('../../utils/cropImage', () => ({
-  getCroppedImageFile: vi.fn(async (imageSrc, cropArea, fileName) => 
+  getCroppedImageFile: vi.fn(async () => 
     new File(['cropped'], 'avatar.webp', { type: 'image/webp' })
   ),
 }));
