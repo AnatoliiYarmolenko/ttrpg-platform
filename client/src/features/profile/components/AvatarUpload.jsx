@@ -1,15 +1,34 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
+import PropTypes from 'prop-types';
 import { useProfileMutations } from '../hooks/useProfileQueries';
 import Button from '@/components/ui/Button';
 import { UserAvatar } from '@/components/shared';
 import { toast } from '@/stores/useToastStore';
+import AvatarCropModal from './AvatarCropModal';
+import { getCroppedImageFile } from '../utils/cropImage';
 
 export default function AvatarUpload({ currentAvatarUrl, username, onUpdate }) {
   const fileInputRef = useRef(null);
   const { uploadAvatar, deleteAvatar, uploadAvatarStatus, deleteAvatarStatus } = useProfileMutations();
-  const uploading = uploadAvatarStatus || deleteAvatarStatus;
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [sourceImageUrl, setSourceImageUrl] = useState('');
+  const [sourceFileName, setSourceFileName] = useState('avatar');
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [isCropping, setIsCropping] = useState(false);
+  const uploading = uploadAvatarStatus || deleteAvatarStatus || isCropping;
 
-  const handleFileSelect = async (e) => {
+  const resetCropState = () => {
+    if (sourceImageUrl) {
+      URL.revokeObjectURL(sourceImageUrl);
+    }
+
+    setCropModalOpen(false);
+    setSourceImageUrl('');
+    setSourceFileName('avatar');
+    setCroppedAreaPixels(null);
+  };
+
+  const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -23,17 +42,36 @@ export default function AvatarUpload({ currentAvatarUrl, username, onUpdate }) {
       return;
     }
 
+    const objectUrl = URL.createObjectURL(file);
+    setSourceImageUrl(objectUrl);
+    setSourceFileName(file.name || 'avatar');
+    setCropModalOpen(true);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleCropConfirm = async () => {
+    if (!sourceImageUrl || !croppedAreaPixels) {
+      toast.error('Оберіть область для аватара');
+      return;
+    }
+
     try {
-      const result = await uploadAvatar(file);
+      setIsCropping(true);
+      const croppedFile = await getCroppedImageFile(sourceImageUrl, croppedAreaPixels, sourceFileName);
+      const result = await uploadAvatar(croppedFile);
+
       if (onUpdate && result?.profile) {
         onUpdate(result.profile);
       }
+
+      resetCropState();
     } catch (error) {
       toast.error(error?.response?.data?.error || error?.message || 'Не вдалося оновити аватар');
     } finally {
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      setIsCropping(false);
     }
   };
 
@@ -93,8 +131,24 @@ export default function AvatarUpload({ currentAvatarUrl, username, onUpdate }) {
       )}
 
       <p className="text-xs text-[#4D774E] text-center">
-        JPG, PNG або GIF. Макс. 5MB
+        JPG, PNG, GIF або WebP. Макс. 5MB
       </p>
+
+      <AvatarCropModal
+        key={sourceImageUrl || 'avatar-crop'}
+        isOpen={cropModalOpen}
+        imageSrc={sourceImageUrl}
+        isLoading={uploading}
+        onCropAreaChange={setCroppedAreaPixels}
+        onCancel={resetCropState}
+        onConfirm={handleCropConfirm}
+      />
     </div>
   );
 }
+
+AvatarUpload.propTypes = {
+  currentAvatarUrl: PropTypes.string,
+  username: PropTypes.string,
+  onUpdate: PropTypes.func,
+};
