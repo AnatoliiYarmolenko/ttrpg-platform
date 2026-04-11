@@ -32,6 +32,8 @@ const createError = {
     return err;
   },
 
+  rateLimitUnavailable: () => new AppError(ERROR_CODES.RATE_LIMIT_UNAVAILABLE),
+
   fileInvalidFormat: (allowedFormats) => new AppError(
     ERROR_CODES.FILE_INVALID_FORMAT,
     `Недопустимий формат файлу. Дозволено: ${allowedFormats}`
@@ -43,6 +45,7 @@ const createError = {
   ),
 
   serverError: () => new AppError(ERROR_CODES.SERVER_ERROR),
+  serverUnavailable: () => new AppError(ERROR_CODES.SERVER_UNAVAILABLE),
 
   custom: (code, message, details) => new AppError(code, message, details),
 };

@@ -9,7 +9,6 @@ const {
   initAllCleanupJobs, 
   initTokenCleanup, 
   initSessionCleanup,
-  initRateLimitCleanup,
   stopAllCleanupJobs,
   shutdownCleanupJobs,
 } = require('./cleanup');
@@ -29,7 +28,6 @@ module.exports = {
   initAllCleanupJobs,
   initTokenCleanup,
   initSessionCleanup,
-  initRateLimitCleanup,
   stopAllCleanupJobs,
   shutdownCleanupJobs,
   

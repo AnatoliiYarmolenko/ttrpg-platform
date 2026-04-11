@@ -35,12 +35,12 @@ export default function AvatarCropModal({
   if (!isOpen || !imageSrc) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 bg-black/60 p-4 backdrop-blur-sm">
       <dialog
         open
         aria-modal="true"
         aria-labelledby="avatar-crop-modal-title"
-        className="m-0 w-full max-w-xl rounded-2xl bg-white p-4 shadow-xl sm:p-6"
+        className="fixed left-1/2 top-1/2 m-0 max-h-[calc(100vh-2rem)] w-full max-w-xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-6"
       >
         <h3 id="avatar-crop-modal-title" className="mb-2 text-lg font-bold text-[#164A41]">
           Обрізати аватар
