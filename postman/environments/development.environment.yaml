@@ -1,0 +1,12 @@
+name: development
+values:
+  - key: baseUrl
+    value: ''
+    enabled: true
+  - key: csrf_token
+    value: ''
+    enabled: true
+  - key: verification_token
+    value: ''
+    enabled: true
+color: 180

@@ -1,0 +1,67 @@
+$kind: collection
+name: ttrpg-platform
+scripts:
+  - type: http:beforeRequest
+    code: "// Автоматично додає X-CSRF-Token з cookie XSRF-TOKEN\r
+
+      const baseUrl = pm.environment.get(\"baseUrl\") ||
+      pm.collectionVariables.get(\"baseUrl\");\r
+
+      \r
+
+      if (!baseUrl) {\r
+
+      \    console.log(\"baseUrl не задано в environment/collection
+      variables\");\r
+
+      } else {\r
+
+      \    const jar = pm.cookies.jar();\r
+
+      \r
+
+      \    jar.get(baseUrl, \"XSRF-TOKEN\", function (err, xsrfCookie) {\r
+
+      \        if (err) {\r
+
+      \            console.log(\"Помилка читання cookie jar:\", err);\r
+
+      \            return;\r
+
+      \        }\r
+
+      \r
+
+      \        // Якщо cookie знайдено — ставимо header\r
+
+      \        if (xsrfCookie) {\r
+
+      \            pm.environment.set(\"csrf_token\", xsrfCookie);\r
+
+      \r
+
+      \            // Оновити/додати header X-CSRF-Token\r
+
+      \            pm.request.headers.upsert({\r
+
+      \                key: \"X-CSRF-Token\",\r
+
+      \                value: xsrfCookie\r
+
+      \            });\r
+
+      \r
+
+      \            console.log(\"X-CSRF-Token встановлено з XSRF-TOKEN
+      cookie\");\r
+
+      \        } else {\r
+
+      \            console.log(\"XSRF-TOKEN cookie не знайдено. Спочатку виклич
+      /auth/csrf-token або login/register\");\r
+
+      \        }\r
+
+      \    });\r
+
+      }"

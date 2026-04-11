@@ -1,0 +1,5 @@
+$kind: http-request
+name: Test server
+url: "{{baseUrl}}/"
+method: GET
+order: 1775922931205
