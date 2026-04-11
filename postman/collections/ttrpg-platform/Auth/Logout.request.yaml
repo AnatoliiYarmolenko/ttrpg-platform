@@ -1,0 +1,15 @@
+$kind: http-request
+name: Logout
+url: "{{baseUrl}}/api/v1/auth/logout"
+method: POST
+headers:
+  X-CSRF-Token: "{{csrf_token}}"
+scripts:
+  - type: afterResponse
+    code: "pm.test(\"Logout success\", function () {\r
+
+      pm.expect([200, 204]).to.include(pm.response.code);\r
+
+      });"
+    language: text/javascript
+order: 4501411957452785

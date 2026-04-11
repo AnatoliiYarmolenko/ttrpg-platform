@@ -1,0 +1,15 @@
+$kind: http-request
+name: Create Campaign
+url: "{{baseUrl}}/api/v1/campaigns"
+method: POST
+headers:
+  Content-Type: application/json
+  X-CSRF-Token: "{{csrf_token}}"
+body:
+  type: json
+  content: "{\r\n  \"title\": \"DnD Saturday Night\",\r\n  \"description\": \"Weekly campaign in Forgotten Realms\",\r\n  \"system\": \"D&D 5e\",\r\n  \"visibility\": \"PUBLIC\"\r\n}"
+scripts:
+  - type: afterResponse
+    code: "pm.test(\"Create Campaign success\", function () {\r\n  pm.expect([200, 201]).to.include(pm.response.code);\r\n});\r\n\r\nlet response = {};\r\ntry { response = pm.response.json(); } catch (e) {}\r\n\r\nconst campaign = response.data || response.campaign || response;\r\n\r\nif (campaign && campaign.id) {\r\n  pm.environment.set(\"campaign_id\", String(campaign.id));\r\n  console.log(\"Campaign ID saved:\", campaign.id);\r\n}\r\n\r\npm.test(\"Response contains campaign data\", function () {\r\n  const hasId = typeof campaign.id === 'number';\r\n  const hasTitle = campaign.title === \"DnD Saturday Night\";\r\n  pm.expect(hasId && (hasTitle || campaign.title)).to.be.true;\r\n});"
+    language: text/javascript
+order: 1775927759486

@@ -1,0 +1,12 @@
+$kind: http-request
+name: Get my sessions
+url: "{{baseUrl}}/api/v1/sessions"
+method: GET
+queryParams:
+  status: PLANNED
+  role: ALL
+scripts:
+  - type: afterResponse
+    code: "pm.test(\"Get Sessions success\", function () {\r\n  pm.expect(pm.response.code).to.equal(200);\r\n});\r\n\r\nlet data = {};\r\ntry { data = pm.response.json(); } catch (e) {}\r\n\r\npm.test(\"Response is array or has items field\", function () {\r\n  const ok = Array.isArray(data) || Array.isArray(data.items) || (typeof data === 'object' && Array.isArray(data.data));\r\n  pm.expect(ok).to.be.true;\r\n});"
+    language: text/javascript
+order: 1775928100000

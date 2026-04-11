@@ -1,0 +1,10 @@
+$kind: http-request
+name: Verify email
+url: "{{baseUrl}}/api/v1/auth/verify-email"
+method: GET
+queryParams:
+  token: "{{verification_token}}"
+body:
+  type: json
+  content: ""
+order: 4385198824735309

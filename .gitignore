@@ -94,3 +94,4 @@ mysql_data/
 db_data/
 
 docs/
+.postman/
