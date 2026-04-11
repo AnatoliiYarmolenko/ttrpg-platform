@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const { jwtSecret } = require('../config/config');
 const { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } = require('../constants/errors');
 const { isUserDeleted } = require('../store/deletedUsers');
+const { logger } = require('../lib/logger');
 
 /**
  * Middleware для верифікації JWT токена
@@ -14,7 +15,7 @@ const authenticateToken = (req, res, next) => {
   // Якщо токена немає в cookie, пробуємо з заголовка Authorization (для зворотної сумісності)
   if (!token) {
     const authHeader = req.headers['authorization'];
-    token = authHeader && authHeader.split(' ')[1]; // Формат: "Bearer <token>"
+    token = authHeader?.split(' ')[1]; // Формат: "Bearer <token>"
   }
 
   // Якщо токена немає взагалі
@@ -32,31 +33,40 @@ const authenticateToken = (req, res, next) => {
       // Повертаємо уніфікований JSON + заголовок для клієнта/інтеграцій
       if (err.name === 'TokenExpiredError') {
         res.set('WWW-Authenticate', 'Bearer error="invalid_token", error_description="The access token expired"');
-        return res.status(HTTP_STATUS.UNAUTHORIZED).json({ 
-          code: ERROR_CODES.AUTH_TOKEN_EXPIRED, 
-          error: ERROR_MESSAGES[ERROR_CODES.AUTH_TOKEN_EXPIRED], 
-          canRefresh: true 
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          code: ERROR_CODES.AUTH_TOKEN_EXPIRED,
+          error: ERROR_MESSAGES[ERROR_CODES.AUTH_TOKEN_EXPIRED],
+          canRefresh: true
         });
       }
-      return res.status(HTTP_STATUS.FORBIDDEN).json({ 
-        code: ERROR_CODES.AUTH_TOKEN_INVALID, 
-        error: ERROR_MESSAGES[ERROR_CODES.AUTH_TOKEN_INVALID], 
-        canRefresh: false 
+      return res.status(HTTP_STATUS.FORBIDDEN).json({
+        code: ERROR_CODES.AUTH_TOKEN_INVALID,
+        error: ERROR_MESSAGES[ERROR_CODES.AUTH_TOKEN_INVALID],
+        canRefresh: false
       });
     }
 
-    // Перевіряємо blacklist анонімізованих акаунтів (закриває 15-хв вікно JWT)
-    if (await isUserDeleted(user.id)) {
-      return res.status(HTTP_STATUS.UNAUTHORIZED).json({
-        code: ERROR_CODES.AUTH_TOKEN_INVALID,
-        error: 'Акаунт було видалено',
+    try {
+      // Перевіряємо blacklist анонімізованих акаунтів (закриває 15-хв вікно JWT)
+      if (await isUserDeleted(user.id)) {
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          code: ERROR_CODES.AUTH_TOKEN_INVALID,
+          error: 'Акаунт було видалено',
+          canRefresh: false,
+        });
+      }
+
+      // Додаємо дані користувача до об'єкта запиту
+      req.user = user;
+      return next(); // Продовжуємо виконання наступного middleware/контролера
+    } catch (deletedCheckError) {
+      logger.error({ err: deletedCheckError }, '[Auth] Не вдалося перевірити статус видаленого акаунту');
+      return res.status(HTTP_STATUS.SERVICE_UNAVAILABLE).json({
+        code: ERROR_CODES.SERVER_UNAVAILABLE,
+        error: ERROR_MESSAGES[ERROR_CODES.SERVER_UNAVAILABLE],
         canRefresh: false,
       });
     }
-
-    // Додаємо дані користувача до об'єкта запиту
-    req.user = user; // { id, username }
-    next(); // Продовжуємо виконання наступного middleware/контролера
   });
 };
 
@@ -70,7 +80,7 @@ const optionalAuthenticateToken = (req, res, next) => {
   let token = req.cookies?.token;
   if (!token) {
     const authHeader = req.headers['authorization'];
-    token = authHeader && authHeader.split(' ')[1];
+    token = authHeader?.split(' ')[1];
   }
 
   // Якщо токена немає - просто продовжуємо без req.user
@@ -85,13 +95,18 @@ const optionalAuthenticateToken = (req, res, next) => {
       return next();
     }
 
-    if (await isUserDeleted(user.id)) {
+    try {
+      if (await isUserDeleted(user.id)) {
+        return next();
+      }
+
+      // Якщо токен валідний - додаємо користувача
+      req.user = user;
+      return next();
+    } catch (deletedCheckError) {
+      logger.warn({ err: deletedCheckError }, '[Auth] Optional auth пропущено через помилку перевірки deleted-user');
       return next();
     }
-
-    // Якщо токен валідний - додаємо користувача
-    req.user = user;
-    next();
   });
 };
 

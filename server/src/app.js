@@ -22,6 +22,7 @@ const { errorHandler } = require('./middlewares/error.middleware');
 
 // Startup modules
 const { createCorsMiddleware, setupStaticFiles, httpLogger } = require('./startup');
+const { getRedisHealthState } = require('./lib/redis');
 
 function resolveTrustProxySetting() {
   const raw = process.env.TRUST_PROXY;
@@ -95,9 +96,13 @@ function createApp() {
 
   // Health check endpoint для Docker/Kubernetes
   app.get('/health', (req, res) => {
-    res.status(200).json({ 
-      status: 'ok', 
-      timestamp: new Date().toISOString() 
+    const redisHealth = getRedisHealthState();
+    const isHealthy = redisHealth.isReady;
+
+    res.status(isHealthy ? 200 : 503).json({ 
+      status: isHealthy ? 'ok' : 'degraded', 
+      timestamp: new Date().toISOString(),
+      redis: redisHealth,
     });
   });
 

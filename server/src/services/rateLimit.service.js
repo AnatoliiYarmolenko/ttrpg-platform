@@ -9,7 +9,7 @@
  * rate limit діє глобально, не обходиться балансуванням.
  */
 
-const { redis } = require('../lib/redis');
+const { redis, isRedisReady, recordRedisDegradation } = require('../lib/redis');
 const { createError } = require('../constants/errors');
 const { logger } = require('../lib/logger');
 
@@ -31,6 +31,37 @@ const RATE_LIMIT_CONFIG = {
     blockDurationMs: 60 * 60 * 1000, // Блокування на 1 годину
   },
 };
+
+const SECURITY_CRITICAL_TYPES = new Set([
+  'refresh',
+  'login',
+  'passwordReset',
+  'auth_login',
+  'auth_register',
+  'auth_forgot_password',
+  'auth_resend_verification',
+  'auth_verify_email',
+  'security_change_password',
+  'security_email_change',
+  'security_confirm_email_change',
+  'security_delete_account',
+]);
+
+function shouldFailClosed(type, config = null) {
+  if (SECURITY_CRITICAL_TYPES.has(type)) {
+    return true;
+  }
+
+  if (config?.failClosed === true) {
+    return true;
+  }
+
+  if (config?.failOpen === true) {
+    return false;
+  }
+
+  return false;
+}
 
 /**
  * Генерує ключ для лічильника запитів
@@ -63,6 +94,7 @@ function getBlockedKey(type, identifier) {
  */
 async function checkRateLimit(type, identifier, customConfig = null) {
   const config = customConfig || RATE_LIMIT_CONFIG[type];
+  const failClosed = shouldFailClosed(type, config);
 
   if (!config) {
     logger.warn({ type }, '[Rate Limit] Невідомий тип операції');
@@ -73,6 +105,18 @@ async function checkRateLimit(type, identifier, customConfig = null) {
   const blockedKey = getBlockedKey(type, identifier);
   const windowSeconds = Math.ceil(config.windowMs / 1000);
   const blockSeconds = Math.ceil(config.blockDurationMs / 1000);
+
+  if (!isRedisReady()) {
+    const err = new Error('Redis is not ready');
+    recordRedisDegradation('rate-limit', err);
+    logger.error({ type, identifier, failClosed }, '[Rate Limit] Redis недоступний до виконання ліміту');
+
+    if (failClosed) {
+      throw createError.rateLimitUnavailable();
+    }
+
+    return true;
+  }
 
   try {
     // 1. Перевіряємо чи заблокований (один GET запит)
@@ -103,11 +147,16 @@ async function checkRateLimit(type, identifier, customConfig = null) {
     return true;
   } catch (err) {
     // Пробрасуємо лише AppError 429 далі
-    if (err && err.status === 429) {
+    if (err?.status === 429) {
       throw err;
     }
-    // При помилці Redis — fail-open (не блокуємо запит)
-    logger.error({ err, type, identifier }, '[Rate Limit] Redis помилка');
+    recordRedisDegradation('rate-limit', err);
+    logger.error({ err, type, identifier, failClosed }, '[Rate Limit] Redis помилка');
+
+    if (failClosed) {
+      throw createError.rateLimitUnavailable();
+    }
+
     return true;
   }
 }
@@ -167,12 +216,16 @@ async function getRateLimitStatus(type, identifier) {
       .get(getCounterKey(type, identifier))
       .ttl(getBlockedKey(type, identifier))
       .exec();
+    const blockedSecondsRemaining = Math.max(blockedTtl[1], 0);
+
     return {
-      count: parseInt(count[1], 10) || 0,
-      isBlocked: blockedTtl[1] > 0,
-      blockedSecondsRemaining: blockedTtl[1] > 0 ? blockedTtl[1] : 0,
+      count: Number.parseInt(count[1], 10) || 0,
+      isBlocked: blockedSecondsRemaining > 0,
+      blockedSecondsRemaining,
     };
   } catch (err) {
+    recordRedisDegradation('rate-limit:status', err);
+    logger.error({ err, type, identifier }, '[Rate Limit] Redis помилка getRateLimitStatus');
     return { count: 0, isBlocked: false, blockedSecondsRemaining: 0 };
   }
 }

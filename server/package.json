@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "lint": "node scripts/lint.js",
     "test": "node --test tests/**/*.test.js",
     "test:coverage": "c8 --all --include=src/**/*.js --exclude=src/constants/** --exclude=src/validation/** --reporter=text-summary --reporter=lcov --reporter=html node --test tests/**/*.test.js",
     "dev": "nodemon index.js",

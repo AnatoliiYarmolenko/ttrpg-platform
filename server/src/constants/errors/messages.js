@@ -52,6 +52,7 @@ const ERROR_MESSAGES = {
   [ERROR_CODES.FILE_UPLOAD_FAILED]: 'Помилка завантаження файлу',
 
   [ERROR_CODES.RATE_LIMIT_EXCEEDED]: 'Занадто багато запитів. Спробуйте пізніше.',
+  [ERROR_CODES.RATE_LIMIT_UNAVAILABLE]: 'Сервіс обмеження запитів тимчасово недоступний. Спробуйте пізніше.',
 
   [ERROR_CODES.ADMIN_ACCESS_DENIED]: 'Доступ дозволено лише адміністраторам',
   [ERROR_CODES.ADMIN_CANNOT_DELETE_SELF]: 'Неможливо видалити власний обліковий запис',

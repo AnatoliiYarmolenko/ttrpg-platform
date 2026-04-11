@@ -1,4 +1,6 @@
-const { redis } = require('../lib/redis');
+const { prisma } = require('../lib/prisma');
+const { redis, isRedisReady, recordRedisDegradation } = require('../lib/redis');
+const { createError } = require('../constants/errors');
 const { logger } = require('../lib/logger');
 
 /**
@@ -20,8 +22,13 @@ const DELETED_USER_TTL_SECONDS = 15 * 60; // 900 сек = 15 хвилин (ча�
  */
 async function markUserAsDeleted(userId) {
   try {
+    if (!isRedisReady()) {
+      throw new Error('Redis is not ready');
+    }
+
     await redis.set(`deleted:user:${userId}`, '1', 'EX', DELETED_USER_TTL_SECONDS);
   } catch (err) {
+    recordRedisDegradation('deleted-users:mark', err);
     // Не кидаємо помилку — акаунт вже анонімізовано в БД.
     // blacklist через in-memory Set як fallback не потрібен:
     // при помилці Redis краще просто залогувати.
@@ -36,13 +43,27 @@ async function markUserAsDeleted(userId) {
  */
 async function isUserDeleted(userId) {
   try {
+    if (!isRedisReady()) {
+      throw new Error('Redis is not ready');
+    }
+
     const result = await redis.exists(`deleted:user:${userId}`);
     return result === 1;
   } catch (err) {
-    // При помилці Redis — fail-open (не блокуємо користувача).
-    // Це менший ризик, ніж заблокувати всіх при недоступному Redis.
-    logger.error({ err, userId }, '[DeletedUsers] Redis помилка isUserDeleted');
-    return false;
+    recordRedisDegradation('deleted-users:check', err);
+    logger.warn({ err, userId }, '[DeletedUsers] Redis недоступний, використовуємо DB fallback');
+
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { isDeleted: true },
+      });
+
+      return Boolean(user?.isDeleted);
+    } catch (dbErr) {
+      logger.error({ err: dbErr, userId }, '[DeletedUsers] DB fallback failed');
+      throw createError.serverUnavailable();
+    }
   }
 }
 
