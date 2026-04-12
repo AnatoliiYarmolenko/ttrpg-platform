@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, memo } from 'react';
+import PropTypes from 'prop-types';
 import DashboardCard from '@/components/ui/DashboardCard';
 import CalendarDayCell from '../ui/CalendarDayCell';
 import useDashboardStore from '@/stores/useDashboardStore';
@@ -29,14 +30,14 @@ const CalendarWidget = memo(function CalendarWidget({ title, showTodayButton }) 
   const searchFilters = useSearchStore((state) => state.searchFilters);
   const hasSearched = useSearchStore((state) => state.hasSearched);
 
-  const shouldShowTodayButton = showTodayButton ?? (viewMode === VIEW_MODES.MY_GAMES || viewMode === VIEW_MODES.HOME);
+  const shouldShowTodayButton = showTodayButton ?? (viewMode === VIEW_MODES.MY_GAMES || viewMode === VIEW_MODES.CALENDAR);
   const [todayKey, setTodayKey] = useState(() => getLocalDateKey());
 
   useEffect(() => {
     let timeoutId = null;
 
     const scheduleNextTick = () => {
-      timeoutId = window.setTimeout(() => {
+      timeoutId = globalThis.setTimeout(() => {
         setTodayKey(getLocalDateKey());
         scheduleNextTick();
       }, getMillisecondsUntilNextLocalDay());
@@ -46,7 +47,7 @@ const CalendarWidget = memo(function CalendarWidget({ title, showTodayButton }) 
 
     return () => {
       if (timeoutId) {
-        window.clearTimeout(timeoutId);
+        globalThis.clearTimeout(timeoutId);
       }
     };
   }, []);
@@ -78,7 +79,7 @@ const CalendarWidget = memo(function CalendarWidget({ title, showTodayButton }) 
     
     // Додаємо порожні клітинки для днів попереднього місяця
     for (let i = 0; i < startDayOfWeek; i++) {
-      days.push({ day: null, dateKey: null, isToday: false });
+      days.push({ id: `empty-before-${year}-${month}-${i}`, day: null, dateKey: null, isToday: false });
     }
     
     // Додаємо дні поточного місяця
@@ -135,6 +136,8 @@ const navigationActions = (
     switch (viewMode) {
       case VIEW_MODES.MY_GAMES:
         return 'Мої ігри';
+      case VIEW_MODES.CALENDAR:
+        return 'Календар';
       case VIEW_MODES.SEARCH:
         return 'Пошук';
       default:
@@ -174,14 +177,14 @@ const navigationActions = (
           
           {/* Сітка днів */}
           <div className="grid grid-cols-7 gap-1 flex-1 overflow-visible">
-            {calendarDays.map((item, index) => {
+            {calendarDays.map((item) => {
               const stats = item.dateKey ? calendarStats[item.dateKey] : null;
               const count = stats?.count || 0;
               const sessions = stats?.sessions || EMPTY_SESSIONS;
               
               if (!item.day) {
                 // Порожня клітинка
-                return <div key={`empty-${index}`} className="min-h-[82px]" />;
+                return <div key={item.id} className="min-h-[82px]" />;
               }
               
               return (
@@ -205,3 +208,8 @@ const navigationActions = (
 });
 
 export default CalendarWidget;
+
+CalendarWidget.propTypes = {
+  title: PropTypes.string,
+  showTodayButton: PropTypes.bool,
+};

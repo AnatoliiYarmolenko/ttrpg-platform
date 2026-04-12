@@ -17,6 +17,8 @@ import {
 } from '../components/widgets/ProfilePageWidget';
 import CalendarWidget from '../components/widgets/CalendarWidget';
 import HomeRightWidget from '../components/widgets/HomeRightWidget';
+import HomeCurrentSessionWidget from '../components/widgets/HomeCurrentSessionWidget';
+import HomeNotificationsWidget from '../components/widgets/HomeNotificationsWidget';
 import MyGamesListWidget from '../components/widgets/MyGamesListWidget';
 import MyCampaignsWidget from '../components/widgets/MyCampaignsWidget';
 import CreateCampaignWidget from '@/features/campaigns/components/widgets/CreateCampaignWidget';
@@ -59,6 +61,9 @@ export default function DashboardPage() {
   // === Left panel ===
   const renderLeftPanel = () => {
     if (viewMode === VIEW_MODES.HOME) {
+      return <HomeCurrentSessionWidget />;
+    }
+    if (viewMode === VIEW_MODES.CALENDAR) {
       return <CalendarWidget />;
     }
     if (viewMode === VIEW_MODES.MY_GAMES) return <MyGamesListWidget />;
@@ -80,6 +85,9 @@ export default function DashboardPage() {
   // === Right panel ===
   const renderRightPanel = () => {
     if (viewMode === VIEW_MODES.HOME) {
+      return <HomeNotificationsWidget />;
+    }
+    if (viewMode === VIEW_MODES.CALENDAR) {
       return <HomeRightWidget />;
     }
     if (viewMode === VIEW_MODES.MY_GAMES) {

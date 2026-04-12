@@ -41,6 +41,24 @@ router.get(
 );
 
 router.get(
+  '/next-relevant',
+  [authenticateToken],
+  (req, res, next) => sessionCrudController.getNextRelevantSession(req, res, next)
+);
+
+router.get(
+  '/next-home-session',
+  [authenticateToken],
+  (req, res, next) => sessionCrudController.getNextRelevantSession(req, res, next)
+);
+
+router.get(
+  '/next-home',
+  [authenticateToken],
+  (req, res, next) => sessionCrudController.getNextRelevantSession(req, res, next)
+);
+
+router.get(
   '/calendar',
   [optionalAuthenticateToken, ...validateGetCalendar],
   (req, res, next) => sessionCalendarController.getCalendar(req, res, next)

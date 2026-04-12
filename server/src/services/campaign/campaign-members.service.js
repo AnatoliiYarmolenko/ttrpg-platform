@@ -65,11 +65,11 @@ function createCampaignMembersService({
 
   return {
     async transferCampaignOwnership(campaignId, currentOwnerId, newOwnerId) {
-      const campaignIdInt = parseInt(campaignId);
-      const newOwnerIdInt = parseInt(newOwnerId);
+      const campaignIdInt = Number.parseInt(campaignId, 10);
+      const newOwnerIdInt = Number.parseInt(newOwnerId, 10);
 
       if (!Number.isInteger(newOwnerIdInt) || newOwnerIdInt <= 0) {
-        throw new AppError(ERROR_CODES.CAMPAIGN_TRANSFER_FAILED, 'newOwnerId повинен бути позитивним числом');
+        throw new AppError(ERROR_CODES.CAMPAIGN_TRANSFER_FAILED, 'Ідентифікатор нового власника має бути додатним числом');
       }
 
       if (currentOwnerId === newOwnerIdInt) {
@@ -162,7 +162,7 @@ function createCampaignMembersService({
     },
 
     async getCampaignMembers(campaignId, userId) {
-      const campaignIdInt = parseInt(campaignId);
+      const campaignIdInt = Number.parseInt(campaignId, 10);
 
       const campaign = await prisma.campaign.findUnique({
         where: { id: campaignIdInt },
@@ -244,8 +244,8 @@ function createCampaignMembersService({
       const existingMember = await prisma.campaignMember.findUnique({
         where: {
           userId_campaignId: {
-            userId: parseInt(newMemberId),
-            campaignId: parseInt(campaignId),
+            userId: Number.parseInt(newMemberId, 10),
+            campaignId: Number.parseInt(campaignId, 10),
           },
         },
       });
@@ -255,7 +255,7 @@ function createCampaignMembersService({
       }
 
       const userExists = await prisma.user.findUnique({
-        where: { id: parseInt(newMemberId) },
+        where: { id: Number.parseInt(newMemberId, 10) },
       });
 
       if (!userExists) {
@@ -264,8 +264,8 @@ function createCampaignMembersService({
 
       return prisma.campaignMember.create({
         data: {
-          userId: parseInt(newMemberId),
-          campaignId: parseInt(campaignId),
+          userId: Number.parseInt(newMemberId, 10),
+          campaignId: Number.parseInt(campaignId, 10),
           role: targetRole,
         },
         include: {
@@ -278,8 +278,8 @@ function createCampaignMembersService({
 
     async removeMemberFromCampaign(campaignId, userId, memberId) {
       const campaign = await getCampaignById(campaignId, userId);
-      const memberIdInt = parseInt(memberId);
-      const campaignIdInt = parseInt(campaignId);
+      const memberIdInt = Number.parseInt(memberId, 10);
+      const campaignIdInt = Number.parseInt(campaignId, 10);
 
       assertCampaignNotFinished(
         campaign,
@@ -287,7 +287,7 @@ function createCampaignMembersService({
       );
 
       if (campaign.ownerId === userId && memberIdInt === userId) {
-        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'OWNER не може видаляти себе');
+        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Власник кампанії не може видаляти себе');
       }
 
       const member = await prisma.campaignMember.findUnique({
@@ -306,7 +306,7 @@ function createCampaignMembersService({
       const isSelfRemoval = member.userId === userId;
       if (isSelfRemoval) {
         if (member.role === 'OWNER') {
-          throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'OWNER не може видаляти себе');
+          throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Власник кампанії не може видаляти себе');
         }
 
         await prisma.campaignMember.delete({
@@ -370,8 +370,8 @@ function createCampaignMembersService({
         throw new AppError(ERROR_CODES.VALIDATION_INVALID_FORMAT, 'Невірна роль');
       }
 
-      const memberIdInt = parseInt(memberId);
-      const campaignIdInt = parseInt(campaignId);
+      const memberIdInt = Number.parseInt(memberId, 10);
+      const campaignIdInt = Number.parseInt(campaignId, 10);
 
       const targetMember = await prisma.campaignMember.findUnique({
         where: {
@@ -408,7 +408,7 @@ function createCampaignMembersService({
     },
 
     async submitJoinRequest(campaignId, userId, message = null, shareToken = null) {
-      const campaignIdInt = parseInt(campaignId);
+      const campaignIdInt = Number.parseInt(campaignId, 10);
 
       const campaign = await getCampaignById(campaignIdInt, userId, shareToken);
 
@@ -450,7 +450,7 @@ function createCampaignMembersService({
 
       return prisma.joinRequest.findMany({
         where: {
-          campaignId: parseInt(campaignId),
+          campaignId: Number.parseInt(campaignId, 10),
           status: 'PENDING',
         },
         include: {
@@ -463,14 +463,14 @@ function createCampaignMembersService({
     },
 
     async approveJoinRequest(requestId, userId, role = 'PLAYER') {
-      const requestIdInt = parseInt(requestId);
+      const requestIdInt = Number.parseInt(requestId, 10);
       const joinRequest = await prisma.joinRequest.findUnique({
         where: { id: requestIdInt },
         select: { campaignId: true, userId: true, status: true },
       });
 
       if (!joinRequest) {
-        throw new AppError('JOIN_REQUEST_NOT_FOUND', 'Заявка не знайдена');
+        throw new AppError(ERROR_CODES.JOIN_REQUEST_NOT_FOUND);
       }
 
       if (joinRequest.status !== 'PENDING') {
@@ -559,14 +559,14 @@ function createCampaignMembersService({
     },
 
     async rejectJoinRequest(requestId, userId) {
-      const requestIdInt = parseInt(requestId);
+      const requestIdInt = Number.parseInt(requestId, 10);
       const joinRequest = await prisma.joinRequest.findUnique({
         where: { id: requestIdInt },
         select: { campaignId: true, status: true },
       });
 
       if (!joinRequest) {
-        throw new AppError('JOIN_REQUEST_NOT_FOUND', 'Заявка не знайдена');
+        throw new AppError(ERROR_CODES.JOIN_REQUEST_NOT_FOUND);
       }
 
       if (joinRequest.status !== 'PENDING') {

@@ -11,7 +11,13 @@ class AppError extends Error {
 }
 
 const ERROR_CODES = {
-  VALIDATION_FAILED: 'VALIDATION_FAILED',
+  SESSION_JOIN_ROLE_INVALID: 'SESSION_JOIN_ROLE_INVALID',
+  SESSION_JOIN_STATUS_FORBIDDEN: 'SESSION_JOIN_STATUS_FORBIDDEN',
+  SESSION_JOIN_CAMPAIGN_FINISHED: 'SESSION_JOIN_CAMPAIGN_FINISHED',
+  SESSION_JOIN_ALREADY_STARTED: 'SESSION_JOIN_ALREADY_STARTED',
+  SESSION_JOIN_ALREADY_PARTICIPANT: 'SESSION_JOIN_ALREADY_PARTICIPANT',
+  SESSION_JOIN_NO_FREE_PLAYER_SLOTS: 'SESSION_JOIN_NO_FREE_PLAYER_SLOTS',
+  SESSION_JOIN_PRIVATE_CAMPAIGN_MEMBERS_ONLY: 'SESSION_JOIN_PRIVATE_CAMPAIGN_MEMBERS_ONLY',
   SESSION_GM_ALREADY_EXISTS: 'SESSION_GM_ALREADY_EXISTS',
   SECURITY_ACCESS_DENIED: 'SECURITY_ACCESS_DENIED',
   CAMPAIGN_FINISHED: 'CAMPAIGN_FINISHED',
@@ -148,7 +154,7 @@ test('campaign PRIVATE session denies outsider join', async () => {
   await assert.rejects(
     () => service.joinSession(100, 10, { role: 'PLAYER' }),
     (error) => error instanceof AppError
-      && error.code === ERROR_CODES.SECURITY_ACCESS_DENIED
+      && error.code === ERROR_CODES.SESSION_JOIN_PRIVATE_CAMPAIGN_MEMBERS_ONLY
   );
 
   assert.equal(state.createdParticipants.length, 0);
@@ -205,7 +211,7 @@ test('cannot join session when status is not PLANNED', async () => {
   await assert.rejects(
     () => service.joinSession(100, 10, { role: 'PLAYER' }),
     (error) => error instanceof AppError
-      && error.code === ERROR_CODES.VALIDATION_FAILED
+      && error.code === ERROR_CODES.SESSION_JOIN_STATUS_FORBIDDEN
   );
 
   assert.equal(state.createdParticipants.length, 0);

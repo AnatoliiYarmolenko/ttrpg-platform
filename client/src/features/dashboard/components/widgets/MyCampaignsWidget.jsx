@@ -61,7 +61,7 @@ export default function MyCampaignsWidget() {
             <EmptyState
               icon={<Dice20 className="w-14 h-14" />}
               title="Немає кампаній"
-              description="Створіть нову кампанію, щоб почати гру"
+              description="Створіть нову кампанію, щоб вона з'явилась тут"
               className="h-full"
             />
           ) : (
@@ -104,7 +104,7 @@ export default function MyCampaignsWidget() {
 
         <div className="pt-4 border-t border-[#9DC88D]/20 mt-auto flex-shrink-0">
           <Button onClick={handleCreateClick} variant="primary" className="flex items-center justify-center gap-2">
-            Створити нову кампанію
+            Створити кампанію
           </Button>
         </div>
       </div>

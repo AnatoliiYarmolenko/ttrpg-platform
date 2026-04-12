@@ -2,6 +2,8 @@ function createSessionCoreService({
   prisma,
   AppError,
   ERROR_CODES,
+  config,
+  selectNextRelevantSession,
   datetimeHelpers,
   sessionQueryService,
   assertNoSessionTimeConflict,
@@ -148,22 +150,16 @@ function createSessionCoreService({
         });
 
         if (!campaign) {
-          throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Campaign not found');
+          throw new AppError(ERROR_CODES.CAMPAIGN_NOT_FOUND);
         }
 
         if (campaign.status === 'FINISHED') {
-          throw new AppError(
-            ERROR_CODES.CAMPAIGN_FINISHED,
-            'Cannot create a session in a finished campaign'
-          );
+          throw new AppError(ERROR_CODES.CAMPAIGN_FINISHED);
         }
 
         const memberRole = campaign.members[0]?.role;
         if (!memberRole || !['OWNER', 'GM'].includes(memberRole)) {
-          throw new AppError(
-            ERROR_CODES.SECURITY_ACCESS_DENIED,
-            'You do not have permission to create sessions in this campaign'
-          );
+          throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED);
         }
 
         if (!sessionSystem && campaign.system) {
@@ -294,6 +290,116 @@ function createSessionCoreService({
       });
     },
 
+    async getNextRelevantSessionForUser(userId, options = {}) {
+      if (!userId) {
+        throw new AppError(ERROR_CODES.AUTH_TOKEN_MISSING);
+      }
+
+      const sessions = await prisma.session.findMany({
+        where: {
+          participants: {
+            some: {
+              userId,
+            },
+          },
+        },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          date: true,
+          status: true,
+          visibility: true,
+          maxPlayers: true,
+          system: true,
+          owner: {
+            select: {
+              id: true,
+              username: true,
+              displayName: true,
+            },
+          },
+          campaign: {
+            select: { id: true, title: true, description: true, status: true, system: true },
+          },
+          participants: {
+            select: {
+              userId: true,
+              role: true,
+              status: true,
+              user: {
+                select: {
+                  id: true,
+                  username: true,
+                  displayName: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: [
+          { date: 'asc' },
+          { id: 'asc' },
+        ],
+      });
+
+      const hydratedSessions = sessions.map((session) => {
+        const myParticipation = session.participants.find((participant) => participant.userId === userId);
+
+        return {
+          ...session,
+          startAt: session.date,
+          maxPlayers: session.maxPlayers,
+          myRole: myParticipation?.role || null,
+          myStatus: myParticipation?.status || null,
+          participantsCount: session.participants.length,
+          currentPlayers: session.participants.filter((participant) => participant.role === 'PLAYER').length,
+        };
+      });
+
+      const plannedToleranceMinutes = options.plannedToleranceMinutes ?? config?.homePlannedToleranceMinutes;
+
+      const selected = selectNextRelevantSession(hydratedSessions, {
+        now: options.now,
+        activeMaxAgeHours: options.activeMaxAgeHours ?? config?.homeActiveMaxAgeHours,
+        plannedToleranceMinutes,
+      });
+
+      if (!selected) {
+        return null;
+      }
+
+      const confirmedGm = selected.participants?.find(
+        (participant) => participant.role === 'GM' && participant.status === 'CONFIRMED'
+      );
+
+      return {
+        id: selected.id,
+        title: selected.title,
+        description: selected.description ?? selected.campaign?.description ?? null,
+        startAt: selected.startAt ? new Date(selected.startAt).toISOString() : null,
+        status: selected.status,
+        visibility: selected.visibility,
+        system: selected.system ?? selected.campaign?.system ?? null,
+        myRole: selected.myRole,
+        myStatus: selected.myStatus,
+        plannedToleranceMinutes,
+        organizerName: selected.owner?.displayName || selected.owner?.username || null,
+        confirmedGmName: confirmedGm?.user?.displayName || confirmedGm?.user?.username || null,
+        campaign: selected.campaign
+          ? {
+            id: selected.campaign.id,
+            title: selected.campaign.title,
+            status: selected.campaign.status,
+            system: selected.campaign.system ?? null,
+          }
+          : null,
+        maxPlayers: selected.maxPlayers,
+        participantsCount: selected.participantsCount,
+        currentPlayers: selected.currentPlayers,
+      };
+    },
+
     async getSessionsByDay(userId, dateString, type = 'MY') {
       const [year, month, day] = dateString.split('-').map(Number);
       const dayStart = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
@@ -309,7 +415,7 @@ function createSessionCoreService({
 
       if (type === 'MY') {
         if (!userId) {
-          throw new AppError(ERROR_CODES.AUTH_TOKEN_MISSING, 'Authentication required');
+          throw new AppError(ERROR_CODES.AUTH_TOKEN_MISSING);
         }
         whereCondition.participants = { some: { userId } };
       } else if (type === 'PUBLIC') {
@@ -364,14 +470,11 @@ function createSessionCoreService({
       });
 
       if (!campaign) {
-        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Campaign not found');
+        throw new AppError(ERROR_CODES.CAMPAIGN_NOT_FOUND);
       }
 
       if (!campaign.members.length && campaign.ownerId !== userId) {
-        throw new AppError(
-          ERROR_CODES.SECURITY_ACCESS_DENIED,
-          'You do not have access to this campaign'
-        );
+        throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED);
       }
 
       const sessions = await prisma.session.findMany({

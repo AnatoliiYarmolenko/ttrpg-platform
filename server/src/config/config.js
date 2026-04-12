@@ -16,6 +16,15 @@ const corsAllowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || process.env.FRON
   .split(',')
   .map(s => s.trim())
   .filter(Boolean);
+const parsedHomeActiveMaxAgeHours = Number(process.env.HOME_ACTIVE_MAX_AGE_HOURS);
+const homeActiveMaxAgeHours = Number.isFinite(parsedHomeActiveMaxAgeHours) && parsedHomeActiveMaxAgeHours > 0
+  ? parsedHomeActiveMaxAgeHours
+  : 24;
+const parsedHomePlannedToleranceMinutes = Number(process.env.HOME_PLANNED_TOLERANCE_MINUTES);
+const homePlannedToleranceMinutes = Number.isFinite(parsedHomePlannedToleranceMinutes)
+  && parsedHomePlannedToleranceMinutes > 0
+  ? parsedHomePlannedToleranceMinutes
+  : 2;
 
 // Перевірка наявності всіх необхідних змінних оточення
 const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
@@ -84,4 +93,8 @@ module.exports = {
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173', // URL фронтенду для CORS
   // CORS: список дозволених origin через запяту або новий рядок. Якщо не вказано — використовується FRONTEND_URL
   corsAllowedOrigins,
+  // Максимальний вік ACTIVE сесії для Home next-relevant (anti-zombie guard)
+  homeActiveMaxAgeHours,
+  // Вікно запізнення PLANNED сесії для Home next-relevant
+  homePlannedToleranceMinutes,
 };

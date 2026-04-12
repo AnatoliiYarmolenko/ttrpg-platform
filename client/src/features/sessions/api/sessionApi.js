@@ -26,6 +26,14 @@ export const getMySessions = async (params = {}) => {
 };
 
 /**
+ * Отримати наступну релевантну сесію для Home
+ */
+export const getNextRelevantSession = async () => {
+  const response = await api.get('/sessions/next-relevant');
+  return normalizeApiEnvelope(response.data);
+};
+
+/**
  * Отримати деталі сесії
  * @param {number} sessionId
  */

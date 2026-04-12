@@ -46,11 +46,11 @@ export default function useDashboardPageController() {
   useEffect(() => {
     const now = new Date();
     const currentTodayKey = getLocalDateKey(now);
-    const timeoutId = window.setTimeout(() => {
+    const timeoutId = globalThis.setTimeout(() => {
       const nextNow = new Date();
       const nextTodayKey = getLocalDateKey(nextNow);
       const shouldAdvanceSelectedDay =
-        viewMode === VIEW_MODES.HOME && selectedDate === currentTodayKey;
+        viewMode === VIEW_MODES.CALENDAR && selectedDate === currentTodayKey;
       const shouldAdvanceCurrentMonth =
         currentMonth instanceof Date
         && !Number.isNaN(currentMonth.getTime())
@@ -67,7 +67,7 @@ export default function useDashboardPageController() {
     }, getMillisecondsUntilNextLocalDay(now));
 
     return () => {
-      window.clearTimeout(timeoutId);
+      globalThis.clearTimeout(timeoutId);
     };
   }, [currentMonth, selectDate, selectedDate, setCurrentMonth, viewMode]);
 

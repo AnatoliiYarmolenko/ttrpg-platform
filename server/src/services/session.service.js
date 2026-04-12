@@ -4,7 +4,8 @@ const {
   createRawEncryptedAndHashedShareToken,
   decryptShareToken,
 } = require('../utils/token.helper');
-const { frontendUrl } = require('../config/config');
+const config = require('../config/config');
+const { selectNextRelevantSession } = require('./session/session-next-relevant.selector');
 
 const datetimeHelpers = require('./session/session-datetime.helpers');
 const permissionHelpers = require('./session/session-permission.helpers');
@@ -28,6 +29,8 @@ class SessionService {
     this.coreService = createSessionCoreService({
       ...this.sessionDeps,
       sessionQueryService: this.queryService,
+      config,
+      selectNextRelevantSession,
       createRawEncryptedAndHashedShareToken,
       assertNoSessionTimeConflict: (userId, targetStart, targetDuration, options = {}) => {
         return this._assertNoSessionTimeConflict(userId, targetStart, targetDuration, options);
@@ -194,6 +197,10 @@ class SessionService {
     return this.coreService.getMySessions(userId, options);
   }
 
+  async getNextRelevantSessionForUser(userId, options = {}) {
+    return this.coreService.getNextRelevantSessionForUser(userId, options);
+  }
+
   async getCalendar(userId, options = {}) {
     return this.calendarService.getCalendar(userId, options);
   }
@@ -330,7 +337,7 @@ class SessionService {
 
     return {
       token,
-      shareUrl: `${frontendUrl}/session/share/${token}`,
+      shareUrl: `${config.frontendUrl}/session/share/${token}`,
     };
   }
 }

@@ -1,5 +1,6 @@
 export const DASHBOARD_VIEWS = {
   HOME: 'home',
+  CALENDAR: 'calendar',
   MY_GAMES: 'my-games',
   PROFILE: 'profile',
   SEARCH: 'search',
@@ -7,6 +8,7 @@ export const DASHBOARD_VIEWS = {
 
 export const VIEW_MODES = {
   HOME: 'home',
+  CALENDAR: 'calendar',
   MY_GAMES: 'my-games',
   PROFILE: 'profile',
   SEARCH: 'search',

@@ -53,12 +53,12 @@ class CampaignService {
 
   _buildCampaignUpdateData(existingCampaign, updateData, nextStatus) {
     return {
-      title: updateData.title !== undefined ? updateData.title : undefined,
-      description: updateData.description !== undefined ? updateData.description : undefined,
-      imageUrl: updateData.imageUrl !== undefined ? updateData.imageUrl : undefined,
-      system: updateData.system !== undefined ? updateData.system : undefined,
-      visibility: updateData.visibility !== undefined ? updateData.visibility : undefined,
-      status: nextStatus !== undefined ? nextStatus : undefined,
+      title: updateData.title,
+      description: updateData.description,
+      imageUrl: updateData.imageUrl,
+      system: updateData.system,
+      visibility: updateData.visibility,
+      status: nextStatus,
     };
   }
 
@@ -218,7 +218,7 @@ class CampaignService {
 
   async getCampaignById(campaignId, userId = null, shareToken = null) {
     const campaign = await prisma.campaign.findUnique({
-      where: { id: parseInt(campaignId) },
+      where: { id: Number.parseInt(campaignId, 10) },
       include: {
         owner: {
           select: { id: true, username: true, displayName: true, avatarUrl: true },
@@ -307,11 +307,12 @@ class CampaignService {
 
     const settingsFields = ['title', 'description', 'imageUrl', 'system', 'visibility'];
     const hasSettingsUpdate = settingsFields.some((field) =>
-      Object.prototype.hasOwnProperty.call(updateData, field)
+      Object.hasOwn(updateData, field)
     );
-    const nextStatus = updateData.status !== undefined
-      ? String(updateData.status).toUpperCase()
-      : undefined;
+    let nextStatus;
+    if (updateData.status !== undefined) {
+      nextStatus = String(updateData.status).toUpperCase();
+    }
 
     if (campaign.status === 'FINISHED' && hasSettingsUpdate) {
       throw new AppError(
@@ -333,12 +334,12 @@ class CampaignService {
       }
     }
 
-    const campaignIdInt = parseInt(campaignId);
+    const campaignIdInt = Number.parseInt(campaignId, 10);
     const isFinishingCampaign = campaign.status !== 'FINISHED' && nextStatus === 'FINISHED';
     const shareTokenUpdate = this._buildCampaignShareTokenUpdate(campaign, updateData.visibility);
     const campaignUpdateData = {
       ...this._buildCampaignUpdateData(campaign, updateData, nextStatus),
-      ...(Object.prototype.hasOwnProperty.call(shareTokenUpdate, 'shareTokenHash')
+      ...(Object.hasOwn(shareTokenUpdate, 'shareTokenHash')
         ? {
           shareTokenHash: shareTokenUpdate.shareTokenHash,
           shareTokenEncrypted: shareTokenUpdate.shareTokenEncrypted,
@@ -467,7 +468,7 @@ class CampaignService {
 
     const { rawToken, tokenHash, tokenEncrypted } = createRawEncryptedAndHashedShareToken();
     await prisma.campaign.update({
-      where: { id: parseInt(campaignId) },
+      where: { id: Number.parseInt(campaignId, 10) },
       data: {
         shareTokenHash: tokenHash,
         shareTokenEncrypted: tokenEncrypted,
@@ -477,29 +478,26 @@ class CampaignService {
 
     return {
       token: rawToken,
-      campaignId: parseInt(campaignId),
+      campaignId: Number.parseInt(campaignId, 10),
     };
   }
 
   async getCampaignShareLink(campaignId, userId) {
     const campaign = await this.getCampaignById(campaignId, userId);
 
-    this._requireCampaignOwner(campaign, userId, 'Only owner can view the campaign share link');
+    this._requireCampaignOwner(campaign, userId, 'Тільки власник може переглядати посилання доступу кампанії');
 
     if (campaign.visibility !== 'LINK_ONLY') {
-      throw new AppError(
-        ERROR_CODES.VALIDATION_FAILED,
-        'Share link is available only for LINK_ONLY campaigns'
-      );
+      throw new AppError(ERROR_CODES.CAMPAIGN_SHARE_LINK_LINK_ONLY_REQUIRED);
     }
 
     const stored = await prisma.campaign.findUnique({
-      where: { id: parseInt(campaignId) },
+      where: { id: Number.parseInt(campaignId, 10) },
       select: { shareTokenEncrypted: true },
     });
 
     if (!stored?.shareTokenEncrypted) {
-      throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Share link is not available');
+      throw new AppError(ERROR_CODES.CAMPAIGN_SHARE_LINK_UNAVAILABLE);
     }
 
     const token = decryptShareToken(stored.shareTokenEncrypted);
