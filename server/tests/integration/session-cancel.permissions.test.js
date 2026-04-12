@@ -222,7 +222,7 @@ test('Cannot update campaign session visibility to LINK_ONLY', async () => {
       { visibility: 'LINK_ONLY' },
       { preloadedSession }
     ),
-    (error) => error?.code === 'VALIDATION_FAILED' && /LINK_ONLY/i.test(error.message)
+    (error) => error?.code === 'SESSION_LINK_ONLY_ONE_SHOT_ONLY'
   );
 });
 

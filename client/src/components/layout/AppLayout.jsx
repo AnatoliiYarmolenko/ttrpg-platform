@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 
 export default function AppLayout({
   topBar,
@@ -11,15 +12,21 @@ export default function AppLayout({
         {topBar}
       </header>
 
-      <main className="relative z-10 flex-1 grid grid-cols-1 lg:grid-cols-10 gap-3 min-h-0 overflow-hidden">
-        <section className="lg:col-span-7 min-h-0 overflow-hidden">
+      <main className="relative z-10 flex-1 grid grid-cols-1 auto-rows-max lg:auto-rows-fr lg:grid-cols-10 gap-3 min-h-0 overflow-y-auto lg:overflow-hidden">
+        <section className="lg:col-span-7 min-h-0 overflow-visible lg:overflow-hidden">
           {leftPanel}
         </section>
 
-        <aside className="lg:col-span-3 min-h-0 overflow-hidden">
+        <aside className="lg:col-span-3 min-h-0 overflow-visible lg:overflow-hidden">
           {rightPanel}
         </aside>
       </main>
     </div>
   );
 }
+
+AppLayout.propTypes = {
+  topBar: PropTypes.node,
+  leftPanel: PropTypes.node,
+  rightPanel: PropTypes.node,
+};

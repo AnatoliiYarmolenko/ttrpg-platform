@@ -1,10 +1,11 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 
 const DashboardCard = ({ children, className = '', title, actions }) => {
   return (
     // min-h-0 дозволяє flex контейнеру правильно обмежити висоту для скролу
     // overflow-hidden обрізає скролбар по закругленим кутам
-    <div className={`bg-white border-2 border-[#9DC88D]/30 rounded-2xl shadow-xl flex flex-col h-full min-h-0 overflow-hidden ${className}`}>
+    <div className={`bg-white border-2 border-[#9DC88D]/30 rounded-2xl shadow-xl flex flex-col h-auto lg:h-full min-h-0 overflow-hidden ${className}`}>
       {/* Шапка картки (якщо є заголовок або кнопки дій) - фіксована, не скролиться */}
       {(title || actions) && (
         <div className="p-4 border-b border-[#9DC88D]/20 flex justify-between items-center flex-shrink-0">
@@ -19,6 +20,13 @@ const DashboardCard = ({ children, className = '', title, actions }) => {
       </div>
     </div>
   );
+};
+
+DashboardCard.propTypes = {
+  children: PropTypes.node,
+  className: PropTypes.string,
+  title: PropTypes.node,
+  actions: PropTypes.node,
 };
 
 export default DashboardCard;

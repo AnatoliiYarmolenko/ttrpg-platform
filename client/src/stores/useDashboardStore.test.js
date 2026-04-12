@@ -1,7 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 
 import useDashboardStore, { VIEW_MODES } from './useDashboardStore';
-import { getLocalDateKey } from '@/components/shared/dateTime.utils';
 
 describe('useDashboardStore calendar regressions', () => {
   beforeEach(() => {
@@ -26,7 +25,7 @@ describe('useDashboardStore calendar regressions', () => {
     expect(currentMonth.getDate()).toBe(1);
   });
 
-  it('synchronizes currentMonth with today when switching to HOME mode', () => {
+  it('preserves currentMonth and clears selectedDate when switching to HOME mode', () => {
     const { setCurrentMonth, setViewMode } = useDashboardStore.getState();
 
     setCurrentMonth(new Date('2025-11-15T12:00:00.000Z'));
@@ -34,10 +33,10 @@ describe('useDashboardStore calendar regressions', () => {
     setViewMode(VIEW_MODES.HOME);
 
     const { currentMonth, selectedDate } = useDashboardStore.getState();
-    expect(currentMonth.getFullYear()).toBe(2026);
-    expect(currentMonth.getMonth()).toBe(2);
+    expect(currentMonth.getFullYear()).toBe(2025);
+    expect(currentMonth.getMonth()).toBe(10);
     expect(currentMonth.getDate()).toBe(1);
-    expect(selectedDate).toBe(getLocalDateKey(new Date()));
+    expect(selectedDate).toBeNull();
   });
 
   it('normalizes currentMonth to month start on reset', () => {

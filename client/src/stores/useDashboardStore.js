@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { getLocalDateKey } from '@/components/shared/dateTime.utils';
 import useSearchStore from './useSearchStore';
 import {
-  DASHBOARD_VIEWS,
   VIEW_MODES,
   PANEL_MODES,
 } from './dashboardConstants';
@@ -22,12 +21,13 @@ const useDashboardStore = create((set, get) => ({
   setViewMode: (mode) => {
     const defaultPanelModes = {
       [VIEW_MODES.HOME]: PANEL_MODES.LIST,
+      [VIEW_MODES.CALENDAR]: PANEL_MODES.LIST,
       [VIEW_MODES.MY_GAMES]: PANEL_MODES.CAMPAIGNS,
       [VIEW_MODES.PROFILE]: PANEL_MODES.LIST,
       [VIEW_MODES.SEARCH]: PANEL_MODES.FILTER,
     };
     const now = new Date();
-    const initialDate = mode === VIEW_MODES.HOME ? getTodayStr() : null;
+    const initialDate = mode === VIEW_MODES.CALENDAR ? getTodayStr() : null;
 
     const nextState = {
       viewMode: mode,
@@ -36,7 +36,7 @@ const useDashboardStore = create((set, get) => ({
       expandedSessionId: null,
     };
 
-    if (mode === VIEW_MODES.HOME) {
+    if (mode === VIEW_MODES.CALENDAR) {
       nextState.currentMonth = getMonthStart(now);
     }
 
@@ -57,7 +57,7 @@ const useDashboardStore = create((set, get) => ({
       expandedSessionId: null,
     });
 
-    if (viewMode === VIEW_MODES.HOME) {
+    if (viewMode === VIEW_MODES.CALENDAR) {
       set({ rightPanelMode: PANEL_MODES.LIST });
     } else if (viewMode === VIEW_MODES.MY_GAMES) {
       set({ rightPanelMode: PANEL_MODES.USER_SESSIONS });
@@ -71,6 +71,7 @@ const useDashboardStore = create((set, get) => ({
 
     const defaultPanelModes = {
       [VIEW_MODES.HOME]: PANEL_MODES.LIST,
+      [VIEW_MODES.CALENDAR]: PANEL_MODES.LIST,
       [VIEW_MODES.MY_GAMES]: PANEL_MODES.CAMPAIGNS,
       [VIEW_MODES.SEARCH]: PANEL_MODES.FILTER,
     };
@@ -136,5 +137,5 @@ const useDashboardStore = create((set, get) => ({
   },
 }));
 
-export { DASHBOARD_VIEWS, VIEW_MODES, PANEL_MODES };
+export { DASHBOARD_VIEWS, VIEW_MODES, PANEL_MODES } from './dashboardConstants';
 export default useDashboardStore;

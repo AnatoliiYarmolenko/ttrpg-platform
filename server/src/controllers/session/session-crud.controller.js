@@ -71,6 +71,23 @@ const sessionCrudController = {
     }
   },
 
+  async getNextRelevantSession(req, res, next) {
+    try {
+      const userId = req.user.id;
+
+      const session = await sessionService.getNextRelevantSessionForUser(userId);
+
+      res.json({
+        success: true,
+        data: {
+          session,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
   async getSessionById(req, res, next) {
     try {
       const { id: sessionId } = req.params;

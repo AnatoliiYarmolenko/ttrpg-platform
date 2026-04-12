@@ -1,40 +1,33 @@
-const VALID_PARTICIPANT_STATUSES = ['PENDING', 'CONFIRMED', 'DECLINED'];
-const JOINABLE_SESSION_STATUSES = ['PLANNED'];
+const VALID_PARTICIPANT_STATUSES = new Set(['PENDING', 'CONFIRMED', 'DECLINED']);
+const JOINABLE_SESSION_STATUSES = new Set(['PLANNED']);
 
 function parseId(value) {
-  return parseInt(value, 10);
+  return Number.parseInt(value, 10);
 }
 
 function normalizeJoinRole(role, AppError, ERROR_CODES) {
   const normalizedRole = String(role || 'PLAYER').toUpperCase();
 
   if (!['PLAYER', 'GM'].includes(normalizedRole)) {
-    throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Invalid role for join request');
+    throw new AppError(ERROR_CODES.SESSION_JOIN_ROLE_INVALID);
   }
 
   return normalizedRole;
 }
 
 function assertJoinableSession(session, AppError, ERROR_CODES) {
-  if (!JOINABLE_SESSION_STATUSES.includes(session.status)) {
-    throw new AppError(
-      ERROR_CODES.VALIDATION_FAILED,
-      `Cannot join a session with status ${session.status}`
-    );
+  if (!JOINABLE_SESSION_STATUSES.has(session.status)) {
+    throw new AppError(ERROR_CODES.SESSION_JOIN_STATUS_FORBIDDEN, null, {
+      status: session.status,
+    });
   }
 
   if (session.campaign?.status === 'FINISHED') {
-    throw new AppError(
-      ERROR_CODES.CAMPAIGN_FINISHED,
-      'Cannot join a session in a finished campaign'
-    );
+    throw new AppError(ERROR_CODES.SESSION_JOIN_CAMPAIGN_FINISHED);
   }
 
   if (new Date(session.date) < new Date()) {
-    throw new AppError(
-      ERROR_CODES.VALIDATION_FAILED,
-      'Cannot join a session that has already started'
-    );
+    throw new AppError(ERROR_CODES.SESSION_JOIN_ALREADY_STARTED);
   }
 }
 
@@ -46,7 +39,7 @@ async function assertUserNotJoinedYet({ prisma, sessionId, userId, AppError, ERR
   });
 
   if (existingParticipant) {
-    throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'User has already joined this session');
+    throw new AppError(ERROR_CODES.SESSION_JOIN_ALREADY_PARTICIPANT);
   }
 }
 
@@ -57,7 +50,7 @@ function assertPlayerCapacity({ normalizedRole, session, AppError, ERROR_CODES }
 
   const playerCount = session.participants.filter((participant) => participant.role === 'PLAYER').length;
   if (playerCount >= session.maxPlayers) {
-    throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'No free player slots are available');
+    throw new AppError(ERROR_CODES.SESSION_JOIN_NO_FREE_PLAYER_SLOTS);
   }
 }
 
@@ -87,10 +80,7 @@ function assertCampaignPlayerAccess({
     && session.visibility === 'PRIVATE'
     && !isCampaignMember
   ) {
-    throw new AppError(
-      ERROR_CODES.SECURITY_ACCESS_DENIED,
-      'Only campaign members can join a private campaign session as players'
-    );
+    throw new AppError(ERROR_CODES.SESSION_JOIN_PRIVATE_CAMPAIGN_MEMBERS_ONLY);
   }
 }
 
@@ -121,17 +111,14 @@ function resolveGuestFlag({ normalizedRole, session }) {
 }
 
 function assertValidParticipantStatus(status, AppError, ERROR_CODES) {
-  if (!VALID_PARTICIPANT_STATUSES.includes(status)) {
-    throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Invalid participant status');
+  if (!VALID_PARTICIPANT_STATUSES.has(status)) {
+    throw new AppError(ERROR_CODES.SESSION_PARTICIPANT_STATUS_INVALID);
   }
 }
 
 function assertSessionIsActiveForParticipantManagement(session, AppError, ERROR_CODES) {
   if (['FINISHED', 'CANCELED'].includes(session.status)) {
-    throw new AppError(
-      ERROR_CODES.VALIDATION_FAILED,
-      'Participant management is unavailable for finished or canceled sessions'
-    );
+    throw new AppError(ERROR_CODES.SESSION_PARTICIPANT_MANAGEMENT_UNAVAILABLE);
   }
 }
 
@@ -140,8 +127,8 @@ async function findParticipantOrThrow({ prisma, participantId, sessionId, AppErr
     where: { id: parseId(participantId) },
   });
 
-  if (!participant || participant.sessionId !== parseId(sessionId)) {
-    throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Participant not found');
+  if (!participant?.sessionId || participant.sessionId !== parseId(sessionId)) {
+    throw new AppError(ERROR_CODES.SESSION_PARTICIPANT_NOT_FOUND);
   }
 
   return participant;
@@ -155,10 +142,7 @@ async function declinePendingParticipant({
   ERROR_CODES,
 }) {
   if (participant.status !== 'PENDING') {
-    throw new AppError(
-      ERROR_CODES.VALIDATION_FAILED,
-      'Only pending participants can be declined'
-    );
+    throw new AppError(ERROR_CODES.SESSION_PARTICIPANT_DECLINE_PENDING_ONLY);
   }
 
   await prisma.sessionParticipant.delete({
@@ -240,7 +224,7 @@ function createSessionParticipantsService({
     || typeof resolveSessionContextFn !== 'function'
     || typeof assertNoSessionTimeConflictFn !== 'function'
   ) {
-    throw new Error('Session participants service requires session query dependencies');
+    throw new TypeError('Сервіс учасників сесії вимагає залежності сервісу запитів сесії');
   }
 
   return {
@@ -297,25 +281,19 @@ function createSessionParticipantsService({
       });
 
       if (!participant) {
-        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'User is not a participant of this session');
+        throw new AppError(ERROR_CODES.SESSION_LEAVE_NOT_PARTICIPANT);
       }
 
       if (['FINISHED', 'CANCELED'].includes(participant.session.status)) {
-        throw new AppError(
-          ERROR_CODES.VALIDATION_FAILED,
-          'Cannot leave a finished or canceled session'
-        );
+        throw new AppError(ERROR_CODES.SESSION_LEAVE_FINISHED_OR_CANCELED_FORBIDDEN);
       }
 
       if (participant.session.status === 'ACTIVE') {
-        throw new AppError(
-          ERROR_CODES.VALIDATION_FAILED,
-          'The session is already active, leaving is not allowed'
-        );
+        throw new AppError(ERROR_CODES.SESSION_LEAVE_ACTIVE_FORBIDDEN);
       }
 
       if (participant.role === 'GM' && participant.session.ownerId === userId) {
-        throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'The owner GM cannot leave the session');
+        throw new AppError(ERROR_CODES.SESSION_OWNER_GM_LEAVE_FORBIDDEN);
       }
 
       await prisma.sessionParticipant.delete({
@@ -357,7 +335,7 @@ function createSessionParticipantsService({
 
       if (participant.role === 'GM') {
         if (!permissionHelpers._isSessionOwner(session, requesterId)) {
-          throw new AppError(ERROR_CODES.SESSION_OWNER_ONLY, 'Only the owner can manage GM requests');
+          throw new AppError(ERROR_CODES.SESSION_GM_REQUESTS_OWNER_ONLY);
         }
 
         if (status === 'CONFIRMED') {
@@ -368,10 +346,7 @@ function createSessionParticipantsService({
           });
         }
       } else if (!permissionHelpers._canManageParticipants(session, requesterId)) {
-        throw new AppError(
-          ERROR_CODES.SESSION_GM_ONLY,
-          'Only a confirmed GM or the owner can manage players'
-        );
+        throw new AppError(ERROR_CODES.SESSION_PARTICIPANTS_MANAGE_OWNER_OR_CONFIRMED_GM_ONLY);
       }
 
       return updateParticipantStatusRecord({ prisma, participantId, status });
@@ -382,23 +357,20 @@ function createSessionParticipantsService({
       const session = await resolveSessionContextFn(sessionId, requesterId, preloadedSession);
 
       if (['FINISHED', 'CANCELED'].includes(session.status)) {
-        throw new AppError(
-          ERROR_CODES.VALIDATION_FAILED,
-          'Participant removal is unavailable for finished or canceled sessions'
-        );
+        throw new AppError(ERROR_CODES.SESSION_PARTICIPANT_REMOVAL_UNAVAILABLE);
       }
 
       const participant = await prisma.sessionParticipant.findUnique({
         where: { id: parseId(participantId) },
       });
 
-      if (!participant || participant.sessionId !== parseId(sessionId)) {
-        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Participant not found');
+      if (!participant?.sessionId || participant.sessionId !== parseId(sessionId)) {
+        throw new AppError(ERROR_CODES.SESSION_PARTICIPANT_NOT_FOUND);
       }
 
       const requesterIsSessionOwner = permissionHelpers._isSessionOwner(session, requesterId);
       if (participant.userId === session.ownerId && !requesterIsSessionOwner) {
-        throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'You cannot remove the session owner');
+        throw new AppError(ERROR_CODES.SESSION_OWNER_REMOVAL_FORBIDDEN);
       }
 
       if (participant.role === 'GM') {
@@ -406,24 +378,18 @@ function createSessionParticipantsService({
           || permissionHelpers._isCampaignOwnerOverride(session, requesterId);
 
         if (!canManageGm) {
-          throw new AppError(ERROR_CODES.SESSION_OWNER_ONLY, 'Only the owner can remove a GM');
+          throw new AppError(ERROR_CODES.SESSION_GM_REMOVAL_OWNER_ONLY);
         }
 
         if (session.status !== 'PLANNED') {
-          throw new AppError(
-            ERROR_CODES.SESSION_NO_GM_KICK_ACTIVE,
-            'A GM can be removed only while the session is planned'
-          );
+          throw new AppError(ERROR_CODES.SESSION_NO_GM_KICK_ACTIVE);
         }
 
         if (participant.userId === session.ownerId) {
-          throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'Cannot remove the owner from the GM role');
+          throw new AppError(ERROR_CODES.SESSION_OWNER_GM_ROLE_REMOVAL_FORBIDDEN);
         }
       } else if (!permissionHelpers._canManageParticipants(session, requesterId)) {
-        throw new AppError(
-          ERROR_CODES.SESSION_GM_ONLY,
-          'Only a confirmed GM or the owner can remove participants'
-        );
+        throw new AppError(ERROR_CODES.SESSION_PARTICIPANTS_REMOVAL_OWNER_OR_CONFIRMED_GM_ONLY);
       }
 
       await prisma.sessionParticipant.delete({
@@ -439,21 +405,21 @@ function createSessionParticipantsService({
         || permissionHelpers._isCampaignOwnerOverride(session, requesterId);
 
       if (!canKickGm) {
-        throw new AppError(ERROR_CODES.SESSION_OWNER_ONLY, 'Only the owner can remove the GM');
+        throw new AppError(ERROR_CODES.SESSION_GM_KICK_OWNER_ONLY);
       }
 
       if (session.status !== 'PLANNED') {
-        throw new AppError(ERROR_CODES.SESSION_NO_GM_KICK_ACTIVE, 'A GM can be removed only while the session is planned');
+        throw new AppError(ERROR_CODES.SESSION_NO_GM_KICK_ACTIVE);
       }
 
       const confirmedGm = permissionHelpers._getConfirmedGm(session);
 
       if (!confirmedGm) {
-        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'There is no confirmed GM in this session');
+        throw new AppError(ERROR_CODES.SESSION_NO_CONFIRMED_GM);
       }
 
       if (confirmedGm.userId === session.ownerId) {
-        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Cannot remove the owner GM');
+        throw new AppError(ERROR_CODES.SESSION_OWNER_GM_KICK_FORBIDDEN);
       }
 
       await prisma.sessionParticipant.delete({

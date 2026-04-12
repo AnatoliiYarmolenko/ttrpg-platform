@@ -17,7 +17,7 @@ const ALLOWED_STATUS_TRANSITIONS = {
 };
 
 function hasOwnField(data, field) {
-  return Object.prototype.hasOwnProperty.call(data, field);
+  return Object.hasOwn(data, field);
 }
 
 function buildSessionUpdateMeta(session, normalizedUpdateData) {
@@ -45,10 +45,7 @@ function assertSessionUpdatePermissions({
   }
 
   if (updateMeta.hasSettingsUpdate && session.campaign?.status === 'FINISHED') {
-    throw new AppError(
-      ERROR_CODES.CAMPAIGN_FINISHED,
-      'Cannot update session settings in a finished campaign'
-    );
+    throw new AppError(ERROR_CODES.CAMPAIGN_FINISHED);
   }
 
   if (updateMeta.hasStatusUpdate && !permissionHelpers._canChangeSessionStatus(session, requesterId)) {
@@ -67,10 +64,7 @@ function removePastSessionSettingsUpdates({
   }
 
   if (!updateMeta.hasStatusUpdate) {
-    throw new AppError(
-      ERROR_CODES.VALIDATION_FAILED,
-      'Cannot update the settings of a session that already happened'
-    );
+    throw new AppError(ERROR_CODES.SESSION_UPDATE_PAST_SETTINGS_FORBIDDEN);
   }
 
   SESSION_SETTINGS_FIELDS.forEach((field) => {
@@ -196,10 +190,10 @@ function assertValidStatusTransition({
 
   const allowedNextStatuses = ALLOWED_STATUS_TRANSITIONS[session.status] || [];
   if (!allowedNextStatuses.includes(nextStatus)) {
-    throw new AppError(
-      ERROR_CODES.VALIDATION_FAILED,
-      `Invalid status transition: ${session.status} -> ${nextStatus}`
-    );
+    throw new AppError(ERROR_CODES.SESSION_STATUS_TRANSITION_INVALID, null, {
+      fromStatus: session.status,
+      toStatus: nextStatus,
+    });
   }
 }
 
@@ -284,10 +278,7 @@ function resolveShareTokenState({
     : session.visibility;
 
   if (session.campaignId && targetVisibility === 'LINK_ONLY') {
-    throw new AppError(
-      ERROR_CODES.VALIDATION_FAILED,
-      'LINK_ONLY is allowed only for one-shot sessions'
-    );
+    throw new AppError(ERROR_CODES.SESSION_LINK_ONLY_ONE_SHOT_ONLY);
   }
 
   const isEnteringLinkOnly = targetVisibility === 'LINK_ONLY' && session.visibility !== 'LINK_ONLY';
@@ -315,6 +306,14 @@ function buildSessionUpdatePayload({
   normalizedUpdateData,
   shareTokenState,
 }) {
+  const shareTokenCreatedAt = shareTokenState.shareTokenData
+    ? new Date()
+    : undefined;
+
+  const shareTokenCreatedAtValue = shareTokenState.isLeavingLinkOnly
+    ? null
+    : shareTokenCreatedAt;
+
   return {
     title: hasOwnField(normalizedUpdateData, 'title') ? normalizedUpdateData.title : undefined,
     description: hasOwnField(normalizedUpdateData, 'description') ? normalizedUpdateData.description : undefined,
@@ -333,9 +332,7 @@ function buildSessionUpdatePayload({
       isLeavingLinkOnly: shareTokenState.isLeavingLinkOnly,
       field: 'tokenEncrypted',
     }),
-    shareTokenCreatedAt: shareTokenState.shareTokenData
-      ? new Date()
-      : (shareTokenState.isLeavingLinkOnly ? null : undefined),
+    shareTokenCreatedAt: shareTokenCreatedAtValue,
     status: hasOwnField(normalizedUpdateData, 'status') ? normalizedUpdateData.status : undefined,
     system: hasOwnField(normalizedUpdateData, 'system') ? normalizedUpdateData.system : undefined,
   };
@@ -459,14 +456,11 @@ function createSessionLifecycleService({
         || permissionHelpers._isCampaignOwnerOverride(session, requesterId);
 
       if (!canDelete) {
-        throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'You do not have permission to delete this session');
+        throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED);
       }
 
       if (session.status !== 'PLANNED') {
-        throw new AppError(
-          ERROR_CODES.SESSION_DELETE_FORBIDDEN,
-          'Only planned sessions can be deleted'
-        );
+        throw new AppError(ERROR_CODES.SESSION_DELETE_FORBIDDEN);
       }
 
       await prisma.session.delete({
@@ -479,17 +473,11 @@ function createSessionLifecycleService({
       const session = await sessionQueryService.resolveSessionContext(sessionId, userId, preloadedSession);
 
       if (session.status === 'FINISHED') {
-        throw new AppError(
-          ERROR_CODES.VALIDATION_FAILED,
-          'Cannot cancel a finished session'
-        );
+        throw new AppError(ERROR_CODES.SESSION_CANCEL_FINISHED_FORBIDDEN);
       }
 
       if (session.status === 'CANCELED') {
-        throw new AppError(
-          ERROR_CODES.VALIDATION_FAILED,
-          'Session is already canceled'
-        );
+        throw new AppError(ERROR_CODES.SESSION_ALREADY_CANCELED);
       }
 
       const isOwner = permissionHelpers._isSessionOwner(session, userId);
@@ -501,10 +489,7 @@ function createSessionLifecycleService({
         const errorCode = session.status === 'ACTIVE'
           ? ERROR_CODES.SESSION_GM_ONLY
           : ERROR_CODES.SESSION_OWNER_ONLY;
-        const message = session.status === 'ACTIVE'
-          ? 'Only a confirmed GM, the session owner, or the campaign owner can cancel an active session'
-          : 'Only the session owner or campaign owner can cancel this session';
-        throw new AppError(errorCode, message);
+        throw new AppError(errorCode);
       }
 
       return prisma.session.update({

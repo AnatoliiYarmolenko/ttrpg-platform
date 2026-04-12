@@ -1,9 +1,9 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import { VIEW_MODES } from '@/stores/dashboardConstants';
 import NavButton from '@/components/ui/NavButton';
-import { selectIsAdmin } from '@/stores/useAuthStore';
-import useAuthStore from '@/stores/useAuthStore';
+import useAuthStore, { selectIsAdmin } from '@/stores/useAuthStore';
 
 // Додаємо props: user та onLogout
 export default function DashboardNavigation({ currentView, onNavigate, user, onLogout }) {
@@ -21,10 +21,15 @@ export default function DashboardNavigation({ currentView, onNavigate, user, onL
            <span className="font-bold text-[#164A41] hidden md:block">TTRPG Platform</span>
         </div>
 
-        <NavButton 
-          label="Календар" 
+        <NavButton
+          label="Дашборд"
           isActive={currentView === VIEW_MODES.HOME}
           onClick={() => onNavigate(VIEW_MODES.HOME)}
+        />
+        <NavButton 
+          label="Календар" 
+          isActive={currentView === VIEW_MODES.CALENDAR}
+          onClick={() => onNavigate(VIEW_MODES.CALENDAR)}
         />
         <NavButton 
           label="Мої ігри" 
@@ -71,3 +76,12 @@ export default function DashboardNavigation({ currentView, onNavigate, user, onL
     </nav>
   );
 }
+
+DashboardNavigation.propTypes = {
+  currentView: PropTypes.string,
+  onNavigate: PropTypes.func.isRequired,
+  user: PropTypes.shape({
+    username: PropTypes.string,
+  }),
+  onLogout: PropTypes.func.isRequired,
+};

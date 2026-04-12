@@ -11,9 +11,11 @@ class AppError extends Error {
 }
 
 const ERROR_CODES = {
-  VALIDATION_FAILED: 'VALIDATION_FAILED',
-  SESSION_OWNER_ONLY: 'SESSION_OWNER_ONLY',
-  SESSION_GM_ONLY: 'SESSION_GM_ONLY',
+  SESSION_PARTICIPANT_STATUS_INVALID: 'SESSION_PARTICIPANT_STATUS_INVALID',
+  SESSION_PARTICIPANT_MANAGEMENT_UNAVAILABLE: 'SESSION_PARTICIPANT_MANAGEMENT_UNAVAILABLE',
+  SESSION_PARTICIPANT_DECLINE_PENDING_ONLY: 'SESSION_PARTICIPANT_DECLINE_PENDING_ONLY',
+  SESSION_GM_REQUESTS_OWNER_ONLY: 'SESSION_GM_REQUESTS_OWNER_ONLY',
+  SESSION_PARTICIPANTS_MANAGE_OWNER_OR_CONFIRMED_GM_ONLY: 'SESSION_PARTICIPANTS_MANAGE_OWNER_OR_CONFIRMED_GM_ONLY',
 };
 
 function buildSession() {
@@ -137,7 +139,7 @@ test('declining non-pending participant is rejected', async () => {
 
   await assert.rejects(
     () => service.updateParticipantStatus(100, 12, 5, 'DECLINED'),
-    (error) => error instanceof AppError && error.code === ERROR_CODES.VALIDATION_FAILED
+    (error) => error instanceof AppError && error.code === ERROR_CODES.SESSION_PARTICIPANT_DECLINE_PENDING_ONLY
   );
 
   assert.equal(state.deleteCalls.length, 0);
@@ -175,7 +177,7 @@ test('non-owner cannot confirm GM application', async () => {
 
   await assert.rejects(
     () => service.updateParticipantStatus(100, 31, 2, 'CONFIRMED'),
-    (error) => error instanceof AppError && error.code === ERROR_CODES.SESSION_OWNER_ONLY
+    (error) => error instanceof AppError && error.code === ERROR_CODES.SESSION_GM_REQUESTS_OWNER_ONLY
   );
 
   assert.equal(state.updateCalls.length, 0);
@@ -193,7 +195,8 @@ test('non-manager cannot confirm player application', async () => {
 
   await assert.rejects(
     () => service.updateParticipantStatus(100, 32, 2, 'CONFIRMED'),
-    (error) => error instanceof AppError && error.code === ERROR_CODES.SESSION_GM_ONLY
+    (error) => error instanceof AppError
+      && error.code === ERROR_CODES.SESSION_PARTICIPANTS_MANAGE_OWNER_OR_CONFIRMED_GM_ONLY
   );
 
   assert.equal(state.updateCalls.length, 0);
@@ -215,7 +218,8 @@ test('cannot moderate participants in FINISHED session', async () => {
 
   await assert.rejects(
     () => service.updateParticipantStatus(100, 33, 1, 'CONFIRMED'),
-    (error) => error instanceof AppError && error.code === ERROR_CODES.VALIDATION_FAILED
+    (error) => error instanceof AppError
+      && error.code === ERROR_CODES.SESSION_PARTICIPANT_MANAGEMENT_UNAVAILABLE
   );
 
   assert.equal(state.updateCalls.length, 0);
