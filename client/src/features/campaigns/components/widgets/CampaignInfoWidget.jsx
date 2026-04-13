@@ -66,7 +66,7 @@ export default function CampaignInfoWidget({
       <div className="flex flex-col gap-5">
         <div>
           <div className="flex items-start justify-between mb-2">
-            <h2 className="text-xl font-bold text-[#164A41] flex-1 pr-3">
+            <h2 className="text-xl font-bold text-brand-dark flex-1 pr-3">
               {campaign.title}
             </h2>
             <div className="flex flex-col items-end gap-2">
@@ -77,26 +77,26 @@ export default function CampaignInfoWidget({
           {myRole && <RoleBadge role={myRole} size="md" />}
         </div>
 
-        <div className="grid grid-cols-2 gap-3 p-4 bg-[#9DC88D]/10 rounded-xl">
+        <div className="grid grid-cols-2 gap-3 p-4 bg-brand-light/10 rounded-xl">
           {campaign.system && (
-            <div className="flex items-center gap-2 text-[#4D774E]">
+            <div className="flex items-center gap-2 text-brand-medium">
               <span>{campaign.system}</span>
             </div>
           )}
-          <div className="flex items-center gap-2 text-[#4D774E]">
+          <div className="flex items-center gap-2 text-brand-medium">
             <GroupPeople className="w-4 h-4" />
             <span>{campaign.members?.length || 0} учасників</span>
           </div>
-          <div className="flex items-center gap-2 text-[#4D774E]">
+          <div className="flex items-center gap-2 text-brand-medium">
             <Data className="w-4 h-4" />
             <span>{campaign.sessions?.length || 0} сесій</span>
           </div>
           {campaign.owner && (
-            <div className="flex items-center gap-2 text-[#4D774E]">
+            <div className="flex items-center gap-2 text-brand-medium">
               <span>{campaign.owner.displayName || campaign.owner.username || 'Власник'}</span>
             </div>
           )}
-          <div className="flex items-center gap-2 text-[#4D774E] col-span-2">
+          <div className="flex items-center gap-2 text-brand-medium col-span-2">
             <Data className="w-4 h-4" />
             <span>Створено:</span>
             <DateTimeDisplay value={campaign.createdAt} format="long" />
@@ -116,24 +116,24 @@ export default function CampaignInfoWidget({
         )}
 
         {campaign.description && (
-          <div className="border-t border-[#9DC88D]/20 pt-4">
-            <h4 className="text-sm font-bold text-[#164A41] mb-2">Опис кампанії</h4>
-            <p className="text-sm text-[#4D774E] whitespace-pre-wrap">
+          <div className="border-t border-brand-light/20 pt-4">
+            <h4 className="text-sm font-bold text-brand-dark mb-2">Опис кампанії</h4>
+            <p className="text-sm text-brand-medium whitespace-pre-wrap">
               {campaign.description}
             </p>
           </div>
         )}
 
         {canManageShareLink && (
-          <div className="border-t border-[#9DC88D]/20 pt-4">
-            <h4 className="text-sm font-bold text-[#164A41] mb-3">Share-посилання</h4>
-            <div className="p-4 bg-[#9DC88D]/20 rounded-xl flex flex-col gap-3">
+          <div className="border-t border-brand-light/20 pt-4">
+            <h4 className="text-sm font-bold text-brand-dark mb-3">Share-посилання</h4>
+            <div className="p-4 bg-brand-light/20 rounded-xl flex flex-col gap-3">
               {currentShareLink ? (
-                <code className="px-3 py-2 bg-white rounded-lg font-mono text-[#164A41] text-xs break-all">
+                <code className="px-3 py-2 bg-white rounded-lg font-mono text-brand-dark text-xs break-all">
                   {currentShareLink}
                 </code>
               ) : (
-                <p className="text-sm text-[#4D774E]">
+                <p className="text-sm text-brand-medium">
                   Share-посилання буде доступне тут після завантаження або перевипуску.
                 </p>
               )}
@@ -142,14 +142,14 @@ export default function CampaignInfoWidget({
                 {currentShareLink && (
                   <button
                     onClick={onCopyShareLink}
-                    className="px-3 py-2 bg-[#164A41] text-white rounded-lg hover:bg-[#1f5c52] transition-colors text-sm"
+                    className="px-3 py-2 bg-brand-dark text-white rounded-lg hover:bg-brand-medium transition-colors text-sm"
                   >
                     Копіювати посилання
                   </button>
                 )}
                 <button
                   onClick={handleRegenerateShareLink}
-                  className="px-3 py-2 border border-[#164A41] text-[#164A41] rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                  className="px-3 py-2 border border-brand-dark text-brand-dark rounded-lg hover:bg-gray-50 transition-colors text-sm"
                 >
                   Оновити share-посилання
                 </button>
@@ -158,7 +158,7 @@ export default function CampaignInfoWidget({
           </div>
         )}
 
-        <div className="border-t border-[#9DC88D]/20 pt-4 flex flex-col gap-3">
+        <div className="border-t border-brand-light/20 pt-4 flex flex-col gap-3">
           {myRole && myRole !== 'OWNER' && campaign.status !== 'FINISHED' && onLeave && (
             <Button
               onClick={handleLeave}

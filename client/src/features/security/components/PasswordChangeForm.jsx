@@ -86,13 +86,13 @@ export default function PasswordChangeForm() {
     });
   };
 
-  const inputClasses = "w-full px-4 py-3 pr-12 rounded-xl border-2 border-[#9DC88D]/30 focus:border-[#164A41] focus:outline-none transition-colors";
+  const inputClasses = "w-full px-4 py-3 pr-12 rounded-xl border-2 border-brand-light/30 focus:border-brand-dark focus:outline-none transition-colors";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Поточний пароль */}
       <div>
-        <label htmlFor="currentPassword" className="block text-sm font-medium text-[#164A41] mb-2">
+        <label htmlFor="currentPassword" className="block text-sm font-medium text-brand-dark mb-2">
           Поточний пароль
         </label>
         <div className="relative">
@@ -109,7 +109,7 @@ export default function PasswordChangeForm() {
           <button
             type="button"
             onClick={() => togglePassword('current')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4D774E] hover:text-[#164A41] transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-medium hover:text-brand-dark transition-colors"
           >
             {showPasswords.current ? (
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -127,7 +127,7 @@ export default function PasswordChangeForm() {
 
       {/* Новий пароль */}
       <div>
-        <label htmlFor="newPassword" className="block text-sm font-medium text-[#164A41] mb-2">
+        <label htmlFor="newPassword" className="block text-sm font-medium text-brand-dark mb-2">
           Новий пароль
         </label>
         <div className="relative">
@@ -144,7 +144,7 @@ export default function PasswordChangeForm() {
           <button
             type="button"
             onClick={() => togglePassword('new')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4D774E] hover:text-[#164A41] transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-medium hover:text-brand-dark transition-colors"
           >
             {showPasswords.new ? (
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -164,7 +164,7 @@ export default function PasswordChangeForm() {
 
       {/* Підтвердження пароля */}
       <div>
-        <label htmlFor="confirmPassword" className="block text-sm font-medium text-[#164A41] mb-2">
+        <label htmlFor="confirmPassword" className="block text-sm font-medium text-brand-dark mb-2">
           Підтвердіть новий пароль
         </label>
         <div className="relative">
@@ -181,7 +181,7 @@ export default function PasswordChangeForm() {
           <button
             type="button"
             onClick={() => togglePassword('confirm')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4D774E] hover:text-[#164A41] transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-medium hover:text-brand-dark transition-colors"
           >
             {showPasswords.confirm ? (
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -218,7 +218,7 @@ export default function PasswordChangeForm() {
       <div className="text-center">
         <Link 
           to="/forgot-password" 
-          className="text-sm text-[#4D774E] hover:text-[#164A41] hover:underline transition-colors"
+          className="text-sm text-brand-medium hover:text-brand-dark hover:underline transition-colors"
         >
           Не пам'ятаєте поточний пароль?
         </Link>

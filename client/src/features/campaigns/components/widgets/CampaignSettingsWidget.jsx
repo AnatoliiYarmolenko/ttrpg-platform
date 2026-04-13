@@ -87,7 +87,7 @@ function CampaignSettingsWidgetContent({
   };
 
   const inputClasses =
-    'w-full p-3 border-2 border-[#9DC88D]/50 rounded-xl focus:border-[#164A41] outline-none text-[#164A41] bg-white transition-colors';
+    'w-full p-3 border-2 border-brand-light/50 rounded-xl focus:border-brand-dark outline-none text-brand-dark bg-white transition-colors';
 
   return (
     <DashboardCard title="Налаштування кампанії">
@@ -154,10 +154,10 @@ function CampaignSettingsWidgetContent({
           </FormField>
         </div>
 
-        <div className="p-4 bg-[#9DC88D]/10 rounded-xl border border-[#9DC88D]/30 flex items-center justify-between gap-3">
+        <div className="p-4 bg-brand-light/10 rounded-xl border border-brand-light/30 flex items-center justify-between gap-3">
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-semibold text-[#164A41]">Статус кампанії</span>
-            <span className="text-xs text-[#4D774E]">
+            <span className="text-sm font-semibold text-brand-dark">Статус кампанії</span>
+            <span className="text-xs text-brand-medium">
               Після завершення кампанії створення сесій, вступ та редагування будуть недоступні.
             </span>
           </div>
@@ -205,8 +205,8 @@ function CampaignSettingsWidgetContent({
               </div>
             )}
 
-            <div className="mb-5 p-3 border-2 border-[#9DC88D]/30 rounded-xl bg-[#9DC88D]/5">
-              <p className="text-xs text-[#4D774E] mb-3">
+            <div className="mb-5 p-3 border-2 border-brand-light/30 rounded-xl bg-brand-light/5">
+              <p className="text-xs text-brand-medium mb-3">
                 Передача прав власності змінить власника кампанії. Ви станете майстром цієї кампанії.
               </p>
 
@@ -238,7 +238,7 @@ function CampaignSettingsWidgetContent({
                   </Button>
                 </div>
               ) : (
-                <p className="text-xs text-[#4D774E]">Немає доступних учасників для передачі прав.</p>
+                <p className="text-xs text-brand-medium">Немає доступних учасників для передачі прав.</p>
               )}
             </div>
           </div>

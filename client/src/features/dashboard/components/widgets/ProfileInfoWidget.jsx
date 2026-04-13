@@ -62,7 +62,7 @@ export default function ProfileInfoWidget({
   return (
     <DashboardCard title={title}>
       {isRefreshing && (
-        <div className="mb-3 text-xs text-[#4D774E]">Оновлюємо профіль...</div>
+        <div className="mb-3 text-xs text-brand-medium">Оновлюємо профіль...</div>
       )}
       <ProfilePublicCard
         profile={profile}

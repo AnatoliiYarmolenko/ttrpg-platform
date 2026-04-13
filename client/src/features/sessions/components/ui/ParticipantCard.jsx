@@ -85,18 +85,18 @@ export default function ParticipantCard({
       tabIndex={0}
       onClick={handleCardClick}
       onKeyDown={(e) => e.key === 'Enter' && handleCardClick()}
-      className="flex items-center justify-between p-3 border-2 border-[#9DC88D]/30 rounded-xl hover:border-[#9DC88D]/60 hover:bg-[#9DC88D]/5 transition-colors cursor-pointer"
+      className="flex items-center justify-between p-3 border-2 border-brand-light/30 rounded-xl hover:border-brand-light/60 hover:bg-brand-light/5 transition-colors cursor-pointer"
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <UserAvatar src={user.avatarUrl} name={displayName} size="sm" />
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium text-[#164A41] truncate">
+            <span className="font-medium text-brand-dark truncate">
               {displayName}
             </span>
             {isOwner && (
-              <span className="inline-flex items-center text-[#F1B24A]" title="Власник" aria-label="Власник">
+              <span className="inline-flex items-center text-brand-accent" title="Власник" aria-label="Власник">
                 <Star className="w-4 h-4" />
               </span>
             )}
@@ -105,10 +105,10 @@ export default function ParticipantCard({
 
           <div className="flex items-center gap-2 flex-wrap">
             {user.username && (
-              <span className="text-xs text-[#4D774E]">@{user.username}</span>
+              <span className="text-xs text-brand-medium">@{user.username}</span>
             )}
             {participant.characterName && (
-              <span className="text-xs text-[#4D774E]">{participant.characterName}</span>
+              <span className="text-xs text-brand-medium">{participant.characterName}</span>
             )}
           </div>
         </div>
@@ -125,7 +125,7 @@ export default function ParticipantCard({
           <div className="flex items-center gap-1">
             <button
               onClick={handleApproveClick}
-              className="px-2 py-1 text-xs rounded bg-[#9DC88D]/30 text-[#164A41] hover:bg-[#9DC88D]/50 transition-colors"
+              className="px-2 py-1 text-xs rounded bg-brand-light/30 text-brand-dark hover:bg-brand-light/50 transition-colors"
               title={activeModeration.approveTitle}
             >
               {activeModeration.approveLabel}

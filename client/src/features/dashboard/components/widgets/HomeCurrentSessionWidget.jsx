@@ -176,7 +176,7 @@ export default function HomeCurrentSessionWidget() {
     return (
       <DashboardCard title={cardTitle}>
         <div className="flex items-center justify-center h-full min-h-48">
-          <div className="animate-pulse text-[#164A41] font-medium">Завантаження...</div>
+          <div className="animate-pulse text-brand-dark font-medium">Завантаження...</div>
         </div>
       </DashboardCard>
     );
@@ -226,11 +226,11 @@ export default function HomeCurrentSessionWidget() {
     <DashboardCard title={cardTitle}>
       <div className="flex flex-col gap-4 h-full">
         <div className="flex items-start justify-between gap-3">
-          <h3 className="text-xl font-bold text-[#164A41] leading-tight break-words flex-1 pr-3">
+          <h3 className="text-xl font-bold text-brand-dark leading-tight break-words flex-1 pr-3">
             {session.title}
           </h3>
           {relativeSessionTime && (
-            <div className="inline-flex items-center gap-2 rounded-full px-4 py-2 bg-[#9DC88D]/20 text-[#164A41] text-lg font-semibold whitespace-nowrap">
+            <div className="inline-flex items-center gap-2 rounded-full px-4 py-2 bg-brand-light/20 text-brand-dark text-lg font-semibold whitespace-nowrap">
               <Timer className="w-5 h-5" />
               <span>{relativeSessionTime}</span>
             </div>
@@ -241,35 +241,35 @@ export default function HomeCurrentSessionWidget() {
           {session.myRole && <RoleBadge role={session.myRole} size="md" />}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-[#9DC88D]/10 rounded-xl">
-          <div className="flex items-center gap-2 text-[#4D774E]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-brand-light/10 rounded-xl">
+          <div className="flex items-center gap-2 text-brand-medium">
             <Data className="w-4 h-4" />
             <DateTimeDisplay value={session.startAt} format="long" fallback={formatStartAt(session.startAt)} />
           </div>
           {session.system ? (
-            <div className="flex items-center gap-2 text-[#4D774E]">
+            <div className="flex items-center gap-2 text-brand-medium">
               <span className="font-medium">Система:</span> {session.system}
             </div>
           ) : (
             <div className="hidden sm:block"></div>
           )}
 
-          <div className="flex items-center gap-2 text-[#4D774E]">
+          <div className="flex items-center gap-2 text-brand-medium">
             <Timer className="w-4 h-4" />
             <DateTimeDisplay value={session.startAt} format="time" fallback="--:--" />
           </div>
-          <div className="flex items-center gap-2 text-[#4D774E]">
+          <div className="flex items-center gap-2 text-brand-medium">
             <span className="font-medium">Доступність:</span> {availabilityLabel}
           </div>
 
-          <div className="flex items-center gap-2 text-[#4D774E]">
+          <div className="flex items-center gap-2 text-brand-medium">
             <GroupPeople className="w-4 h-4" />
             <span>
               {hasPlayersCapacity ? `${playersCount} / ${playersCapacity} гравців` : `${playersCount} гравців`}
             </span>
           </div>
           {session.organizerName ? (
-            <div className="flex items-center gap-2 text-[#4D774E]">
+            <div className="flex items-center gap-2 text-brand-medium">
               <span className="font-medium">Організатор:</span> {session.organizerName}
             </div>
           ) : (
@@ -277,15 +277,15 @@ export default function HomeCurrentSessionWidget() {
           )}
 
           {session.campaign?.title && (
-            <div className="flex items-center gap-2 text-[#4D774E] sm:col-span-2 pt-2 border-t border-[#9DC88D]/20 mt-1">
+            <div className="flex items-center gap-2 text-brand-medium sm:col-span-2 pt-2 border-t border-brand-light/20 mt-1">
               <span className="font-medium">Кампанія:</span> {session.campaign.title}
             </div>
           )}
         </div>
 
-        <div className="border-t border-[#9DC88D]/20 pt-4">
-          <h4 className="text-sm font-bold text-[#164A41] mb-2">Опис</h4>
-          <p className="text-sm text-[#4D774E] whitespace-pre-wrap">
+        <div className="border-t border-brand-light/20 pt-4">
+          <h4 className="text-sm font-bold text-brand-dark mb-2">Опис</h4>
+          <p className="text-sm text-brand-medium whitespace-pre-wrap">
             {session.description?.trim() || 'Опис відсутній'}
           </p>
         </div>

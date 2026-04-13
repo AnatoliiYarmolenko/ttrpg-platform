@@ -52,14 +52,14 @@ const CalendarDayCell = memo(function CalendarDayCell({
 
   // Визначаємо стилі
   const getBorderColor = () => {
-    if (isSelected) return 'border-[#164A41]';
-    if (isToday) return 'border-[#F1B24A]';
+    if (isSelected) return 'border-brand-dark';
+    if (isToday) return 'border-brand-accent';
     return 'border-gray-200';
   };
 
   const getBackgroundColor = () => {
-    if (isSelected) return 'bg-[#9DC88D]/10';
-    if (isToday) return 'bg-[#F1B24A]/5';
+    if (isSelected) return 'bg-brand-light/10';
+    if (isToday) return 'bg-brand-accent/5';
     return 'bg-white';
   };
 
@@ -72,7 +72,7 @@ const CalendarDayCell = memo(function CalendarDayCell({
         rounded-md border 
         ${getBorderColor()}
         ${getBackgroundColor()}
-        hover:shadow-sm hover:border-[#164A41]
+        hover:shadow-sm hover:border-brand-dark
         transition-all duration-200
         p-2 relative
       `}
@@ -82,7 +82,7 @@ const CalendarDayCell = memo(function CalendarDayCell({
       <div className="w-full flex items-center justify-between">
         <div className={`
           text-sm font-medium
-          ${isSelected ? 'text-[#164A41] font-bold' : 'text-gray-600'}
+          ${isSelected ? 'text-brand-dark font-bold' : 'text-gray-600'}
         `}>
           {day}
         </div>
@@ -93,7 +93,7 @@ const CalendarDayCell = memo(function CalendarDayCell({
               cursor-help     
               flex items-center gap-1
               text-sm font-bold
-              ${isSelected ? 'text-[#164A41]' : 'text-gray-900'}
+              ${isSelected ? 'text-brand-dark' : 'text-gray-900'}
             `}>
                 <Campfire className="w-3.5 h-3.5" /> {count}
 
@@ -142,7 +142,7 @@ const CalendarDayCell = memo(function CalendarDayCell({
       {/* Індикатор сьогодні (маленька крапка) */}
       {isToday && (
         <div className="absolute top-0.5 right-0.5">
-          <div className="w-2 h-2 rounded-full bg-[#F1B24A]"></div>
+          <div className="w-2 h-2 rounded-full bg-brand-accent"></div>
         </div>
       )}
     </button>

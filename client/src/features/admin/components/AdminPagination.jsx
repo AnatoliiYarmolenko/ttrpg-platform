@@ -23,7 +23,7 @@ export default function AdminPagination({ page, totalPages, onPageChange }) {
       <button
         onClick={() => onPageChange(page - 1)}
         disabled={page <= 1}
-        className="px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed text-[#164A41] hover:bg-[#9DC88D]/20 transition-colors"
+        className="px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed text-brand-dark hover:bg-brand-light/20 transition-colors"
       >
         ←
       </button>
@@ -32,7 +32,7 @@ export default function AdminPagination({ page, totalPages, onPageChange }) {
         <>
           <button
             onClick={() => onPageChange(1)}
-            className="px-3 py-1.5 rounded-lg text-sm font-medium text-[#164A41] hover:bg-[#9DC88D]/20 transition-colors"
+            className="px-3 py-1.5 rounded-lg text-sm font-medium text-brand-dark hover:bg-brand-light/20 transition-colors"
           >
             1
           </button>
@@ -46,8 +46,8 @@ export default function AdminPagination({ page, totalPages, onPageChange }) {
           onClick={() => onPageChange(p)}
           className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
             p === page
-              ? 'bg-[#164A41] text-white'
-              : 'text-[#164A41] hover:bg-[#9DC88D]/20'
+              ? 'bg-brand-dark text-white'
+              : 'text-brand-dark hover:bg-brand-light/20'
           }`}
         >
           {p}
@@ -59,7 +59,7 @@ export default function AdminPagination({ page, totalPages, onPageChange }) {
           {end < totalPages - 1 && <span className="px-1 text-gray-400">…</span>}
           <button
             onClick={() => onPageChange(totalPages)}
-            className="px-3 py-1.5 rounded-lg text-sm font-medium text-[#164A41] hover:bg-[#9DC88D]/20 transition-colors"
+            className="px-3 py-1.5 rounded-lg text-sm font-medium text-brand-dark hover:bg-brand-light/20 transition-colors"
           >
             {totalPages}
           </button>
@@ -69,7 +69,7 @@ export default function AdminPagination({ page, totalPages, onPageChange }) {
       <button
         onClick={() => onPageChange(page + 1)}
         disabled={page >= totalPages}
-        className="px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed text-[#164A41] hover:bg-[#9DC88D]/20 transition-colors"
+        className="px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed text-brand-dark hover:bg-brand-light/20 transition-colors"
       >
         →
       </button>

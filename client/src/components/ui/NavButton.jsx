@@ -18,10 +18,10 @@ export default function NavButton({
     <button
       onClick={onClick}
       className={`
-        px-4 lg:px-6 py-2 rounded-xl transition-all duration-200 border-3
+        px-4 lg:px-6 py-2 rounded-xl transition-all duration-200 border-[3px]
         ${isActive 
-          ? 'bg-[#164A41] text-white border-[#F1B24A] shadow-lg scale-105' 
-          : 'bg-white text-[#164A41] border-[#9DC88D]/30 hover:border-[#9DC88D] hover:shadow-md'}
+          ? 'bg-brand-dark text-white border-brand-accent shadow-lg scale-105' 
+          : 'bg-white text-brand-dark border-brand-light/30 hover:border-brand-light hover:shadow-md'}
         ${className}
       `}
     >

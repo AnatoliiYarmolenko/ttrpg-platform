@@ -42,7 +42,7 @@ export default function MyCampaignsWidget() {
   if (isLoading) {
     content = (
       <div className="flex items-center justify-center h-full">
-        <div className="animate-pulse text-[#164A41]">Завантаження...</div>
+        <div className="animate-pulse text-brand-dark">Завантаження...</div>
       </div>
     );
   } else if (error) {
@@ -73,24 +73,24 @@ export default function MyCampaignsWidget() {
                   <button
                     key={campaign.id}
                     onClick={() => handleCampaignClick(campaign.id)}
-                    className="w-full text-left p-4 border-2 border-[#9DC88D]/30 rounded-xl hover:border-[#164A41]/30 hover:shadow-md transition-all"
+                    className="w-full text-left p-4 border-2 border-brand-light/30 rounded-xl hover:border-brand-dark/30 hover:shadow-md transition-all"
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <h4 className="font-bold text-[#164A41] truncate">{campaign.title}</h4>
+                        <h4 className="font-bold text-brand-dark truncate">{campaign.title}</h4>
                       </div>
                       {role && <RoleBadge role={role} />}
                     </div>
 
                     {/* Опис */}
                     {campaign.description && (
-                      <p className="text-sm text-[#4D774E] mb-2 line-clamp-2">
+                      <p className="text-sm text-brand-medium mb-2 line-clamp-2">
                         {campaign.description}
                       </p>
                     )}
 
                     {/* Статистика */}
-                    <div className="flex items-center gap-4 text-sm text-[#4D774E]">
+                    <div className="flex items-center gap-4 text-sm text-brand-medium">
                       {campaign.system && <span className="flex items-center gap-1"><Dice20 className="w-4 h-4" /> {campaign.system}</span>}
                       <span className="flex items-center gap-1"><GroupPeople className="w-4 h-4" /> {campaign.membersCount || campaign.members?.length || 0}</span>
                       <span className="flex items-center gap-1"><Data className="w-4 h-4" /> {campaign.sessionsCount || campaign.sessions?.length || 0} сесій</span>
@@ -102,7 +102,7 @@ export default function MyCampaignsWidget() {
           )}
         </div>
 
-        <div className="pt-4 border-t border-[#9DC88D]/20 mt-auto flex-shrink-0">
+        <div className="pt-4 border-t border-brand-light/20 mt-auto flex-shrink-0">
           <Button onClick={handleCreateClick} variant="primary" className="flex items-center justify-center gap-2">
             Створити кампанію
           </Button>

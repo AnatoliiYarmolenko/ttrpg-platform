@@ -86,13 +86,13 @@ function LoginForm({ onSuccess }) {
       
       <div className="mt-6 text-center">
         <div className="mb-3">
-          <Link to="/forgot-password" className="text-[#F1B24A] hover:text-[#4D774E] font-semibold transition-colors text-sm">
+          <Link to="/forgot-password" className="text-brand-accent hover:text-brand-medium font-semibold transition-colors text-sm">
             Забули пароль?
           </Link>
         </div>
-        <p className="text-[#164A41]">
+        <p className="text-brand-dark">
           Ще немає акаунту?{" "}
-          <Link to="/register" className="text-[#F1B24A] hover:text-[#4D774E] font-semibold transition-colors">
+          <Link to="/register" className="text-brand-accent hover:text-brand-medium font-semibold transition-colors">
             Зареєструватись
           </Link>
         </p>

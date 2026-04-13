@@ -56,11 +56,11 @@ export default function SessionListItem({
       tabIndex={0}
       onClick={handleOpenSession}
       onKeyDown={handleKeyDown}
-      className="w-full text-left p-4 border-2 border-[#9DC88D]/30 rounded-xl hover:border-[#164A41]/30 hover:bg-[#9DC88D]/5 transition-all group"
+      className="w-full text-left p-4 border-2 border-brand-light/30 rounded-xl hover:border-brand-dark/30 hover:bg-brand-light/5 transition-all group"
     >
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <h4 className="font-bold text-[#164A41] truncate group-hover:text-[#1f5c52]">
+          <h4 className="font-bold text-brand-dark truncate group-hover:text-brand-medium">
             {index !== undefined ? `Сесія #${index + 1} — ` : ''}
             {session.title}
           </h4>
@@ -75,7 +75,7 @@ export default function SessionListItem({
                   onCancelOwnerAction?.();
                 }}
                 disabled={!canCancelSession}
-                className="px-2 py-1 text-xs rounded border border-[#F1B24A]/60 text-[#164A41] hover:bg-[#F1B24A]/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-2 py-1 text-xs rounded border border-brand-accent/60 text-brand-dark hover:bg-brand-accent/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Скасувати сесію"
               >
                 Скасувати
@@ -98,7 +98,7 @@ export default function SessionListItem({
         </div>
       </div>
 
-      <div className="flex items-center gap-4 text-sm text-[#4D774E] flex-wrap">
+      <div className="flex items-center gap-4 text-sm text-brand-medium flex-wrap">
         <div className="flex items-center gap-1">
           <Data className="w-4 h-4" />
           <DateTimeDisplay value={session.date} format="long" />
@@ -123,7 +123,7 @@ export default function SessionListItem({
       </div>
 
       {session.description && (
-        <p className="text-xs text-[#4D774E]/70 mt-2 line-clamp-2">
+        <p className="text-xs text-brand-medium/70 mt-2 line-clamp-2">
           {session.description}
         </p>
       )}

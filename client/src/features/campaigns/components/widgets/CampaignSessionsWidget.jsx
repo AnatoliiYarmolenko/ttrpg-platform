@@ -71,16 +71,16 @@ function CampaignSessionSection({
   return (
     <section key={section.key} className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-semibold text-[#164A41] uppercase tracking-wide">
+        <h4 className="text-sm font-semibold text-brand-dark uppercase tracking-wide">
           {section.title}
         </h4>
-        <span className="text-xs text-[#4D774E] bg-[#9DC88D]/10 px-2 py-1 rounded-full">
+        <span className="text-xs text-brand-medium bg-brand-light/10 px-2 py-1 rounded-full">
           {groupedSessions.length}
         </span>
       </div>
 
       {groupedSessions.length === 0 ? (
-        <div className="text-xs text-[#4D774E]/80 px-3 py-2 border border-dashed border-[#9DC88D]/40 rounded-lg bg-[#9DC88D]/5">
+        <div className="text-xs text-brand-medium/80 px-3 py-2 border border-dashed border-brand-light/40 rounded-lg bg-brand-light/5">
           {section.emptyText}
         </div>
       ) : (
@@ -155,13 +155,13 @@ export default function CampaignSessionsWidget({
   return (
     <DashboardCard title={title}>
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between p-3 rounded-xl bg-[#9DC88D]/8 border border-[#9DC88D]/25">
-          <span className="text-sm font-semibold text-[#164A41]">Статус кампанії</span>
+        <div className="flex items-center justify-between p-3 rounded-xl bg-brand-light/8 border border-brand-light/25">
+          <span className="text-sm font-semibold text-brand-dark">Статус кампанії</span>
           <StatusBadge status={campaign.status || 'ACTIVE'} size="sm" />
         </div>
 
         {sessions.length > 0 && (
-          <div className="flex items-center gap-4 text-sm text-[#4D774E] p-3 bg-[#9DC88D]/10 rounded-xl flex-wrap">
+          <div className="flex items-center gap-4 text-sm text-brand-medium p-3 bg-brand-light/10 rounded-xl flex-wrap">
             <span>Активні: {activeCount}</span>
             <span>Заплановано: {plannedCount}</span>
             <span>Завершено: {finishedCount}</span>

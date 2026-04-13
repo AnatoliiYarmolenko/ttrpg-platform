@@ -42,15 +42,15 @@ export default function AvatarCropModal({
         aria-labelledby="avatar-crop-modal-title"
         className="fixed left-1/2 top-1/2 m-0 max-h-[calc(100vh-2rem)] w-full max-w-xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-6"
       >
-        <h3 id="avatar-crop-modal-title" className="mb-2 text-lg font-bold text-[#164A41]">
+        <h3 id="avatar-crop-modal-title" className="mb-2 text-lg font-bold text-brand-dark">
           Обрізати аватар
         </h3>
 
-        <p className="mb-4 text-sm text-[#4D774E]">
+        <p className="mb-4 text-sm text-brand-medium">
           Перетягніть фото та виберіть масштаб.
         </p>
 
-        <div className="relative h-[320px] w-full overflow-hidden rounded-xl bg-[#0F2E29]">
+        <div className="relative h-[320px] w-full overflow-hidden rounded-xl bg-brand-dark">
           <Cropper
             image={imageSrc}
             crop={crop}
@@ -67,7 +67,7 @@ export default function AvatarCropModal({
         </div>
 
         <div className="mt-4">
-          <label htmlFor="avatar-crop-zoom" className="mb-2 block text-sm font-medium text-[#164A41]">
+          <label htmlFor="avatar-crop-zoom" className="mb-2 block text-sm font-medium text-brand-dark">
             Масштаб
           </label>
           <input
@@ -78,7 +78,7 @@ export default function AvatarCropModal({
             step={0.01}
             value={zoom}
             onChange={(e) => setZoom(Number(e.target.value))}
-            className="w-full accent-[#164A41]"
+            className="w-full accent-brand-dark"
           />
         </div>
 

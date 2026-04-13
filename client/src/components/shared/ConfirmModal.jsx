@@ -70,7 +70,7 @@ export default function ConfirmModal({
   };
 
   const confirmVariants = {
-    primary: 'bg-[#164A41] hover:bg-[#1f5c52] text-white',
+    primary: 'bg-brand-dark hover:bg-brand-medium text-white',
     danger: 'bg-red-500 hover:bg-red-600 text-white',
   };
 
@@ -90,13 +90,13 @@ export default function ConfirmModal({
       >
         <h3
           id="confirm-modal-title"
-          className="text-lg font-bold text-[#164A41] mb-2"
+          className="text-lg font-bold text-brand-dark mb-2"
         >
           {title}
         </h3>
 
         {message && (
-          <p className="text-[#4D774E] mb-6">{message}</p>
+          <p className="text-brand-medium mb-6">{message}</p>
         )}
 
         <div className="flex gap-3 justify-end">
@@ -104,7 +104,7 @@ export default function ConfirmModal({
             type="button"
             onClick={onCancel}
             disabled={isLoading}
-            className="px-4 py-2 rounded-lg border-2 border-[#164A41]/20 text-[#164A41] hover:bg-[#164A41]/5 transition-colors font-medium disabled:opacity-50"
+            className="px-4 py-2 rounded-lg border-2 border-brand-dark/20 text-brand-dark hover:bg-brand-dark/5 transition-colors font-medium disabled:opacity-50"
           >
             {cancelText}
           </button>

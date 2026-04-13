@@ -19,7 +19,7 @@ export default function ViewProfileButton({ username }) {
   return (
     <button
       onClick={() => navigate(`/user/${username}`, { state: { fromPath: location.pathname } })}
-      className="flex items-center justify-center gap-2 px-4 py-2 text-sm rounded-lg border border-[#9DC88D]/40 text-[#164A41] hover:bg-[#9DC88D]/10 transition-colors w-full"
+      className="flex items-center justify-center gap-2 px-4 py-2 text-sm rounded-lg border border-brand-light/40 text-brand-dark hover:bg-brand-light/10 transition-colors w-full"
       title={`Відкрити профіль @${username}`}
     >
       Відкрити профіль

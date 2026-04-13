@@ -1,45 +1,53 @@
 @import "tailwindcss";
 
-/* Кастомний скролбар для всіх елементів */
-*::-webkit-scrollbar {
+@theme {
+  --color-brand-dark: #164A41;
+  --color-brand-medium: #4D774E;
+  --color-brand-light: #9DC88D;
+  --color-brand-accent: #F1B24A;
+  --color-brand-white: #FFFFFF;
+}
+
+/* Кастомний скролбар на рівні сторінки */
+body::-webkit-scrollbar {
   width: 6px;
   height: 6px;
   background: transparent;
 }
 
-*::-webkit-scrollbar-track {
+body::-webkit-scrollbar-track {
   background: transparent;
 }
 
-*::-webkit-scrollbar-thumb {
+body::-webkit-scrollbar-thumb {
   background: #9DC88D;
   border-radius: 10px;
 }
 
-*::-webkit-scrollbar-thumb:hover {
+body::-webkit-scrollbar-thumb:hover {
   background: #164A41;
 }
 
-*::-webkit-scrollbar-button,
-*::-webkit-scrollbar-button:single-button,
-*::-webkit-scrollbar-button:start,
-*::-webkit-scrollbar-button:end,
-*::-webkit-scrollbar-button:vertical:start,
-*::-webkit-scrollbar-button:vertical:end,
-*::-webkit-scrollbar-button:vertical:start:decrement,
-*::-webkit-scrollbar-button:vertical:end:increment {
+body::-webkit-scrollbar-button,
+body::-webkit-scrollbar-button:single-button,
+body::-webkit-scrollbar-button:start,
+body::-webkit-scrollbar-button:end,
+body::-webkit-scrollbar-button:vertical:start,
+body::-webkit-scrollbar-button:vertical:end,
+body::-webkit-scrollbar-button:vertical:start:decrement,
+body::-webkit-scrollbar-button:vertical:end:increment {
   display: none !important;
   width: 0 !important;
   height: 0 !important;
   background: transparent !important;
 }
 
-*::-webkit-scrollbar-corner {
+body::-webkit-scrollbar-corner {
   background: transparent;
 }
 
 /* Firefox */
-* {
+body {
   scrollbar-width: thin;
   scrollbar-color: #9DC88D transparent;
 }

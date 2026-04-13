@@ -1,7 +1,7 @@
 const ROLE_CONFIG = {
-  OWNER:  { text: 'Власник', class: 'bg-[#F1B24A] text-[#164A41]' },
-  GM:     { text: 'Майстер', class: 'bg-[#164A41] text-white' },
-  PLAYER: { text: 'Гравець', class: 'bg-[#9DC88D] text-[#164A41]' },
+  OWNER:  { text: 'Власник', class: 'bg-brand-accent text-brand-dark' },
+  GM:     { text: 'Майстер', class: 'bg-brand-dark text-white' },
+  PLAYER: { text: 'Гравець', class: 'bg-brand-light text-brand-dark' },
 };
 
 /**

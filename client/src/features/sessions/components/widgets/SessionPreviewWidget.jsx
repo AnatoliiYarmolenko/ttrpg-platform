@@ -85,8 +85,8 @@ function SessionJoinModal({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-6 max-w-md w-full">
-        <h3 className="text-xl font-bold text-[#164A41] mb-4">Приєднатись до сесії</h3>
-        <p className="text-sm text-[#4D774E] mb-4">{getJoinModalMessage(hasConfirmedGm)}</p>
+        <h3 className="text-xl font-bold text-brand-dark mb-4">Приєднатись до сесії</h3>
+        <p className="text-sm text-brand-medium mb-4">{getJoinModalMessage(hasConfirmedGm)}</p>
         <div className="flex flex-col gap-3">
           {!hasConfirmedGm && canJoin && (
             <Button
@@ -209,27 +209,27 @@ export default function SessionPagePreviewWidget({
       <div className="flex flex-col gap-5">
         <div>
           <div className="flex items-start justify-between mb-2">
-            <h2 className="text-xl font-bold text-[#164A41] flex-1 pr-3">{session.title}</h2>
+            <h2 className="text-xl font-bold text-brand-dark flex-1 pr-3">{session.title}</h2>
             <StatusBadge status={session.status} />
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 p-4 bg-[#9DC88D]/10 rounded-xl">
-          <div className="flex items-center gap-2 text-[#4D774E]">
+        <div className="grid grid-cols-2 gap-3 p-4 bg-brand-light/10 rounded-xl">
+          <div className="flex items-center gap-2 text-brand-medium">
             <Data className="w-4 h-4" />
             <DateTimeDisplay value={session.date} format="long" />
           </div>
-          <div className="flex items-center gap-2 text-[#4D774E]">
+          <div className="flex items-center gap-2 text-brand-medium">
             <Timer className="w-4 h-4" />
             <DateTimeDisplay value={session.date} format="time" />
           </div>
           {session.duration && (
-            <div className="flex items-center gap-2 text-[#4D774E]">
+            <div className="flex items-center gap-2 text-brand-medium">
               <Timer className="w-4 h-4" />
               <span>{formatDuration(session.duration)}</span>
             </div>
           )}
-          <div className="flex items-center gap-2 text-[#4D774E]">
+          <div className="flex items-center gap-2 text-brand-medium">
             <GroupPeople className="w-4 h-4" />
             <span>
               {getPlayerCount(session)}
@@ -237,45 +237,45 @@ export default function SessionPagePreviewWidget({
             </span>
           </div>
           {session.system && (
-            <div className="flex items-center gap-2 text-[#4D774E]">
+            <div className="flex items-center gap-2 text-brand-medium">
               <span>{session.system}</span>
             </div>
           )}
-          <div className="flex items-center gap-2 text-[#4D774E]">
+          <div className="flex items-center gap-2 text-brand-medium">
             <span>Вільних: {getFreeSpots(session)}</span>
           </div>
-          <div className="flex items-center gap-2 text-[#4D774E]">
+          <div className="flex items-center gap-2 text-brand-medium">
             <span>Організатор: {organizerName}</span>
           </div>
-          <div className="flex items-center gap-2 text-[#4D774E]">
+          <div className="flex items-center gap-2 text-brand-medium">
             <span>GM: {confirmedGmName || 'Шукаємо GM'}</span>
           </div>
         </div>
 
         {session.description && (
-          <div className="border-t border-[#9DC88D]/20 pt-4">
-            <h4 className="text-sm font-bold text-[#164A41] mb-2">Опис</h4>
-            <p className="text-sm text-[#4D774E] whitespace-pre-wrap">{session.description}</p>
+          <div className="border-t border-brand-light/20 pt-4">
+            <h4 className="text-sm font-bold text-brand-dark mb-2">Опис</h4>
+            <p className="text-sm text-brand-medium whitespace-pre-wrap">{session.description}</p>
           </div>
         )}
 
-        <div className="border-t border-[#9DC88D]/20 pt-4">
+        <div className="border-t border-brand-light/20 pt-4">
           {session.campaign && showCampaignInfo ? (
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-bold text-[#164A41]">Кампанія:</span>
+              <span className="text-sm font-bold text-brand-dark">Кампанія:</span>
               {canNavigateToCampaignDirectly ? (
                 <button
                   onClick={() => navigate(`/campaign/${session.campaign.id}`)}
-                  className="text-sm text-[#4D774E] hover:text-[#164A41] underline transition-colors"
+                  className="text-sm text-brand-medium hover:text-brand-dark underline transition-colors"
                 >
                   {session.campaign.title}
                 </button>
               ) : (
-                <span className="text-sm text-[#4D774E]">{session.campaign.title}</span>
+                <span className="text-sm text-brand-medium">{session.campaign.title}</span>
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-sm text-[#4D774E]">
+            <div className="flex items-center gap-2 text-sm text-brand-medium">
               <Dice20 className="w-4 h-4" />
               <span>{session.campaign ? 'Сесія кампанії' : 'One-shot сесія'}</span>
             </div>
@@ -283,7 +283,7 @@ export default function SessionPagePreviewWidget({
         </div>
 
         {session.price > 0 && (
-          <div className="text-sm font-bold text-[#164A41]">{session.price} грн</div>
+          <div className="text-sm font-bold text-brand-dark">{session.price} грн</div>
         )}
 
         {joinError && (
@@ -295,7 +295,7 @@ export default function SessionPagePreviewWidget({
             Приєднатись до сесії
           </Button>
         ) : (
-          <div className="text-sm text-[#4D774E] text-center p-3 bg-[#9DC88D]/10 rounded-lg">
+          <div className="text-sm text-brand-medium text-center p-3 bg-brand-light/10 rounded-lg">
             {getUnavailableJoinMessage(session)}
           </div>
         )}

@@ -51,13 +51,13 @@ export default function VerifyEmailPage() {
       
       <div className="py-4 text-center">
         {status === "loading" && (
-            <div className="text-[#4D774E] animate-pulse font-medium">
+            <div className="text-brand-medium animate-pulse font-medium">
                ⏳ Перевіряємо ваш токен...
             </div>
         )}
 
         {status !== "loading" && (
-          <p className={`font-medium ${status === "success" ? "text-[#4D774E]" : "text-red-600"}`}>
+          <p className={`font-medium ${status === "success" ? "text-brand-medium" : "text-red-600"}`}>
             {message}
           </p>
         )}
@@ -66,7 +66,7 @@ export default function VerifyEmailPage() {
           <div className="mt-6">
             <Link 
                 to="/login" 
-                className="text-[#164A41] hover:text-[#F1B24A] font-semibold transition-colors border-b-2 border-transparent hover:border-[#F1B24A]"
+                className="text-brand-dark hover:text-brand-accent font-semibold transition-colors border-b-2 border-transparent hover:border-brand-accent"
             >
               Перейти до входу
             </Link>

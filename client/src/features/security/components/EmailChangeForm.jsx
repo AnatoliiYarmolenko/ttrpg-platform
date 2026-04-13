@@ -58,19 +58,19 @@ export default function EmailChangeForm({ currentEmail }) {
     });
   };
 
-  const inputClasses = "w-full px-4 py-3 rounded-xl border-2 border-[#9DC88D]/30 focus:border-[#164A41] focus:outline-none transition-colors";
+  const inputClasses = "w-full px-4 py-3 rounded-xl border-2 border-brand-light/30 focus:border-brand-dark focus:outline-none transition-colors";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {/* Поточний email (інформаційно) */}
-      <div className="bg-[#9DC88D]/10 rounded-xl p-4">
-        <div className="text-sm text-[#4D774E]">Поточний email:</div>
-        <div className="font-medium text-[#164A41]">{currentEmail || '—'}</div>
+      <div className="bg-brand-light/10 rounded-xl p-4">
+        <div className="text-sm text-brand-medium">Поточний email:</div>
+        <div className="font-medium text-brand-dark">{currentEmail || '—'}</div>
       </div>
 
       {/* Новий email */}
       <div>
-        <label htmlFor="newEmail" className="block text-sm font-medium text-[#164A41] mb-2">
+        <label htmlFor="newEmail" className="block text-sm font-medium text-brand-dark mb-2">
           Новий email
         </label>
         <input
@@ -87,7 +87,7 @@ export default function EmailChangeForm({ currentEmail }) {
 
       {/* Пароль для підтвердження */}
       <div>
-        <label htmlFor="password" className="block text-sm font-medium text-[#164A41] mb-2">
+        <label htmlFor="password" className="block text-sm font-medium text-brand-dark mb-2">
           Пароль для підтвердження
         </label>
         <div className="relative">
@@ -104,7 +104,7 @@ export default function EmailChangeForm({ currentEmail }) {
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4D774E] hover:text-[#164A41] transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-medium hover:text-brand-dark transition-colors"
           >
             {showPassword ? (
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">

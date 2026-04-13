@@ -102,7 +102,7 @@ export default function AvatarUpload({ currentAvatarUrl, username, onUpdate }) {
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
-          className="absolute bottom-0 right-0 px-2 py-1 bg-[#F1B24A] rounded-lg flex items-center justify-center text-[#164A41] text-xs font-bold shadow-md hover:bg-[#e0a33f] transition-colors"
+          className="absolute bottom-0 right-0 px-2 py-1 bg-brand-accent rounded-lg flex items-center justify-center text-brand-dark text-xs font-bold shadow-md hover:bg-amber-500 transition-colors"
         >
           {uploading ? '...' : 'Змінити'}
         </button>
@@ -130,7 +130,7 @@ export default function AvatarUpload({ currentAvatarUrl, username, onUpdate }) {
         </Button>
       )}
 
-      <p className="text-xs text-[#4D774E] text-center">
+      <p className="text-xs text-brand-medium text-center">
         JPG, PNG, GIF або WebP. Макс. 5MB
       </p>
 

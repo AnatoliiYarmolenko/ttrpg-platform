@@ -99,7 +99,7 @@ export default function HomeRightWidget() {
   if (isLoading) {
     sessionsContent = (
       <div className="flex items-center justify-center h-full">
-        <div className="animate-pulse text-[#164A41] font-medium">Завантаження сесій...</div>
+        <div className="animate-pulse text-brand-dark font-medium">Завантаження сесій...</div>
       </div>
     );
   } else if (daySessions.length === 0) {
@@ -139,7 +139,7 @@ return (
         </div>
         
         {/* Sticky Footer */}
-        <div className="pt-4 border-t border-[#9DC88D]/20 mt-auto flex-shrink-0">
+        <div className="pt-4 border-t border-brand-light/20 mt-auto flex-shrink-0">
           <Button onClick={handleCreateClick} variant="primary" className="flex items-center justify-center gap-2">
             Створити сесію
           </Button>

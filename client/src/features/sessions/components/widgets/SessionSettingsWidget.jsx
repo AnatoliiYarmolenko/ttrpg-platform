@@ -146,7 +146,7 @@ function SessionSettingsWidgetContent({
   };
 
   const inputClasses =
-    'w-full p-3 border-2 border-[#9DC88D]/50 rounded-xl focus:border-[#164A41] outline-none text-[#164A41] bg-white transition-colors';
+    'w-full p-3 border-2 border-brand-light/50 rounded-xl focus:border-brand-dark outline-none text-brand-dark bg-white transition-colors';
 
   return (
     <DashboardCard title="Налаштування сесії">

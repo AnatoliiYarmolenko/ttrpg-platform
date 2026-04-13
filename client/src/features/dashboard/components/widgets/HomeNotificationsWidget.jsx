@@ -46,7 +46,7 @@ export default function HomeNotificationsWidget() {
   return (
     <DashboardCard title="Нотифікації">
       <div className="flex flex-col gap-3 h-full">
-        <p className="text-sm text-[#4D774E]">
+        <p className="text-sm text-brand-medium">
           Незабаром тут будуть нагадування та системні події.
         </p>
 
@@ -54,7 +54,7 @@ export default function HomeNotificationsWidget() {
           {placeholders.map((item) => (
             <li
               key={item}
-              className="rounded-xl border border-[#9DC88D]/35 bg-[#F8FBF4] px-3 py-2 text-sm text-[#164A41]"
+              className="rounded-xl border border-brand-light/35 bg-brand-light/10 px-3 py-2 text-sm text-brand-dark"
             >
               {item}
             </li>

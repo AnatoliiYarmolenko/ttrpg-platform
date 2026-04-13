@@ -1,6 +1,6 @@
 function Item({ isValid, label }) {
   return (
-    <div className={`flex items-center gap-1 ${isValid ? 'text-[#4D774E] font-bold' : 'text-gray-400'}`}>
+    <div className={`flex items-center gap-1 ${isValid ? 'text-brand-medium font-bold' : 'text-gray-400'}`}>
       <span>{isValid ? '✓' : '○'}</span> {label}
     </div>
   );

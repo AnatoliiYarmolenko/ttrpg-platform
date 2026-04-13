@@ -29,7 +29,7 @@ export default function FormField({
       {label && (
         <label
           htmlFor={id}
-          className="block text-sm font-medium text-[#164A41] mb-1"
+          className="block text-sm font-medium text-brand-dark mb-1"
         >
           {label}
           {required && <span className="text-red-500 ml-0.5">*</span>}
@@ -37,7 +37,7 @@ export default function FormField({
       )}
       {children}
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-      {hint && !error && <p className="text-xs text-[#4D774E] mt-1">{hint}</p>}
+      {hint && !error && <p className="text-xs text-brand-medium mt-1">{hint}</p>}
     </div>
   );
 }

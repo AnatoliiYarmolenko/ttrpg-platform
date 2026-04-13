@@ -103,7 +103,7 @@ const navigationActions = (
     <div className="flex gap-2 items-center">
       <button
         onClick={goToPrevMonth}
-        className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#9DC88D]/30 hover:bg-[#9DC88D]/20 transition-colors text-[#164A41]"
+        className="w-8 h-8 flex items-center justify-center rounded-lg text-brand-dark hover:bg-brand-light/20 transition-colors"
         aria-label="Попередній місяць"
       >
         <Arrow direction="left" className="w-5 h-5" />
@@ -115,7 +115,7 @@ const navigationActions = (
             onClick={goToToday}
             variant="primary"
             fullWidth={false}
-            className="h-8 px-3 text-base !font-semibold flex items-center justify-center"
+            className="h-8 px-3 text-base flex items-center justify-center"
           >
             Сьогодні
           </Button>
@@ -124,7 +124,7 @@ const navigationActions = (
       
       <button
         onClick={goToNextMonth}
-        className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#9DC88D]/30 hover:bg-[#9DC88D]/20 transition-colors text-[#164A41]"
+        className="w-8 h-8 flex items-center justify-center rounded-lg text-brand-dark hover:bg-brand-light/20 transition-colors"
         aria-label="Наступний місяць"
       >
         <Arrow direction="right" className="w-5 h-5" />
@@ -158,7 +158,7 @@ const navigationActions = (
     >
       {/* {isCalendarLoading ? (
         <div className="flex items-center justify-center h-full">
-          <div className="animate-pulse text-[#164A41]">Завантаження...</div>
+          <div className="animate-pulse text-brand-dark">Завантаження...</div>
         </div>
       ) : ( */}
       {
@@ -168,7 +168,7 @@ const navigationActions = (
             {weekDays.map((day) => (
               <div 
                 key={day} 
-                className="text-center font-bold text-[#4D774E] text-xs py-0.5"
+                className="text-center font-bold text-brand-medium text-xs py-0.5"
               >
                 {day}
               </div>

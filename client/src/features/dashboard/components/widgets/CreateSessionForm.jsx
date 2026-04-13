@@ -194,14 +194,14 @@ export default function CreateSessionForm({
     w-full px-3 py-2 rounded-lg border-2
     ${errors[fieldName]
       ? 'border-red-300 focus:border-red-500'
-      : 'border-[#9DC88D]/30 focus:border-[#164A41]'}
+      : 'border-brand-light/30 focus:border-brand-dark'}
     focus:outline-none transition-colors
   `;
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div>
-        <label htmlFor="title" className="block text-sm font-medium text-[#164A41] mb-1">
+        <label htmlFor="title" className="block text-sm font-medium text-brand-dark mb-1">
           Назва сесії *
         </label>
         <input
@@ -218,7 +218,7 @@ export default function CreateSessionForm({
       </div>
 
       <div>
-        <label htmlFor="description" className="block text-sm font-medium text-[#164A41] mb-1">
+        <label htmlFor="description" className="block text-sm font-medium text-brand-dark mb-1">
           Опис
         </label>
         <textarea
@@ -251,7 +251,7 @@ export default function CreateSessionForm({
 
       {!requireGmRole && (
         <div>
-          <p className="block text-sm font-medium text-[#164A41] mb-2">
+          <p className="block text-sm font-medium text-brand-dark mb-2">
             Ваша роль у сесії
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -261,8 +261,8 @@ export default function CreateSessionForm({
               className={`
                 p-3 rounded-xl border-2 text-left transition-colors
                 ${formData.isGm
-                  ? 'border-[#164A41] bg-[#9DC88D]/15 text-[#164A41]'
-                  : 'border-[#9DC88D]/30 text-[#4D774E] hover:border-[#164A41]/50'}
+                  ? 'border-brand-dark bg-brand-light/15 text-brand-dark'
+                  : 'border-brand-light/30 text-brand-medium hover:border-brand-dark/50'}
               `}
             >
               <div className="font-semibold">Я буду Майстром</div>
@@ -274,8 +274,8 @@ export default function CreateSessionForm({
               className={`
                 p-3 rounded-xl border-2 text-left transition-colors
                 ${!formData.isGm
-                  ? 'border-[#164A41] bg-[#9DC88D]/15 text-[#164A41]'
-                  : 'border-[#9DC88D]/30 text-[#4D774E] hover:border-[#164A41]/50'}
+                  ? 'border-brand-dark bg-brand-light/15 text-brand-dark'
+                  : 'border-brand-light/30 text-brand-medium hover:border-brand-dark/50'}
               `}
             >
               <div className="font-semibold">Шукаю Майстра</div>
@@ -286,7 +286,7 @@ export default function CreateSessionForm({
       )}
 
       <div>
-        <label htmlFor="date" className="block text-sm font-medium text-[#164A41] mb-1">
+        <label htmlFor="date" className="block text-sm font-medium text-brand-dark mb-1">
           Дата і час *
         </label>
         <input
@@ -295,7 +295,7 @@ export default function CreateSessionForm({
           name="date"
           value={formData.date}
           onChange={handleChange}
-          className={`${inputClass('date')} accent-[#164A41] cursor-pointer`}
+          className={`${inputClass('date')} accent-brand-dark cursor-pointer`}
         />
         {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date}</p>}
       </div>
@@ -328,7 +328,7 @@ export default function CreateSessionForm({
         </div>
 
         <div>
-          <label htmlFor="maxPlayers" className="block text-sm font-medium text-[#164A41] mb-1">
+          <label htmlFor="maxPlayers" className="block text-sm font-medium text-brand-dark mb-1">
             Макс. гравців
           </label>
           <input
@@ -347,7 +347,7 @@ export default function CreateSessionForm({
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label htmlFor="price" className="block text-sm font-medium text-[#164A41] mb-1">
+          <label htmlFor="price" className="block text-sm font-medium text-brand-dark mb-1">
             Ціна (грн)
           </label>
           <input
@@ -380,7 +380,7 @@ export default function CreateSessionForm({
         </div>
       </div>
 
-      <div className="text-xs text-[#4D774E] bg-[#9DC88D]/10 border border-[#9DC88D]/30 rounded-lg px-3 py-2">
+      <div className="text-xs text-brand-medium bg-brand-light/10 border border-brand-light/30 rounded-lg px-3 py-2">
         {visibilityHint}
       </div>
 

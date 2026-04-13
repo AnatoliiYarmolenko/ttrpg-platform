@@ -23,7 +23,7 @@ export default function ParticipantsList({
             key={key}
             type="button"
             onClick={() => onSelect?.(item, index)}
-            className="w-full text-left p-3 rounded-xl border-2 border-transparent hover:border-[#9DC88D]/50 hover:bg-[#9DC88D]/10 transition-all"
+            className="w-full text-left p-3 rounded-xl border-2 border-transparent hover:border-brand-light/50 hover:bg-brand-light/10 transition-all"
           >
             {label}
           </button>

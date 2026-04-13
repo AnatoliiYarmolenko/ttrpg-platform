@@ -42,8 +42,8 @@ export default function BackButton({
   };
 
   const variants = {
-    light: 'text-white hover:text-[#F1B24A]',
-    dark: 'text-[#164A41] border-2 border-[#9DC88D]/30 hover:bg-[#9DC88D]/20 px-3 py-1 rounded-lg',
+    light: 'text-white hover:text-brand-accent',
+    dark: 'text-brand-dark border-2 border-brand-light/30 hover:bg-brand-light/20 px-3 py-1 rounded-lg',
   };
 
   return (

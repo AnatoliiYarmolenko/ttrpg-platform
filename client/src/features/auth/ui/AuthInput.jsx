@@ -15,7 +15,7 @@ export default function AuthInput({
   
   const borderClass = error 
     ? "border-red-500 focus:border-red-700 focus:ring-red-200" 
-    : "border-[#9DC88D] focus:border-[#4D774E] focus:ring-[#9DC88D] text-[#164A41]";
+    : "border-brand-light focus:border-brand-medium focus:ring-brand-light text-brand-dark";
 
   // Безпечно отримуємо пропси реєстрації
   const registerProps = (register && name) ? register(name, rules) : {};

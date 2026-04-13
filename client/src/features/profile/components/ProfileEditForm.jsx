@@ -78,7 +78,7 @@ export default function ProfileEditForm({ onSuccess }) {
 
   if (isLoading) {
     return (
-      <div className="animate-pulse text-center py-8 text-[#4D774E]">
+      <div className="animate-pulse text-center py-8 text-brand-medium">
         Завантаження...
       </div>
     );
@@ -88,14 +88,14 @@ export default function ProfileEditForm({ onSuccess }) {
     <form onSubmit={handleSubmit} className="space-y-8">
       {/* ===== Секція: Публічний профіль ===== */}
       <section className="space-y-5">
-        <div className="pb-2 border-b border-[#9DC88D]/30">
-          <h3 className="font-semibold text-[#164A41]">Публічний профіль</h3>
-          <p className="text-xs text-[#4D774E]">Інформація, яку бачитимуть інші гравці</p>
+        <div className="pb-2 border-b border-brand-light/30">
+          <h3 className="font-semibold text-brand-dark">Публічний профіль</h3>
+          <p className="text-xs text-brand-medium">Інформація, яку бачитимуть інші гравці</p>
         </div>
 
         {/* Display Name */}
         <div>
-          <label htmlFor="displayName" className="block text-sm font-medium text-[#164A41] mb-2">
+          <label htmlFor="displayName" className="block text-sm font-medium text-brand-dark mb-2">
             Відображуване ім'я
           </label>
           <input
@@ -105,17 +105,17 @@ export default function ProfileEditForm({ onSuccess }) {
             value={formData.displayName}
             onChange={handleChange}
             placeholder="Як вас називати?"
-            className="w-full px-4 py-3 rounded-xl border-2 border-[#9DC88D]/30 focus:border-[#164A41] focus:outline-none transition-colors"
+            className="w-full px-4 py-3 rounded-xl border-2 border-brand-light/30 focus:border-brand-dark focus:outline-none transition-colors"
             maxLength={50}
           />
-          <p className="text-xs text-[#4D774E] mt-1">
+          <p className="text-xs text-brand-medium mt-1">
             Це ім'я бачитимуть інші гравці
           </p>
         </div>
 
         {/* Bio */}
         <div>
-          <label htmlFor="bio" className="block text-sm font-medium text-[#164A41] mb-2">
+          <label htmlFor="bio" className="block text-sm font-medium text-brand-dark mb-2">
             Про себе
           </label>
           <textarea
@@ -125,10 +125,10 @@ export default function ProfileEditForm({ onSuccess }) {
             onChange={handleChange}
             placeholder="Розкажіть трохи про себе, свій досвід у НРІ..."
             rows={4}
-            className="w-full px-4 py-3 rounded-xl border-2 border-[#9DC88D]/30 focus:border-[#164A41] focus:outline-none transition-colors resize-none"
+            className="w-full px-4 py-3 rounded-xl border-2 border-brand-light/30 focus:border-brand-dark focus:outline-none transition-colors resize-none"
             maxLength={500}
           />
-          <p className="text-xs text-[#4D774E] mt-1 text-right">
+          <p className="text-xs text-brand-medium mt-1 text-right">
             {formData.bio.length}/500
           </p>
         </div>
@@ -136,9 +136,9 @@ export default function ProfileEditForm({ onSuccess }) {
 
       {/* ===== Секція: Налаштування ===== */}
       <section className="space-y-5">
-        <div className="pb-2 border-b border-[#9DC88D]/30">
-          <h3 className="font-semibold text-[#164A41]">Налаштування</h3>
-          <p className="text-xs text-[#4D774E]">Персональні параметри для зручності використання</p>
+        <div className="pb-2 border-b border-brand-light/30">
+          <h3 className="font-semibold text-brand-dark">Налаштування</h3>
+          <p className="text-xs text-brand-medium">Персональні параметри для зручності використання</p>
         </div>
 
         {/* Timezone */}
@@ -151,7 +151,7 @@ export default function ProfileEditForm({ onSuccess }) {
               setFormData(prev => ({ ...prev, timezone: option.value }));
             }}
           />
-          <p className="text-xs text-[#4D774E] mt-1">
+          <p className="text-xs text-brand-medium mt-1">
             Для правильного планування сесій
           </p>
         </div>
@@ -170,7 +170,7 @@ export default function ProfileEditForm({ onSuccess }) {
       </section>
 
       {/* Submit Button */}
-      <div className="pt-4 border-t border-[#9DC88D]/20">
+      <div className="pt-4 border-t border-brand-light/20">
         <Button
           type="submit"
           isLoading={saving}

@@ -31,15 +31,15 @@ const Dropdown = ({
   };
 
   // Логіка стилів бордюру (ідентична до твого inputClass у формі)
-  // Базовий: border-[#9DC88D]/30
-  // Активний/Відкритий: border-[#164A41]
+  // Базовий: border-brand-light/30
+  // Активний/Відкритий: border-brand-dark
   // Помилка: border-red-300
-  let borderClass = "border-[#9DC88D]/30";
+  let borderClass = "border-brand-light/30";
   
   if (error) {
     borderClass = "border-red-300";
   } else if (isOpen) {
-    borderClass = "border-[#164A41]"; // Колір фокусу як у твоїх інпутів
+    borderClass = "border-brand-dark"; // Колір фокусу як у твоїх інпутів
   }
 
   return (
@@ -48,7 +48,7 @@ const Dropdown = ({
       {label && (
         <label
           htmlFor={buttonId}
-          className="block text-sm font-medium text-[#164A41] mb-1 cursor-pointer"
+          className="block text-sm font-medium text-brand-dark mb-1 cursor-pointer"
         >
           {label}
         </label>
@@ -68,7 +68,7 @@ const Dropdown = ({
             flex items-center justify-between
             transition-colors duration-200 outline-none
             ${borderClass}
-            ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'cursor-pointer hover:border-[#9DC88D]'}
+            ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'cursor-pointer hover:border-brand-light'}
           `}
         >
           <span className={`block truncate ${!value ? "text-gray-400" : "text-gray-900"}`}>
@@ -86,7 +86,7 @@ const Dropdown = ({
             strokeWidth="2" 
             strokeLinecap="round" 
             strokeLinejoin="round"
-            className={`text-[#164A41] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+            className={`text-brand-dark transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
           >
             <path d="m6 9 6 6 6-6"/>
           </svg>
@@ -97,7 +97,7 @@ const Dropdown = ({
             id={listboxId}
             role="listbox"
             aria-label={label}
-            className="absolute z-50 w-full mt-1 bg-white border border-[#9DC88D] rounded-lg shadow-lg max-h-60 overflow-auto py-1"
+            className="absolute z-50 w-full mt-1 bg-white border border-brand-light rounded-lg shadow-lg max-h-60 overflow-auto py-1"
           >
             {options.map((option) => {
               const isSelected = value === option.value;
@@ -111,8 +111,8 @@ const Dropdown = ({
                     className={`
                       w-full px-3 py-2 text-sm text-left cursor-pointer transition-colors
                       ${isSelected
-                        ? 'bg-[#164A41]/10 text-[#164A41] font-medium'
-                        : 'text-gray-700 hover:bg-[#9DC88D]/20'
+                        ? 'bg-brand-dark/10 text-brand-dark font-medium'
+                        : 'text-gray-700 hover:bg-brand-light/20'
                       }
                     `}
                   >

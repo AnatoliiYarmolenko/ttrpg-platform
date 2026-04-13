@@ -40,21 +40,21 @@ export default function ConfirmEmailChangePage() {
         {status === 'loading' && (
           <div className="space-y-4">
             <div className="text-6xl animate-pulse">📧</div>
-            <p className="text-[#4D774E]">Підтвердження email...</p>
+            <p className="text-brand-medium">Підтвердження email...</p>
           </div>
         )}
 
         {status === 'success' && (
           <div className="space-y-6">
             <div className="text-6xl">✅</div>
-            <p className="text-[#4D774E] font-medium">Email успішно змінено!</p>
+            <p className="text-brand-medium font-medium">Email успішно змінено!</p>
             {newEmail && (
-              <div className="bg-[#9DC88D]/20 rounded-xl p-4">
-                <p className="text-sm text-[#4D774E]">Новий email:</p>
-                <p className="font-bold text-[#164A41]">{newEmail}</p>
+              <div className="bg-brand-light/20 rounded-xl p-4">
+                <p className="text-sm text-brand-medium">Новий email:</p>
+                <p className="font-bold text-brand-dark">{newEmail}</p>
               </div>
             )}
-            <p className="text-sm text-[#4D774E]">
+            <p className="text-sm text-brand-medium">
               Тепер використовуйте новий email для входу в акаунт.
             </p>
             <Button onClick={() => navigate('/dashboard')} className="w-full">
@@ -67,7 +67,7 @@ export default function ConfirmEmailChangePage() {
           <div className="space-y-6">
             <div className="text-6xl">❌</div>
             <p className="text-red-600 font-medium">Не вдалося підтвердити зміну email.</p>
-            <p className="text-sm text-[#4D774E]">
+            <p className="text-sm text-brand-medium">
               Можливо, посилання прострочене або вже було використане.
             </p>
             <div className="space-y-3">
@@ -76,7 +76,7 @@ export default function ConfirmEmailChangePage() {
               </Button>
               <Link 
                 to="/login" 
-                className="block text-center text-[#4D774E] hover:text-[#164A41] hover:underline"
+                className="block text-center text-brand-medium hover:text-brand-dark hover:underline"
               >
                 Або увійти в акаунт
               </Link>
