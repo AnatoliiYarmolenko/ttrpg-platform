@@ -38,15 +38,12 @@ export default function MemberCard({
     }
   };
 
-  const stopProp = (e) => e.stopPropagation();
-
   return (
-    <div
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
       onClick={handleCardClick}
       onKeyDown={(e) => e.key === 'Enter' && handleCardClick()}
-      className="flex items-center justify-between p-3 border-2 border-brand-light/30 rounded-xl hover:border-brand-light/60 hover:bg-brand-light/5 transition-colors cursor-pointer"
+      className="flex items-center justify-between p-3 border-2 border-brand-light/30 rounded-xl hover:border-brand-light/60 hover:bg-brand-light/5 transition-colors cursor-pointer w-full text-left"
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <UserAvatar src={user.avatarUrl} name={displayName} size="sm" />
@@ -72,7 +69,7 @@ export default function MemberCard({
         </div>
       </div>
 
-      <div role="presentation" className="flex items-center gap-2 flex-shrink-0" onClick={stopProp} onKeyDown={stopProp}>
+      <div className="flex items-center gap-2 flex-shrink-0">
         {canChangeRole && onChangeRole && (
           <select
             value={member.role}
@@ -94,6 +91,6 @@ export default function MemberCard({
           </button>
         )}
       </div>
-    </div>
+    </button>
   );
 }

@@ -61,6 +61,11 @@ export default function ProfilePublicCard({
         {profile.username && (
           <p className="text-brand-medium">@{profile.username}</p>
         )}
+        {shareButton && (
+          <div className="mt-3 flex justify-center">
+            {shareButton}
+          </div>
+        )}
       </div>
 
       {showStats && (
@@ -106,12 +111,6 @@ export default function ProfilePublicCard({
               <span>{profile.preferredSystem}</span>
             </div>
           )}
-        </div>
-      )}
-
-      {shareButton && (
-        <div className="w-full flex justify-end pt-1">
-          {shareButton}
         </div>
       )}
     </div>

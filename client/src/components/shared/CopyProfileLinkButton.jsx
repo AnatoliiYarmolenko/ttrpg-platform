@@ -23,7 +23,6 @@ export default function CopyProfileLinkButton({ username }) {
       document.body.appendChild(textarea);
       textarea.select();
       // Fallback path for environments without async clipboard support.
-      // eslint-disable-next-line sonarjs/deprecation
       document.execCommand('copy');
       textarea.remove();
       setCopied(true);

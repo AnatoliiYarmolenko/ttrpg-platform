@@ -237,7 +237,7 @@ export default function HomeCurrentSessionWidget() {
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="justify-end flex flex-wrap gap-2 ">
           {session.myRole && <RoleBadge role={session.myRole} size="md" />}
         </div>
 
@@ -247,8 +247,7 @@ export default function HomeCurrentSessionWidget() {
             <DateTimeDisplay value={session.startAt} format="long" fallback={formatStartAt(session.startAt)} />
           </div>
           <div className="flex items-center gap-2 text-brand-medium">
-            <span className="font-medium">Система:</span>
-            <span>{session.system || 'Не вказана'}</span>
+            <span className="font-medium">Система:</span> <span>{session.system || 'Не вказана'}</span>
           </div>
 
           <div className="flex items-center gap-2 text-brand-medium">

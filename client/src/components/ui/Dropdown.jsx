@@ -71,7 +71,7 @@ const Dropdown = ({
             ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'cursor-pointer hover:border-brand-light'}
           `}
         >
-          <span className={`block truncate ${!value ? "text-gray-400" : "text-gray-900"}`}>
+          <span className={`block truncate ${value ? "text-gray-900" : "text-gray-400"}`}>
             {value ? options.find(opt => opt.value === value)?.label : placeholder}
           </span>
           
@@ -95,18 +95,15 @@ const Dropdown = ({
         {isOpen && (
           <ul
             id={listboxId}
-            role="listbox"
             aria-label={label}
             className="absolute z-50 w-full mt-1 bg-white border border-brand-light rounded-lg shadow-lg max-h-60 overflow-auto py-1"
           >
             {options.map((option) => {
               const isSelected = value === option.value;
               return (
-                <li key={option.value} role="presentation">
+                <li key={option.value}>
                   <button
                     type="button"
-                    role="option"
-                    aria-selected={isSelected}
                     onClick={() => handleSelect(option)}
                     className={`
                       w-full px-3 py-2 text-sm text-left cursor-pointer transition-colors
@@ -122,7 +119,7 @@ const Dropdown = ({
               );
             })}
             {options.length === 0 && (
-              <li role="presentation" className="px-3 py-2 text-sm text-gray-400 text-center">
+              <li className="px-3 py-2 text-sm text-gray-400 text-center">
                 Список порожній
               </li>
             )}

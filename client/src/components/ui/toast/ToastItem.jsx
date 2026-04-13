@@ -33,9 +33,7 @@ export default function ToastItem({ toast }) {
     }
 
     const prefersReducedMotion =
-      typeof window !== 'undefined' &&
-      window.matchMedia &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      globalThis.window?.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
     if (prefersReducedMotion) {
       removeToast(toast.id);

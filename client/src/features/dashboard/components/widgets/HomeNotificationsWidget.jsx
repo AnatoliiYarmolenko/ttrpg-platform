@@ -44,10 +44,10 @@ export default function HomeNotificationsWidget() {
   }
 
   return (
-    <DashboardCard title="Нотифікації">
+    <DashboardCard title="Сповіщення">
       <div className="flex flex-col gap-3 h-full">
-        <p className="text-sm text-brand-medium">
-          Незабаром тут будуть нагадування та системні події.
+        <p className="text-sm text-brand-medium italic">
+          — Гей, я повсюди шукав тебе! Ось, просили передати прямо вруки! Ну все, бувай.
         </p>
 
         <ul className="space-y-2">

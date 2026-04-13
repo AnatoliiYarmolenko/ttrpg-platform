@@ -51,17 +51,16 @@ export default function SessionListItem({
   };
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
       onClick={handleOpenSession}
       onKeyDown={handleKeyDown}
-      className="w-full text-left p-4 border-2 border-brand-light/30 rounded-xl hover:border-brand-dark/30 hover:bg-brand-light/5 transition-all group"
+      className="w-full text-left p-4 border-2 border-brand-light/30 rounded-xl hover:border-brand-dark/30 hover:bg-brand-light/5 transition-all group block"
     >
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <h4 className="font-bold text-brand-dark truncate group-hover:text-brand-medium">
-            {index !== undefined ? `Сесія #${index + 1} — ` : ''}
+            {typeof index === 'number' ? `Сесія #${index + 1} — ` : ''}
             {session.title}
           </h4>
         </div>
@@ -127,6 +126,6 @@ export default function SessionListItem({
           {session.description}
         </p>
       )}
-    </div>
+    </button>
   );
 }

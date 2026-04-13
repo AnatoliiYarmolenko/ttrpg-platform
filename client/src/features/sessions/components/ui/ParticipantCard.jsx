@@ -51,7 +51,7 @@ export default function ParticipantCard({
     onRemove?.(participant.id);
   };
 
-  const activeModeration = gmModeration?.enabled
+  const gmModerationConfig = gmModeration?.enabled
     ? {
       ...gmModeration,
       approveLabel: 'Схвалити',
@@ -59,15 +59,19 @@ export default function ParticipantCard({
       approveTitle: 'Схвалити заявку GM',
       rejectTitle: 'Відхилити заявку GM',
     }
-    : playerModeration?.enabled
-      ? {
-        ...playerModeration,
-        approveLabel: 'Прийняти',
-        rejectLabel: 'Відхилити',
-        approveTitle: 'Схвалити заявку гравця',
-        rejectTitle: 'Відхилити заявку гравця',
-      }
-      : null;
+    : null;
+
+  const playerModerationConfig = playerModeration?.enabled && !gmModerationConfig
+    ? {
+      ...playerModeration,
+      approveLabel: 'Прийняти',
+      rejectLabel: 'Відхилити',
+      approveTitle: 'Схвалити заявку гравця',
+      rejectTitle: 'Відхилити заявку гравця',
+    }
+    : null;
+
+  const activeModeration = gmModerationConfig || playerModerationConfig;
 
   const handleApproveClick = (e) => {
     e.stopPropagation();
@@ -80,12 +84,11 @@ export default function ParticipantCard({
   };
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
       onClick={handleCardClick}
       onKeyDown={(e) => e.key === 'Enter' && handleCardClick()}
-      className="flex items-center justify-between p-3 border-2 border-brand-light/30 rounded-xl hover:border-brand-light/60 hover:bg-brand-light/5 transition-colors cursor-pointer"
+      className="flex items-center justify-between p-3 border-2 border-brand-light/30 rounded-xl hover:border-brand-light/60 hover:bg-brand-light/5 transition-colors cursor-pointer w-full text-left"
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <UserAvatar src={user.avatarUrl} name={displayName} size="sm" />
@@ -154,6 +157,6 @@ export default function ParticipantCard({
           </button>
         )}
       </div>
-    </div>
+    </button>
   );
 }
