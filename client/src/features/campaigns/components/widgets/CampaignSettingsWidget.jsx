@@ -39,6 +39,9 @@ function CampaignSettingsWidgetContent({
   const selectedOwner = eligibleNewOwners.find(
     (member) => String(member.userId) === String(selectedNewOwnerId)
   );
+  const selectedOwnerName = selectedOwner
+    ? (selectedOwner.user?.displayName || selectedOwner.user?.username || `User #${selectedOwner.userId}`)
+    : '';
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -253,6 +256,7 @@ function CampaignSettingsWidgetContent({
         title="Завершити кампанію?"
         message="Після підтвердження кампанія стане завершеною. Додавання сесій, вступ і зміна налаштувань будуть заблоковані. Цю дію не можна скасувати."
         variant="danger"
+        confirmText="Завершити"
         onConfirm={handleFinishCampaign}
         onCancel={() => setFinishModal(false)}
       />
@@ -262,8 +266,9 @@ function CampaignSettingsWidgetContent({
           isOpen={transferModal}
           title="Передати права кампанії?"
           message={selectedOwner
-            ? `Новим власником стане ${selectedOwner.user?.displayName || selectedOwner.user?.username || `User #${selectedOwner.userId}`}. Після підтвердження ви втратите роль власника.`
+            ? `Новим власником стане ${selectedOwnerName}. Після підтвердження ви втратите роль власника.`
             : 'Підтвердити передачу прав кампанії?'}
+          confirmText="Передати"
           onConfirm={handleTransferOwnership}
           onCancel={() => setTransferModal(false)}
         />

@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React from "react";
 import DashboardCard from "@/components/ui/DashboardCard";
 import { ConfirmModal, EmptyState, StatusBadge } from "@/components/shared";
+import useConfirmDialog from '@/hooks/useConfirmDialog';
 import SessionListItem from "../ui/SessionListItem";
 
 const STATUS_SECTIONS = [
@@ -25,37 +26,6 @@ const sortByClosestDate = (a, b) => {
   if (aDiff !== bDiff) return aDiff - bDiff;
   return aTime - bTime;
 };
-
-function buildConfirmModalConfig({
-  closeConfirmModal,
-  onAction,
-  onSessionCreated,
-  sessionId,
-  type,
-}) {
-  const variants = {
-    cancel: {
-      title: 'Скасувати сесію?',
-      message: 'Сесія змінить статус на CANCELED. Продовжити?',
-    },
-    delete: {
-      title: 'Видалити сесію?',
-      message: 'Сесію буде видалено без можливості відновлення. Продовжити?',
-    },
-  };
-
-  return {
-    isOpen: true,
-    title: variants[type].title,
-    message: variants[type].message,
-    variant: "danger",
-    onConfirm: async () => {
-      closeConfirmModal();
-      await onAction?.(sessionId);
-      await onSessionCreated?.();
-    },
-  };
-}
 
 function CampaignSessionSection({
   section,
@@ -107,13 +77,7 @@ export default function CampaignSessionsWidget({
   onDeleteForeignSession,
   onSessionCreated,
 }) {
-  const [confirmModal, setConfirmModal] = useState({
-    isOpen: false,
-    title: "",
-    message: "",
-    variant: "primary",
-    onConfirm: null,
-  });
+  const { openConfirm, confirmModalProps } = useConfirmDialog();
 
   if (!campaign) return null;
 
@@ -124,32 +88,30 @@ export default function CampaignSessionsWidget({
   const canceledCount = sessions.filter((session) => session.status === "CANCELED").length;
   const title = `Сесії кампанії (${sessions.length})`;
 
-  const closeConfirmModal = () => {
-    setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-  };
-
   const openCancelModal = (sessionId) => {
-    setConfirmModal(
-      buildConfirmModalConfig({
-        closeConfirmModal,
-        onAction: onCancelForeignSession,
-        onSessionCreated,
-        sessionId,
-        type: 'cancel',
-      })
-    );
+    openConfirm({
+      title: 'Скасувати сесію?',
+      message: 'Сесія змінить статус на CANCELED. Продовжити?',
+      variant: 'danger',
+      confirmText: 'Скасувати',
+      onConfirm: async () => {
+        await onCancelForeignSession?.(sessionId);
+        await onSessionCreated?.();
+      },
+    });
   };
 
   const openDeleteModal = (sessionId) => {
-    setConfirmModal(
-      buildConfirmModalConfig({
-        closeConfirmModal,
-        onAction: onDeleteForeignSession,
-        onSessionCreated,
-        sessionId,
-        type: 'delete',
-      })
-    );
+    openConfirm({
+      title: 'Видалити сесію?',
+      message: 'Сесію буде видалено без можливості відновлення. Продовжити?',
+      variant: 'danger',
+      confirmText: 'Видалити',
+      onConfirm: async () => {
+        await onDeleteForeignSession?.(sessionId);
+        await onSessionCreated?.();
+      },
+    });
   };
 
   return (
@@ -192,12 +154,7 @@ export default function CampaignSessionsWidget({
       </div>
 
       <ConfirmModal
-        isOpen={confirmModal.isOpen}
-        title={confirmModal.title}
-        message={confirmModal.message}
-        variant={confirmModal.variant}
-        onConfirm={confirmModal.onConfirm}
-        onCancel={closeConfirmModal}
+        {...confirmModalProps}
       />
     </DashboardCard>
   );

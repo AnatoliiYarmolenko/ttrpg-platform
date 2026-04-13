@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import DashboardCard from '@/components/ui/DashboardCard';
 import Button from '@/components/ui/Button';
 import {
+  BaseModal,
   VisibilityBadge,
   StatusBadge,
   DateTimeDisplay,
@@ -157,15 +158,24 @@ export default function CampaignPreviewWidget({
 
       {/* Модалка подачі заявки */}
       {showJoinModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold text-brand-dark mb-4">
+        <BaseModal
+          isOpen={showJoinModal}
+          onClose={() => {
+            setShowJoinModal(false);
+            setJoinError(null);
+          }}
+          closeWhileLoading={false}
+          isLoading={isJoining}
+          panelClassName="max-w-md"
+        >
+          <div className="rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="mb-2 text-lg font-bold text-brand-dark">
               Подати заявку на вступ
             </h3>
-            <p className="text-sm text-brand-medium mb-4">
+            <p className="mb-6 text-brand-medium">
               Після підтвердження заявку буде надіслано організатору кампанії.
             </p>
-            <div className="flex flex-col lg:flex-row gap-3">
+            <div className="flex flex-row flex-wrap justify-center gap-3">
               <Button
                 onClick={() => {
                   setShowJoinModal(false);
@@ -173,7 +183,7 @@ export default function CampaignPreviewWidget({
                 }}
                 variant="outline"
                 fullWidth={false}
-                className="w-full lg:w-auto flex-1 border-gray-300 text-gray-600 hover:bg-gray-50 hover:text-gray-700"
+                className="min-w-[170px]"
               >
                 Скасувати
               </Button>
@@ -181,15 +191,15 @@ export default function CampaignPreviewWidget({
                 onClick={handleJoinRequest}
                 isLoading={isJoining}
                 loadingText="Надсилання..."
-                variant="secondary"
+                variant="primary"
                 fullWidth={false}
-                className="w-full lg:w-auto flex-1"
+                className="min-w-[170px]"
               >
                 Надіслати заявку
               </Button>
             </div>
           </div>
-        </div>
+        </BaseModal>
       )}
     </DashboardCard>
   );

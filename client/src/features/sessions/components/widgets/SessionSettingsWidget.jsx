@@ -305,6 +305,7 @@ function SessionSettingsWidgetContent({
           title="Видалити сесію?"
           message={`Ви впевнені, що хочете видалити сесію "${session.title}"? Цю дію неможливо відмінити.`}
           variant="danger"
+          confirmText="Видалити"
           onConfirm={handleDelete}
           onCancel={() => setDeleteModal(false)}
         />

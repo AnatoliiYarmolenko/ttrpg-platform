@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React from 'react';
 import DashboardCard from '@/components/ui/DashboardCard';
 import Button from '@/components/ui/Button';
 import {
@@ -8,6 +8,7 @@ import {
   DateTimeDisplay,
   ConfirmModal,
 } from '@/components/shared';
+import useConfirmDialog from '@/hooks/useConfirmDialog';
 import Data from '@/components/ui/icons/Data';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
 
@@ -21,41 +22,25 @@ export default function CampaignInfoWidget({
   onCopyShareLink,
   isLoading = false,
 }) {
-  const [confirmModal, setConfirmModal] = useState({
-    isOpen: false,
-    title: '',
-    message: '',
-    onConfirm: null,
-    variant: 'primary',
-  });
-
-  const closeConfirmModal = useCallback(() => {
-    setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-  }, []);
+  const { openConfirm, confirmModalProps } = useConfirmDialog();
 
   const handleLeave = () => {
-    setConfirmModal({
-      isOpen: true,
+    openConfirm({
       title: 'Покинути кампанію?',
       message: 'Ви впевнені, що хочете покинути цю кампанію? Ви втратите доступ до всіх сесій кампанії.',
       variant: 'danger',
-      onConfirm: () => {
-        closeConfirmModal();
-        onLeave?.();
-      },
+      confirmText: 'Вийти',
+      onConfirm: onLeave,
     });
   };
 
   const handleRegenerateShareLink = () => {
-    setConfirmModal({
-      isOpen: true,
+    openConfirm({
       title: 'Оновити share-посилання?',
       message: 'Старе share-посилання перестане працювати. Нове посилання буде згенеровано та скопійовано.',
       variant: 'danger',
-      onConfirm: () => {
-        closeConfirmModal();
-        onRegenerateShareLink?.();
-      },
+      confirmText: 'Оновити',
+      onConfirm: onRegenerateShareLink,
     });
   };
 
@@ -181,12 +166,7 @@ export default function CampaignInfoWidget({
       </div>
 
       <ConfirmModal
-        isOpen={confirmModal.isOpen}
-        title={confirmModal.title}
-        message={confirmModal.message}
-        variant={confirmModal.variant}
-        onConfirm={confirmModal.onConfirm}
-        onCancel={closeConfirmModal}
+        {...confirmModalProps}
       />
     </DashboardCard>
   );

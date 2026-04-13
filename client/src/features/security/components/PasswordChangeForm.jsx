@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { useSecurityMutations } from '../hooks/useSecurityMutations';
 import Button from '@/components/ui/Button';
 import PasswordStrength from '@/features/auth/ui/PasswordStrength';
-import FormField, { getFormFieldControlClasses } from '@/components/ui/FormField';
+import FormField from '@/components/ui/FormField';
+import { getFormFieldControlClasses } from '@/components/ui/formFieldClasses';
 import { toast } from '@/stores/useToastStore';
 
 export default function PasswordChangeForm() {

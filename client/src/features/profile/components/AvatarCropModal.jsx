@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import PropTypes from 'prop-types';
 import Cropper from 'react-easy-crop';
 import Button from '@/components/ui/Button';
+import { BaseModal } from '@/components/shared';
 
 export default function AvatarCropModal({
   isOpen,
@@ -13,40 +14,32 @@ export default function AvatarCropModal({
 }) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
+  const titleId = 'avatar-crop-modal-title';
 
-  useEffect(() => {
-    if (!isOpen) return undefined;
-
-    const handleEscape = (e) => {
-      if (e.key === 'Escape' && !isLoading) {
-        onCancel?.();
-      }
-    };
-
-    document.addEventListener('keydown', handleEscape);
-    document.body.style.overflow = 'hidden';
-
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = '';
-    };
-  }, [isOpen, isLoading, onCancel]);
+  const handleModalClose = () => {
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    onCancel?.();
+  };
 
   if (!isOpen || !imageSrc) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 p-4 backdrop-blur-sm">
-      <dialog
-        open
-        aria-modal="true"
-        aria-labelledby="avatar-crop-modal-title"
-        className="fixed left-1/2 top-1/2 m-0 max-h-[calc(100vh-2rem)] w-full max-w-xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-6"
-      >
-        <h3 id="avatar-crop-modal-title" className="mb-2 text-lg font-bold text-brand-dark">
+    <BaseModal
+      isOpen={isOpen}
+      onClose={handleModalClose}
+      closeOnBackdrop={false}
+      closeWhileLoading={false}
+      isLoading={isLoading}
+      labelledBy={titleId}
+      panelClassName="max-w-xl"
+    >
+      <div className="max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+        <h3 id={titleId} className="mb-2 text-lg font-bold text-brand-dark">
           Обрізати аватар
         </h3>
 
-        <p className="mb-4 text-sm text-brand-medium">
+        <p className="mb-6 text-brand-medium">
           Перетягніть фото та виберіть масштаб.
         </p>
 
@@ -82,19 +75,20 @@ export default function AvatarCropModal({
           />
         </div>
 
-        <div className="mt-6 flex flex-col-reverse items-center justify-center gap-3 sm:flex-row sm:justify-center">
+        <div className="mt-6 flex flex-row flex-wrap justify-end gap-3">
           <Button
             variant="outline"
             fullWidth={false}
-            className="px-4 py-2"
-            onClick={onCancel}
+            className="min-w-[170px]"
+            onClick={handleModalClose}
             disabled={isLoading}
           >
             Скасувати
           </Button>
           <Button
+            variant="primary"
             fullWidth={false}
-            className="px-4 py-2"
+            className="min-w-[170px]"
             onClick={onConfirm}
             isLoading={isLoading}
             loadingText="Завантаження..."
@@ -102,8 +96,8 @@ export default function AvatarCropModal({
             Застосувати
           </Button>
         </div>
-      </dialog>
-    </div>
+      </div>
+    </BaseModal>
   );
 }
 

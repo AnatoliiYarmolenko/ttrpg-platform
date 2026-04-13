@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useSecurityMutations } from '../hooks/useSecurityMutations';
 import Button from '@/components/ui/Button';
-import FormField, { getFormFieldControlClasses } from '@/components/ui/FormField';
+import FormField from '@/components/ui/FormField';
+import { getFormFieldControlClasses } from '@/components/ui/formFieldClasses';
 import { toast } from '@/stores/useToastStore';
 
 export default function EmailChangeForm({ currentEmail }) {

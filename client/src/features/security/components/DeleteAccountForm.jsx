@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSecurityMutations } from '../hooks/useSecurityMutations';
-import FormField, { getFormFieldControlClasses } from '@/components/ui/FormField';
+import FormField from '@/components/ui/FormField';
+import { getFormFieldControlClasses } from '@/components/ui/formFieldClasses';
 import { toast } from '@/stores/useToastStore';
 
 export default function DeleteAccountForm() {

@@ -1,4 +1,5 @@
 export { default as StatusBadge } from './StatusBadge';
+export { default as BaseModal } from './BaseModal';
 export { default as RoleBadge } from './RoleBadge';
 export { default as VisibilityBadge } from './VisibilityBadge';
 export { default as DateTimeDisplay } from './DateTimeDisplay';

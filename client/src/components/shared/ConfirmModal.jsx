@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useId, useRef } from 'react';
 import Button from '@/components/ui/Button';
+import BaseModal from './BaseModal';
 
 /**
  * Модалка підтвердження — замість window.confirm().
@@ -29,63 +30,31 @@ export default function ConfirmModal({
   onCancel,
 }) {
   const confirmBtnRef = useRef(null);
-
-  // Trap focus inside modal
-  useEffect(() => {
-    if (isOpen && confirmBtnRef.current) {
-      confirmBtnRef.current.focus();
-    }
-  }, [isOpen]);
-
-  // Close on Escape
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKey = (e) => {
-      if (e.key === 'Escape') onCancel?.();
-    };
-    document.addEventListener('keydown', handleKey);
-    return () => document.removeEventListener('keydown', handleKey);
-  }, [isOpen, onCancel]);
-
-  // Prevent body scroll
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
+  const titleId = useId();
 
   if (!isOpen) return null;
 
-  const confirmVariant = variant === 'danger' ? 'danger' : 'secondary';
+  const confirmVariant = variant === 'danger' ? 'danger' : 'primary';
+  const modalActionButtonClass = 'w-full';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <button
-        type="button"
-        aria-label="Закрити модальне вікно"
-        className="absolute inset-0"
-        onClick={onCancel}
-      />
-      <dialog
-        open
-        aria-labelledby="confirm-modal-title"
-        className="relative bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 p-6 animate-in fade-in zoom-in-95"
-      >
-        <h3
-          id="confirm-modal-title"
-          className="text-lg font-bold text-brand-dark mb-2"
-        >
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onCancel}
+      closeWhileLoading={false}
+      isLoading={isLoading}
+      initialFocusRef={confirmBtnRef}
+      labelledBy={titleId}
+      panelClassName="max-w-md"
+    >
+      <div className="rounded-2xl bg-white p-6 shadow-xl animate-in fade-in zoom-in-95">
+        <h3 id={titleId} className="mb-2 text-lg font-bold text-brand-dark">
           {title}
         </h3>
 
-        {message && (
-          <p className="text-brand-medium mb-6">{message}</p>
-        )}
+        {message && <p className="mb-6 text-brand-medium">{message}</p>}
 
-        <div className="flex gap-3 justify-end">
+        <div className="mx-auto grid w-full max-w-[380px] grid-cols-2 gap-3">
           <Button
             type="button"
             onClick={onCancel}
@@ -93,7 +62,7 @@ export default function ConfirmModal({
             variant="outline"
             size="md"
             fullWidth={false}
-            className="shadow-none hover:shadow-none"
+            className={`${modalActionButtonClass} shadow-none hover:shadow-none`}
           >
             {cancelText}
           </Button>
@@ -105,12 +74,12 @@ export default function ConfirmModal({
             variant={confirmVariant}
             size="md"
             fullWidth={false}
-            className="shadow-none hover:shadow-none"
+            className={`${modalActionButtonClass} shadow-none hover:shadow-none`}
           >
             {isLoading ? 'Зачекайте...' : confirmText}
           </Button>
         </div>
-      </dialog>
-    </div>
+      </div>
+    </BaseModal>
   );
 }

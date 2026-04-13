@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardCard from '@/components/ui/DashboardCard';
 import Button from '@/components/ui/Button';
@@ -8,6 +8,7 @@ import {
   DateTimeDisplay,
   ConfirmModal,
 } from '@/components/shared';
+import useConfirmDialog from '@/hooks/useConfirmDialog';
 import Data from '@/components/ui/icons/Data';
 import Timer from '@/components/ui/icons/Timer';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
@@ -33,17 +34,7 @@ export default function SessionInfoWidget({
   isLoading = false,
 }) {
   const navigate = useNavigate();
-  const [confirmModal, setConfirmModal] = useState({
-    isOpen: false,
-    title: '',
-    message: '',
-    onConfirm: null,
-    variant: 'primary',
-  });
-
-  const closeConfirmModal = useCallback(() => {
-    setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-  }, []);
+  const { openConfirm, confirmModalProps } = useConfirmDialog();
 
   const formatDuration = (minutes) => {
     if (!minutes) return '';
@@ -58,7 +49,7 @@ export default function SessionInfoWidget({
     if (!session?.maxPlayers) return '∞';
     const currentPlayers =
       session.participants?.filter((participant) => participant.role === 'PLAYER').length || 0;
-    return Math.max(0, session.maxPlayers - currentPlayers);
+    return String(Math.max(0, session.maxPlayers - currentPlayers));
   };
 
   const getPlayerCount = () => {
@@ -76,15 +67,12 @@ export default function SessionInfoWidget({
   const displayMyRole = myRole === 'OWNER' ? (ownerParticipantRole || 'GM') : myRole;
 
   const handleLeave = () => {
-    setConfirmModal({
-      isOpen: true,
+    openConfirm({
       title: 'Покинути сесію?',
       message: 'Ви впевнені, що хочете покинути цю сесію?',
       variant: 'danger',
-      onConfirm: () => {
-        closeConfirmModal();
-        onLeave?.();
-      },
+      confirmText: 'Вийти',
+      onConfirm: onLeave,
     });
   };
 
@@ -104,26 +92,24 @@ export default function SessionInfoWidget({
       ? `${startState.warningMessage} Підтвердити запуск сесії?`
       : `Ви впевнені, що хочете ${statusLabels[newStatus] || 'змінити статус'} сесії?`;
 
-    setConfirmModal({
-      isOpen: true,
+    openConfirm({
       title: 'Змінити статус?',
       message,
       variant: newStatus === 'CANCELED' ? 'danger' : 'primary',
-      onConfirm: () => {
-        closeConfirmModal();
-        onStatusChange?.(newStatus);
-      },
+      confirmText: statusLabels[newStatus]
+        ? `${statusLabels[newStatus].charAt(0).toUpperCase()}${statusLabels[newStatus].slice(1)}`
+        : 'Змінити',
+      onConfirm: () => onStatusChange?.(newStatus),
     });
   };
 
   const handleMarkAsFinished = () => {
-    setConfirmModal({
-      isOpen: true,
+    openConfirm({
       title: 'Позначити як проведену?',
       message: 'Сесія буде позначена як проведена без запуску через кнопку "Розпочати". Продовжити?',
       variant: 'primary',
+      confirmText: 'Позначити',
       onConfirm: () => {
-        closeConfirmModal();
         if (onMarkAsFinished) {
           onMarkAsFinished();
           return;
@@ -134,15 +120,12 @@ export default function SessionInfoWidget({
   };
 
   const handleRotateShareLink = () => {
-    setConfirmModal({
-      isOpen: true,
+    openConfirm({
       title: 'Оновити share-посилання?',
       message: 'Старе share-посилання перестане працювати. Нове посилання буде згенеровано та скопійовано.',
       variant: 'danger',
-      onConfirm: () => {
-        closeConfirmModal();
-        onRegenerateShareLink?.();
-      },
+      confirmText: 'Оновити',
+      onConfirm: onRegenerateShareLink,
     });
   };
 
@@ -347,12 +330,7 @@ export default function SessionInfoWidget({
       </div>
 
       <ConfirmModal
-        isOpen={confirmModal.isOpen}
-        title={confirmModal.title}
-        message={confirmModal.message}
-        variant={confirmModal.variant}
-        onConfirm={confirmModal.onConfirm}
-        onCancel={closeConfirmModal}
+        {...confirmModalProps}
       />
     </DashboardCard>
   );
