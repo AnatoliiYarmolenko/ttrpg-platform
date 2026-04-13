@@ -12,7 +12,7 @@ import { BackButton, EmptyState, formatDate } from '@/components/shared';
 import Dice20 from '@/components/ui/icons/Dice20';
 
 /**
- * HomeRightWidget — Права панель для режиму "Головна"
+ * HomeRightWidget — Права панель для режиму "Календар"
  * 
  * Стани:
  * - LIST: Список сесій вибраного дня (з акордеоном)
@@ -134,7 +134,7 @@ export default function HomeRightWidget() {
 return (
     <DashboardCard title={title}>
       <div className="flex flex-col h-full">
-        <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="flex-1 overflow-y-auto min-h-0">  
           {sessionsContent}
         </div>
         

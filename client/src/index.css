@@ -38,7 +38,7 @@ body::-webkit-scrollbar-thumb,
 .overflow-scroll::-webkit-scrollbar-thumb,
 .overflow-x-scroll::-webkit-scrollbar-thumb,
 .overflow-y-scroll::-webkit-scrollbar-thumb {
-  background: #9DC88D;
+  background: var(--color-brand-light);
   border-radius: 2px;
 }
 
@@ -49,7 +49,7 @@ body::-webkit-scrollbar-thumb:hover,
 .overflow-scroll::-webkit-scrollbar-thumb:hover,
 .overflow-x-scroll::-webkit-scrollbar-thumb:hover,
 .overflow-y-scroll::-webkit-scrollbar-thumb:hover {
-  background: #164A41;
+  background: var(--color-brand-dark);
 }
 
 body::-webkit-scrollbar-button,
@@ -127,7 +127,7 @@ body,
 .overflow-x-scroll,
 .overflow-y-scroll {
   scrollbar-width: thin;
-  scrollbar-color: #9DC88D transparent;
+  scrollbar-color: var(--color-brand-light) transparent;
 }
 
 @keyframes toast-enter {

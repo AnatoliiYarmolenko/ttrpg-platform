@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSecurityMutations } from '../hooks/useSecurityMutations';
-import Button from '@/components/ui/Button';
+import FormField, { getFormFieldControlClasses } from '@/components/ui/FormField';
 import { toast } from '@/stores/useToastStore';
 
 export default function DeleteAccountForm() {
@@ -14,24 +14,32 @@ export default function DeleteAccountForm() {
     password: '',
     confirmation: '',
   });
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    setFieldErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
   const validateForm = () => {
+    const nextErrors = {};
+
     if (!formData.password) {
-      toast.error('Введіть пароль');
-      return false;
+      nextErrors.password = 'Введіть пароль';
     }
     if (formData.confirmation !== 'ВИДАЛИТИ') {
-      toast.error('Введіть "ВИДАЛИТИ" для підтвердження');
-      return false;
+      nextErrors.confirmation = 'Введіть "ВИДАЛИТИ" для підтвердження';
     }
-    return true;
+
+    if (Object.keys(nextErrors).length > 0) {
+      toast.error(Object.values(nextErrors)[0]);
+    }
+
+    setFieldErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
   const handleSubmit = (e) => {
@@ -51,8 +59,6 @@ export default function DeleteAccountForm() {
       }
     });
   };
-
-  const inputClasses = "w-full px-4 py-3 rounded-xl border-2 border-red-200 focus:border-red-500 focus:outline-none transition-colors";
 
   // Крок 1: Попередження
   if (step === 1) {
@@ -97,10 +103,11 @@ export default function DeleteAccountForm() {
       </div>
 
       {/* Пароль */}
-      <div>
-        <label htmlFor="delete-password" className="block text-sm font-medium text-red-700 mb-2">
-          Ваш пароль
-        </label>
+      <FormField
+        id="delete-password"
+        label="Ваш пароль"
+        error={fieldErrors.password}
+      >
         <div className="relative">
           <input
             id="delete-password"
@@ -109,7 +116,10 @@ export default function DeleteAccountForm() {
             value={formData.password}
             onChange={handleChange}
             placeholder="Введіть пароль"
-            className={`${inputClasses} pr-12`}
+            className={getFormFieldControlClasses({
+              error: fieldErrors.password,
+              className: 'pr-12 border-red-200 focus:border-red-500',
+            })}
             autoComplete="current-password"
           />
           <button
@@ -129,24 +139,23 @@ export default function DeleteAccountForm() {
             )}
           </button>
         </div>
-      </div>
+      </FormField>
 
       {/* Підтвердження */}
-      <div>
-        <label htmlFor="delete-confirmation" className="block text-sm font-medium text-red-700 mb-2">
-          Введіть "ВИДАЛИТИ" для підтвердження
-        </label>
-        <input
-          id="delete-confirmation"
-          type="text"
-          name="confirmation"
-          value={formData.confirmation}
-          onChange={handleChange}
-          placeholder="ВИДАЛИТИ"
-          className={inputClasses}
-          autoComplete="off"
-        />
-        {formData.confirmation && formData.confirmation !== 'ВИДАЛИТИ' && (
+      <FormField
+        as="input"
+        id="delete-confirmation"
+        name="confirmation"
+        type="text"
+        label={'Введіть "ВИДАЛИТИ" для підтвердження'}
+        value={formData.confirmation}
+        onChange={handleChange}
+        placeholder="ВИДАЛИТИ"
+        autoComplete="off"
+        controlClassName="border-red-200 focus:border-red-500"
+        error={fieldErrors.confirmation}
+      >
+        {formData.confirmation && formData.confirmation !== 'ВИДАЛИТИ' && !fieldErrors.confirmation && (
           <p className="text-xs text-red-500 mt-1">
             Введіть точно: ВИДАЛИТИ
           </p>
@@ -156,7 +165,7 @@ export default function DeleteAccountForm() {
             ✓ Підтвердження правильне
           </p>
         )}
-      </div>
+      </FormField>
 
       {/* Кнопки */}
       <div className="flex gap-3 pt-2">
