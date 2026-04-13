@@ -218,12 +218,12 @@ export default function PasswordChangeForm() {
       </FormField>
 
       {/* Кнопка збереження */}
-      <div className="pt-4 flex justify-end">
+      <div className="pt-4">
         <Button 
           type="submit" 
           disabled={saving}
-          fullWidth={false}
-          className="min-w-[220px]"
+          fullWidth
+          className="w-full"
         >
           {saving ? 'Зміна пароля...' : 'Змінити пароль'}
         </Button>
@@ -237,20 +237,6 @@ export default function PasswordChangeForm() {
         >
           Не пам'ятаєте поточний пароль?
         </Link>
-      </div>
-
-      {/* Підказка безпеки */}
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mt-4">
-        <div className="flex gap-2">
-          <span>⚠️</span>
-          <div className="text-sm text-amber-800">
-            <p className="font-medium">Після зміни пароля:</p>
-            <ul className="list-disc list-inside mt-1 text-xs">
-              <li>Використовуйте новий пароль для входу</li>
-              <li>Рекомендуємо оновити пароль в менеджері паролів</li>
-            </ul>
-          </div>
-        </div>
       </div>
     </form>
   );

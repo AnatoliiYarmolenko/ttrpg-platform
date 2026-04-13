@@ -19,7 +19,7 @@ export default function AdminSearchBar({ value, onChange, onSearch, placeholder 
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        className="flex-1 px-4 py-2 rounded-xl border-2 border-brand-light/30 focus:border-brand-dark focus:outline-none text-brand-dark placeholder-gray-400 transition-colors"
+        className="flex-1 px-4 py-2 rounded-xl border-2 border-brand-light/30 focus:border-brand-dark text-brand-dark placeholder-gray-400 transition-colors"
       />
       <Button
         onClick={onSearch}

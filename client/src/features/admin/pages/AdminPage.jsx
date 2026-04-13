@@ -282,7 +282,7 @@ export default function AdminPage() {
             setSessionsStatusFilter(newStatus); 
             setSessionsParams(p => ({ ...p, page: 1, status: newStatus }));
           }}
-          className="px-3 py-2 rounded-xl border-2 border-brand-light/30 focus:border-brand-dark focus:outline-none text-brand-dark bg-white transition-colors"
+          className="px-3 py-2 rounded-xl border-2 border-brand-light/30 focus:border-brand-dark text-brand-dark bg-white transition-colors"
         >
           <option value="">Всі статуси</option>
           <option value="PLANNED">Заплановано</option>

@@ -87,7 +87,7 @@ function CampaignSettingsWidgetContent({
   };
 
   const inputClasses =
-    'w-full p-3 border-2 border-brand-light/50 rounded-xl focus:border-brand-dark outline-none text-brand-dark bg-white transition-colors';
+    'w-full p-3 border-2 border-brand-light/50 rounded-xl focus:border-brand-dark text-brand-dark bg-white transition-colors';
 
   return (
     <DashboardCard title="Налаштування кампанії">

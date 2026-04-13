@@ -1,11 +1,3 @@
-const BRAND_COLORS = {
-  dark: "#164A41",
-  medium: "#4D774E",
-  light: "#9DC88D",
-  accent: "#F1B24A",
-  white: "#FFFFFF",
-};
-
 const RADIUS_TOKENS = {
   card: "1rem",
   control: "0.75rem",
@@ -26,13 +18,9 @@ export default {
   ],
   theme: {
     extend: {
-      colors: {
-        brand: BRAND_COLORS,
-      },
       borderRadius: RADIUS_TOKENS,
       spacing: SPACING_TOKENS,
     },
   },
   plugins: [],
-}
-
+};

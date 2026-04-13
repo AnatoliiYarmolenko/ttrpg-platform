@@ -189,7 +189,7 @@ function SearchResultsBody({
           onClick={loadMoreSearchResults}
           disabled={isFetchingMore}
           variant="outline"
-          fullWidth={false}
+          fullWidth
           className="w-full border-dashed border-brand-light/50 text-brand-medium hover:border-brand-dark hover:text-brand-dark shadow-none hover:shadow-none"
         >
           {isFetchingMore ? 'Завантаження...' : 'Завантажити ще'}
@@ -312,7 +312,7 @@ export function SearchFiltersWidget({ onSearch }) {
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             placeholder="Пошук за назвою або описом..."
-            className="w-full px-4 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark focus:outline-none transition-colors"
+            className="w-full px-4 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark transition-colors"
           />
         </div>
 
@@ -325,7 +325,7 @@ export function SearchFiltersWidget({ onSearch }) {
             name="system"
             value={localFilters.system}
             onChange={handleInputChange}
-            className="w-full px-4 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark focus:outline-none transition-colors bg-white"
+            className="w-full px-4 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark transition-colors bg-white"
           >
             <option value="">Всі системи</option>
             {GAME_SYSTEMS.map((sys) => (
@@ -345,7 +345,7 @@ export function SearchFiltersWidget({ onSearch }) {
             name="sortBy"
             value={localFilters.sortBy || (searchActiveTab === 'sessions' ? 'date' : 'newest')}
             onChange={handleInputChange}
-            className="w-full px-4 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark focus:outline-none transition-colors bg-white"
+            className="w-full px-4 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark transition-colors bg-white"
           >
             {sortOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -368,7 +368,7 @@ export function SearchFiltersWidget({ onSearch }) {
                   name="dateFrom"
                   value={localFilters.dateFrom}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark focus:outline-none transition-colors text-sm"
+                  className="w-full px-3 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark transition-colors text-sm"
                 />
               </div>
               <div>
@@ -381,7 +381,7 @@ export function SearchFiltersWidget({ onSearch }) {
                   name="dateTo"
                   value={localFilters.dateTo}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark focus:outline-none transition-colors text-sm"
+                  className="w-full px-3 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark transition-colors text-sm"
                 />
               </div>
             </div>
@@ -399,7 +399,7 @@ export function SearchFiltersWidget({ onSearch }) {
                   onChange={handleInputChange}
                   placeholder="0"
                   min="0"
-                  className="w-full px-3 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark focus:outline-none transition-colors text-sm"
+                  className="w-full px-3 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark transition-colors text-sm"
                 />
               </div>
               <div>
@@ -414,7 +414,7 @@ export function SearchFiltersWidget({ onSearch }) {
                   onChange={handleInputChange}
                   placeholder="∞"
                   min="0"
-                  className="w-full px-3 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark focus:outline-none transition-colors text-sm"
+                  className="w-full px-3 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark transition-colors text-sm"
                 />
               </div>
             </div>
@@ -444,20 +444,20 @@ export function SearchFiltersWidget({ onSearch }) {
           </>
         )}
 
-        <div className="flex gap-3 mt-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
           <Button
             onClick={handleSearch}
             variant="secondary"
-            fullWidth={false}
-            className="flex-1 py-2 font-medium"
+            fullWidth
+            className="w-full py-2 font-medium"
           >
             Шукати
           </Button>
           <Button
             onClick={handleClear}
             variant="outline"
-            fullWidth={false}
-            className="px-4 py-2 border-brand-light/30 text-brand-medium hover:bg-gray-50"
+            fullWidth
+            className="w-full py-2 border-brand-light/30 text-brand-medium hover:bg-gray-50"
           >
             Очистити
           </Button>

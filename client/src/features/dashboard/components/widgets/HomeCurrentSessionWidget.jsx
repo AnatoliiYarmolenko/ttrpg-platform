@@ -191,7 +191,7 @@ export default function HomeCurrentSessionWidget() {
             description={error?.message || 'Спробуйте ще раз'}
             className="h-full"
           />
-          <Button onClick={() => refetch()} variant="outline" fullWidth={false} className="w-full lg:w-auto">
+          <Button onClick={() => refetch()} variant="outline" fullWidth className="w-full">
             Оновити
           </Button>
         </div>
@@ -210,10 +210,10 @@ export default function HomeCurrentSessionWidget() {
             className="h-full"
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-auto">
-            <Button variant="outline" onClick={handleGoToSearch} fullWidth={false} className="w-full lg:w-auto">
+            <Button variant="outline" onClick={handleGoToSearch} fullWidth className="w-full">
               Пошук сесій
             </Button>
-            <Button onClick={handleChooseSession} fullWidth={false} className="w-full lg:w-auto">
+            <Button onClick={handleChooseSession} fullWidth className="w-full">
               Відкрити календар
             </Button>
           </div>
@@ -287,13 +287,11 @@ export default function HomeCurrentSessionWidget() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-auto">
-          <div className="hidden sm:block" /> 
-          
+        <div className="mt-auto">
           <Button 
             onClick={() => navigate(`/session/${session.id}`)} 
-            fullWidth={false} 
-            className="w-full lg:w-auto min-h-[43px] flex items-center justify-center"
+            fullWidth
+            className="w-full min-h-[43px]"
           >
             Перейти до сесії
           </Button>

@@ -77,7 +77,7 @@ export default function MemberCard({
           <select
             value={member.role}
             onChange={(e) => onChangeRole(member.userId, e.target.value)}
-            className="text-xs px-2 py-1 border border-brand-light/50 rounded-lg bg-white text-brand-dark outline-none focus:border-brand-dark"
+            className="text-xs px-2 py-1 border border-brand-light/50 rounded-lg bg-white text-brand-dark focus:border-brand-dark"
           >
             <option value="PLAYER">Гравець</option>
             <option value="GM">GM</option>

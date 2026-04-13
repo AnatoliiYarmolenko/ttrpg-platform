@@ -66,7 +66,6 @@ export default function DeleteAccountForm() {
       <div className="space-y-4">
         <div className="bg-red-50 border border-red-200 rounded-xl p-4">
           <div className="flex gap-3">
-            <span className="text-2xl">⚠️</span>
             <div>
               <h4 className="font-bold text-red-700 mb-2">Увага! Ця дія незворотна!</h4>
               <p className="text-sm text-red-600 mb-3">

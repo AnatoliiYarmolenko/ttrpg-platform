@@ -120,7 +120,7 @@ export default function CreateCampaignWidget({ onSuccess, onCancel }) {
   };
 
   const inputClass = (field) =>
-    `w-full p-3 border-2 rounded-xl focus:outline-none transition-colors text-brand-dark bg-white ${
+    `w-full p-3 border-2 rounded-xl transition-colors text-brand-dark bg-white ${
       errors[field]
         ? 'border-red-300 focus:border-red-500'
         : 'border-brand-light/50 focus:border-brand-dark'

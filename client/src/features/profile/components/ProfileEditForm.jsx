@@ -164,13 +164,13 @@ export default function ProfileEditForm({ onSuccess }) {
       </section>
 
       {/* Submit Button */}
-      <div className="pt-4 border-t border-brand-light/20 flex justify-end">
+      <div className="pt-4 border-t border-brand-light/20">
         <Button
           type="submit"
           isLoading={saving}
           loadingText="Збереження..."
-          fullWidth={false}
-          className="min-w-[220px]"
+          fullWidth
+          className="w-full"
         >
           Зберегти зміни
         </Button>

@@ -66,7 +66,7 @@ const Dropdown = ({
           className={`
             w-full px-3 py-2 text-left bg-white border-2 rounded-lg 
             flex items-center justify-between
-            transition-colors duration-200 outline-none
+            transition-colors duration-200
             ${borderClass}
             ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'cursor-pointer hover:border-brand-light'}
           `}

@@ -128,12 +128,12 @@ export default function EmailChangeForm({ currentEmail }) {
       </FormField>
 
       {/* Кнопка */}
-      <div className="pt-2 flex justify-end">
+      <div className="pt-2">
         <Button 
           type="submit" 
           disabled={saving}
-          fullWidth={false}
-          className="min-w-[220px]"
+          fullWidth
+          className="w-full"
         >
           {saving ? 'Надсилання...' : 'Змінити email'}
         </Button>
@@ -142,7 +142,6 @@ export default function EmailChangeForm({ currentEmail }) {
       {/* Підказка */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mt-4">
         <div className="flex gap-2">
-          <span>ℹ️</span>
           <div className="text-sm text-blue-800">
             <p>На новий email буде надіслано лист з посиланням для підтвердження.</p>
             <p className="text-xs mt-1">Посилання дійсне 15 хвилин.</p>

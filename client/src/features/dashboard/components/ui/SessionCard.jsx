@@ -109,11 +109,6 @@ export default function SessionCard({
           {session.campaign && (
             <div className="text-sm text-brand-medium mb-3">
               <span className="font-medium">Кампанія:</span> {session.campaign.title}
-              {session.campaign.system && (
-                <span className="text-xs ml-2 px-2 py-0.5 bg-brand-light/20 rounded">
-                  {session.campaign.system}
-                </span>
-              )}
             </div>
           )}
 

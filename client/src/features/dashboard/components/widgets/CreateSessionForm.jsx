@@ -195,7 +195,7 @@ export default function CreateSessionForm({
     ${errors[fieldName]
       ? 'border-red-300 focus:border-red-500'
       : 'border-brand-light/30 focus:border-brand-dark'}
-    focus:outline-none transition-colors
+    transition-colors
   `;
 
   return (

@@ -13,7 +13,7 @@ const Button = forwardRef(function Button({
   className = "",
   ...rest
 }, ref) {
-  const baseStyles = "items-center justify-center gap-2 whitespace-nowrap font-semibold rounded-lg transition-colors duration-200 shadow-md hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent/60 disabled:opacity-60 disabled:cursor-not-allowed";
+  const baseStyles = "items-center justify-center gap-2 whitespace-nowrap font-semibold rounded-lg transition-colors duration-200 shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed";
   
   const variants = {
     primary: "bg-brand-accent hover:bg-brand-medium text-brand-dark hover:text-white",
