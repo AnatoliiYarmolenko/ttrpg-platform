@@ -1,4 +1,5 @@
 import React from 'react';
+import Button from '@/components/ui/Button';
 
 /**
  * Компактна кнопка навігації для хедера
@@ -12,20 +13,18 @@ export default function NavButton({
   label, 
   isActive = false, 
   onClick, 
+  size = 'md',
   className = '' 
 }) {
   return (
-    <button
+    <Button
       onClick={onClick}
-      className={`
-        px-4 lg:px-6 py-2 rounded-xl transition-all duration-200 border-[3px]
-        ${isActive 
-          ? 'bg-brand-dark text-white border-brand-accent shadow-lg scale-105' 
-          : 'bg-white text-brand-dark border-brand-light/30 hover:border-brand-light hover:shadow-md'}
-        ${className}
-      `}
+      variant={isActive ? 'tabActive' : 'tabInactive'}
+      size={size}
+      fullWidth={false}
+      className={`justify-center lg:px-6 ${className}`}
     >
       <span className="font-bold">{label}</span>
-    </button>
+    </Button>
   );
 }

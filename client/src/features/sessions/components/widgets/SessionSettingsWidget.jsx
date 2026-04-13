@@ -280,6 +280,7 @@ function SessionSettingsWidgetContent({
           variant="primary"
           isLoading={isLoading}
           loadingText="Збереження..."
+          fullWidth={true}
         >
           Зберегти зміни
         </Button>
@@ -290,6 +291,7 @@ function SessionSettingsWidgetContent({
             <Button
               variant="danger"
               onClick={() => setDeleteModal(true)}
+              fullWidth={true}
             >
               Видалити сесію
             </Button>

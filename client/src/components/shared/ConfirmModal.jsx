@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import Button from '@/components/ui/Button';
 
 /**
  * Модалка підтвердження — замість window.confirm().
@@ -27,7 +28,6 @@ export default function ConfirmModal({
   onConfirm,
   onCancel,
 }) {
-  const overlayRef = useRef(null);
   const confirmBtnRef = useRef(null);
 
   // Trap focus inside modal
@@ -59,34 +59,20 @@ export default function ConfirmModal({
 
   if (!isOpen) return null;
 
-  const handleOverlayClick = (e) => {
-    if (e.target === overlayRef.current) onCancel?.();
-  };
-
-  const handleOverlayKeyDown = (e) => {
-    if ((e.key === 'Enter' || e.key === ' ') && e.target === overlayRef.current) {
-      onCancel?.();
-    }
-  };
-
-  const confirmVariants = {
-    primary: 'bg-brand-dark hover:bg-brand-medium text-white',
-    danger: 'bg-red-500 hover:bg-red-600 text-white',
-  };
+  const confirmVariant = variant === 'danger' ? 'danger' : 'secondary';
 
   return (
-    <div
-      ref={overlayRef}
-      role="presentation"
-      onClick={handleOverlayClick}
-      onKeyDown={handleOverlayKeyDown}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <button
+        type="button"
+        aria-label="Закрити модальне вікно"
+        className="absolute inset-0"
+        onClick={onCancel}
+      />
+      <dialog
+        open
         aria-labelledby="confirm-modal-title"
-        className="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 p-6 animate-in fade-in zoom-in-95"
+        className="relative bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 p-6 animate-in fade-in zoom-in-95"
       >
         <h3
           id="confirm-modal-title"
@@ -100,25 +86,31 @@ export default function ConfirmModal({
         )}
 
         <div className="flex gap-3 justify-end">
-          <button
+          <Button
             type="button"
             onClick={onCancel}
             disabled={isLoading}
-            className="px-4 py-2 rounded-lg border-2 border-brand-dark/20 text-brand-dark hover:bg-brand-dark/5 transition-colors font-medium disabled:opacity-50"
+            variant="outline"
+            size="md"
+            fullWidth={false}
+            className="shadow-none hover:shadow-none"
           >
             {cancelText}
-          </button>
-          <button
+          </Button>
+          <Button
             ref={confirmBtnRef}
             type="button"
             onClick={onConfirm}
             disabled={isLoading}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 ${confirmVariants[variant] || confirmVariants.primary}`}
+            variant={confirmVariant}
+            size="md"
+            fullWidth={false}
+            className="shadow-none hover:shadow-none"
           >
             {isLoading ? 'Зачекайте...' : confirmText}
-          </button>
+          </Button>
         </div>
-      </div>
+      </dialog>
     </div>
   );
 }

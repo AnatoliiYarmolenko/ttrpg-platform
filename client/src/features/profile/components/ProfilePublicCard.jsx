@@ -109,7 +109,11 @@ export default function ProfilePublicCard({
         </div>
       )}
 
-      {shareButton}
+      {shareButton && (
+        <div className="w-full flex justify-end pt-1">
+          {shareButton}
+        </div>
+      )}
     </div>
   );
 }

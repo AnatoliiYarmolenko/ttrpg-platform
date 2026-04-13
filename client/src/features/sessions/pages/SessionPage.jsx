@@ -18,6 +18,7 @@ import SessionPageParticipantsWidget from '../components/widgets/SessionParticip
 import { UserProfilePreview } from '@/components/shared';
 import FullPageLoader from '@/components/shared/FullPageLoader';
 import ErrorScreen from '@/components/shared/ErrorScreen';
+import Button from '@/components/ui/Button';
 
 /**
  * SessionPage — тонкий shell-компонент для /session/:id.
@@ -193,15 +194,7 @@ export default function SessionPage() {
   return (
     <SessionLayout
       topBar={
-        !isPreviewMode ? (
-          <SessionNavigation
-            sessionTitle={currentSession.title}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            canManage={canManageSettings}
-            campaignTitle={currentSession.campaign?.title}
-          />
-        ) : (
+        isPreviewMode ? (
           <nav className="flex items-center gap-4 justify-between w-full">
             <div className="flex items-center gap-3 min-w-0 flex-1">
               <div className="bg-white px-4 py-2 rounded-xl border-2 border-brand-light/30 shadow-md flex items-center gap-2">
@@ -237,14 +230,24 @@ export default function SessionPage() {
               </span>
             </div>
             <div className="flex items-center justify-end flex-1">
-              <button
+              <Button
                 onClick={() => navigate('/')}
-                className="px-4 py-2 rounded-xl border-2 border-white/50 bg-brand-dark text-white hover:bg-brand-accent hover:text-brand-dark hover:border-brand-dark transition-all font-bold shadow-lg"
+                variant="topbar"
+                size="md"
+                fullWidth={false}
               >
                 На головну
-              </button>
+              </Button>
             </div>
           </nav>
+        ) : (
+          <SessionNavigation
+            sessionTitle={currentSession.title}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            canManage={canManageSettings}
+            campaignTitle={currentSession.campaign?.title}
+          />
         )
       }
       leftPanel={renderLeftPanel()}

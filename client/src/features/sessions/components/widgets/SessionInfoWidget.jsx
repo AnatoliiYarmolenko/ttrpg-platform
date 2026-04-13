@@ -225,7 +225,7 @@ export default function SessionInfoWidget({
                     onClick={onCopyShareLink}
                     variant="secondary"
                     fullWidth={false}
-                    className="px-5"
+                    className="w-full lg:w-auto px-5"
                   >
                     Копіювати посилання
                   </Button>
@@ -234,7 +234,7 @@ export default function SessionInfoWidget({
                   onClick={handleRotateShareLink}
                   variant="secondary"
                   fullWidth={false}
-                  className="px-5"
+                  className="w-full lg:w-auto px-5"
                 >
                   Оновити share-посилання
                 </Button>
@@ -248,12 +248,15 @@ export default function SessionInfoWidget({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-bold text-brand-dark">Кампанія:</span>
               {canNavigateToCampaignDirectly ? (
-                <button
+                <Button
                   onClick={() => navigate(`/campaign/${session.campaign.id}`)}
-                  className="text-sm text-brand-medium hover:text-brand-dark underline transition-colors"
+                  variant="light"
+                  size="sm"
+                  fullWidth={false}
+                  className="p-0 h-auto bg-transparent hover:bg-transparent shadow-none hover:shadow-none text-sm text-brand-medium hover:text-brand-dark underline transition-colors"
                 >
                   {session.campaign.title}
-                </button>
+                </Button>
               ) : (
                 <span className="text-sm text-brand-medium">{session.campaign.title}</span>
               )}
@@ -284,6 +287,8 @@ export default function SessionInfoWidget({
               variant="danger"
               isLoading={isLoading}
               loadingText="Вихід..."
+              fullWidth={false}
+              className="w-full lg:w-auto"
             >
               Покинути сесію
             </Button>
@@ -300,7 +305,7 @@ export default function SessionInfoWidget({
                     onClick={() => handleStatusChange('ACTIVE')}
                     variant="primary"
                     fullWidth={false}
-                    className="px-5"
+                    className="w-full lg:w-auto px-5"
                   >
                     Розпочати
                   </Button>
@@ -310,7 +315,7 @@ export default function SessionInfoWidget({
                     onClick={() => handleStatusChange('FINISHED')}
                     variant="secondary"
                     fullWidth={false}
-                    className="px-5"
+                    className="w-full lg:w-auto px-5"
                   >
                     Завершити
                   </Button>
@@ -320,7 +325,7 @@ export default function SessionInfoWidget({
                     onClick={() => handleStatusChange('CANCELED')}
                     variant="danger"
                     fullWidth={false}
-                    className="px-5"
+                    className="w-full lg:w-auto px-5"
                   >
                     Скасувати
                   </Button>
@@ -330,7 +335,7 @@ export default function SessionInfoWidget({
                     onClick={handleMarkAsFinished}
                     variant="secondary"
                     fullWidth={false}
-                    className="px-5"
+                    className="w-full lg:w-auto px-5"
                   >
                     Позначити як проведену
                   </Button>

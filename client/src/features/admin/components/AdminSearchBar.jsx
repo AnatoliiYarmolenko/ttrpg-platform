@@ -1,4 +1,5 @@
 import React from 'react';
+import Button from '@/components/ui/Button';
 
 /**
  * Рядок пошуку для адмін-таблиць
@@ -20,12 +21,15 @@ export default function AdminSearchBar({ value, onChange, onSearch, placeholder 
         placeholder={placeholder}
         className="flex-1 px-4 py-2 rounded-xl border-2 border-brand-light/30 focus:border-brand-dark focus:outline-none text-brand-dark placeholder-gray-400 transition-colors"
       />
-      <button
+      <Button
         onClick={onSearch}
-        className="px-4 py-2 rounded-xl bg-brand-dark text-white font-medium hover:bg-brand-medium transition-colors"
+        variant="secondary"
+        size="md"
+        fullWidth={false}
+        className="shadow-none"
       >
         Знайти
-      </button>
+      </Button>
     </div>
   );
 }

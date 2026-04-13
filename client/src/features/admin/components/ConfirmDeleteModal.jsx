@@ -1,4 +1,5 @@
 import React from 'react';
+import Button from '@/components/ui/Button';
 
 /**
  * Модальне вікно підтвердження видалення
@@ -22,20 +23,26 @@ export default function ConfirmDeleteModal({ isOpen, title, message, onConfirm, 
         <p className="text-gray-600 mb-6">{message || 'Ви впевнені? Цю дію неможливо скасувати.'}</p>
         
         <div className="flex gap-3 justify-end">
-          <button
+          <Button
             onClick={onCancel}
             disabled={isLoading}
-            className="px-4 py-2 rounded-lg border-2 border-brand-light/30 text-brand-dark font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+            variant="outline"
+            size="md"
+            fullWidth={false}
+            className="shadow-none hover:shadow-none"
           >
             Скасувати
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={onConfirm}
             disabled={isLoading}
-            className="px-4 py-2 rounded-lg bg-red-500 text-white font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
+            variant="danger"
+            size="md"
+            fullWidth={false}
+            className="shadow-none hover:shadow-none"
           >
             {isLoading ? 'Видалення...' : 'Видалити'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

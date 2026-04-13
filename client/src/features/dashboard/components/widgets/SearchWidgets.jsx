@@ -16,6 +16,7 @@ import GroupPeople from "@/components/ui/icons/GroupPeople";
 import Data from "@/components/ui/icons/Data";
 import { GAME_SYSTEMS } from "@/constants/gameSystems";
 import { toast } from "@/stores/useToastStore";
+import Button from "@/components/ui/Button";
 
 function mapSearchFiltersToLocal(searchFilters) {
   return {
@@ -184,13 +185,15 @@ function SearchResultsBody({
         ))}
 
       {hasMore && (
-        <button
+        <Button
           onClick={loadMoreSearchResults}
           disabled={isFetchingMore}
-          className="py-3 border-2 border-dashed border-brand-light/50 rounded-xl text-brand-medium hover:border-brand-dark hover:text-brand-dark transition-colors disabled:opacity-50"
+          variant="outline"
+          fullWidth={false}
+          className="w-full border-dashed border-brand-light/50 text-brand-medium hover:border-brand-dark hover:text-brand-dark shadow-none hover:shadow-none"
         >
           {isFetchingMore ? 'Завантаження...' : 'Завантажити ще'}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -275,26 +278,30 @@ export function SearchFiltersWidget({ onSearch }) {
     <DashboardCard title="Пошук ігор">
       <div className="flex flex-col gap-4">
         <div className="flex gap-2 border-b border-brand-light/30 pb-3">
-          <button
+          <Button
             onClick={() => setSearchActiveTab('sessions')}
+            variant="light"
+            fullWidth={false}
             className={`px-4 py-2 rounded-t-lg transition-colors ${
               searchActiveTab === 'sessions'
-                ? 'bg-brand-dark text-white'
+                ? 'bg-brand-dark text-white hover:bg-brand-dark hover:text-white'
                 : 'text-brand-medium hover:bg-gray-100'
             }`}
           >
             Сесії
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setSearchActiveTab('campaigns')}
+            variant="light"
+            fullWidth={false}
             className={`px-4 py-2 rounded-t-lg transition-colors ${
               searchActiveTab === 'campaigns'
-                ? 'bg-brand-dark text-white'
+                ? 'bg-brand-dark text-white hover:bg-brand-dark hover:text-white'
                 : 'text-brand-medium hover:bg-gray-100'
             }`}
           >
             Кампанії
-          </button>
+          </Button>
         </div>
 
         <div>
@@ -438,18 +445,22 @@ export function SearchFiltersWidget({ onSearch }) {
         )}
 
         <div className="flex gap-3 mt-2">
-          <button
+          <Button
             onClick={handleSearch}
-            className="flex-1 py-2 bg-brand-dark text-white rounded-xl hover:bg-brand-medium transition-colors font-medium"
+            variant="secondary"
+            fullWidth={false}
+            className="flex-1 py-2 font-medium"
           >
             Шукати
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleClear}
-            className="px-4 py-2 border-2 border-brand-light/30 text-brand-medium rounded-xl hover:bg-gray-50 transition-colors"
+            variant="outline"
+            fullWidth={false}
+            className="px-4 py-2 border-brand-light/30 text-brand-medium hover:bg-gray-50"
           >
             Очистити
-          </button>
+          </Button>
         </div>
       </div>
     </DashboardCard>

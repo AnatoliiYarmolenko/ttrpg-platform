@@ -140,7 +140,7 @@ return (
         
         {/* Sticky Footer */}
         <div className="pt-4 border-t border-brand-light/20 mt-auto flex-shrink-0">
-          <Button onClick={handleCreateClick} variant="primary" className="flex items-center justify-center gap-2">
+          <Button onClick={handleCreateClick} variant="primary" fullWidth={true} className="flex items-center justify-center gap-2">
             Створити сесію
           </Button>
         </div>

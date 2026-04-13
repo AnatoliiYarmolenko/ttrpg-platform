@@ -1,4 +1,5 @@
 import Dice20 from '../ui/icons/Dice20';
+import Button from '@/components/ui/Button';
 
 /**
  * Заглушка "немає даних" — уніфікований порожній стан.
@@ -29,13 +30,15 @@ export default function EmptyState({
       {title && <p className="text-lg font-medium text-center">{title}</p>}
       {description && <p className="text-sm mt-2 text-center">{description}</p>}
       {action && (
-        <button
+        <Button
           type="button"
           onClick={action.onClick}
-          className="mt-4 px-4 py-2 bg-brand-dark text-white rounded-xl hover:bg-brand-medium transition-colors"
+          variant="secondary"
+          fullWidth={false}
+          className="mt-4"
         >
           {action.label}
-        </button>
+        </Button>
       )}
     </div>
   );

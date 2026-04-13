@@ -94,6 +94,8 @@ function SessionJoinModal({
               isLoading={isJoining}
               loadingText="Приєднання..."
               variant="secondary"
+              fullWidth={false}
+              className="w-full lg:w-auto"
             >
               Приєднатись як гравець
             </Button>
@@ -105,6 +107,8 @@ function SessionJoinModal({
               isLoading={isApplyingGm}
               loadingText="Відправка..."
               variant={canJoin ? 'outline' : 'secondary'}
+              fullWidth={false}
+              className="w-full lg:w-auto"
             >
               Податися як GM
             </Button>
@@ -116,17 +120,21 @@ function SessionJoinModal({
               isLoading={isJoining}
               loadingText="Приєднання..."
               variant="secondary"
+              fullWidth={false}
+              className="w-full lg:w-auto"
             >
               Підтвердити приєднання
             </Button>
           )}
 
-          <button
+          <Button
             onClick={closeModal}
-            className="w-full py-2 border-2 border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50 transition-colors"
+            variant="outline"
+            fullWidth={false}
+            className="w-full lg:w-auto border-gray-300 text-gray-600 hover:bg-gray-50 hover:text-gray-700"
           >
             Скасувати
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -264,12 +272,15 @@ export default function SessionPagePreviewWidget({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-bold text-brand-dark">Кампанія:</span>
               {canNavigateToCampaignDirectly ? (
-                <button
+                <Button
                   onClick={() => navigate(`/campaign/${session.campaign.id}`)}
-                  className="text-sm text-brand-medium hover:text-brand-dark underline transition-colors"
+                  variant="light"
+                  size="sm"
+                  fullWidth={false}
+                  className="p-0 h-auto bg-transparent hover:bg-transparent shadow-none hover:shadow-none text-sm text-brand-medium hover:text-brand-dark underline transition-colors"
                 >
                   {session.campaign.title}
-                </button>
+                </Button>
               ) : (
                 <span className="text-sm text-brand-medium">{session.campaign.title}</span>
               )}
@@ -291,7 +302,7 @@ export default function SessionPagePreviewWidget({
         )}
 
         {canRequestJoin ? (
-          <Button onClick={() => setShowJoinModal(true)} variant="primary">
+          <Button onClick={() => setShowJoinModal(true)} variant="primary" fullWidth={false} className="w-full lg:w-auto">
             Приєднатись до сесії
           </Button>
         ) : (

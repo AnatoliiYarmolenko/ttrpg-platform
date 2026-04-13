@@ -14,6 +14,7 @@ import AdminSearchBar from '../components/AdminSearchBar';
 import AdminPagination from '../components/AdminPagination';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import NavButton from '@/components/ui/NavButton';
+import Button from '@/components/ui/Button';
 
 // Вкладки адмін-панелі
 const TABS = {
@@ -231,12 +232,15 @@ export default function AdminPage() {
                 <td className="py-2 px-3 text-gray-500">{c._count?.sessions ?? 0}</td>
                 <td className="py-2 px-3 text-gray-500">{formatDate(c.createdAt)}</td>
                 <td className="py-2 px-3">
-                  <button
+                  <Button
                     onClick={() => setDeleteModal({ open: true, type: 'campaign', id: c.id, title: c.title })}
-                    className="text-red-400 hover:text-red-600 transition-colors font-medium text-xs"
+                    variant="danger"
+                    size="sm"
+                    fullWidth={false}
+                    className="px-2 py-1 border-red-300 text-red-600 hover:bg-red-500"
                   >
                     Видалити
-                  </button>
+                  </Button>
                 </td>
               </tr>
             ))}
@@ -317,12 +321,15 @@ export default function AdminPage() {
                 <td className="py-2 px-3 text-gray-500">{formatDate(s.date)}</td>
                 <td className="py-2 px-3 text-gray-500">{s._count?.participants ?? 0}/{s.maxPlayers}</td>
                 <td className="py-2 px-3">
-                  <button
+                  <Button
                     onClick={() => setDeleteModal({ open: true, type: 'session', id: s.id, title: s.title })}
-                    className="text-red-400 hover:text-red-600 transition-colors font-medium text-xs"
+                    variant="danger"
+                    size="sm"
+                    fullWidth={false}
+                    className="px-2 py-1 border-red-300 text-red-600 hover:bg-red-500"
                   >
                     Видалити
-                  </button>
+                  </Button>
                 </td>
               </tr>
             ))}
@@ -402,24 +409,28 @@ export default function AdminPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <button
+          <Button
             onClick={() => navigate('/')}
-            className="px-4 py-2 rounded-xl border-2 border-white/50 bg-brand-medium text-white hover:bg-brand-light hover:text-brand-dark transition-all font-bold shadow-lg"
+            variant="topbar"
+            size="md"
+            fullWidth={false}
           >
             На головну
-          </button>
+          </Button>
           {user && (
             <span className="text-white font-medium drop-shadow-md hidden sm:block">
               {user.username}
             </span>
           )}
-          <button
+          <Button
             onClick={handleLogout}
             title="Вийти з акаунту"
-            className="px-4 py-2 rounded-xl border-2 border-white/50 bg-brand-dark text-white hover:bg-brand-accent hover:text-brand-dark hover:border-brand-dark transition-all font-bold shadow-lg"
+            variant="topbar"
+            size="md"
+            fullWidth={false}
           >
             Вийти
-          </button>
+          </Button>
         </div>
       </nav>
 
@@ -433,19 +444,25 @@ export default function AdminPage() {
           </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
-            <button
+            <Button
               onClick={() => navigate('/')}
-              className="px-3 py-2 rounded-xl border-2 border-white/50 bg-brand-medium text-white hover:bg-brand-light hover:text-brand-dark transition-all font-bold shadow-lg text-sm whitespace-nowrap"
+              variant="topbar"
+              size="sm"
+              fullWidth={false}
+              className="whitespace-nowrap"
             >
               На головну
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleLogout}
               title="Вийти з акаунту"
-              className="px-3 py-2 rounded-xl border-2 border-white/50 bg-brand-dark text-white hover:bg-brand-accent hover:text-brand-dark hover:border-brand-dark transition-all font-bold shadow-lg text-sm whitespace-nowrap"
+              variant="topbar"
+              size="sm"
+              fullWidth={false}
+              className="whitespace-nowrap"
             >
               Вийти
-            </button>
+            </Button>
           </div>
         </div>
 

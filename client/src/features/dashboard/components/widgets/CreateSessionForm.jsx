@@ -131,7 +131,7 @@ export default function CreateSessionForm({
     const { name, value, type } = event.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'number' ? parseFloat(value) || 0 : value,
+      [name]: type === 'number' ? Number.parseFloat(value) || 0 : value,
     }));
 
     if (errors[name]) {
@@ -255,32 +255,32 @@ export default function CreateSessionForm({
             Ваша роль у сесії
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <button
+              <button
               type="button"
               onClick={() => setFormData((prev) => ({ ...prev, isGm: true }))}
-              className={`
-                p-3 rounded-xl border-2 text-left transition-colors
+                className={`
+                  w-full p-3 rounded-xl border-2 text-left transition-all shadow-none hover:shadow-none
                 ${formData.isGm
-                  ? 'border-brand-dark bg-brand-light/15 text-brand-dark'
-                  : 'border-brand-light/30 text-brand-medium hover:border-brand-dark/50'}
+                    ? 'border-brand-dark bg-brand-light/15 text-brand-dark'
+                    : 'border-brand-light/30 text-brand-medium hover:border-brand-dark/50 hover:bg-brand-light/10'}
               `}
             >
               <div className="font-semibold">Я буду Майстром</div>
               <div className="text-xs mt-1 opacity-80">Керуватиму сесією самостійно</div>
-            </button>
-            <button
+              </button>
+              <button
               type="button"
               onClick={() => setFormData((prev) => ({ ...prev, isGm: false }))}
-              className={`
-                p-3 rounded-xl border-2 text-left transition-colors
-                ${!formData.isGm
-                  ? 'border-brand-dark bg-brand-light/15 text-brand-dark'
-                  : 'border-brand-light/30 text-brand-medium hover:border-brand-dark/50'}
+                className={`
+                  w-full p-3 rounded-xl border-2 text-left transition-all shadow-none hover:shadow-none
+                  ${formData.isGm
+                    ? 'border-brand-light/30 text-brand-medium hover:border-brand-dark/50 hover:bg-brand-light/10'
+                    : 'border-brand-dark bg-brand-light/15 text-brand-dark'}
               `}
             >
               <div className="font-semibold">Шукаю Майстра</div>
               <div className="text-xs mt-1 opacity-80">Я організатор, Майстром буде інший</div>
-            </button>
+              </button>
           </div>
         </div>
       )}
@@ -391,6 +391,7 @@ export default function CreateSessionForm({
             onClick={onCancel}
             disabled={isSubmitting}
             variant="outline"
+            fullWidth={true}
             className="flex-1"
           >
             Скасувати
@@ -402,6 +403,7 @@ export default function CreateSessionForm({
           isLoading={isSubmitting}
           loadingText="Створення..."
           variant="primary"
+          fullWidth={true}
           className={onCancel ? 'flex-1' : 'w-full'}
         >
           Створити

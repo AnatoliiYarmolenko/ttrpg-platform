@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import DashboardCard from '@/components/ui/DashboardCard';
+import Button from '@/components/ui/Button';
 import MenuButton from '@/components/ui/MenuButton';
 import ProfileInfoWidget from './ProfileInfoWidget';
 import ProfileEditForm from '@/features/profile/components/ProfileEditForm';
@@ -138,9 +139,13 @@ export function ProfileContentWidget({ currentSection, user, onProfileUpdate }) 
             <p className="text-brand-medium mb-6">
               Створюйте та керуйте своїми ігровими персонажами
             </p>
-            <button className="bg-brand-dark text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-medium transition-colors shadow-lg">
+            <Button
+              variant="secondary"
+              fullWidth={false}
+              className="px-6 py-3 rounded-xl font-bold"
+            >
               + Створити персонажа
-            </button>
+            </Button>
           </div>
         </DashboardCard>
       );
@@ -161,9 +166,13 @@ export function ProfileContentWidget({ currentSection, user, onProfileUpdate }) 
                   <div className="text-xs text-brand-medium">Не підключено</div>
                 </div>
               </div>
-              <button className="px-4 py-2 bg-indigo-500 text-white rounded-lg font-medium hover:bg-indigo-600 transition-colors">
+              <Button
+                variant="light"
+                fullWidth={false}
+                className="px-4 py-2 bg-indigo-500 text-white hover:bg-indigo-600 hover:text-white rounded-lg font-medium shadow-none hover:shadow-none"
+              >
                 Підключити
-              </button>
+              </Button>
             </div>
             
             {/* Telegram */}
@@ -174,9 +183,13 @@ export function ProfileContentWidget({ currentSection, user, onProfileUpdate }) 
                   <div className="text-xs text-brand-medium">Не підключено</div>
                 </div>
               </div>
-              <button className="px-4 py-2 bg-sky-500 text-white rounded-lg font-medium hover:bg-sky-600 transition-colors">
+              <Button
+                variant="light"
+                fullWidth={false}
+                className="px-4 py-2 bg-sky-500 text-white hover:bg-sky-600 hover:text-white rounded-lg font-medium shadow-none hover:shadow-none"
+              >
                 Підключити
-              </button>
+              </Button>
             </div>
           </div>
         </DashboardCard>

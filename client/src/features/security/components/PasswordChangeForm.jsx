@@ -204,11 +204,12 @@ export default function PasswordChangeForm() {
       </div>
 
       {/* Кнопка збереження */}
-      <div className="pt-4">
+      <div className="pt-4 flex justify-end">
         <Button 
           type="submit" 
           disabled={saving}
-          className="w-full"
+          fullWidth={false}
+          className="min-w-[220px]"
         >
           {saving ? 'Зміна пароля...' : 'Змінити пароль'}
         </Button>

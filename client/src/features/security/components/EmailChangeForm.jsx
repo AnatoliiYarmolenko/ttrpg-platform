@@ -121,11 +121,12 @@ export default function EmailChangeForm({ currentEmail }) {
       </div>
 
       {/* Кнопка */}
-      <div className="pt-2">
+      <div className="pt-2 flex justify-end">
         <Button 
           type="submit" 
           disabled={saving}
-          className="w-full"
+          fullWidth={false}
+          className="min-w-[220px]"
         >
           {saving ? 'Надсилання...' : 'Змінити email'}
         </Button>

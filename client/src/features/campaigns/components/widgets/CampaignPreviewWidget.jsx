@@ -139,6 +139,8 @@ export default function CampaignPreviewWidget({
           <Button
             onClick={() => setShowJoinModal(true)}
             variant="primary"
+            fullWidth={false}
+            className="w-full lg:w-auto"
           >
             Подати заявку на вступ
           </Button>
@@ -163,23 +165,25 @@ export default function CampaignPreviewWidget({
             <p className="text-sm text-brand-medium mb-4">
               Після підтвердження заявку буде надіслано організатору кампанії.
             </p>
-            <div className="flex gap-3">
-              <button
+            <div className="flex flex-col lg:flex-row gap-3">
+              <Button
                 onClick={() => {
                   setShowJoinModal(false);
                   setJoinError(null);
                 }}
-                className="flex-1 py-2 border-2 border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50 transition-colors"
+                variant="outline"
+                fullWidth={false}
+                className="w-full lg:w-auto flex-1 border-gray-300 text-gray-600 hover:bg-gray-50 hover:text-gray-700"
               >
                 Скасувати
-              </button>
+              </Button>
               <Button
                 onClick={handleJoinRequest}
                 isLoading={isJoining}
                 loadingText="Надсилання..."
                 variant="secondary"
                 fullWidth={false}
-                className="flex-1"
+                className="w-full lg:w-auto flex-1"
               >
                 Надіслати заявку
               </Button>

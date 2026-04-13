@@ -140,19 +140,25 @@ export default function CampaignInfoWidget({
 
               <div className="flex items-center gap-3 flex-wrap">
                 {currentShareLink && (
-                  <button
+                  <Button
                     onClick={onCopyShareLink}
-                    className="px-3 py-2 bg-brand-dark text-white rounded-lg hover:bg-brand-medium transition-colors text-sm"
+                    variant="secondary"
+                    size="sm"
+                    fullWidth={false}
+                    className="w-full lg:w-auto"
                   >
                     Копіювати посилання
-                  </button>
+                  </Button>
                 )}
-                <button
+                <Button
                   onClick={handleRegenerateShareLink}
-                  className="px-3 py-2 border border-brand-dark text-brand-dark rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                  variant="outline"
+                  size="sm"
+                  fullWidth={false}
+                  className="w-full lg:w-auto"
                 >
                   Оновити share-посилання
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -165,6 +171,8 @@ export default function CampaignInfoWidget({
               variant="danger"
               isLoading={isLoading}
               loadingText="Вихід..."
+              fullWidth={false}
+              className="w-full lg:w-auto"
             >
               Покинути кампанію
             </Button>

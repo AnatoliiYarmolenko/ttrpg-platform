@@ -1,4 +1,5 @@
 import React from 'react';
+import Button from '@/components/ui/Button';
 
 export default function ParticipantsList({
   items = [],
@@ -19,14 +20,16 @@ export default function ParticipantsList({
         const label = item?.label || item?.name || `Учасник ${index + 1}`;
 
         return (
-          <button
+          <Button
             key={key}
             type="button"
             onClick={() => onSelect?.(item, index)}
-            className="w-full text-left p-3 rounded-xl border-2 border-transparent hover:border-brand-light/50 hover:bg-brand-light/10 transition-all"
+            variant="light"
+            fullWidth={false}
+            className="w-full text-left justify-start p-3 rounded-xl border-2 border-transparent hover:border-brand-light/50 hover:bg-brand-light/10 shadow-none hover:shadow-none"
           >
             {label}
-          </button>
+          </Button>
         );
       })}
     </div>

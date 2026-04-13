@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import Button from '@/components/ui/Button';
 import TopBarTabButton from '@/components/ui/TopBarTabButton';
 
 const TABS = {
@@ -63,12 +64,15 @@ export default function SessionNavigation({
       </div>
 
       <div className="flex items-center justify-end flex-1">
-        <button
+        <Button
           onClick={() => navigate('/')}
-          className="px-4 py-2 rounded-xl border-2 border-white/50 bg-brand-dark text-white hover:bg-brand-accent hover:text-brand-dark hover:border-brand-dark transition-all font-bold shadow-lg"
+          variant="topbar"
+          size="md"
+          fullWidth={false}
+          className="font-bold"
         >
           На головну
-        </button>
+        </Button>
       </div>
     </nav>
   );

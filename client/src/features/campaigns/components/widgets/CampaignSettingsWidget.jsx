@@ -182,6 +182,7 @@ function CampaignSettingsWidgetContent({
           isLoading={isLoading}
           loadingText="Збереження..."
           disabled={controlsDisabled}
+          fullWidth={true}
         >
           Зберегти зміни
         </Button>
@@ -199,6 +200,7 @@ function CampaignSettingsWidgetContent({
                   variant="danger"
                   disabled={isLoading}
                   onClick={() => setFinishModal(true)}
+                  fullWidth={true}
                 >
                   Завершити кампанію
                 </Button>
@@ -233,6 +235,7 @@ function CampaignSettingsWidgetContent({
                     variant="outline"
                     disabled={!selectedNewOwnerId || isLoading || isCampaignFinished}
                     onClick={() => setTransferModal(true)}
+                    fullWidth={true}
                   >
                     Передати права кампанії
                   </Button>

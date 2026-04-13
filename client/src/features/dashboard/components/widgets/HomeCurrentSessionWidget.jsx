@@ -191,7 +191,7 @@ export default function HomeCurrentSessionWidget() {
             description={error?.message || 'Спробуйте ще раз'}
             className="h-full"
           />
-          <Button onClick={() => refetch()} variant="outline">
+          <Button onClick={() => refetch()} variant="outline" fullWidth={false} className="w-full lg:w-auto">
             Оновити
           </Button>
         </div>
@@ -210,10 +210,10 @@ export default function HomeCurrentSessionWidget() {
             className="h-full"
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-auto">
-            <Button variant="outline" onClick={handleGoToSearch}>
+            <Button variant="outline" onClick={handleGoToSearch} fullWidth={false} className="w-full lg:w-auto">
               Пошук сесій
             </Button>
-            <Button onClick={handleChooseSession}>
+            <Button onClick={handleChooseSession} fullWidth={false} className="w-full lg:w-auto">
               Відкрити календар
             </Button>
           </div>
@@ -246,13 +246,10 @@ export default function HomeCurrentSessionWidget() {
             <Data className="w-4 h-4" />
             <DateTimeDisplay value={session.startAt} format="long" fallback={formatStartAt(session.startAt)} />
           </div>
-          {session.system ? (
-            <div className="flex items-center gap-2 text-brand-medium">
-              <span className="font-medium">Система:</span> {session.system}
-            </div>
-          ) : (
-            <div className="hidden sm:block"></div>
-          )}
+          <div className="flex items-center gap-2 text-brand-medium">
+            <span className="font-medium">Система:</span>
+            <span>{session.system || 'Не вказана'}</span>
+          </div>
 
           <div className="flex items-center gap-2 text-brand-medium">
             <Timer className="w-4 h-4" />
@@ -290,8 +287,14 @@ export default function HomeCurrentSessionWidget() {
           </p>
         </div>
 
-        <div className="mt-auto">
-          <Button onClick={() => navigate(`/session/${session.id}`)}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-auto">
+          <div className="hidden sm:block" /> 
+          
+          <Button 
+            onClick={() => navigate(`/session/${session.id}`)} 
+            fullWidth={false} 
+            className="w-full lg:w-auto min-h-[43px] flex items-center justify-center"
+          >
             Перейти до сесії
           </Button>
         </div>

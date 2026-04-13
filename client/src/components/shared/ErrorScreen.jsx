@@ -1,4 +1,5 @@
 import React from 'react';
+import Button from '@/components/ui/Button';
 import Dice20 from '@/components/ui/icons/Dice20';
 
 /**
@@ -31,12 +32,15 @@ export default function ErrorScreen({
       </div>
       <p className="text-xl mb-4">{errorMessage}</p>
       {onAction && (
-        <button
+        <Button
           onClick={onAction}
-          className="px-6 py-2 bg-white text-brand-dark rounded-xl font-bold hover:bg-gray-100 transition-colors"
+          variant="light"
+          size="md"
+          fullWidth={false}
+          className="font-bold"
         >
           {actionLabel}
-        </button>
+        </Button>
       )}
     </div>
   );

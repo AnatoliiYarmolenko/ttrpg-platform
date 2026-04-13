@@ -2,6 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import { VIEW_MODES } from '@/stores/dashboardConstants';
+import Button from '@/components/ui/Button';
 import NavButton from '@/components/ui/NavButton';
 import useAuthStore, { selectIsAdmin } from '@/stores/useAuthStore';
 
@@ -36,6 +37,7 @@ export default function DashboardNavigation({ currentView, onNavigate, user, onL
               label={tab.label}
               isActive={currentView === tab.key}
               onClick={() => onNavigate(tab.key)}
+              className="justify-center"
             />
           ))}
         </div>
@@ -43,13 +45,15 @@ export default function DashboardNavigation({ currentView, onNavigate, user, onL
         {/* Права частина: Інфо про юзера та Логаут */}
         <div className="flex items-center gap-3">
           {isAdmin && (
-            <button
+            <Button
               onClick={() => navigate('/admin')}
-              title="Адмін-панель"
-              className="px-4 py-2 rounded-xl border-2 border-brand-accent bg-brand-accent text-brand-dark hover:bg-brand-dark hover:text-brand-accent transition-all font-bold shadow-lg"
+              variant="topbarAccent"
+              size="md"
+              fullWidth={false}
+              className="font-bold"
             >
               ⚙ Адмін
-            </button>
+            </Button>
           )}
           {user && (
             <span className="text-white font-medium drop-shadow-md hidden sm:block">
@@ -57,13 +61,15 @@ export default function DashboardNavigation({ currentView, onNavigate, user, onL
             </span>
           )}
           
-          <button 
+          <Button 
             onClick={onLogout}
-            title="Вийти з акаунту"
-            className="px-4 py-2 rounded-xl border-2 border-white/50 bg-brand-dark text-white hover:bg-brand-accent hover:text-brand-dark hover:border-brand-dark transition-all font-bold shadow-lg"
+            variant="topbar"
+            size="md"
+            fullWidth={false}
+            className="font-bold"
           >
             Вийти
-          </button>
+          </Button>
         </div>
       </nav>
 
@@ -78,21 +84,25 @@ export default function DashboardNavigation({ currentView, onNavigate, user, onL
 
           <div className="flex items-center gap-2 flex-shrink-0">
             {isAdmin && (
-              <button
+              <Button
                 onClick={() => navigate('/admin')}
-                title="Адмін-панель"
-                className="px-3 py-2 rounded-xl border-2 border-brand-accent bg-brand-accent text-brand-dark hover:bg-brand-dark hover:text-brand-accent transition-all font-bold shadow-lg text-sm whitespace-nowrap"
+                variant="topbarAccent"
+                size="sm"
+                fullWidth={false}
+                className="font-bold whitespace-nowrap"
               >
                 ⚙ Адмін
-              </button>
+              </Button>
             )}
-            <button 
+            <Button 
               onClick={onLogout}
-              title="Вийти з акаунту"
-              className="px-3 py-2 rounded-xl border-2 border-white/50 bg-brand-dark text-white hover:bg-brand-accent hover:text-brand-dark hover:border-brand-dark transition-all font-bold shadow-lg text-sm whitespace-nowrap"
+              variant="topbar"
+              size="sm"
+              fullWidth={false}
+              className="font-bold whitespace-nowrap"
             >
               Вийти
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -110,7 +120,8 @@ export default function DashboardNavigation({ currentView, onNavigate, user, onL
                 label={tab.label}
                 isActive={currentView === tab.key}
                 onClick={() => onNavigate(tab.key)}
-                className="px-3 py-1.5 text-sm whitespace-nowrap flex-shrink-0"
+                size="sm"
+                className="px-3 py-1.5 text-sm whitespace-nowrap flex-shrink-0 justify-center"
               />
             ))}
           </div>
