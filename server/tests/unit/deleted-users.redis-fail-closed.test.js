@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const deletedUsersPath = require.resolve('../../src/store/deletedUsers');
+const deletedUsersPath = require.resolve('../../src/store/deleted-users');
 const redisLibPath = require.resolve('../../src/lib/redis');
 const prismaPath = require.resolve('../../src/lib/prisma');
 
@@ -26,7 +26,7 @@ function loadDeletedUsersWithMocks({ redisMock, prismaMock }) {
   };
 
   try {
-    return require('../../src/store/deletedUsers');
+    return require('../../src/store/deleted-users');
   } finally {
     delete require.cache[deletedUsersPath];
     if (originalRedisCache) {

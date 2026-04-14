@@ -1,22 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
-import App from './App';
-import { useCsrfInit } from './hooks/useCsrfInit';
+import App from '@/App';
+import { useCsrfInit } from '@/hooks/useCsrfInit';
 
-vi.mock('./hooks/useCsrfInit', () => ({
+vi.mock('@/hooks/useCsrfInit', () => ({
   useCsrfInit: vi.fn(),
 }));
 
-vi.mock('./routes/AppRoutes', () => ({
+vi.mock('@/routes/AppRoutes', () => ({
   default: () => <div data-testid="app-routes">App Routes</div>,
 }));
 
-vi.mock('./components/ui/toast/ToastViewport', () => ({
+vi.mock('@/components/ui/toast/ToastViewport', () => ({
   default: () => <div data-testid="toast-viewport" />,
 }));
 
-vi.mock('./components/shared/FullPageLoader', () => ({
+vi.mock('@/components/shared/FullPageLoader', () => ({
   default: ({ text }) => <div data-testid="full-page-loader">{text}</div>,
 }));
 

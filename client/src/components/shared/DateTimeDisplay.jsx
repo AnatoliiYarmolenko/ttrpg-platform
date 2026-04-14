@@ -1,4 +1,4 @@
-import { formatDate } from './dateTime.utils';
+import { formatDate } from '@/utils/dateTime';
 
 export default function DateTimeDisplay({
   value,

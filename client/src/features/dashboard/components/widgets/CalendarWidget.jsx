@@ -4,10 +4,10 @@ import DashboardCard from '@/components/ui/DashboardCard';
 import CalendarDayCell from '../ui/CalendarDayCell';
 import useDashboardStore from '@/stores/useDashboardStore';
 import useSearchStore from '@/stores/useSearchStore';
-import { VIEW_MODES } from '@/stores/dashboardConstants';
+import { VIEW_MODES } from '@/features/dashboard/constants';
 import Button from '@/components/ui/Button';
 import { formatDate } from '@/components/shared';
-import { getLocalDateKey, getMillisecondsUntilNextLocalDay } from '@/components/shared/dateTime.utils';
+import { getLocalDateKey, getMillisecondsUntilNextLocalDay } from '@/utils/dateTime';
 import Arrow from '@/components/ui/icons/Arrow';
 import { useCalendarStatsQuery } from '../../hooks/useCalendarQueries';
 

@@ -7,7 +7,7 @@ import Dice20 from '@/components/ui/icons/Dice20';
 import Data from '@/components/ui/icons/Data';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
 import Timer from '@/components/ui/icons/Timer';
-import { DASHBOARD_URL_PARAMS, VIEW_MODES } from '@/stores/dashboardConstants';
+import { DASHBOARD_URL_PARAMS, VIEW_MODES } from '@/features/dashboard/constants';
 import { useNextRelevantSessionQuery } from '../../hooks/useDashboardQueries';
 import { setOrDeleteParam, updateSearchParams } from '@/utils/urlState';
 

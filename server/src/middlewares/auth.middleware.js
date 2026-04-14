@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { jwtSecret } = require('../config/config');
 const { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } = require('../constants/errors');
-const { isUserDeleted } = require('../store/deletedUsers');
+const { isUserDeleted } = require('../store/deleted-users');
 const { logger } = require('../lib/logger');
 
 /**

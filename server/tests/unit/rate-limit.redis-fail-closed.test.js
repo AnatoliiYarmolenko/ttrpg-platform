@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const rateLimitServicePath = require.resolve('../../src/services/rateLimit.service');
+const rateLimitServicePath = require.resolve('../../src/services/rate-limit.service');
 const redisLibPath = require.resolve('../../src/lib/redis');
 
 function loadRateLimitServiceWithRedisMock(redisMock) {
@@ -17,7 +17,7 @@ function loadRateLimitServiceWithRedisMock(redisMock) {
   };
 
   try {
-    return require('../../src/services/rateLimit.service');
+    return require('../../src/services/rate-limit.service');
   } finally {
     delete require.cache[rateLimitServicePath];
     if (originalRedisCache) {

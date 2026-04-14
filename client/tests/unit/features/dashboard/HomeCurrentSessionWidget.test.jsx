@@ -2,16 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import { VIEW_MODES } from '@/stores/dashboardConstants';
-import { useNextRelevantSessionQuery } from '../../hooks/useDashboardQueries';
-import HomeCurrentSessionWidget from './HomeCurrentSessionWidget';
+import { VIEW_MODES } from '@/features/dashboard/constants';
+import { useNextRelevantSessionQuery } from '@/features/dashboard/hooks/useDashboardQueries';
+import HomeCurrentSessionWidget from '@/features/dashboard/components/widgets/HomeCurrentSessionWidget';
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   setSearchParams: vi.fn(),
 }));
 
-vi.mock('../../hooks/useDashboardQueries', () => ({
+vi.mock('@/features/dashboard/hooks/useDashboardQueries', () => ({
   useNextRelevantSessionQuery: vi.fn(),
 }));
 

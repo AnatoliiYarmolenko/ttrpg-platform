@@ -29,10 +29,10 @@ async function markUserAsDeleted(userId) {
     await redis.set(`deleted:user:${userId}`, '1', 'EX', DELETED_USER_TTL_SECONDS);
   } catch (err) {
     recordRedisDegradation('deleted-users:mark', err);
-    // Не кидаємо помилку — акаунт вже анонімізовано в БД.
-    // blacklist через in-memory Set як fallback не потрібен:
-    // при помилці Redis краще просто залогувати.
     logger.error({ err, userId }, '[DeletedUsers] Redis помилка markUserAsDeleted');
+    // Fail-closed для критичної операції видалення акаунту.
+    // Якщо Redis blacklist недоступний, блокуємо завершення видалення.
+    throw createError.serverUnavailable();
   }
 }
 

@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMyCampaignsQuery } from '../../hooks/useDashboardQueries';
 import useDashboardStore from '@/stores/useDashboardStore';
-import { PANEL_MODES } from '@/stores/dashboardConstants';
+import { PANEL_MODES } from '@/features/dashboard/constants';
 import DashboardCard from '@/components/ui/DashboardCard';
 import Button from '@/components/ui/Button';
 import { RoleBadge, EmptyState } from '@/components/shared';

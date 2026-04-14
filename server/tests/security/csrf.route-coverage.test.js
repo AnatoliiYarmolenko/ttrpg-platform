@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 
 const adminRoutes = require('../../src/routes/admin.routes');
 const campaignRoutes = require('../../src/routes/campaign.routes');
-const clientLogsRoutes = require('../../src/routes/clientLogs.routes');
+const clientLogsRoutes = require('../../src/routes/client-logs.routes');
 const sessionRoutes = require('../../src/routes/session.routes');
 
 function collectRouteMiddleware(router) {

@@ -4,8 +4,8 @@
  * Note: Rate limit cleanup більше не потрібна — Redis TTL автоматично видаляє застарілі записи
  */
 
-const tokenCleanupService = require('../services/tokenCleanup.service');
-const sessionCleanupService = require('../services/sessionCleanup.service');
+const tokenCleanupService = require('../services/token-cleanup.service');
+const sessionCleanupService = require('../services/session-cleanup.service');
 const { logger } = require('../lib/logger');
 
 // Інтервали для cleanup jobs

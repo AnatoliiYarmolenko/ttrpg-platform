@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
-import { VIEW_MODES } from '@/stores/dashboardConstants';
+import { VIEW_MODES } from '@/features/dashboard/constants';
 import Button from '@/components/ui/Button';
 import NavButton from '@/components/ui/NavButton';
 import useAuthStore, { selectIsAdmin } from '@/stores/useAuthStore';

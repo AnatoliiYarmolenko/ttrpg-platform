@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event';
 const mockUploadAvatar = vi.fn();
 const mockDeleteAvatar = vi.fn();
 
-vi.mock('../../hooks/useProfileQueries', () => ({
+vi.mock('@/features/profile/hooks/useProfileQueries', () => ({
   useProfileMutations: () => ({
     uploadAvatar: mockUploadAvatar,
     deleteAvatar: mockDeleteAvatar,
@@ -23,7 +23,7 @@ vi.mock('@/stores/useToastStore', () => {
   return { toast: mockToast };
 });
 
-vi.mock('../../components/AvatarCropModal', () => ({
+vi.mock('@/features/profile/components/AvatarCropModal', () => ({
   default: ({ isOpen, onCancel, onConfirm, imageSrc }) => 
     isOpen ? (
       <div data-testid="crop-modal">
@@ -34,14 +34,14 @@ vi.mock('../../components/AvatarCropModal', () => ({
     ) : null,
 }));
 
-vi.mock('../../utils/cropImage', () => ({
+vi.mock('@/features/profile/utils/cropImage', () => ({
   getCroppedImageFile: vi.fn(async () => 
     new File(['cropped'], 'avatar.webp', { type: 'image/webp' })
   ),
 }));
 
 // NOW import the component after mocks are in place
-import AvatarUpload from '../../components/AvatarUpload';
+import AvatarUpload from '@/features/profile/components/AvatarUpload';
 import { toast } from '@/stores/useToastStore';
 
 describe('AvatarUpload', () => {

@@ -1,4 +1,4 @@
-const { HTTP_STATUS } = require('./httpStatus');
+const { HTTP_STATUS } = require('./http-status');
 const { ERROR_MESSAGES } = require('./messages');
 const { ERROR_STATUS } = require('./status');
 

@@ -3,21 +3,21 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-import App from './App';
-import useAuthStore from './stores/useAuthStore';
-import useDashboardStore from './stores/useDashboardStore';
-import { getCurrentUser } from './features/auth/api/authApi';
+import App from '@/App';
+import useAuthStore from '@/stores/useAuthStore';
+import useDashboardStore from '@/stores/useDashboardStore';
+import { getCurrentUser } from '@/features/auth/api/authApi';
 
-vi.mock('./hooks/useCsrfInit', () => ({
+vi.mock('@/hooks/useCsrfInit', () => ({
   useCsrfInit: () => ({ isInitialized: true, error: null }),
 }));
 
-vi.mock('./features/auth/api/authApi', () => ({
+vi.mock('@/features/auth/api/authApi', () => ({
   getCurrentUser: vi.fn(),
   logoutUser: vi.fn(),
 }));
 
-vi.mock('./features/admin/hooks/useAdminQueries', () => ({
+vi.mock('@/features/admin/hooks/useAdminQueries', () => ({
   useAdminStatsQuery: () => ({
     data: { users: 0, campaigns: 0, sessions: 0, activeSessions: 0 },
     isLoading: false,
@@ -31,13 +31,13 @@ vi.mock('./features/admin/hooks/useAdminQueries', () => ({
   }),
 }));
 
-vi.mock('./features/admin/components/AdminSearchBar', () => ({
+vi.mock('@/features/admin/components/AdminSearchBar', () => ({
   default: ({ placeholder }) => (
     <div data-testid="admin-search-placeholder">{placeholder}</div>
   ),
 }));
 
-vi.mock('./features/dashboard/components/layout/DashboardLayout', () => ({
+vi.mock('@/features/dashboard/components/layout/DashboardLayout', () => ({
   default: ({ topBar, leftPanel, rightPanel }) => (
     <div>
       <header>{topBar}</header>
@@ -49,40 +49,40 @@ vi.mock('./features/dashboard/components/layout/DashboardLayout', () => ({
   ),
 }));
 
-vi.mock('./features/dashboard/components/widgets/HomeCurrentSessionWidget', () => ({
+vi.mock('@/features/dashboard/components/widgets/HomeCurrentSessionWidget', () => ({
   default: () => <div>Dashboard Home Left</div>,
 }));
 
-vi.mock('./features/dashboard/components/widgets/HomeNotificationsWidget', () => ({
+vi.mock('@/features/dashboard/components/widgets/HomeNotificationsWidget', () => ({
   default: () => <div>Dashboard Home Right</div>,
 }));
 
-vi.mock('./features/dashboard/components/widgets/CalendarWidget', () => ({
+vi.mock('@/features/dashboard/components/widgets/CalendarWidget', () => ({
   default: () => <div>Calendar Widget</div>,
 }));
 
-vi.mock('./features/dashboard/components/widgets/HomeRightWidget', () => ({
+vi.mock('@/features/dashboard/components/widgets/HomeRightWidget', () => ({
   default: () => <div>Home Right Widget</div>,
 }));
 
-vi.mock('./features/dashboard/components/widgets/MyGamesListWidget', () => ({
+vi.mock('@/features/dashboard/components/widgets/MyGamesListWidget', () => ({
   default: () => <div>My Games List</div>,
 }));
 
-vi.mock('./features/dashboard/components/widgets/MyCampaignsWidget', () => ({
+vi.mock('@/features/dashboard/components/widgets/MyCampaignsWidget', () => ({
   default: () => <div>My Campaigns</div>,
 }));
 
-vi.mock('./features/campaigns/components/widgets/CreateCampaignWidget', () => ({
+vi.mock('@/features/campaigns/components/widgets/CreateCampaignWidget', () => ({
   default: () => <div>Create Campaign</div>,
 }));
 
-vi.mock('./features/dashboard/components/widgets/SearchWidgets', () => ({
+vi.mock('@/features/dashboard/components/widgets/SearchWidgets', () => ({
   SearchFiltersWidget: () => <div>Search Filters</div>,
   SearchResultsWidget: () => <div>Search Results</div>,
 }));
 
-vi.mock('./features/dashboard/components/widgets/ProfilePageWidget', () => ({
+vi.mock('@/features/dashboard/components/widgets/ProfilePageWidget', () => ({
   ProfileMenuWidget: ({ currentSection, onSelectSection }) => (
     <div>
       <div data-testid="profile-menu">menu:{currentSection}</div>

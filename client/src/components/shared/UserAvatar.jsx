@@ -1,4 +1,4 @@
-import { getInitials, resolveAvatarUrl } from './userAvatar.utils';
+import { getInitials, resolveAvatarUrl } from '@/utils/userAvatar';
 
 /**
  * Аватарка юзера з fallback на ініціали.

@@ -4,7 +4,7 @@ import {
   parseEnumSearchParam,
   parsePositiveIntSearchParam,
   setOrDeleteParam,
-} from './urlState';
+} from '@/utils/urlState';
 
 describe('urlState utilities', () => {
   it('normalizes enum values with fallback', () => {

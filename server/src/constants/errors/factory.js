@@ -1,5 +1,5 @@
 const { ERROR_CODES } = require('./codes');
-const { AppError } = require('./appError');
+const { AppError } = require('./app-error');
 
 const createError = {
   invalidCredentials: () => new AppError(ERROR_CODES.AUTH_INVALID_CREDENTIALS),

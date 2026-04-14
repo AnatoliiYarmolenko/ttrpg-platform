@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const authMiddlewarePath = require.resolve('../../src/middlewares/auth.middleware');
 const jwtPath = require.resolve('jsonwebtoken');
 const configPath = require.resolve('../../src/config/config');
-const deletedUsersPath = require.resolve('../../src/store/deletedUsers');
+const deletedUsersPath = require.resolve('../../src/store/deleted-users');
 
 function createMockResponse() {
   return {

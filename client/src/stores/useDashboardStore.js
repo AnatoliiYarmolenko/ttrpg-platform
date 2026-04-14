@@ -1,10 +1,10 @@
 import { create } from 'zustand';
-import { getLocalDateKey } from '@/components/shared/dateTime.utils';
+import { getLocalDateKey } from '@/utils/dateTime';
 import useSearchStore from './useSearchStore';
 import {
   VIEW_MODES,
   PANEL_MODES,
-} from './dashboardConstants';
+} from '@/features/dashboard/constants';
 
 // Helper to get today's date string (computed dynamically)
 const getTodayStr = () => getLocalDateKey(new Date());
@@ -137,5 +137,5 @@ const useDashboardStore = create((set, get) => ({
   },
 }));
 
-export { DASHBOARD_VIEWS, VIEW_MODES, PANEL_MODES } from './dashboardConstants';
+export { DASHBOARD_VIEWS, VIEW_MODES, PANEL_MODES } from '@/features/dashboard/constants';
 export default useDashboardStore;

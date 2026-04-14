@@ -1,13 +1,13 @@
 import { useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { getLocalDateKey, getMillisecondsUntilNextLocalDay } from '@/components/shared/dateTime.utils';
+import { getLocalDateKey, getMillisecondsUntilNextLocalDay } from '@/utils/dateTime';
 import useAuthStore from '@/stores/useAuthStore';
 import useDashboardStore from '@/stores/useDashboardStore';
 import {
   VIEW_MODES,
   DASHBOARD_URL_PARAMS,
   DASHBOARD_VIEW_VALUES,
-} from '@/stores/dashboardConstants';
+} from '@/features/dashboard/constants';
 import { logoutUser } from '@/features/auth/api/authApi';
 import { PROFILE_SECTIONS } from '../components/widgets/profileSections';
 import logger from '@/lib/clientLogger';

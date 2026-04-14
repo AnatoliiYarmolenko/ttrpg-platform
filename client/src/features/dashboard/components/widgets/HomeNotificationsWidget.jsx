@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import DashboardCard from '@/components/ui/DashboardCard';
 import { BackButton } from '@/components/shared';
 import useDashboardStore from '@/stores/useDashboardStore';
-import { PANEL_MODES } from '@/stores/dashboardConstants';
+import { PANEL_MODES } from '@/features/dashboard/constants';
 import CreateSessionForm from './CreateSessionForm';
 
 const placeholders = [

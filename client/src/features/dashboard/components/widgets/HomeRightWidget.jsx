@@ -2,7 +2,7 @@ import React from 'react';
 import DashboardCard from '@/components/ui/DashboardCard';
 import useDashboardStore from '@/stores/useDashboardStore';
 import useSearchStore from '@/stores/useSearchStore';
-import { PANEL_MODES } from '@/stores/dashboardConstants';
+import { PANEL_MODES } from '@/features/dashboard/constants';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDaySessionsQuery } from '../../hooks/useCalendarQueries';
 import CreateSessionForm from './CreateSessionForm';

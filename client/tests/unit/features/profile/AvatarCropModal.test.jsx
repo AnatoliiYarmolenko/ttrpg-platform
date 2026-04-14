@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import AvatarCropModal from '../../components/AvatarCropModal';
+import AvatarCropModal from '@/features/profile/components/AvatarCropModal';
 
 vi.mock('react-easy-crop', () => ({
   default: () => <div data-testid="cropper-mock" />,

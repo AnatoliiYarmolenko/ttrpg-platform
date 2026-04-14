@@ -15,7 +15,7 @@ const adminRoutes = require('./routes/admin.routes');
 const campaignRoutes = require('./routes/campaign.routes');
 const sessionRoutes = require('./routes/session.routes');
 const searchRoutes = require('./routes/search.routes');
-const clientLogsRoutes = require('./routes/clientLogs.routes');
+const clientLogsRoutes = require('./routes/client-logs.routes');
 
 // Middlewares
 const { errorHandler } = require('./middlewares/error.middleware');
