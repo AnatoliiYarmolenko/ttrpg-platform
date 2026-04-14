@@ -15,18 +15,8 @@ export default function CopyProfileLinkButton({ username }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback for older browsers
-      const textarea = document.createElement('textarea');
-      textarea.value = url;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.select();
-      // Fallback path for environments without async clipboard support.
-      document.execCommand('copy');
-      textarea.remove();
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      // Fallback for older browsers without Clipboard API.
+      globalThis.prompt('Скопіюйте посилання на профіль:', url);
     }
   }, [username]);
 

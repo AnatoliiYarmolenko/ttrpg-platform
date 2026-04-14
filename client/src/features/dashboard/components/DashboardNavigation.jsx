@@ -12,11 +12,11 @@ export default function DashboardNavigation({ currentView, onNavigate, user, onL
   const isAdmin = useAuthStore(selectIsAdmin);
 
   const dashboardTabs = [
-    { key: VIEW_MODES.HOME, label: 'Дашборд' },
-    { key: VIEW_MODES.CALENDAR, label: 'Календар' },
-    { key: VIEW_MODES.MY_GAMES, label: 'Мої ігри' },
-    { key: VIEW_MODES.SEARCH, label: 'Пошук' },
-    { key: VIEW_MODES.PROFILE, label: 'Профіль' },
+    { key: VIEW_MODES.HOME, label: 'Дашборд', to: '/' },
+    { key: VIEW_MODES.CALENDAR, label: 'Календар', to: '/?tab=calendar' },
+    { key: VIEW_MODES.MY_GAMES, label: 'Мої ігри', to: '/?tab=my-games' },
+    { key: VIEW_MODES.SEARCH, label: 'Пошук', to: '/?tab=search' },
+    { key: VIEW_MODES.PROFILE, label: 'Профіль', to: '/?tab=profile' },
   ];
 
   return (
@@ -36,6 +36,7 @@ export default function DashboardNavigation({ currentView, onNavigate, user, onL
               key={tab.key}
               label={tab.label}
               isActive={currentView === tab.key}
+              to={tab.to}
               onClick={() => onNavigate(tab.key)}
               className="justify-center"
             />
@@ -119,6 +120,7 @@ export default function DashboardNavigation({ currentView, onNavigate, user, onL
                 key={tab.key}
                 label={tab.label}
                 isActive={currentView === tab.key}
+                to={tab.to}
                 onClick={() => onNavigate(tab.key)}
                 size="sm"
                 className="px-3 py-1.5 text-sm whitespace-nowrap flex-shrink-0 justify-center"

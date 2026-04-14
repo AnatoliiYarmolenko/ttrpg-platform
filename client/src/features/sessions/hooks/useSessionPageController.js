@@ -5,9 +5,15 @@ import { useSessionQuery, useSessionMutations, useSessionShareLinkQuery } from '
 import useAuthStore from '@/stores/useAuthStore';
 import usePreviewMode from '@/hooks/usePreviewMode';
 import { TABS } from '../components/navigation/SessionNavigation';
+import {
+  parseEnumSearchParam,
+  parsePositiveIntSearchParam,
+  setOrDeleteParam,
+  updateSearchParams,
+} from '@/utils/urlState';
 
 function buildSessionShareUrl(token) {
-  return `${window.location.origin}/session/share/${token}`;
+  return `${globalThis.location.origin}/session/share/${token}`;
 }
 
 function normalizePageError(error, fallbackMessage) {
@@ -90,15 +96,24 @@ function shouldShowCampaignInfo(currentSession, viewer) {
   return !isGuestViewForPublicCampaignSession;
 }
 
-function updateSearchParams(setSearchParams, updater) {
-  setSearchParams(
-    (prev) => {
-      const next = new URLSearchParams(prev);
-      updater(next);
-      return next;
-    },
-    { replace: true }
-  );
+const TAB_VALUES = Object.values(TABS);
+
+function normalizeSessionUrlState({ searchParams, activeTab, viewingUserId, setSearchParams }) {
+  const rawTab = searchParams.get('tab');
+  const rawViewing = searchParams.get('viewing');
+  const hasInvalidTab = rawTab && rawTab !== activeTab;
+  const hasInvalidViewing = rawViewing && !viewingUserId;
+
+  if (!hasInvalidTab && !hasInvalidViewing) {
+    return;
+  }
+
+  updateSearchParams(setSearchParams, (next) => {
+    setOrDeleteParam(next, 'tab', activeTab, TABS.DETAILS);
+    if (hasInvalidViewing) {
+      next.delete('viewing');
+    }
+  }, { replace: true });
 }
 
 async function copyText(text, successMessage, fallbackMessage) {
@@ -113,6 +128,167 @@ async function copyText(text, successMessage, fallbackMessage) {
 
     return false;
   }
+}
+
+async function regenerateSessionShareLink({
+  canManageShareLink,
+  mutations,
+  activeSessionId,
+  setLastGeneratedShareLink,
+}) {
+  if (!canManageShareLink) {
+    return { success: false, message: 'Лише власник може керувати share-посиланням' };
+  }
+
+  const result = await mutations.regenerateShareLink();
+  const token = result?.data?.shareToken;
+
+  if (!result?.success || !token) {
+    return { success: false, message: result?.error || 'Не вдалося оновити share-посилання' };
+  }
+
+  const nextLink = buildSessionShareUrl(token);
+  setLastGeneratedShareLink({
+    sessionId: activeSessionId,
+    value: nextLink,
+  });
+
+  await copyText(
+    nextLink,
+    'Нове share-посилання скопійовано',
+    'Нове share-посилання згенеровано'
+  );
+
+  return { success: true, link: nextLink };
+}
+
+async function copySessionShareLink({
+  currentShareLink,
+  canManageShareLink,
+  refetchShareLink,
+  activeSessionId,
+  setLastGeneratedShareLink,
+}) {
+  let shareLinkToCopy = currentShareLink;
+
+  if (!shareLinkToCopy && canManageShareLink) {
+    const fetchResult = await refetchShareLink();
+    const fetchedShareUrl = fetchResult?.data?.shareUrl || '';
+
+    if (fetchedShareUrl) {
+      shareLinkToCopy = fetchedShareUrl;
+      setLastGeneratedShareLink({
+        sessionId: activeSessionId,
+        value: fetchedShareUrl,
+      });
+    }
+  }
+
+  if (!shareLinkToCopy) {
+    return { success: false, message: 'Спочатку згенеруйте нове share-посилання' };
+  }
+
+  const copied = await copyText(
+    shareLinkToCopy,
+    'Share-посилання скопійовано'
+  );
+
+  return copied
+    ? { success: true }
+    : { success: false, message: 'Не вдалося скопіювати посилання' };
+}
+
+function navigateOnSuccess(result, navigate) {
+  if (result?.success) {
+    navigate('/');
+  }
+
+  return result;
+}
+
+function resolveStatusMutation(mutations, newStatus) {
+  return newStatus === 'CANCELED'
+    ? mutations.cancelSession()
+    : mutations.updateStatus(newStatus);
+}
+
+function getSettingsUnavailableMessage(isCampaignFinished) {
+  return isCampaignFinished
+    ? 'Налаштування недоступні: кампанія завершена'
+    : 'Налаштування недоступні для сесій у минулому';
+}
+
+function shouldRedirectSharedGuestToLogin({ hasShareToken, user, queryError }) {
+  return Boolean(
+    hasShareToken
+    && !user
+    && (queryError?.response?.status === 401 || queryError?.response?.status === 403)
+  );
+}
+
+function deriveSessionRoleState({ viewer, currentSession, user, myParticipant }) {
+  const isOwner = Boolean(viewer.isSessionOwner || (currentSession && user && currentSession.ownerId === user.id));
+  const amParticipant = Boolean(viewer.isParticipant || myParticipant);
+  const isCampaignMember = Boolean(viewer.isCampaignMember);
+  const hasSessionMembership = Boolean(isOwner || amParticipant);
+  const isEntitledViewer = Boolean(hasSessionMembership || isCampaignMember);
+  const isCampaignFinished = currentSession?.campaign?.status === 'FINISHED';
+  const isGM = myParticipant?.role === 'GM';
+  const isConfirmedGm = isGM && myParticipant?.status === 'CONFIRMED';
+
+  return {
+    isOwner,
+    amParticipant,
+    isCampaignMember,
+    hasSessionMembership,
+    isEntitledViewer,
+    isCampaignFinished,
+    isGM,
+    isConfirmedGm,
+  };
+}
+
+function deriveSessionCapabilities({ viewer, currentSession, isOwner, isConfirmedGm, isCampaignFinished }) {
+  const canStartSession = isConfirmedGm;
+  const canFinishSession = isConfirmedGm;
+  const canCancelSession = isOwner || (currentSession?.status === 'ACTIVE' && isConfirmedGm);
+  const canDeleteSession = isOwner && currentSession?.status === 'PLANNED';
+  const canManageStatus = canStartSession || canFinishSession || canCancelSession;
+  const canManageParticipants = Boolean(viewer.canManageParticipants || isConfirmedGm);
+  const canManageGmRequests = isOwner;
+  const canManageShareLink = isOwner && currentSession?.visibility === 'LINK_ONLY' && !isCampaignFinished;
+  const canNavigateToCampaignDirectly = Boolean(
+    currentSession?.campaign && currentSession.campaign.visibility !== 'LINK_ONLY'
+  );
+
+  return {
+    canStartSession,
+    canFinishSession,
+    canCancelSession,
+    canDeleteSession,
+    canManageStatus,
+    canManageParticipants,
+    canManageGmRequests,
+    canManageShareLink,
+    canNavigateToCampaignDirectly,
+  };
+}
+
+function isPastSessionDate(sessionDateValue, currentTimestamp) {
+  if (!sessionDateValue) return false;
+
+  const sessionDate = new Date(sessionDateValue);
+  if (Number.isNaN(sessionDate.getTime())) return false;
+
+  return sessionDate.getTime() < currentTimestamp;
+}
+
+function canViewerReadParticipants({ user, currentSession, viewer, isEntitledViewer }) {
+  return Boolean(
+    user
+    && currentSession
+    && (viewer.canOpen || currentSession.visibility !== 'LINK_ONLY' || isEntitledViewer)
+  );
 }
 
 export default function useSessionPageController() {
@@ -142,29 +318,29 @@ export default function useSessionPageController() {
 
   const viewer = useMemo(() => currentSession?.viewer || {}, [currentSession]);
   const error = normalizePageError(queryError, invalidIdError);
-  const shouldRedirectToLogin = Boolean(
-    hasShareToken
-    && !user
-    && (queryError?.response?.status === 401 || queryError?.response?.status === 403)
-  );
+  const shouldRedirectToLogin = shouldRedirectSharedGuestToLogin({ hasShareToken, user, queryError });
 
   const activeSessionId = currentSession?.id ?? (isValidId ? sessionIdNumber : null);
   const mutations = useSessionMutations(activeSessionId, {
     shareToken: hasShareToken ? routeShareToken : null,
   });
 
-  const activeTab = searchParams.get('tab') || TABS.DETAILS;
-  const viewingUserId = Number(searchParams.get('viewing')) || null;
+  const activeTab = parseEnumSearchParam(searchParams, 'tab', TAB_VALUES, TABS.DETAILS);
+  const viewingUserId = parsePositiveIntSearchParam(searchParams, 'viewing');
+
+  useEffect(() => {
+    normalizeSessionUrlState({
+      searchParams,
+      activeTab,
+      viewingUserId,
+      setSearchParams,
+    });
+  }, [activeTab, searchParams, setSearchParams, viewingUserId]);
 
   const setActiveTab = useCallback((tab) => {
     updateSearchParams(setSearchParams, (next) => {
       next.delete('viewing');
-
-      if (tab === TABS.DETAILS) {
-        next.delete('tab');
-      } else {
-        next.set('tab', tab);
-      }
+      setOrDeleteParam(next, 'tab', tab, TABS.DETAILS);
     });
   }, [setSearchParams]);
 
@@ -185,41 +361,38 @@ export default function useSessionPageController() {
     () => resolveSessionRole({ currentSession, user, viewer, myParticipant }),
     [currentSession, user, viewer, myParticipant]
   );
-
-  const isOwner = Boolean(viewer.isSessionOwner || (currentSession && user && currentSession.ownerId === user.id));
-  const amParticipant = Boolean(viewer.isParticipant || myParticipant);
-  const isCampaignMember = Boolean(viewer.isCampaignMember);
-  const hasSessionMembership = Boolean(isOwner || amParticipant);
-  const isEntitledViewer = Boolean(hasSessionMembership || isCampaignMember);
-  const isCampaignFinished = currentSession?.campaign?.status === 'FINISHED';
-  const isGM = myParticipant?.role === 'GM';
-  const isConfirmedGm = isGM && myParticipant?.status === 'CONFIRMED';
-
-  const canStartSession = isConfirmedGm;
-  const canFinishSession = isConfirmedGm;
-  const canCancelSession = isOwner || (currentSession?.status === 'ACTIVE' && isConfirmedGm);
-  const canDeleteSession = isOwner && currentSession?.status === 'PLANNED';
-  const canManageStatus = canStartSession || canFinishSession || canCancelSession;
-  const canManageParticipants = Boolean(viewer.canManageParticipants || isConfirmedGm);
-  const canManageGmRequests = isOwner;
-  const canManageShareLink = isOwner && currentSession?.visibility === 'LINK_ONLY' && !isCampaignFinished;
-  const canNavigateToCampaignDirectly = Boolean(
-    currentSession?.campaign && currentSession.campaign.visibility !== 'LINK_ONLY'
+  const {
+    isOwner,
+    isCampaignMember,
+    hasSessionMembership,
+    isEntitledViewer,
+    isCampaignFinished,
+    isConfirmedGm,
+  } = useMemo(
+    () => deriveSessionRoleState({ viewer, currentSession, user, myParticipant }),
+    [viewer, currentSession, user, myParticipant]
+  );
+  const {
+    canStartSession,
+    canFinishSession,
+    canCancelSession,
+    canDeleteSession,
+    canManageStatus,
+    canManageParticipants,
+    canManageGmRequests,
+    canManageShareLink,
+    canNavigateToCampaignDirectly,
+  } = useMemo(
+    () => deriveSessionCapabilities({ viewer, currentSession, isOwner, isConfirmedGm, isCampaignFinished }),
+    [viewer, currentSession, isOwner, isConfirmedGm, isCampaignFinished]
   );
 
   const isSessionInPast = useMemo(() => {
-    if (!currentSession?.date) return false;
-    const sessionDate = new Date(currentSession.date);
-    if (Number.isNaN(sessionDate.getTime())) return false;
-    return sessionDate.getTime() < currentTimestamp;
+    return isPastSessionDate(currentSession?.date, currentTimestamp);
   }, [currentSession, currentTimestamp]);
 
   const canManageSettings = Boolean(viewer.canManage) && !isSessionInPast && !isCampaignFinished;
-  const canReadParticipants = Boolean(
-    user
-    && currentSession
-    && (viewer.canOpen || currentSession.visibility !== 'LINK_ONLY' || isEntitledViewer)
-  );
+  const canReadParticipants = canViewerReadParticipants({ user, currentSession, viewer, isEntitledViewer });
   const { isPreviewMode } = usePreviewMode({ isMember: hasSessionMembership, isLoading });
 
   const canUseJoinFlow = useMemo(
@@ -266,26 +439,18 @@ export default function useSessionPageController() {
 
   const handleLeave = useCallback(async () => {
     const result = await mutations.leaveSession();
-    if (result?.success) {
-      navigate('/');
-    }
-    return result;
+    return navigateOnSuccess(result, navigate);
   }, [mutations, navigate]);
 
   const handleStatusChange = useCallback((newStatus) => {
-    if (newStatus === 'CANCELED') {
-      return mutations.cancelSession();
-    }
-    return mutations.updateStatus(newStatus);
+    return resolveStatusMutation(mutations, newStatus);
   }, [mutations]);
 
   const handleSaveSettings = useCallback(async (sessionData) => {
     if (!canManageSettings) {
       return {
         success: false,
-        message: isCampaignFinished
-          ? 'Налаштування недоступні: кампанія завершена'
-          : 'Налаштування недоступні для сесій у минулому',
+        message: getSettingsUnavailableMessage(isCampaignFinished),
       };
     }
 
@@ -304,10 +469,7 @@ export default function useSessionPageController() {
 
   const handleDelete = useCallback(async () => {
     const result = await mutations.deleteSession();
-    if (result?.success) {
-      navigate('/');
-    }
-    return result;
+    return navigateOnSuccess(result, navigate);
   }, [mutations, navigate]);
 
   const handleParticipantStatusChange = useCallback((participantId, status) => {
@@ -315,60 +477,22 @@ export default function useSessionPageController() {
   }, [mutations]);
 
   const handleRegenerateShareLink = useCallback(async () => {
-    if (!canManageShareLink) {
-      return { success: false, message: 'Лише власник може керувати share-посиланням' };
-    }
-
-    const result = await mutations.regenerateShareLink();
-    const token = result?.data?.shareToken;
-
-    if (!result?.success || !token) {
-      return { success: false, message: result?.error || 'Не вдалося оновити share-посилання' };
-    }
-
-    const nextLink = buildSessionShareUrl(token);
-    setLastGeneratedShareLink({
-      sessionId: activeSessionId,
-      value: nextLink,
+    return regenerateSessionShareLink({
+      canManageShareLink,
+      mutations,
+      activeSessionId,
+      setLastGeneratedShareLink,
     });
-
-    await copyText(
-      nextLink,
-      'Нове share-посилання скопійовано',
-      'Нове share-посилання згенеровано'
-    );
-
-    return { success: true, link: nextLink };
   }, [activeSessionId, canManageShareLink, mutations]);
 
   const handleCopyShareLink = useCallback(async () => {
-    let shareLinkToCopy = currentShareLink;
-
-    if (!shareLinkToCopy && canManageShareLink) {
-      const fetchResult = await refetchShareLink();
-      const fetchedShareUrl = fetchResult?.data?.shareUrl || '';
-
-      if (fetchedShareUrl) {
-        shareLinkToCopy = fetchedShareUrl;
-        setLastGeneratedShareLink({
-          sessionId: activeSessionId,
-          value: fetchedShareUrl,
-        });
-      }
-    }
-
-    if (!shareLinkToCopy) {
-      return { success: false, message: 'Спочатку згенеруйте нове share-посилання' };
-    }
-
-    const copied = await copyText(
-      shareLinkToCopy,
-      'Share-посилання скопійовано'
-    );
-
-    return copied
-      ? { success: true }
-      : { success: false, message: 'Не вдалося скопіювати посилання' };
+    return copySessionShareLink({
+      currentShareLink,
+      canManageShareLink,
+      refetchShareLink,
+      activeSessionId,
+      setLastGeneratedShareLink,
+    });
   }, [activeSessionId, canManageShareLink, currentShareLink, refetchShareLink]);
 
   const handleViewProfile = useCallback((userId) => {

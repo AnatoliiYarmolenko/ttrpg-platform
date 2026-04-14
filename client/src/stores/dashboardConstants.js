@@ -23,3 +23,10 @@ export const PANEL_MODES = {
   FILTER: 'filter',
   RESULTS: 'results',
 };
+
+export const DASHBOARD_URL_PARAMS = {
+  TAB: 'tab',
+  SECTION: 'section',
+};
+
+export const DASHBOARD_VIEW_VALUES = Object.values(VIEW_MODES);

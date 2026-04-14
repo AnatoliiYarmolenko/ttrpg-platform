@@ -14,3 +14,18 @@ The React Compiler is not enabled on this template because of its impact on dev 
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+
+## URL State Policy
+
+Navigation state is URL-driven and represented through query params.
+
+- `tab` represents the current top-level view tab.
+- `section` is used for nested dashboard profile sections.
+- `viewing` stores selected user preview IDs on campaign/session pages.
+
+Rules:
+
+- URL is the source of truth for navigation state.
+- Invalid values are sanitized to a safe default and normalized with `replace`.
+- Default values are omitted from URL when possible (for cleaner links).
+- Context-dependent params are cleared when no longer applicable (for example, leaving profile view clears `section`).

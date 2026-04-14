@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import DashboardCard from '@/components/ui/DashboardCard';
 import Button from '@/components/ui/Button';
 import { DateTimeDisplay, EmptyState, RoleBadge } from '@/components/shared';
@@ -7,9 +7,9 @@ import Dice20 from '@/components/ui/icons/Dice20';
 import Data from '@/components/ui/icons/Data';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
 import Timer from '@/components/ui/icons/Timer';
-import useDashboardStore from '@/stores/useDashboardStore';
-import { VIEW_MODES } from '@/stores/dashboardConstants';
+import { DASHBOARD_URL_PARAMS, VIEW_MODES } from '@/stores/dashboardConstants';
 import { useNextRelevantSessionQuery } from '../../hooks/useDashboardQueries';
+import { setOrDeleteParam, updateSearchParams } from '@/utils/urlState';
 
 const UI_LOCALE = 'uk-UA';
 const DEFAULT_PLANNED_TOLERANCE_MINUTES = 2;
@@ -117,8 +117,8 @@ const VISIBILITY_LABELS = {
 
 export default function HomeCurrentSessionWidget() {
   const navigate = useNavigate();
+  const [, setSearchParams] = useSearchParams();
   const [nowMs, setNowMs] = useState(() => Date.now());
-  const setViewMode = useDashboardStore((state) => state.setViewMode);
 
   useEffect(() => {
     const intervalId = globalThis.setInterval(() => {
@@ -131,11 +131,17 @@ export default function HomeCurrentSessionWidget() {
   }, []);
 
   const handleGoToSearch = () => {
-    setViewMode(VIEW_MODES.SEARCH);
+    updateSearchParams(setSearchParams, (next) => {
+      setOrDeleteParam(next, DASHBOARD_URL_PARAMS.TAB, VIEW_MODES.SEARCH, VIEW_MODES.HOME);
+      next.delete(DASHBOARD_URL_PARAMS.SECTION);
+    });
   };
 
   const handleChooseSession = () => {
-    setViewMode(VIEW_MODES.CALENDAR);
+    updateSearchParams(setSearchParams, (next) => {
+      setOrDeleteParam(next, DASHBOARD_URL_PARAMS.TAB, VIEW_MODES.CALENDAR, VIEW_MODES.HOME);
+      next.delete(DASHBOARD_URL_PARAMS.SECTION);
+    });
   };
 
   const {

@@ -8,19 +8,11 @@ import HomeCurrentSessionWidget from './HomeCurrentSessionWidget';
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
-  setViewMode: vi.fn(),
-  setRightPanelMode: vi.fn(),
+  setSearchParams: vi.fn(),
 }));
 
 vi.mock('../../hooks/useDashboardQueries', () => ({
   useNextRelevantSessionQuery: vi.fn(),
-}));
-
-vi.mock('@/stores/useDashboardStore', () => ({
-  default: (selector) => selector({
-    setViewMode: mocks.setViewMode,
-    setRightPanelMode: mocks.setRightPanelMode,
-  }),
 }));
 
 vi.mock('react-router-dom', async () => {
@@ -28,6 +20,7 @@ vi.mock('react-router-dom', async () => {
   return {
     ...actual,
     useNavigate: () => mocks.navigate,
+    useSearchParams: () => [new URLSearchParams(), mocks.setSearchParams],
   };
 });
 
@@ -90,11 +83,20 @@ describe('HomeCurrentSessionWidget', () => {
     expect(ctaContainer).toHaveClass('sm:grid-cols-2');
 
     await user.click(searchButton);
-    expect(mocks.setViewMode).toHaveBeenCalledWith(VIEW_MODES.SEARCH);
+    expect(mocks.setSearchParams).toHaveBeenCalledTimes(1);
+
+    const [searchUpdater] = mocks.setSearchParams.mock.calls[0];
+    const searchParamsAfterSearch = searchUpdater(new URLSearchParams());
+    expect(searchParamsAfterSearch.get('tab')).toBe(VIEW_MODES.SEARCH);
+    expect(searchParamsAfterSearch.get('section')).toBeNull();
 
     await user.click(chooseButton);
-    expect(mocks.setViewMode).toHaveBeenCalledWith(VIEW_MODES.CALENDAR);
-    expect(mocks.setRightPanelMode).not.toHaveBeenCalled();
+    expect(mocks.setSearchParams).toHaveBeenCalledTimes(2);
+
+    const [calendarUpdater] = mocks.setSearchParams.mock.calls[1];
+    const searchParamsAfterCalendar = calendarUpdater(new URLSearchParams());
+    expect(searchParamsAfterCalendar.get('tab')).toBe(VIEW_MODES.CALENDAR);
+    expect(searchParamsAfterCalendar.get('section')).toBeNull();
   });
 
   it('renders data state with badges and session details', async () => {
@@ -125,11 +127,11 @@ describe('HomeCurrentSessionWidget', () => {
     expect(screen.getByText('Сесія вже йде!')).toBeInTheDocument();
     expect(screen.queryByText('В процесі')).not.toBeInTheDocument();
     expect(screen.getByText('Гравець')).toBeInTheDocument();
-    expect(screen.getByText('Система:').closest('div')).toHaveTextContent('Система: D&D 5e');
+    expect(screen.getByText('Система:').closest('div')).toHaveTextContent(/Система:\s*D&D 5e/);
     expect(screen.getByText(/Barovia Nights/)).toBeInTheDocument();
     expect(screen.getByText('4 / 6 гравців')).toBeInTheDocument();
-    expect(screen.getByText('Доступність:').closest('div')).toHaveTextContent('Доступність: Приватна');
-    expect(screen.getByText('Організатор:').closest('div')).toHaveTextContent('Організатор: Alex GM');
+    expect(screen.getByText('Доступність:').closest('div')).toHaveTextContent(/Доступність:\s*Приватна/);
+    expect(screen.getByText('Організатор:').closest('div')).toHaveTextContent(/Організатор:\s*Alex GM/);
     expect(screen.queryByText('GM: Alex GM')).not.toBeInTheDocument();
     expect(screen.getByText('Опис')).toBeInTheDocument();
     expect(screen.getByText('Темна ніч у Баровії.')).toBeInTheDocument();

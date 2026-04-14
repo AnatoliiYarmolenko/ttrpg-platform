@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "@/stores/useToastStore";
 import {
@@ -10,9 +10,15 @@ import {
 import useAuthStore from "@/stores/useAuthStore";
 import usePreviewMode from "@/hooks/usePreviewMode";
 import { TABS } from "../components/navigation/CampaignNavigation";
+import {
+  parseEnumSearchParam,
+  parsePositiveIntSearchParam,
+  setOrDeleteParam,
+  updateSearchParams,
+} from "@/utils/urlState";
 
 function buildCampaignShareUrl(token) {
-  return `${window.location.origin}/campaign/share/${token}`;
+  return `${globalThis.location.origin}/campaign/share/${token}`;
 }
 
 function normalizePageError(error, fallbackMessage) {
@@ -60,15 +66,24 @@ function canJoinCampaign({ currentCampaign, user, amMember, pendingRequestStatus
   return viewer.joinMode === "REQUEST";
 }
 
-function updateSearchParams(setSearchParams, updater) {
-  setSearchParams(
-    (prev) => {
-      const next = new URLSearchParams(prev);
-      updater(next);
-      return next;
-    },
-    { replace: true }
-  );
+const TAB_VALUES = Object.values(TABS);
+
+function normalizeCampaignUrlState({ searchParams, activeTab, viewingUserId, setSearchParams }) {
+  const rawTab = searchParams.get("tab");
+  const rawViewing = searchParams.get("viewing");
+  const hasInvalidTab = rawTab && rawTab !== activeTab;
+  const hasInvalidViewing = rawViewing && !viewingUserId;
+
+  if (!hasInvalidTab && !hasInvalidViewing) {
+    return;
+  }
+
+  updateSearchParams(setSearchParams, (next) => {
+    setOrDeleteParam(next, "tab", activeTab, TABS.SESSIONS);
+    if (hasInvalidViewing) {
+      next.delete("viewing");
+    }
+  }, { replace: true });
 }
 
 async function copyText(text, successMessage, fallbackMessage) {
@@ -84,6 +99,37 @@ async function copyText(text, successMessage, fallbackMessage) {
 
     return false;
   }
+}
+
+async function regenerateCampaignShareLink({ canManageShareLink, mutations, setLastGeneratedShareLink }) {
+  if (!canManageShareLink) {
+    return { success: false, message: 'Лише власник може керувати share-посиланням' };
+  }
+
+  const result = await mutations.regenerateShareLink();
+  const token = result?.data?.shareToken;
+
+  if (!result?.success || !token) {
+    return { success: false, message: result?.error || 'Не вдалося оновити share-посилання' };
+  }
+
+  const nextLink = buildCampaignShareUrl(token);
+  setLastGeneratedShareLink(nextLink);
+  await copyText(nextLink, 'Нове share-посилання скопійовано', 'Нове share-посилання згенеровано');
+
+  return { success: true, link: nextLink };
+}
+
+async function copyCampaignShareLink(currentShareLink) {
+  if (!currentShareLink) {
+    return { success: false, message: 'Спочатку згенеруйте нове share-посилання' };
+  }
+
+  const copied = await copyText(currentShareLink, 'Share-посилання скопійовано');
+
+  return copied
+    ? { success: true }
+    : { success: false, message: 'Не вдалося скопіювати посилання' };
 }
 
 export default function useCampaignPageController() {
@@ -139,19 +185,23 @@ export default function useCampaignPageController() {
     shareToken: hasShareToken ? routeShareToken : null,
   });
 
-  const activeTab = searchParams.get("tab") || TABS.SESSIONS;
-  const viewingUserId = Number(searchParams.get("viewing")) || null;
+  const activeTab = parseEnumSearchParam(searchParams, "tab", TAB_VALUES, TABS.SESSIONS);
+  const viewingUserId = parsePositiveIntSearchParam(searchParams, "viewing");
+
+  useEffect(() => {
+    normalizeCampaignUrlState({
+      searchParams,
+      activeTab,
+      viewingUserId,
+      setSearchParams,
+    });
+  }, [activeTab, searchParams, setSearchParams, viewingUserId]);
 
   const setActiveTab = useCallback(
     (tab) => {
       updateSearchParams(setSearchParams, (next) => {
         next.delete("viewing");
-
-        if (tab === TABS.SESSIONS) {
-          next.delete("tab");
-        } else {
-          next.set("tab", tab);
-        }
+        setOrDeleteParam(next, "tab", tab, TABS.SESSIONS);
       });
     },
     [setSearchParams]
@@ -180,6 +230,12 @@ export default function useCampaignPageController() {
     () => canJoinCampaign({ currentCampaign, user, amMember, pendingRequestStatus, viewer }),
     [currentCampaign, user, amMember, pendingRequestStatus, viewer]
   );
+
+  useEffect(() => {
+    if (activeTab === TABS.SETTINGS && !canManageCampaignSettings) {
+      setActiveTab(TABS.SESSIONS);
+    }
+  }, [activeTab, canManageCampaignSettings, setActiveTab]);
 
   const currentShareLink = useMemo(() => {
     if (lastGeneratedShareLink) return lastGeneratedShareLink;
@@ -213,34 +269,15 @@ export default function useCampaignPageController() {
   }, [campaignMembers, user, isCampaignFinished, mutations, navigate]);
 
   const handleRegenerateShareLink = useCallback(async () => {
-    if (!canManageShareLink) {
-      return { success: false, message: 'Лише власник може керувати share-посиланням' };
-    }
-
-    const result = await mutations.regenerateShareLink();
-    const token = result?.data?.shareToken;
-
-    if (!result?.success || !token) {
-      return { success: false, message: result?.error || 'Не вдалося оновити share-посилання' };
-    }
-
-    const nextLink = buildCampaignShareUrl(token);
-    setLastGeneratedShareLink(nextLink);
-    await copyText(nextLink, 'Нове share-посилання скопійовано', 'Нове share-посилання згенеровано');
-
-    return { success: true, link: nextLink };
+    return regenerateCampaignShareLink({
+      canManageShareLink,
+      mutations,
+      setLastGeneratedShareLink,
+    });
   }, [canManageShareLink, mutations]);
 
   const handleCopyShareLink = useCallback(async () => {
-    if (!currentShareLink) {
-      return { success: false, message: 'Спочатку згенеруйте нове share-посилання' };
-    }
-
-    const copied = await copyText(currentShareLink, 'Share-посилання скопійовано');
-
-    return copied
-      ? { success: true }
-      : { success: false, message: 'Не вдалося скопіювати посилання' };
+    return copyCampaignShareLink(currentShareLink);
   }, [currentShareLink]);
 
   const handleRefreshCampaign = useCallback(async () => {}, []);

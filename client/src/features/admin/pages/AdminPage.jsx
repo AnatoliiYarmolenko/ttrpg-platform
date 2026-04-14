@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import useAuthStore from '@/stores/useAuthStore';
 import { logoutUser } from '@/features/auth/api/authApi';
 import {
@@ -15,6 +15,11 @@ import AdminPagination from '../components/AdminPagination';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import NavButton from '@/components/ui/NavButton';
 import Button from '@/components/ui/Button';
+import {
+  parseEnumSearchParam,
+  setOrDeleteParam,
+  updateSearchParams,
+} from '@/utils/urlState';
 
 // Вкладки адмін-панелі
 const TABS = {
@@ -23,13 +28,21 @@ const TABS = {
   CAMPAIGNS: 'campaigns',
   SESSIONS: 'sessions',
 };
+const TAB_VALUES = Object.values(TABS);
+const TAB_PARAM = 'tab';
 
 export default function AdminPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const user = useAuthStore((state) => state.user);
   const clearUser = useAuthStore((state) => state.clearUser);
-
-  const [activeTab, setActiveTab] = useState(TABS.DASHBOARD);
+  const activeTab = parseEnumSearchParam(searchParams, TAB_PARAM, TAB_VALUES, TABS.DASHBOARD);
+  const setActiveTab = useCallback((nextTab) => {
+    const normalizedTab = TAB_VALUES.includes(nextTab) ? nextTab : TABS.DASHBOARD;
+    updateSearchParams(setSearchParams, (next) => {
+      setOrDeleteParam(next, TAB_PARAM, normalizedTab, TABS.DASHBOARD);
+    });
+  }, [setSearchParams]);
 
   // Users state
   const [usersSearchInput, setUsersSearchInput] = useState('');
@@ -63,6 +76,17 @@ export default function AdminPage() {
   const sessionsPagination = sessionsData?.pagination ?? null;
 
   const mutations = useAdminMutations();
+
+  useEffect(() => {
+    const rawTab = searchParams.get(TAB_PARAM);
+    if (!rawTab || rawTab === activeTab) {
+      return;
+    }
+
+    updateSearchParams(setSearchParams, (next) => {
+      setOrDeleteParam(next, TAB_PARAM, activeTab, TABS.DASHBOARD);
+    }, { replace: true });
+  }, [activeTab, searchParams, setSearchParams]);
 
   // ============== Видалення ==============
 
@@ -118,10 +142,10 @@ export default function AdminPage() {
   };
 
   const adminTabs = [
-    { key: TABS.DASHBOARD, label: 'Огляд' },
-    { key: TABS.USERS, label: 'Користувачі' },
-    { key: TABS.CAMPAIGNS, label: 'Кампанії' },
-    { key: TABS.SESSIONS, label: 'Сесії' },
+    { key: TABS.DASHBOARD, label: 'Огляд', to: '/admin' },
+    { key: TABS.USERS, label: 'Користувачі', to: '/admin?tab=users' },
+    { key: TABS.CAMPAIGNS, label: 'Кампанії', to: '/admin?tab=campaigns' },
+    { key: TABS.SESSIONS, label: 'Сесії', to: '/admin?tab=sessions' },
   ];
 
   // ============== Рендер таблиць ==============
@@ -403,6 +427,7 @@ export default function AdminPage() {
               key={tab.key}
               label={tab.label}
               isActive={activeTab === tab.key}
+              to={tab.to}
               onClick={() => setActiveTab(tab.key)}
             />
           ))}
@@ -479,6 +504,7 @@ export default function AdminPage() {
                 key={tab.key}
                 label={tab.label}
                 isActive={activeTab === tab.key}
+                to={tab.to}
                 onClick={() => setActiveTab(tab.key)}
                 className="px-3 py-1.5 text-sm whitespace-nowrap flex-shrink-0"
               />

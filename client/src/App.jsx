@@ -1,6 +1,5 @@
-import { BrowserRouter } from "react-router-dom";
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { BrowserRouter, useNavigate } from "react-router-dom";
 import AppRoutes from "./routes/AppRoutes";
 import { useCsrfInit } from "./hooks/useCsrfInit"; 
 import ToastViewport from "./components/ui/toast/ToastViewport";
@@ -16,8 +15,8 @@ function AuthExpiredRedirectListener() {
       navigate(redirectTo, { replace: true });
     };
 
-    window.addEventListener('app:auth-expired', handleAuthExpired);
-    return () => window.removeEventListener('app:auth-expired', handleAuthExpired);
+    globalThis.addEventListener('app:auth-expired', handleAuthExpired);
+    return () => globalThis.removeEventListener('app:auth-expired', handleAuthExpired);
   }, [navigate]);
 
   return null;
