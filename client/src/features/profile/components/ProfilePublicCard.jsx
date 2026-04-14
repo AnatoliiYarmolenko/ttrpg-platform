@@ -5,18 +5,14 @@ import Dice20 from '@/components/ui/icons/Dice20';
 import { formatTimeZoneLabel } from '@/utils/timeZone';
 
 /**
- * ProfilePublicCard вЂ” презентаційний компонент публічного профілю гравця.
- *
- * Не містить логіки завантаження вЂ” очікує готові дані ззовні.
- * Обгортку (DashboardCard, сторінковий лейаут) визначає батьківський компонент.
  *
  * @param {Object}  props
  * @param {import('../profileModel').ProfileShape|null} props.profile
  * @param {boolean} props.isLoading
  * @param {string|null} props.error
- * @param {boolean} [props.showStats=true]       вЂ” бейджі «сесій / годин»
- * @param {boolean} [props.showContactInfo=true] вЂ” timezone, мова, місто
- * @param {React.ReactNode} [props.shareButton]  вЂ” кнопка «поділитися» (CopyProfileLinkButton або null)
+ * @param {boolean} [props.showStats=true]       
+ * @param {boolean} [props.showContactInfo=true] 
+ * @param {React.ReactNode} [props.shareButton]  
  */
 export default function ProfilePublicCard({
   profile,

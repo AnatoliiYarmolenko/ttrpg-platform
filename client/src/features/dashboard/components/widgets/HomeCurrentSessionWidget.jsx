@@ -223,79 +223,91 @@ export default function HomeCurrentSessionWidget() {
   }
 
   return (
-    <DashboardCard title={cardTitle}>
-      <div className="flex flex-col gap-4 h-full">
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="text-xl font-bold text-brand-dark leading-tight break-words flex-1 pr-3">
+  <DashboardCard title={cardTitle}>
+    <div className="flex flex-col gap-4 h-full">
+      <div className="flex flex-col gap-2">
+
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="text-xl font-bold text-brand-dark leading-tight truncate flex-1 min-w-0">
             {session.title}
           </h3>
           {relativeSessionTime && (
-            <div className="inline-flex items-center gap-2 rounded-full px-4 py-2 bg-brand-light/20 text-brand-dark text-lg font-semibold whitespace-nowrap">
-              <Timer className="w-5 h-5" />
+            <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 bg-brand-light/20 text-brand-dark text-sm font-medium whitespace-nowrap shrink-0">
+              <Timer className="w-4 h-4 shrink-0" />
               <span>{relativeSessionTime}</span>
             </div>
           )}
         </div>
 
-        <div className="justify-end flex flex-wrap gap-2 ">
-          {session.myRole && <RoleBadge role={session.myRole} size="md" />}
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-brand-light/10 rounded-xl">
-          <div className="flex items-center gap-2 text-brand-medium">
-            <Data className="w-4 h-4" />
-            <DateTimeDisplay value={session.startAt} format="long" fallback={formatStartAt(session.startAt)} />
-          </div>
-          <div className="flex items-center gap-2 text-brand-medium">
-            <span className="font-medium">Система:</span> <span>{session.system || 'Не вказана'}</span>
-          </div>
-
-          <div className="flex items-center gap-2 text-brand-medium">
-            <Timer className="w-4 h-4" />
-            <DateTimeDisplay value={session.startAt} format="time" fallback="--:--" />
-          </div>
-          <div className="flex items-center gap-2 text-brand-medium">
-            <span className="font-medium">Доступність:</span> {availabilityLabel}
-          </div>
-
-          <div className="flex items-center gap-2 text-brand-medium">
-            <GroupPeople className="w-4 h-4" />
-            <span>
-              {hasPlayersCapacity ? `${playersCount} / ${playersCapacity} гравців` : `${playersCount} гравців`}
-            </span>
-          </div>
-          {session.organizerName ? (
-            <div className="flex items-center gap-2 text-brand-medium">
-              <span className="font-medium">Організатор:</span> {session.organizerName}
+        {(session.campaign?.title || session.myRole) && (
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-brand-medium text-sm leading-tight truncate flex-1 min-w-0">
+              {session.campaign?.title && (
+                <>
+                  <span className="font-medium">Кампанія:</span> {session.campaign.title}
+                </>
+              )}
             </div>
-          ) : (
-            <div className="hidden sm:block"></div>
-          )}
-
-          {session.campaign?.title && (
-            <div className="flex items-center gap-2 text-brand-medium sm:col-span-2 pt-2 border-t border-brand-light/20 mt-1">
-              <span className="font-medium">Кампанія:</span> {session.campaign.title}
+            <div className="shrink-0 flex justify-end">
+              {session.myRole && <RoleBadge role={session.myRole} size="md" />}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        <div className="border-t border-brand-light/20 pt-4">
-          <h4 className="text-sm font-bold text-brand-dark mb-2">Опис</h4>
-          <p className="text-sm text-brand-medium whitespace-pre-wrap">
-            {session.description?.trim() || 'Опис відсутній'}
-          </p>
-        </div>
-
-        <div className="mt-auto">
-          <Button 
-            onClick={() => navigate(`/session/${session.id}`)} 
-            fullWidth
-            className="w-full min-h-[43px]"
-          >
-            Перейти до сесії
-          </Button>
-        </div>
       </div>
-    </DashboardCard>
-  );
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 p-4 bg-brand-light/10 rounded-xl">
+        <div className="flex items-center gap-2 text-brand-medium text-sm">
+          <Data className="w-4 h-4 shrink-0" />
+          <DateTimeDisplay value={session.startAt} format="long" fallback={formatStartAt(session.startAt)} />
+        </div>
+        <div className="flex items-center gap-2 text-brand-medium text-sm">
+          <span className="font-medium">Система:</span>
+          <span>{session.system || 'Не вказана'}</span>
+        </div>
+
+        <div className="flex items-center gap-2 text-brand-medium text-sm">
+          <Timer className="w-4 h-4 shrink-0" />
+          <time>{session.startAt ? new Date(session.startAt).toLocaleTimeString(UI_LOCALE, { hour: '2-digit', minute: '2-digit' }) : '--:--'}</time>
+        </div>
+        <div className="flex items-center gap-2 text-brand-medium text-sm">
+          <span className="font-medium">Доступність:</span>
+          <span>{availabilityLabel}</span>
+        </div>
+
+        <div className="flex items-center gap-2 text-brand-medium text-sm">
+          <GroupPeople className="w-4 h-4 shrink-0" />
+          <span>
+            {hasPlayersCapacity ? `${playersCount} / ${playersCapacity} гравців` : `${playersCount} гравців`}
+          </span>
+        </div>
+        {session.organizerName ? (
+          <div className="flex items-center gap-2 text-brand-medium text-sm">
+            <span className="font-medium">Організатор:</span>
+            <span>{session.organizerName}</span>
+          </div>
+        ) : (
+          <div className="hidden sm:block" />
+        )}
+      </div>
+
+      <div className="border-t border-brand-light/20 pt-3">
+        <h4 className="text-sm font-bold text-brand-dark mb-3">Опис</h4>
+        <p className="text-sm text-brand-medium whitespace-pre-wrap leading-relaxed">
+          {session.description?.trim() || 'Опис відсутній'}
+        </p>
+      </div>
+
+      <div className="mt-auto">
+        <Button
+          onClick={() => navigate(`/session/${session.id}`)}
+          fullWidth
+          className="w-full min-h-[43px]"
+        >
+          Перейти до сесії
+        </Button>
+      </div>
+    </div>
+  </DashboardCard>
+);
 }

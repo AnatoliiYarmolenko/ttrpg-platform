@@ -1,8 +1,5 @@
 import React from 'react';
 import {
-  FORM_FIELD_CONTROL_BASE_CLASSES,
-  FORM_FIELD_CONTROL_DEFAULT_CLASSES,
-  FORM_FIELD_CONTROL_ERROR_CLASSES,
   getFormFieldControlClasses,
 } from './formFieldClasses';
 
