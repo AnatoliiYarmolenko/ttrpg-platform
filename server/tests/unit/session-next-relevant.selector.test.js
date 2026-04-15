@@ -127,7 +127,7 @@ test('past PLANNED outside tolerance window is excluded', () => {
   assert.equal(selected?.id, 81);
 });
 
-test('uses UTC-safe ISO dates and supports legacy date field', () => {
+test('uses UTC-safe ISO dates from startAt field', () => {
   const now = '2026-04-12T10:00:00.000Z';
 
   const selected = selectNextRelevantSession([
@@ -135,13 +135,13 @@ test('uses UTC-safe ISO dates and supports legacy date field', () => {
       id: 60,
       status: 'PLANNED',
       myStatus: 'CONFIRMED',
-      date: '2026-04-12T10:01:00.000Z',
+      startAt: '2026-04-12T10:01:00.000Z',
     },
     {
       id: 61,
       status: 'PLANNED',
       myStatus: 'CONFIRMED',
-      date: '2026-04-12T10:05:00.000Z',
+      startAt: '2026-04-12T10:05:00.000Z',
     },
   ], { now });
 

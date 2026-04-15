@@ -68,7 +68,6 @@ model Campaign {
   system             String?
   status             CampaignStatus     @default(ACTIVE)
   visibility         CampaignVisibility @default(LINK_ONLY)
-  inviteCode         String?            @unique
   shareTokenHash     String?            @unique
   shareTokenEncrypted String?
   shareTokenCreatedAt DateTime?

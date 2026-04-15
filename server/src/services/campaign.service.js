@@ -11,6 +11,7 @@ const { getCampaignViewerCapabilities } = require('../domain/campaign/campaign.p
 
 const permissionHelpers = require('./campaign/campaign-permission.helpers');
 const createCampaignMembersService = require('./campaign/campaign-members.service');
+const createCampaignPageService = require('./campaign/campaign-page.service');
 
 class CampaignService {
   constructor() {
@@ -20,6 +21,11 @@ class CampaignService {
       ERROR_CODES,
       getCampaignById: this.getCampaignById.bind(this),
       permissionHelpers,
+    });
+    this.pageService = createCampaignPageService({
+      getCampaignById: this.getCampaignById.bind(this),
+      getCampaignByShareToken: this.getCampaignByShareToken.bind(this),
+      getJoinRequests: this.membersService.getJoinRequests.bind(this.membersService),
     });
   }
 
@@ -292,7 +298,6 @@ class CampaignService {
       delete campaign.joinRequests;
     }
 
-    delete campaign.inviteCode;
     delete campaign.shareTokenHash;
     delete campaign.shareTokenEncrypted;
     delete campaign.shareTokenCreatedAt;
@@ -445,6 +450,14 @@ class CampaignService {
     }
 
     return this.getCampaignById(campaign.id, userId, normalizedToken);
+  }
+
+  async getCampaignPageById(campaignId, userId = null) {
+    return this.pageService.getCampaignPageById(campaignId, userId);
+  }
+
+  async getCampaignPageByShareToken(rawToken, userId = null) {
+    return this.pageService.getCampaignPageByShareToken(rawToken, userId);
   }
 
   async regenerateShareToken(campaignId, userId) {

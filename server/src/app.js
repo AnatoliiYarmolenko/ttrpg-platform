@@ -106,8 +106,7 @@ function createApp() {
     });
   });
 
-  // API Routes (v1 + legacy aliases)
-  registerApiRoutes('/api/v1');
+  // API Routes
   registerApiRoutes('/api');
 
   // ========== ERROR HANDLER ==========

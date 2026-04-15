@@ -15,7 +15,7 @@ function toDate(value) {
 }
 
 function toSessionStartDate(session) {
-  return toDate(session?.startAt ?? session?.date ?? null);
+  return toDate(session?.startAt ?? null);
 }
 
 function normalizeId(id) {

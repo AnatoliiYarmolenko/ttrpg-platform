@@ -334,7 +334,7 @@ class SessionService {
     }
 
     const stored = await prisma.session.findUnique({
-      where: { id: this._parsePositiveInt(sessionId, 'ID СЃРµСЃС–С—') },
+      where: { id: this._parsePositiveInt(sessionId, 'ID сесії') },
       select: { shareTokenEncrypted: true },
     });
 

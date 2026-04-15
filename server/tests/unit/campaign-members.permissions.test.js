@@ -59,17 +59,7 @@ function buildMembersServiceContext(options = {}) {
 
   const prisma = {
     campaign: {
-      findUnique: async ({ where }) => {
-        if (where?.inviteCode) {
-          return {
-            id: campaign.id,
-            ownerId: campaign.ownerId,
-            visibility: options.inviteCampaignVisibility || 'PUBLIC',
-            title: 'Invite Campaign',
-            status: options.campaignStatus || 'ACTIVE',
-          };
-        }
-
+      findUnique: async () => {
         return {
           id: campaign.id,
           ownerId: campaign.ownerId,
