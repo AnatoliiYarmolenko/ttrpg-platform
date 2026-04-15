@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import useDashboardStore from '@/stores/useDashboardStore';
-import { VIEW_MODES, PANEL_MODES } from '@/stores/dashboardConstants';
+import { VIEW_MODES, PANEL_MODES } from '@/features/dashboard/constants';
 
 // Controller hook — вся логіка сторінки інкапсульована тут
 import useDashboardPageController from '../hooks/useDashboardPageController';

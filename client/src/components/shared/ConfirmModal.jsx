@@ -1,4 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useId, useRef } from 'react';
+import Button from '@/components/ui/Button';
+import BaseModal from './BaseModal';
 
 /**
  * Модалка підтвердження — замість window.confirm().
@@ -27,98 +29,57 @@ export default function ConfirmModal({
   onConfirm,
   onCancel,
 }) {
-  const overlayRef = useRef(null);
   const confirmBtnRef = useRef(null);
-
-  // Trap focus inside modal
-  useEffect(() => {
-    if (isOpen && confirmBtnRef.current) {
-      confirmBtnRef.current.focus();
-    }
-  }, [isOpen]);
-
-  // Close on Escape
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKey = (e) => {
-      if (e.key === 'Escape') onCancel?.();
-    };
-    document.addEventListener('keydown', handleKey);
-    return () => document.removeEventListener('keydown', handleKey);
-  }, [isOpen, onCancel]);
-
-  // Prevent body scroll
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
+  const titleId = useId();
 
   if (!isOpen) return null;
 
-  const handleOverlayClick = (e) => {
-    if (e.target === overlayRef.current) onCancel?.();
-  };
-
-  const handleOverlayKeyDown = (e) => {
-    if ((e.key === 'Enter' || e.key === ' ') && e.target === overlayRef.current) {
-      onCancel?.();
-    }
-  };
-
-  const confirmVariants = {
-    primary: 'bg-[#164A41] hover:bg-[#1f5c52] text-white',
-    danger: 'bg-red-500 hover:bg-red-600 text-white',
-  };
+  const confirmVariant = variant === 'danger' ? 'danger' : 'primary';
+  const modalActionButtonClass = 'w-full';
 
   return (
-    <div
-      ref={overlayRef}
-      role="presentation"
-      onClick={handleOverlayClick}
-      onKeyDown={handleOverlayKeyDown}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onCancel}
+      closeWhileLoading={false}
+      isLoading={isLoading}
+      initialFocusRef={confirmBtnRef}
+      labelledBy={titleId}
+      panelClassName="max-w-md"
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="confirm-modal-title"
-        className="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 p-6 animate-in fade-in zoom-in-95"
-      >
-        <h3
-          id="confirm-modal-title"
-          className="text-lg font-bold text-[#164A41] mb-2"
-        >
+      <div className="rounded-2xl bg-white p-6 shadow-xl animate-in fade-in zoom-in-95">
+        <h3 id={titleId} className="mb-2 text-lg font-bold text-brand-dark">
           {title}
         </h3>
 
-        {message && (
-          <p className="text-[#4D774E] mb-6">{message}</p>
-        )}
+        {message && <p className="mb-6 text-brand-medium">{message}</p>}
 
-        <div className="flex gap-3 justify-end">
-          <button
+        <div className="mx-auto grid w-full max-w-[380px] grid-cols-2 gap-3">
+          <Button
             type="button"
             onClick={onCancel}
             disabled={isLoading}
-            className="px-4 py-2 rounded-lg border-2 border-[#164A41]/20 text-[#164A41] hover:bg-[#164A41]/5 transition-colors font-medium disabled:opacity-50"
+            variant="outline"
+            size="md"
+            fullWidth={false}
+            className={`${modalActionButtonClass} shadow-none hover:shadow-none`}
           >
             {cancelText}
-          </button>
-          <button
+          </Button>
+          <Button
             ref={confirmBtnRef}
             type="button"
             onClick={onConfirm}
             disabled={isLoading}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 ${confirmVariants[variant] || confirmVariants.primary}`}
+            variant={confirmVariant}
+            size="md"
+            fullWidth={false}
+            className={`${modalActionButtonClass} shadow-none hover:shadow-none`}
           >
             {isLoading ? 'Зачекайте...' : confirmText}
-          </button>
+          </Button>
         </div>
       </div>
-    </div>
+    </BaseModal>
   );
 }

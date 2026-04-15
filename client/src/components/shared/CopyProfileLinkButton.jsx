@@ -9,23 +9,14 @@ export default function CopyProfileLinkButton({ username }) {
 
   const handleCopy = useCallback(async () => {
     if (!username) return;
-    const url = `${window.location.origin}/user/${username}`;
+    const url = `${globalThis.location.origin}/user/${username}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback for older browsers
-      const textarea = document.createElement('textarea');
-      textarea.value = url;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      // Fallback for older browsers without Clipboard API.
+      globalThis.prompt('Скопіюйте посилання на профіль:', url);
     }
   }, [username]);
 
@@ -34,18 +25,11 @@ export default function CopyProfileLinkButton({ username }) {
   return (
     <button
       onClick={handleCopy}
-      className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg border border-[#9DC88D]/40 text-[#164A41] hover:bg-[#9DC88D]/10 transition-colors w-full justify-center"
+      type="button"
+      className="inline-flex items-center justify-center gap-2 rounded-xl border border-brand-light/40 bg-white px-4 py-2 text-sm font-semibold text-brand-dark shadow-none transition-colors hover:border-brand-dark hover:bg-brand-light/15 hover:text-brand-dark hover:shadow-sm"
       title="Копіювати посилання на профіль"
     >
-      {copied ? (
-        <>
-          <span>Посилання скопійовано!</span>
-        </>
-      ) : (
-        <>
-          <span>Поділитися профілем</span>
-        </>
-      )}
+      <span>{copied ? 'Посилання скопійовано!' : 'Поділитися профілем'}</span>
     </button>
   );
 }

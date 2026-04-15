@@ -1,4 +1,4 @@
-const { checkRateLimit, decrementRateLimit } = require('../services/rateLimit.service');
+const { checkRateLimit, decrementRateLimit } = require('../services/rate-limit.service');
 
 function getClientIp(req) {
   const ip = req.ip || req.socket?.remoteAddress || 'unknown';

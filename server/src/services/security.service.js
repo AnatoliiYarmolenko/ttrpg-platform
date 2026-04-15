@@ -2,7 +2,7 @@ const { prisma } = require('../lib/prisma');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { createError, AppError, ERROR_CODES } = require('../constants/errors');
-const { markUserAsDeleted } = require('../store/deletedUsers');
+const { markUserAsDeleted } = require('../store/deleted-users');
 const { logger } = require('../lib/logger');
 const { getTokenCandidates, createRawAndHashedToken } = require('../utils/token.helper');
 const { PASSWORD_HASH_ROUNDS, TOKEN_TTL_MS } = require('../config/tokens.config');
@@ -321,10 +321,11 @@ async function deleteAccount(userId, password) {
 
     // 8. Видаляємо всю статистику (необов'язково, можна зберігти)
     await tx.userStats.deleteMany({ where: { userId } });
-  });
 
-  // Блокуємо доступ через активні JWT токени (закриває 15-хв вікно вразливості)
-  await markUserAsDeleted(userId);
+    // 9. Блокуємо доступ через активні JWT токени.
+    // Якщо Redis недоступний, markUserAsDeleted кине помилку і транзакція буде відкотана.
+    await markUserAsDeleted(userId);
+  });
 
   // Видаляємо аватар файл якщо є
   if (user.avatarUrl && user.avatarUrl.startsWith('/uploads/')) {

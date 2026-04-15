@@ -16,6 +16,7 @@ import GroupPeople from "@/components/ui/icons/GroupPeople";
 import Data from "@/components/ui/icons/Data";
 import { GAME_SYSTEMS } from "@/constants/gameSystems";
 import { toast } from "@/stores/useToastStore";
+import Button from "@/components/ui/Button";
 
 function mapSearchFiltersToLocal(searchFilters) {
   return {
@@ -53,20 +54,20 @@ function CampaignSearchResultCard({ campaign, onOpen }) {
   return (
     <button
       onClick={() => onOpen(campaign.id)}
-      className="w-full text-left p-4 border-2 border-[#9DC88D]/30 rounded-xl hover:border-[#164A41]/30 hover:shadow-md transition-all"
+      className="w-full text-left p-4 border-2 border-brand-light/30 rounded-xl hover:border-brand-dark/30 hover:shadow-md transition-all"
     >
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <h4 className="font-bold text-[#164A41] truncate">{campaign.title}</h4>
+          <h4 className="font-bold text-brand-dark truncate">{campaign.title}</h4>
         </div>
         <VisibilityBadge visibility={campaign.visibility} iconOnly />
       </div>
 
       {campaign.description && (
-        <p className="text-sm text-[#4D774E] mb-2 line-clamp-2">{campaign.description}</p>
+        <p className="text-sm text-brand-medium mb-2 line-clamp-2">{campaign.description}</p>
       )}
 
-      <div className="flex flex-wrap gap-3 text-sm text-[#4D774E]">
+      <div className="flex flex-wrap gap-3 text-sm text-brand-medium">
         {campaign.system && (
           <span className="flex items-center gap-1">
             <Dice20 className="w-4 h-4" /> {campaign.system}
@@ -81,8 +82,8 @@ function CampaignSearchResultCard({ campaign, onOpen }) {
       </div>
 
       <div className="mt-2 text-sm">
-        <span className="text-[#4D774E]">Власник: </span>
-        <span className="font-medium text-[#164A41]">
+        <span className="text-brand-medium">Власник: </span>
+        <span className="font-medium text-brand-dark">
           {campaign.owner?.displayName || campaign.owner?.username}
         </span>
       </div>
@@ -128,7 +129,7 @@ function SearchResultsBody({
   if (isSearchLoading && items.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="animate-pulse text-[#164A41]">Шукаємо...</div>
+        <div className="animate-pulse text-brand-dark">Шукаємо...</div>
       </div>
     );
   }
@@ -143,7 +144,7 @@ function SearchResultsBody({
 
   if (!hasSearched) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-[#4D774E]">
+      <div className="flex flex-col items-center justify-center h-full text-brand-medium">
         <p>Введіть параметри пошуку</p>
         <p className="text-sm mt-2">та натисніть "Шукати"</p>
       </div>
@@ -152,7 +153,7 @@ function SearchResultsBody({
 
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-[#4D774E]">
+      <div className="flex flex-col items-center justify-center h-full text-brand-medium">
         <p>Нічого не знайдено</p>
         <p className="text-sm mt-2">Спробуйте змінити фільтри</p>
       </div>
@@ -184,13 +185,15 @@ function SearchResultsBody({
         ))}
 
       {hasMore && (
-        <button
+        <Button
           onClick={loadMoreSearchResults}
           disabled={isFetchingMore}
-          className="py-3 border-2 border-dashed border-[#9DC88D]/50 rounded-xl text-[#4D774E] hover:border-[#164A41] hover:text-[#164A41] transition-colors disabled:opacity-50"
+          variant="outline"
+          fullWidth
+          className="w-full border-dashed border-brand-light/50 text-brand-medium hover:border-brand-dark hover:text-brand-dark shadow-none hover:shadow-none"
         >
           {isFetchingMore ? 'Завантаження...' : 'Завантажити ще'}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -274,27 +277,31 @@ export function SearchFiltersWidget({ onSearch }) {
   return (
     <DashboardCard title="Пошук ігор">
       <div className="flex flex-col gap-4">
-        <div className="flex gap-2 border-b border-[#9DC88D]/30 pb-3">
-          <button
+        <div className="flex gap-2 border-b border-brand-light/30 pb-3">
+          <Button
             onClick={() => setSearchActiveTab('sessions')}
+            variant="light"
+            fullWidth={false}
             className={`px-4 py-2 rounded-t-lg transition-colors ${
               searchActiveTab === 'sessions'
-                ? 'bg-[#164A41] text-white'
-                : 'text-[#4D774E] hover:bg-gray-100'
+                ? 'bg-brand-dark text-white hover:bg-brand-dark hover:text-white'
+                : 'text-brand-medium hover:bg-gray-100'
             }`}
           >
             Сесії
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setSearchActiveTab('campaigns')}
+            variant="light"
+            fullWidth={false}
             className={`px-4 py-2 rounded-t-lg transition-colors ${
               searchActiveTab === 'campaigns'
-                ? 'bg-[#164A41] text-white'
-                : 'text-[#4D774E] hover:bg-gray-100'
+                ? 'bg-brand-dark text-white hover:bg-brand-dark hover:text-white'
+                : 'text-brand-medium hover:bg-gray-100'
             }`}
           >
             Кампанії
-          </button>
+          </Button>
         </div>
 
         <div>
@@ -305,12 +312,12 @@ export function SearchFiltersWidget({ onSearch }) {
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             placeholder="Пошук за назвою або описом..."
-            className="w-full px-4 py-2 border-2 border-[#9DC88D]/30 rounded-xl focus:border-[#164A41] focus:outline-none transition-colors"
+            className="w-full px-4 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark transition-colors"
           />
         </div>
 
         <div>
-          <label htmlFor="filter-system" className="block text-sm font-medium text-[#164A41] mb-1">
+          <label htmlFor="filter-system" className="block text-sm font-medium text-brand-dark mb-1">
             Система
           </label>
           <select
@@ -318,7 +325,7 @@ export function SearchFiltersWidget({ onSearch }) {
             name="system"
             value={localFilters.system}
             onChange={handleInputChange}
-            className="w-full px-4 py-2 border-2 border-[#9DC88D]/30 rounded-xl focus:border-[#164A41] focus:outline-none transition-colors bg-white"
+            className="w-full px-4 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark transition-colors bg-white"
           >
             <option value="">Всі системи</option>
             {GAME_SYSTEMS.map((sys) => (
@@ -330,7 +337,7 @@ export function SearchFiltersWidget({ onSearch }) {
         </div>
 
         <div>
-          <label htmlFor="filter-sortBy" className="block text-sm font-medium text-[#164A41] mb-1">
+          <label htmlFor="filter-sortBy" className="block text-sm font-medium text-brand-dark mb-1">
             Сортування
           </label>
           <select
@@ -338,7 +345,7 @@ export function SearchFiltersWidget({ onSearch }) {
             name="sortBy"
             value={localFilters.sortBy || (searchActiveTab === 'sessions' ? 'date' : 'newest')}
             onChange={handleInputChange}
-            className="w-full px-4 py-2 border-2 border-[#9DC88D]/30 rounded-xl focus:border-[#164A41] focus:outline-none transition-colors bg-white"
+            className="w-full px-4 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark transition-colors bg-white"
           >
             {sortOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -352,7 +359,7 @@ export function SearchFiltersWidget({ onSearch }) {
           <>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label htmlFor="filter-dateFrom" className="block text-sm font-medium text-[#164A41] mb-1">
+                <label htmlFor="filter-dateFrom" className="block text-sm font-medium text-brand-dark mb-1">
                   Від
                 </label>
                 <input
@@ -361,11 +368,11 @@ export function SearchFiltersWidget({ onSearch }) {
                   name="dateFrom"
                   value={localFilters.dateFrom}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border-2 border-[#9DC88D]/30 rounded-xl focus:border-[#164A41] focus:outline-none transition-colors text-sm"
+                  className="w-full px-3 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark transition-colors text-sm"
                 />
               </div>
               <div>
-                <label htmlFor="filter-dateTo" className="block text-sm font-medium text-[#164A41] mb-1">
+                <label htmlFor="filter-dateTo" className="block text-sm font-medium text-brand-dark mb-1">
                   До
                 </label>
                 <input
@@ -374,14 +381,14 @@ export function SearchFiltersWidget({ onSearch }) {
                   name="dateTo"
                   value={localFilters.dateTo}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border-2 border-[#9DC88D]/30 rounded-xl focus:border-[#164A41] focus:outline-none transition-colors text-sm"
+                  className="w-full px-3 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark transition-colors text-sm"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label htmlFor="filter-minPrice" className="block text-sm font-medium text-[#164A41] mb-1">
+                <label htmlFor="filter-minPrice" className="block text-sm font-medium text-brand-dark mb-1">
                   Мін. ціна
                 </label>
                 <input
@@ -392,11 +399,11 @@ export function SearchFiltersWidget({ onSearch }) {
                   onChange={handleInputChange}
                   placeholder="0"
                   min="0"
-                  className="w-full px-3 py-2 border-2 border-[#9DC88D]/30 rounded-xl focus:border-[#164A41] focus:outline-none transition-colors text-sm"
+                  className="w-full px-3 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark transition-colors text-sm"
                 />
               </div>
               <div>
-                <label htmlFor="filter-maxPrice" className="block text-sm font-medium text-[#164A41] mb-1">
+                <label htmlFor="filter-maxPrice" className="block text-sm font-medium text-brand-dark mb-1">
                   Макс. ціна
                 </label>
                 <input
@@ -407,7 +414,7 @@ export function SearchFiltersWidget({ onSearch }) {
                   onChange={handleInputChange}
                   placeholder="∞"
                   min="0"
-                  className="w-full px-3 py-2 border-2 border-[#9DC88D]/30 rounded-xl focus:border-[#164A41] focus:outline-none transition-colors text-sm"
+                  className="w-full px-3 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark transition-colors text-sm"
                 />
               </div>
             </div>
@@ -419,9 +426,9 @@ export function SearchFiltersWidget({ onSearch }) {
                   name="hasAvailableSlots"
                   checked={localFilters.hasAvailableSlots}
                   onChange={handleInputChange}
-                  className="w-4 h-4 accent-[#164A41]"
+                  className="w-4 h-4 accent-brand-dark"
                 />
-                <span className="text-sm text-[#164A41]">Лише з вільними місцями</span>
+                <span className="text-sm text-brand-dark">Лише з вільними місцями</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -429,27 +436,31 @@ export function SearchFiltersWidget({ onSearch }) {
                   name="oneShot"
                   checked={localFilters.oneShot}
                   onChange={handleInputChange}
-                  className="w-4 h-4 accent-[#164A41]"
+                  className="w-4 h-4 accent-brand-dark"
                 />
-                <span className="text-sm text-[#164A41]">Лише one-shot</span>
+                <span className="text-sm text-brand-dark">Лише one-shot</span>
               </label>
             </div>
           </>
         )}
 
-        <div className="flex gap-3 mt-2">
-          <button
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+          <Button
             onClick={handleSearch}
-            className="flex-1 py-2 bg-[#164A41] text-white rounded-xl hover:bg-[#1f5c52] transition-colors font-medium"
+            variant="secondary"
+            fullWidth
+            className="w-full py-2 font-medium"
           >
             Шукати
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleClear}
-            className="px-4 py-2 border-2 border-[#9DC88D]/30 text-[#4D774E] rounded-xl hover:bg-gray-50 transition-colors"
+            variant="outline"
+            fullWidth
+            className="w-full py-2 border-brand-light/30 text-brand-medium hover:bg-gray-50"
           >
             Очистити
-          </button>
+          </Button>
         </div>
       </div>
     </DashboardCard>

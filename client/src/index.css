@@ -1,47 +1,146 @@
 @import "tailwindcss";
 
-/* Кастомний скролбар для всіх елементів */
-*::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+@theme {
+  --color-brand-dark: #164A41;
+  --color-brand-medium: #4D774E;
+  --color-brand-light: #9DC88D;
+  --color-brand-accent: #F1B24A;
+  --color-brand-white: #FFFFFF;
+}
+
+:where(
+  button,
+  [role="button"],
+  a[href],
+  input:not([type="hidden"]),
+  select,
+  textarea,
+  [tabindex]:not([tabindex="-1"])
+):focus-visible {
+  outline: 2px solid var(--color-brand-accent);
+  outline-offset: 2px;
+}
+
+/* Кастомний скролбар для сторінки та overflow-контейнерів */
+body::-webkit-scrollbar,
+.overflow-auto::-webkit-scrollbar,
+.overflow-x-auto::-webkit-scrollbar,
+.overflow-y-auto::-webkit-scrollbar,
+.overflow-scroll::-webkit-scrollbar,
+.overflow-x-scroll::-webkit-scrollbar,
+.overflow-y-scroll::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
   background: transparent;
 }
 
-*::-webkit-scrollbar-track {
+body::-webkit-scrollbar-track,
+.overflow-auto::-webkit-scrollbar-track,
+.overflow-x-auto::-webkit-scrollbar-track,
+.overflow-y-auto::-webkit-scrollbar-track,
+.overflow-scroll::-webkit-scrollbar-track,
+.overflow-x-scroll::-webkit-scrollbar-track,
+.overflow-y-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
 
-*::-webkit-scrollbar-thumb {
-  background: #9DC88D;
-  border-radius: 10px;
+body::-webkit-scrollbar-thumb,
+.overflow-auto::-webkit-scrollbar-thumb,
+.overflow-x-auto::-webkit-scrollbar-thumb,
+.overflow-y-auto::-webkit-scrollbar-thumb,
+.overflow-scroll::-webkit-scrollbar-thumb,
+.overflow-x-scroll::-webkit-scrollbar-thumb,
+.overflow-y-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-brand-light);
+  border-radius: 2px;
 }
 
-*::-webkit-scrollbar-thumb:hover {
-  background: #164A41;
+body::-webkit-scrollbar-thumb:hover,
+.overflow-auto::-webkit-scrollbar-thumb:hover,
+.overflow-x-auto::-webkit-scrollbar-thumb:hover,
+.overflow-y-auto::-webkit-scrollbar-thumb:hover,
+.overflow-scroll::-webkit-scrollbar-thumb:hover,
+.overflow-x-scroll::-webkit-scrollbar-thumb:hover,
+.overflow-y-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--color-brand-dark);
 }
 
-*::-webkit-scrollbar-button,
-*::-webkit-scrollbar-button:single-button,
-*::-webkit-scrollbar-button:start,
-*::-webkit-scrollbar-button:end,
-*::-webkit-scrollbar-button:vertical:start,
-*::-webkit-scrollbar-button:vertical:end,
-*::-webkit-scrollbar-button:vertical:start:decrement,
-*::-webkit-scrollbar-button:vertical:end:increment {
+body::-webkit-scrollbar-button,
+.overflow-auto::-webkit-scrollbar-button,
+.overflow-x-auto::-webkit-scrollbar-button,
+.overflow-y-auto::-webkit-scrollbar-button,
+.overflow-scroll::-webkit-scrollbar-button,
+.overflow-x-scroll::-webkit-scrollbar-button,
+.overflow-y-scroll::-webkit-scrollbar-button,
+body::-webkit-scrollbar-button:single-button,
+.overflow-auto::-webkit-scrollbar-button:single-button,
+.overflow-x-auto::-webkit-scrollbar-button:single-button,
+.overflow-y-auto::-webkit-scrollbar-button:single-button,
+.overflow-scroll::-webkit-scrollbar-button:single-button,
+.overflow-x-scroll::-webkit-scrollbar-button:single-button,
+.overflow-y-scroll::-webkit-scrollbar-button:single-button,
+body::-webkit-scrollbar-button:start,
+.overflow-auto::-webkit-scrollbar-button:start,
+.overflow-x-auto::-webkit-scrollbar-button:start,
+.overflow-y-auto::-webkit-scrollbar-button:start,
+.overflow-scroll::-webkit-scrollbar-button:start,
+.overflow-x-scroll::-webkit-scrollbar-button:start,
+.overflow-y-scroll::-webkit-scrollbar-button:start,
+body::-webkit-scrollbar-button:end,
+.overflow-auto::-webkit-scrollbar-button:end,
+.overflow-x-auto::-webkit-scrollbar-button:end,
+.overflow-y-auto::-webkit-scrollbar-button:end,
+.overflow-scroll::-webkit-scrollbar-button:end,
+.overflow-x-scroll::-webkit-scrollbar-button:end,
+.overflow-y-scroll::-webkit-scrollbar-button:end,
+body::-webkit-scrollbar-button:vertical:start,
+.overflow-auto::-webkit-scrollbar-button:vertical:start,
+.overflow-x-auto::-webkit-scrollbar-button:vertical:start,
+.overflow-y-auto::-webkit-scrollbar-button:vertical:start,
+.overflow-scroll::-webkit-scrollbar-button:vertical:start,
+.overflow-x-scroll::-webkit-scrollbar-button:vertical:start,
+.overflow-y-scroll::-webkit-scrollbar-button:vertical:start,
+body::-webkit-scrollbar-button:vertical:end,
+.overflow-auto::-webkit-scrollbar-button:vertical:end,
+.overflow-x-auto::-webkit-scrollbar-button:vertical:end,
+.overflow-y-auto::-webkit-scrollbar-button:vertical:end,
+.overflow-scroll::-webkit-scrollbar-button:vertical:end,
+.overflow-x-scroll::-webkit-scrollbar-button:vertical:end,
+.overflow-y-scroll::-webkit-scrollbar-button:vertical:end,
+body::-webkit-scrollbar-button:vertical:start:decrement,
+.overflow-auto::-webkit-scrollbar-button:vertical:start:decrement,
+.overflow-x-auto::-webkit-scrollbar-button:vertical:start:decrement,
+.overflow-y-auto::-webkit-scrollbar-button:vertical:start:decrement,
+.overflow-scroll::-webkit-scrollbar-button:vertical:start:decrement,
+.overflow-x-scroll::-webkit-scrollbar-button:vertical:start:decrement,
+.overflow-y-scroll::-webkit-scrollbar-button:vertical:start:decrement,
+body::-webkit-scrollbar-button:vertical:end:increment {
   display: none !important;
   width: 0 !important;
   height: 0 !important;
   background: transparent !important;
 }
 
-*::-webkit-scrollbar-corner {
+body::-webkit-scrollbar-corner,
+.overflow-auto::-webkit-scrollbar-corner,
+.overflow-x-auto::-webkit-scrollbar-corner,
+.overflow-y-auto::-webkit-scrollbar-corner,
+.overflow-scroll::-webkit-scrollbar-corner,
+.overflow-x-scroll::-webkit-scrollbar-corner,
+.overflow-y-scroll::-webkit-scrollbar-corner {
   background: transparent;
 }
 
 /* Firefox */
-* {
+body,
+.overflow-auto,
+.overflow-x-auto,
+.overflow-y-auto,
+.overflow-scroll,
+.overflow-x-scroll,
+.overflow-y-scroll {
   scrollbar-width: thin;
-  scrollbar-color: #9DC88D transparent;
+  scrollbar-color: var(--color-brand-light) transparent;
 }
 
 @keyframes toast-enter {

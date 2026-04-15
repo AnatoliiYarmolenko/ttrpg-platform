@@ -15,7 +15,7 @@ const {
   emailChangeLimiter,
   confirmEmailChangeLimiter,
   deleteAccountLimiter,
-} = require('../middlewares/rateLimit.middleware');
+} = require('../middlewares/rate-limit.middleware');
 
 // ===== ЗАХИЩЕНІ РОУТИ (потребують авторизації) =====
 

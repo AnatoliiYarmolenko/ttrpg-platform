@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import DashboardCard from '@/components/ui/DashboardCard';
 import { BackButton } from '@/components/shared';
 import useDashboardStore from '@/stores/useDashboardStore';
-import { PANEL_MODES } from '@/stores/dashboardConstants';
+import { PANEL_MODES } from '@/features/dashboard/constants';
 import CreateSessionForm from './CreateSessionForm';
 
 const placeholders = [
@@ -44,17 +44,17 @@ export default function HomeNotificationsWidget() {
   }
 
   return (
-    <DashboardCard title="Нотифікації">
+    <DashboardCard title="Сповіщення">
       <div className="flex flex-col gap-3 h-full">
-        <p className="text-sm text-[#4D774E]">
-          Незабаром тут будуть нагадування та системні події.
+        <p className="text-sm text-brand-medium italic">
+          — Гей, я повсюди шукав тебе! Ось, просили передати прямо вруки! Ну все, бувай.
         </p>
 
         <ul className="space-y-2">
           {placeholders.map((item) => (
             <li
               key={item}
-              className="rounded-xl border border-[#9DC88D]/35 bg-[#F8FBF4] px-3 py-2 text-sm text-[#164A41]"
+              className="rounded-xl border border-brand-light/35 bg-brand-light/10 px-3 py-2 text-sm text-brand-dark"
             >
               {item}
             </li>

@@ -38,26 +38,23 @@ export default function MemberCard({
     }
   };
 
-  const stopProp = (e) => e.stopPropagation();
-
   return (
-    <div
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
       onClick={handleCardClick}
       onKeyDown={(e) => e.key === 'Enter' && handleCardClick()}
-      className="flex items-center justify-between p-3 border-2 border-[#9DC88D]/30 rounded-xl hover:border-[#9DC88D]/60 hover:bg-[#9DC88D]/5 transition-colors cursor-pointer"
+      className="flex items-center justify-between p-3 border-2 border-brand-light/30 rounded-xl hover:border-brand-light/60 hover:bg-brand-light/5 transition-colors cursor-pointer w-full text-left"
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <UserAvatar src={user.avatarUrl} name={displayName} size="sm" />
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium text-[#164A41] truncate">
+            <span className="font-medium text-brand-dark truncate">
               {displayName}
             </span>
             {isMemberOwner && (
-              <span className="inline-flex items-center text-[#F1B24A]" title="Власник" aria-label="Власник">
+              <span className="inline-flex items-center text-brand-accent" title="Власник" aria-label="Власник">
                 <Star className="w-4 h-4" />
               </span>
             )}
@@ -66,18 +63,18 @@ export default function MemberCard({
 
           <div className="flex items-center gap-2 flex-wrap">
             {user.username && (
-              <span className="text-xs text-[#4D774E]">@{user.username}</span>
+              <span className="text-xs text-brand-medium">@{user.username}</span>
             )}
           </div>
         </div>
       </div>
 
-      <div role="presentation" className="flex items-center gap-2 flex-shrink-0" onClick={stopProp} onKeyDown={stopProp}>
+      <div className="flex items-center gap-2 flex-shrink-0">
         {canChangeRole && onChangeRole && (
           <select
             value={member.role}
             onChange={(e) => onChangeRole(member.userId, e.target.value)}
-            className="text-xs px-2 py-1 border border-[#9DC88D]/50 rounded-lg bg-white text-[#164A41] outline-none focus:border-[#164A41]"
+            className="text-xs px-2 py-1 border border-brand-light/50 rounded-lg bg-white text-brand-dark focus:border-brand-dark"
           >
             <option value="PLAYER">Гравець</option>
             <option value="GM">GM</option>
@@ -94,6 +91,6 @@ export default function MemberCard({
           </button>
         )}
       </div>
-    </div>
+    </button>
   );
 }

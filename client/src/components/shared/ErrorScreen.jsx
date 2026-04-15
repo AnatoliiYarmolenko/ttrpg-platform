@@ -1,4 +1,5 @@
 import React from 'react';
+import Button from '@/components/ui/Button';
 import Dice20 from '@/components/ui/icons/Dice20';
 
 /**
@@ -25,18 +26,21 @@ export default function ErrorScreen({
     : 'Сталася невідома помилка';
 
   return (
-    <div className="min-h-screen bg-[#164A41] flex flex-col items-center justify-center text-white">
-      <div className="w-16 h-16 mb-4 rounded-2xl border-2 border-white/40 bg-[#0f3a33] flex items-center justify-center">
-        <Dice20 className="w-8 h-8 text-[#F1B24A]" />
+    <div className="min-h-screen bg-brand-dark flex flex-col items-center justify-center text-white">
+      <div className="w-16 h-16 mb-4 rounded-2xl border-2 border-white/40 bg-brand-medium flex items-center justify-center">
+        <Dice20 className="w-8 h-8 text-brand-accent" />
       </div>
       <p className="text-xl mb-4">{errorMessage}</p>
       {onAction && (
-        <button
+        <Button
           onClick={onAction}
-          className="px-6 py-2 bg-white text-[#164A41] rounded-xl font-bold hover:bg-gray-100 transition-colors"
+          variant="light"
+          size="md"
+          fullWidth={false}
+          className="font-bold"
         >
           {actionLabel}
-        </button>
+        </Button>
       )}
     </div>
   );

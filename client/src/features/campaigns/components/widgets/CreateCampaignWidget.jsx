@@ -120,10 +120,10 @@ export default function CreateCampaignWidget({ onSuccess, onCancel }) {
   };
 
   const inputClass = (field) =>
-    `w-full p-3 border-2 rounded-xl focus:outline-none transition-colors text-[#164A41] bg-white ${
+    `w-full p-3 border-2 rounded-xl transition-colors text-brand-dark bg-white ${
       errors[field]
         ? 'border-red-300 focus:border-red-500'
-        : 'border-[#9DC88D]/50 focus:border-[#164A41]'
+        : 'border-brand-light/50 focus:border-brand-dark'
     }`;
 
   return (
@@ -134,7 +134,7 @@ export default function CreateCampaignWidget({ onSuccess, onCancel }) {
       <form onSubmit={handleSubmit} className="flex min-h-full flex-col gap-6">
         <section className="space-y-5">
           <div>
-            <label htmlFor="title" className="block text-sm font-medium text-[#164A41] mb-2">
+            <label htmlFor="title" className="block text-sm font-medium text-brand-dark mb-2">
               Назва кампанії <span className="text-red-500">*</span>
             </label>
             <input
@@ -153,7 +153,7 @@ export default function CreateCampaignWidget({ onSuccess, onCancel }) {
           </div>
 
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-[#164A41] mb-2">
+            <label htmlFor="description" className="block text-sm font-medium text-brand-dark mb-2">
               Опис
             </label>
             <textarea
@@ -169,7 +169,7 @@ export default function CreateCampaignWidget({ onSuccess, onCancel }) {
             {errors.description && (
               <p className="text-xs text-red-500 mt-1">{errors.description}</p>
             )}
-            <p className="text-xs text-[#4D774E]/60 mt-1 text-right">
+            <p className="text-xs text-brand-medium/60 mt-1 text-right">
               {formData.description.length}/1000
             </p>
           </div>
@@ -200,12 +200,12 @@ export default function CreateCampaignWidget({ onSuccess, onCancel }) {
             />
           </div>
 
-          <div className="text-xs text-[#4D774E] bg-[#9DC88D]/10 border border-[#9DC88D]/30 rounded-xl px-4 py-3">
+          <div className="text-xs text-brand-medium bg-brand-light/10 border border-brand-light/30 rounded-xl px-4 py-3">
             {VISIBILITY_HINTS[formData.visibility]}
           </div>
         </section>
 
-        <div className="mt-auto border-t border-[#9DC88D]/20 pt-4 flex flex-col gap-3 sm:flex-row">
+        <div className="mt-auto border-t border-brand-light/20 pt-4 flex flex-col gap-3 sm:flex-row">
           <Button
             type="button"
             onClick={onCancel}

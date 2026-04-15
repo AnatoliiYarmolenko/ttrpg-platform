@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React from "react";
 import DashboardCard from "@/components/ui/DashboardCard";
 import { ConfirmModal, EmptyState, StatusBadge } from "@/components/shared";
+import useConfirmDialog from '@/hooks/useConfirmDialog';
 import SessionListItem from "../ui/SessionListItem";
 
 const STATUS_SECTIONS = [
@@ -26,37 +27,6 @@ const sortByClosestDate = (a, b) => {
   return aTime - bTime;
 };
 
-function buildConfirmModalConfig({
-  closeConfirmModal,
-  onAction,
-  onSessionCreated,
-  sessionId,
-  type,
-}) {
-  const variants = {
-    cancel: {
-      title: 'Скасувати сесію?',
-      message: 'Сесія змінить статус на CANCELED. Продовжити?',
-    },
-    delete: {
-      title: 'Видалити сесію?',
-      message: 'Сесію буде видалено без можливості відновлення. Продовжити?',
-    },
-  };
-
-  return {
-    isOpen: true,
-    title: variants[type].title,
-    message: variants[type].message,
-    variant: "danger",
-    onConfirm: async () => {
-      closeConfirmModal();
-      await onAction?.(sessionId);
-      await onSessionCreated?.();
-    },
-  };
-}
-
 function CampaignSessionSection({
   section,
   sessions,
@@ -71,16 +41,16 @@ function CampaignSessionSection({
   return (
     <section key={section.key} className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-semibold text-[#164A41] uppercase tracking-wide">
+        <h4 className="text-sm font-semibold text-brand-dark uppercase tracking-wide">
           {section.title}
         </h4>
-        <span className="text-xs text-[#4D774E] bg-[#9DC88D]/10 px-2 py-1 rounded-full">
+        <span className="text-xs text-brand-medium bg-brand-light/10 px-2 py-1 rounded-full">
           {groupedSessions.length}
         </span>
       </div>
 
       {groupedSessions.length === 0 ? (
-        <div className="text-xs text-[#4D774E]/80 px-3 py-2 border border-dashed border-[#9DC88D]/40 rounded-lg bg-[#9DC88D]/5">
+        <div className="text-xs text-brand-medium/80 px-3 py-2 border border-dashed border-brand-light/40 rounded-lg bg-brand-light/5">
           {section.emptyText}
         </div>
       ) : (
@@ -107,13 +77,7 @@ export default function CampaignSessionsWidget({
   onDeleteForeignSession,
   onSessionCreated,
 }) {
-  const [confirmModal, setConfirmModal] = useState({
-    isOpen: false,
-    title: "",
-    message: "",
-    variant: "primary",
-    onConfirm: null,
-  });
+  const { openConfirm, confirmModalProps } = useConfirmDialog();
 
   if (!campaign) return null;
 
@@ -124,44 +88,42 @@ export default function CampaignSessionsWidget({
   const canceledCount = sessions.filter((session) => session.status === "CANCELED").length;
   const title = `Сесії кампанії (${sessions.length})`;
 
-  const closeConfirmModal = () => {
-    setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-  };
-
   const openCancelModal = (sessionId) => {
-    setConfirmModal(
-      buildConfirmModalConfig({
-        closeConfirmModal,
-        onAction: onCancelForeignSession,
-        onSessionCreated,
-        sessionId,
-        type: 'cancel',
-      })
-    );
+    openConfirm({
+      title: 'Скасувати сесію?',
+      message: 'Сесія змінить статус на CANCELED. Продовжити?',
+      variant: 'danger',
+      confirmText: 'Скасувати',
+      onConfirm: async () => {
+        await onCancelForeignSession?.(sessionId);
+        await onSessionCreated?.();
+      },
+    });
   };
 
   const openDeleteModal = (sessionId) => {
-    setConfirmModal(
-      buildConfirmModalConfig({
-        closeConfirmModal,
-        onAction: onDeleteForeignSession,
-        onSessionCreated,
-        sessionId,
-        type: 'delete',
-      })
-    );
+    openConfirm({
+      title: 'Видалити сесію?',
+      message: 'Сесію буде видалено без можливості відновлення. Продовжити?',
+      variant: 'danger',
+      confirmText: 'Видалити',
+      onConfirm: async () => {
+        await onDeleteForeignSession?.(sessionId);
+        await onSessionCreated?.();
+      },
+    });
   };
 
   return (
     <DashboardCard title={title}>
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between p-3 rounded-xl bg-[#9DC88D]/8 border border-[#9DC88D]/25">
-          <span className="text-sm font-semibold text-[#164A41]">Статус кампанії</span>
+        <div className="flex items-center justify-between p-3 rounded-xl bg-brand-light/8 border border-brand-light/25">
+          <span className="text-sm font-semibold text-brand-dark">Статус кампанії</span>
           <StatusBadge status={campaign.status || 'ACTIVE'} size="sm" />
         </div>
 
         {sessions.length > 0 && (
-          <div className="flex items-center gap-4 text-sm text-[#4D774E] p-3 bg-[#9DC88D]/10 rounded-xl flex-wrap">
+          <div className="flex items-center gap-4 text-sm text-brand-medium p-3 bg-brand-light/10 rounded-xl flex-wrap">
             <span>Активні: {activeCount}</span>
             <span>Заплановано: {plannedCount}</span>
             <span>Завершено: {finishedCount}</span>
@@ -192,12 +154,7 @@ export default function CampaignSessionsWidget({
       </div>
 
       <ConfirmModal
-        isOpen={confirmModal.isOpen}
-        title={confirmModal.title}
-        message={confirmModal.message}
-        variant={confirmModal.variant}
-        onConfirm={confirmModal.onConfirm}
-        onCancel={closeConfirmModal}
+        {...confirmModalProps}
       />
     </DashboardCard>
   );

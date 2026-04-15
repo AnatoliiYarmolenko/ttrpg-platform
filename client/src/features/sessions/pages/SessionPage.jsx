@@ -18,6 +18,7 @@ import SessionPageParticipantsWidget from '../components/widgets/SessionParticip
 import { UserProfilePreview } from '@/components/shared';
 import FullPageLoader from '@/components/shared/FullPageLoader';
 import ErrorScreen from '@/components/shared/ErrorScreen';
+import Button from '@/components/ui/Button';
 
 /**
  * SessionPage — тонкий shell-компонент для /session/:id.
@@ -193,22 +194,14 @@ export default function SessionPage() {
   return (
     <SessionLayout
       topBar={
-        !isPreviewMode ? (
-          <SessionNavigation
-            sessionTitle={currentSession.title}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            canManage={canManageSettings}
-            campaignTitle={currentSession.campaign?.title}
-          />
-        ) : (
+        isPreviewMode ? (
           <nav className="flex items-center gap-4 justify-between w-full">
             <div className="flex items-center gap-3 min-w-0 flex-1">
-              <div className="bg-white px-4 py-2 rounded-xl border-2 border-[#9DC88D]/30 shadow-md flex items-center gap-2">
-                <div className="w-6 h-6 bg-[#164A41] rounded-full flex items-center justify-center text-[#F1B24A] font-bold text-xs">
+              <div className="bg-white px-4 py-2 rounded-xl border-2 border-brand-light/30 shadow-md flex items-center gap-2">
+                <div className="w-6 h-6 bg-brand-dark rounded-full flex items-center justify-center text-brand-accent font-bold text-xs">
                   D20
                 </div>
-                <span className="font-bold text-[#164A41] hidden md:block">
+                <span className="font-bold text-brand-dark hidden md:block">
                   TTRPG Platform
                 </span>
               </div>
@@ -220,7 +213,7 @@ export default function SessionPage() {
                       onClick={() =>
                         navigate(`/campaign/${currentSession.campaign.id}`)
                       }
-                      className="text-white/70 hover:text-[#F1B24A] transition-colors text-sm truncate max-w-[150px]"
+                      className="text-white/70 hover:text-brand-accent transition-colors text-sm truncate max-w-[150px]"
                     >
                       {currentSession.campaign.title}
                     </button>
@@ -237,14 +230,24 @@ export default function SessionPage() {
               </span>
             </div>
             <div className="flex items-center justify-end flex-1">
-              <button
+              <Button
                 onClick={() => navigate('/')}
-                className="px-4 py-2 rounded-xl border-2 border-white/50 bg-[#164A41] text-white hover:bg-[#F1B24A] hover:text-[#164A41] hover:border-[#164A41] transition-all font-bold shadow-lg"
+                variant="topbar"
+                size="md"
+                fullWidth={false}
               >
                 На головну
-              </button>
+              </Button>
             </div>
           </nav>
+        ) : (
+          <SessionNavigation
+            sessionTitle={currentSession.title}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            canManage={canManageSettings}
+            campaignTitle={currentSession.campaign?.title}
+          />
         )
       }
       leftPanel={renderLeftPanel()}

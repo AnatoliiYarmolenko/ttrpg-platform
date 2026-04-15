@@ -11,7 +11,7 @@ const {
   emailLimiter, 
   resendVerificationLimiter, 
   verifyEmailLimiter 
-} = require('../middlewares/rateLimit.middleware');
+} = require('../middlewares/rate-limit.middleware');
 const { setCSRFToken, verifyCSRFToken } = require('../middlewares/csrf.middleware');
 
 // GET endpoint для отримання CSRF токена

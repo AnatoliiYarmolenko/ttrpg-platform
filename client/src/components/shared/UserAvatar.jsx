@@ -1,4 +1,4 @@
-import { getInitials, resolveAvatarUrl } from './userAvatar.utils';
+import { getInitials, resolveAvatarUrl } from '@/utils/userAvatar';
 
 /**
  * Аватарка юзера з fallback на ініціали.
@@ -32,7 +32,7 @@ export default function UserAvatar({
     lg: 'w-24 h-24 text-2xl',
   };
 
-  const borderClass = showBorder ? 'border-4 border-[#9DC88D] shadow-lg' : '';
+  const borderClass = showBorder ? 'border-4 border-brand-light shadow-lg' : '';
   const base = `${sizeClasses[size] || sizeClasses.sm} rounded-full ${borderClass} ${className}`;
 
   if (resolvedUrl) {
@@ -49,7 +49,7 @@ export default function UserAvatar({
 
   return (
     <div
-      className={`${base} bg-[#164A41] flex items-center justify-center text-white font-bold`}
+      className={`${base} bg-brand-dark flex items-center justify-center text-white font-bold`}
     >
       {initials}
     </div>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import DashboardCard from '@/components/ui/DashboardCard';
 import Button from '@/components/ui/Button';
 import {
+  BaseModal,
   VisibilityBadge,
   StatusBadge,
   DateTimeDisplay,
@@ -53,7 +54,7 @@ export default function CampaignPreviewWidget({
         {/* Заголовок + видимість */}
         <div>
           <div className="flex items-start justify-between mb-2">
-            <h2 className="text-xl font-bold text-[#164A41] flex-1 pr-3">
+            <h2 className="text-xl font-bold text-brand-dark flex-1 pr-3">
               {campaign.title}
             </h2>
             <div className="flex flex-col items-end gap-2">
@@ -64,31 +65,31 @@ export default function CampaignPreviewWidget({
         </div>
 
         {/* Інформаційна сітка */}
-        <div className="grid grid-cols-2 gap-3 p-4 bg-[#9DC88D]/10 rounded-xl">
+        <div className="grid grid-cols-2 gap-3 p-4 bg-brand-light/10 rounded-xl">
           {/* Система */}
           {campaign.system && (
-            <div className="flex items-center gap-2 text-[#4D774E]">
+            <div className="flex items-center gap-2 text-brand-medium">
               <span>{campaign.system}</span>
             </div>
           )}
           {/* Учасники */}
-          <div className="flex items-center gap-2 text-[#4D774E]">
+          <div className="flex items-center gap-2 text-brand-medium">
             <GroupPeople className="w-4 h-4" />
             <span>{campaign.members?.length || campaign._count?.members || 0} учасників</span>
           </div>
           {/* Власник/Майстер */}
           {campaign.owner && (
-            <div className="flex items-center gap-2 text-[#4D774E]">
+            <div className="flex items-center gap-2 text-brand-medium">
               <span>{campaign.owner.displayName || campaign.owner.username || 'Власник'}</span>
             </div>
           )}
           {/* Сесій */}
-          <div className="flex items-center gap-2 text-[#4D774E]">
+          <div className="flex items-center gap-2 text-brand-medium">
             <Data className="w-4 h-4" />
             <span>{campaign.sessions?.length || campaign._count?.sessions || 0} сесій</span>
           </div>
           {/* Створено */}
-          <div className="flex items-center gap-2 text-[#4D774E] col-span-2">
+          <div className="flex items-center gap-2 text-brand-medium col-span-2">
             <Data className="w-4 h-4" />
             <span>Створено: </span>
             <DateTimeDisplay value={campaign.createdAt} format="long" />
@@ -97,9 +98,9 @@ export default function CampaignPreviewWidget({
 
         {/* Опис */}
         {campaign.description && (
-          <div className="border-t border-[#9DC88D]/20 pt-4">
-            <h4 className="text-sm font-bold text-[#164A41] mb-2">Опис</h4>
-            <p className="text-sm text-[#4D774E] whitespace-pre-wrap">
+          <div className="border-t border-brand-light/20 pt-4">
+            <h4 className="text-sm font-bold text-brand-dark mb-2">Опис</h4>
+            <p className="text-sm text-brand-medium whitespace-pre-wrap">
               {campaign.description}
             </p>
           </div>
@@ -107,7 +108,7 @@ export default function CampaignPreviewWidget({
 
         {/* Зображення */}
         {campaign.imageUrl && (
-          <div className="border-t border-[#9DC88D]/20 pt-4">
+          <div className="border-t border-brand-light/20 pt-4">
             <div className="w-full h-48 rounded-xl overflow-hidden">
               <img
                 src={campaign.imageUrl}
@@ -129,7 +130,7 @@ export default function CampaignPreviewWidget({
 
         {/* Статус вже поданої заявки */}
         {pendingRequestStatus && (
-          <div className="text-sm text-[#4D774E] text-center p-3 bg-[#F1B24A]/10 rounded-lg border border-[#F1B24A]/30">
+          <div className="text-sm text-brand-medium text-center p-3 bg-brand-accent/10 rounded-lg border border-brand-accent/30">
             Ваша заявка вже подана і очікує на розгляд
           </div>
         )}
@@ -139,13 +140,15 @@ export default function CampaignPreviewWidget({
           <Button
             onClick={() => setShowJoinModal(true)}
             variant="primary"
+            fullWidth={false}
+            className="w-full lg:w-auto"
           >
             Подати заявку на вступ
           </Button>
         )}
 
         {!canJoin && !pendingRequestStatus && (
-          <div className="text-sm text-[#4D774E] text-center p-3 bg-[#9DC88D]/10 rounded-lg">
+          <div className="text-sm text-brand-medium text-center p-3 bg-brand-light/10 rounded-lg">
             {campaign.status === 'FINISHED'
               ? 'Кампанія завершена та недоступна для приєднання'
               : 'Ця кампанія недоступна для приєднання'}
@@ -155,37 +158,48 @@ export default function CampaignPreviewWidget({
 
       {/* Модалка подачі заявки */}
       {showJoinModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold text-[#164A41] mb-4">
+        <BaseModal
+          isOpen={showJoinModal}
+          onClose={() => {
+            setShowJoinModal(false);
+            setJoinError(null);
+          }}
+          closeWhileLoading={false}
+          isLoading={isJoining}
+          panelClassName="max-w-md"
+        >
+          <div className="rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="mb-2 text-lg font-bold text-brand-dark">
               Подати заявку на вступ
             </h3>
-            <p className="text-sm text-[#4D774E] mb-4">
+            <p className="mb-6 text-brand-medium">
               Після підтвердження заявку буде надіслано організатору кампанії.
             </p>
-            <div className="flex gap-3">
-              <button
+            <div className="flex flex-row flex-wrap justify-center gap-3">
+              <Button
                 onClick={() => {
                   setShowJoinModal(false);
                   setJoinError(null);
                 }}
-                className="flex-1 py-2 border-2 border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50 transition-colors"
+                variant="outline"
+                fullWidth={false}
+                className="min-w-[170px]"
               >
                 Скасувати
-              </button>
+              </Button>
               <Button
                 onClick={handleJoinRequest}
                 isLoading={isJoining}
                 loadingText="Надсилання..."
-                variant="secondary"
+                variant="primary"
                 fullWidth={false}
-                className="flex-1"
+                className="min-w-[170px]"
               >
                 Надіслати заявку
               </Button>
             </div>
           </div>
-        </div>
+        </BaseModal>
       )}
     </DashboardCard>
   );

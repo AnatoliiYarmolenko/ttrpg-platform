@@ -4,7 +4,7 @@
  * Всі ендпоінти захищені middleware authenticateToken + requireAdmin
  */
 
-const tokenCleanupService = require('../services/tokenCleanup.service');
+const tokenCleanupService = require('../services/token-cleanup.service');
 const adminService = require('../services/admin.service');
 const { AppError, ERROR_CODES } = require('../constants/errors');
 

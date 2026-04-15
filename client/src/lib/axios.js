@@ -15,6 +15,12 @@ const RECOVERABLE_AUTH_ERROR_CODES = new Set([
   'AUTH_TOKEN_EXPIRED',
   'AUTH_TOKEN_INVALID',
 ]);
+const REFRESH_TOKEN_TERMINAL_ERROR_CODES = new Set([
+  'AUTH_REFRESH_TOKEN_MISSING',
+  'AUTH_REFRESH_TOKEN_EXPIRED',
+  'AUTH_REFRESH_TOKEN_REVOKED',
+]);
+const REFRESH_TOKEN_RACE_CONDITION_CODE = 'AUTH_REFRESH_TOKEN_INVALID';
 
 const getCSRFToken = () => {
   if (typeof document === 'undefined') return null;
@@ -73,6 +79,8 @@ const shouldHandleRefresh = (error, originalRequest) => (
 const isLoginRoute = (originalRequest) => (
   originalRequest?.url?.includes('/auth/login')
 );
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const clearExpiredAuthState = () => {
   if (typeof window === 'undefined') {
@@ -143,11 +151,47 @@ const waitForRefreshAndRetry = (originalRequest) => (
   }).then(() => api(originalRequest))
 );
 
-const handleRefreshFailure = (refreshError, originalRequest) => {
+const shouldRetryAfterRefreshRace = (refreshError, originalRequest) => {
+  const code = refreshError?.response?.data?.code;
+
+  return code === REFRESH_TOKEN_RACE_CONDITION_CODE
+    && Boolean(originalRequest)
+    && !originalRequest._postRefreshRaceRetry;
+};
+
+const shouldClearAuthOnRefreshFailure = (refreshError) => {
+  if (refreshError?.response?.status !== 401) {
+    return false;
+  }
+
+  const code = refreshError?.response?.data?.code;
+  if (!code) {
+    return true;
+  }
+
+  if (REFRESH_TOKEN_TERMINAL_ERROR_CODES.has(code)) {
+    return true;
+  }
+
+  return code === REFRESH_TOKEN_RACE_CONDITION_CODE;
+};
+
+const handleRefreshFailure = async (refreshError, originalRequest) => {
+  if (shouldRetryAfterRefreshRace(refreshError, originalRequest)) {
+    originalRequest._postRefreshRaceRetry = true;
+    processQueue(null, null);
+    await sleep(150);
+    return api(originalRequest);
+  }
+
   processQueue(refreshError, null);
 
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
-  if (currentPath !== '/login' && !isLoginRoute(originalRequest)) {
+  if (
+    shouldClearAuthOnRefreshFailure(refreshError)
+    && currentPath !== '/login'
+    && !isLoginRoute(originalRequest)
+  ) {
     clearExpiredAuthState();
   }
 

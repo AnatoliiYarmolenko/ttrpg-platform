@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useSecurityMutations } from '../hooks/useSecurityMutations';
 import Button from '@/components/ui/Button';
+import FormField from '@/components/ui/FormField';
+import { getFormFieldControlClasses } from '@/components/ui/formFieldClasses';
 import { toast } from '@/stores/useToastStore';
 
 export default function EmailChangeForm({ currentEmail }) {
@@ -11,12 +13,14 @@ export default function EmailChangeForm({ currentEmail }) {
     password: '',
     newEmail: '',
   });
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    setFieldErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
   // Валідація email
@@ -25,23 +29,27 @@ export default function EmailChangeForm({ currentEmail }) {
   };
 
   const validateForm = () => {
+    const nextErrors = {};
+
     if (!formData.password) {
-      toast.error('Введіть поточний пароль');
-      return false;
+      nextErrors.password = 'Введіть поточний пароль';
     }
     if (!formData.newEmail) {
-      toast.error('Введіть новий email');
-      return false;
+      nextErrors.newEmail = 'Введіть новий email';
     }
     if (!isValidEmail(formData.newEmail)) {
-      toast.error('Невірний формат email');
-      return false;
+      nextErrors.newEmail = 'Невірний формат email';
     }
     if (formData.newEmail.toLowerCase() === currentEmail?.toLowerCase()) {
-      toast.error('Новий email має відрізнятися від поточного');
-      return false;
+      nextErrors.newEmail = 'Новий email має відрізнятися від поточного';
     }
-    return true;
+
+    if (Object.keys(nextErrors).length > 0) {
+      toast.error(Object.values(nextErrors)[0]);
+    }
+
+    setFieldErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
   const handleSubmit = (e) => {
@@ -54,42 +62,39 @@ export default function EmailChangeForm({ currentEmail }) {
     requestEmailChange.mutate(formData, {
       onSuccess: () => {
         setFormData({ password: '', newEmail: '' });
+        setFieldErrors({});
       }
     });
   };
 
-  const inputClasses = "w-full px-4 py-3 rounded-xl border-2 border-[#9DC88D]/30 focus:border-[#164A41] focus:outline-none transition-colors";
-
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {/* Поточний email (інформаційно) */}
-      <div className="bg-[#9DC88D]/10 rounded-xl p-4">
-        <div className="text-sm text-[#4D774E]">Поточний email:</div>
-        <div className="font-medium text-[#164A41]">{currentEmail || '—'}</div>
+      <div className="bg-brand-light/10 rounded-xl p-4">
+        <div className="text-sm text-brand-medium">Поточний email:</div>
+        <div className="font-medium text-brand-dark">{currentEmail || '—'}</div>
       </div>
 
       {/* Новий email */}
-      <div>
-        <label htmlFor="newEmail" className="block text-sm font-medium text-[#164A41] mb-2">
-          Новий email
-        </label>
-        <input
-          id="newEmail"
-          type="email"
-          name="newEmail"
-          value={formData.newEmail}
-          onChange={handleChange}
-          placeholder="Введіть новий email"
-          className={inputClasses}
-          autoComplete="email"
-        />
-      </div>
+      <FormField
+        as="input"
+        id="newEmail"
+        name="newEmail"
+        type="email"
+        label="Новий email"
+        value={formData.newEmail}
+        onChange={handleChange}
+        placeholder="Введіть новий email"
+        autoComplete="email"
+        error={fieldErrors.newEmail}
+      />
 
       {/* Пароль для підтвердження */}
-      <div>
-        <label htmlFor="password" className="block text-sm font-medium text-[#164A41] mb-2">
-          Пароль для підтвердження
-        </label>
+      <FormField
+        id="password"
+        label="Пароль для підтвердження"
+        error={fieldErrors.password}
+      >
         <div className="relative">
           <input
             id="password"
@@ -98,13 +103,16 @@ export default function EmailChangeForm({ currentEmail }) {
             value={formData.password}
             onChange={handleChange}
             placeholder="Введіть поточний пароль"
-            className={`${inputClasses} pr-12`}
+            className={getFormFieldControlClasses({
+              error: fieldErrors.password,
+              className: 'pr-12',
+            })}
             autoComplete="current-password"
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4D774E] hover:text-[#164A41] transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-medium hover:text-brand-dark transition-colors"
           >
             {showPassword ? (
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -118,13 +126,14 @@ export default function EmailChangeForm({ currentEmail }) {
             )}
           </button>
         </div>
-      </div>
+      </FormField>
 
       {/* Кнопка */}
       <div className="pt-2">
         <Button 
           type="submit" 
           disabled={saving}
+          fullWidth
           className="w-full"
         >
           {saving ? 'Надсилання...' : 'Змінити email'}
@@ -134,7 +143,6 @@ export default function EmailChangeForm({ currentEmail }) {
       {/* Підказка */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mt-4">
         <div className="flex gap-2">
-          <span>ℹ️</span>
           <div className="text-sm text-blue-800">
             <p>На новий email буде надіслано лист з посиланням для підтвердження.</p>
             <p className="text-xs mt-1">Посилання дійсне 15 хвилин.</p>

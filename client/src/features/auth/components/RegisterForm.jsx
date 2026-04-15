@@ -124,9 +124,9 @@ function RegisterForm({ onSuccess }) {
       </AuthButton>
 
       <div className="mt-6 text-center">
-        <p className="text-[#164A41]">
+        <p className="text-brand-dark">
           Вже є акаунт?{" "}
-          <Link to="/login" className="text-[#F1B24A] hover:text-[#4D774E] font-semibold transition-colors">
+          <Link to="/login" className="text-brand-accent hover:text-brand-medium font-semibold transition-colors">
             Увійти
           </Link>
         </p>

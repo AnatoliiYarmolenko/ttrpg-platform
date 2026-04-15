@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import DashboardCard from '@/components/ui/DashboardCard';
 import Button from '@/components/ui/Button';
 import { DateTimeDisplay, EmptyState, RoleBadge } from '@/components/shared';
@@ -7,9 +7,9 @@ import Dice20 from '@/components/ui/icons/Dice20';
 import Data from '@/components/ui/icons/Data';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
 import Timer from '@/components/ui/icons/Timer';
-import useDashboardStore from '@/stores/useDashboardStore';
-import { VIEW_MODES } from '@/stores/dashboardConstants';
+import { DASHBOARD_URL_PARAMS, VIEW_MODES } from '@/features/dashboard/constants';
 import { useNextRelevantSessionQuery } from '../../hooks/useDashboardQueries';
+import { setOrDeleteParam, updateSearchParams } from '@/utils/urlState';
 
 const UI_LOCALE = 'uk-UA';
 const DEFAULT_PLANNED_TOLERANCE_MINUTES = 2;
@@ -117,8 +117,8 @@ const VISIBILITY_LABELS = {
 
 export default function HomeCurrentSessionWidget() {
   const navigate = useNavigate();
+  const [, setSearchParams] = useSearchParams();
   const [nowMs, setNowMs] = useState(() => Date.now());
-  const setViewMode = useDashboardStore((state) => state.setViewMode);
 
   useEffect(() => {
     const intervalId = globalThis.setInterval(() => {
@@ -131,11 +131,17 @@ export default function HomeCurrentSessionWidget() {
   }, []);
 
   const handleGoToSearch = () => {
-    setViewMode(VIEW_MODES.SEARCH);
+    updateSearchParams(setSearchParams, (next) => {
+      setOrDeleteParam(next, DASHBOARD_URL_PARAMS.TAB, VIEW_MODES.SEARCH, VIEW_MODES.HOME);
+      next.delete(DASHBOARD_URL_PARAMS.SECTION);
+    });
   };
 
   const handleChooseSession = () => {
-    setViewMode(VIEW_MODES.CALENDAR);
+    updateSearchParams(setSearchParams, (next) => {
+      setOrDeleteParam(next, DASHBOARD_URL_PARAMS.TAB, VIEW_MODES.CALENDAR, VIEW_MODES.HOME);
+      next.delete(DASHBOARD_URL_PARAMS.SECTION);
+    });
   };
 
   const {
@@ -176,7 +182,7 @@ export default function HomeCurrentSessionWidget() {
     return (
       <DashboardCard title={cardTitle}>
         <div className="flex items-center justify-center h-full min-h-48">
-          <div className="animate-pulse text-[#164A41] font-medium">Завантаження...</div>
+          <div className="animate-pulse text-brand-dark font-medium">Завантаження...</div>
         </div>
       </DashboardCard>
     );
@@ -191,7 +197,7 @@ export default function HomeCurrentSessionWidget() {
             description={error?.message || 'Спробуйте ще раз'}
             className="h-full"
           />
-          <Button onClick={() => refetch()} variant="outline">
+          <Button onClick={() => refetch()} variant="outline" fullWidth className="w-full">
             Оновити
           </Button>
         </div>
@@ -210,10 +216,10 @@ export default function HomeCurrentSessionWidget() {
             className="h-full"
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-auto">
-            <Button variant="outline" onClick={handleGoToSearch}>
+            <Button variant="outline" onClick={handleGoToSearch} fullWidth className="w-full">
               Пошук сесій
             </Button>
-            <Button onClick={handleChooseSession}>
+            <Button onClick={handleChooseSession} fullWidth className="w-full">
               Відкрити календар
             </Button>
           </div>
@@ -223,79 +229,94 @@ export default function HomeCurrentSessionWidget() {
   }
 
   return (
-    <DashboardCard title={cardTitle}>
-      <div className="flex flex-col gap-4 h-full">
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="text-xl font-bold text-[#164A41] leading-tight break-words flex-1 pr-3">
+  <DashboardCard title={cardTitle}>
+    <div className="flex flex-col gap-4 h-full">
+      <div className="flex flex-col gap-2">
+
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="text-xl font-bold text-brand-dark leading-tight truncate flex-1 min-w-0">
             {session.title}
           </h3>
           {relativeSessionTime && (
-            <div className="inline-flex items-center gap-2 rounded-full px-4 py-2 bg-[#9DC88D]/20 text-[#164A41] text-lg font-semibold whitespace-nowrap">
-              <Timer className="w-5 h-5" />
+            <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 bg-brand-light/20 text-brand-dark text-sm font-medium whitespace-nowrap shrink-0">
+              <Timer className="w-4 h-4 shrink-0" />
               <span>{relativeSessionTime}</span>
             </div>
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {session.myRole && <RoleBadge role={session.myRole} size="md" />}
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-[#9DC88D]/10 rounded-xl">
-          <div className="flex items-center gap-2 text-[#4D774E]">
-            <Data className="w-4 h-4" />
-            <DateTimeDisplay value={session.startAt} format="long" fallback={formatStartAt(session.startAt)} />
-          </div>
-          {session.system ? (
-            <div className="flex items-center gap-2 text-[#4D774E]">
-              <span className="font-medium">Система:</span> {session.system}
+        <div className="flex items-center justify-between gap-3">
+            <div className="text-brand-medium text-sm leading-tight truncate flex-1 min-w-0">
+              {session.campaign?.title ? (
+                <>
+                  <span className="font-medium">Кампанія:</span> {session.campaign.title}
+                </>
+              ) : (
+                <>
+                  <span className="font-medium">Формат:</span> One-shot
+                </>
+              )}
             </div>
-          ) : (
-            <div className="hidden sm:block"></div>
-          )}
-
-          <div className="flex items-center gap-2 text-[#4D774E]">
-            <Timer className="w-4 h-4" />
-            <DateTimeDisplay value={session.startAt} format="time" fallback="--:--" />
-          </div>
-          <div className="flex items-center gap-2 text-[#4D774E]">
-            <span className="font-medium">Доступність:</span> {availabilityLabel}
-          </div>
-
-          <div className="flex items-center gap-2 text-[#4D774E]">
-            <GroupPeople className="w-4 h-4" />
-            <span>
-              {hasPlayersCapacity ? `${playersCount} / ${playersCapacity} гравців` : `${playersCount} гравців`}
-            </span>
-          </div>
-          {session.organizerName ? (
-            <div className="flex items-center gap-2 text-[#4D774E]">
-              <span className="font-medium">Організатор:</span> {session.organizerName}
+            
+            <div className="shrink-0 flex justify-end">
+              {session.myRole && <RoleBadge role={session.myRole} size="md" />}
             </div>
-          ) : (
-            <div className="hidden sm:block"></div>
-          )}
-
-          {session.campaign?.title && (
-            <div className="flex items-center gap-2 text-[#4D774E] sm:col-span-2 pt-2 border-t border-[#9DC88D]/20 mt-1">
-              <span className="font-medium">Кампанія:</span> {session.campaign.title}
-            </div>
-          )}
         </div>
 
-        <div className="border-t border-[#9DC88D]/20 pt-4">
-          <h4 className="text-sm font-bold text-[#164A41] mb-2">Опис</h4>
-          <p className="text-sm text-[#4D774E] whitespace-pre-wrap">
-            {session.description?.trim() || 'Опис відсутній'}
-          </p>
-        </div>
-
-        <div className="mt-auto">
-          <Button onClick={() => navigate(`/session/${session.id}`)}>
-            Перейти до сесії
-          </Button>
-        </div>
       </div>
-    </DashboardCard>
-  );
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 p-4 bg-brand-light/10 rounded-xl">
+        <div className="flex items-center gap-2 text-brand-medium text-sm">
+          <Data className="w-4 h-4 shrink-0" />
+          <DateTimeDisplay value={session.startAt} format="long" fallback={formatStartAt(session.startAt)} />
+        </div>
+        <div className="flex items-center gap-2 text-brand-medium text-sm">
+          <span className="font-medium">Система:</span>
+          <span>{session.system || 'Не вказана'}</span>
+        </div>
+
+        <div className="flex items-center gap-2 text-brand-medium text-sm">
+          <Timer className="w-4 h-4 shrink-0" />
+          <time>{session.startAt ? new Date(session.startAt).toLocaleTimeString(UI_LOCALE, { hour: '2-digit', minute: '2-digit' }) : '--:--'}</time>
+        </div>
+        <div className="flex items-center gap-2 text-brand-medium text-sm">
+          <span className="font-medium">Доступність:</span>
+          <span>{availabilityLabel}</span>
+        </div>
+
+        <div className="flex items-center gap-2 text-brand-medium text-sm">
+          <GroupPeople className="w-4 h-4 shrink-0" />
+          <span>
+            {hasPlayersCapacity ? `${playersCount} / ${playersCapacity} гравців` : `${playersCount} гравців`}
+          </span>
+        </div>
+        {session.organizerName ? (
+          <div className="flex items-center gap-2 text-brand-medium text-sm">
+            <span className="font-medium">Організатор:</span>
+            <span>{session.organizerName}</span>
+          </div>
+        ) : (
+          <div className="hidden sm:block" />
+        )}
+      </div>
+
+      <div className="border-t border-brand-light/20 pt-3">
+        <h4 className="text-sm font-bold text-brand-dark mb-3">Опис</h4>
+        <p className="text-sm text-brand-medium whitespace-pre-wrap leading-relaxed">
+          {session.description?.trim() || 'Опис відсутній'}
+        </p>
+      </div>
+
+      <div className="mt-auto">
+        <Button
+          onClick={() => navigate(`/session/${session.id}`)}
+          fullWidth
+          className="w-full min-h-[43px]"
+        >
+          Перейти до сесії
+        </Button>
+      </div>
+    </div>
+  </DashboardCard>
+);
 }

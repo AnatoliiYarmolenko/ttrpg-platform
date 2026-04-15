@@ -22,19 +22,19 @@ export default function MenuButton({
     <button
       onClick={onClick}
       className={`
-        w-full text-left p-4 rounded-xl transition-all duration-200 border-3
+        w-full text-left p-4 rounded-xl transition-all duration-200 border-[3px]
         flex items-center gap-3
         ${isActive 
-          ? 'bg-[#164A41] text-white border-[#F1B24A] shadow-lg' 
-          : 'bg-white text-[#164A41] border-[#9DC88D]/30 hover:border-[#9DC88D] hover:shadow-md'}
+          ? 'bg-brand-dark text-white border-brand-accent shadow-lg' 
+          : 'bg-white text-brand-dark border-brand-light/30 hover:border-brand-light hover:shadow-md'}
         ${className}
       `}
     >
       {icon && <span className="text-2xl">{icon}</span>}
       <div>
         <div className="font-bold">{label}</div>
-        {description && (
-          <div className={`text-xs ${isActive ? 'text-white/70' : 'text-[#4D774E]'}`}>
+          {description && (
+            <div className={`text-xs ${isActive ? 'text-white/70' : 'text-brand-medium'}`}>
             {description}
           </div>
         )}

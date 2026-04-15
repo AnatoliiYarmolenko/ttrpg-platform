@@ -51,8 +51,8 @@ export default function ResetPasswordForm() {
       return (
         <div className="text-center py-4">
 
-            <p className="text-[#164A41] mb-6 font-medium">{tokenError}</p>
-            <Link to="/forgot-password" className="inline-block px-6 py-2 bg-[#F1B24A] hover:bg-[#4D774E] text-[#164A41] hover:text-white rounded-lg transition font-semibold">
+            <p className="text-brand-dark mb-6 font-medium">{tokenError}</p>
+            <Link to="/forgot-password" className="inline-block px-6 py-2 bg-brand-accent hover:bg-brand-medium text-brand-dark hover:text-white rounded-lg transition font-semibold">
                 Спробувати ще раз
             </Link>
         </div>
@@ -98,7 +98,7 @@ export default function ResetPasswordForm() {
       </AuthButton>
 
       <div className="mt-6 text-center">
-        <Link to="/login" className="text-[#164A41] hover:text-[#F1B24A] font-semibold transition-colors flex items-center justify-center gap-2">
+        <Link to="/login" className="text-brand-dark hover:text-brand-accent font-semibold transition-colors flex items-center justify-center gap-2">
           <Arrow className="w-4 h-4" direction="left" /> Назад до входу
         </Link>
       </div>

@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { useSecurityMutations } from '../hooks/useSecurityMutations';
 import Button from '@/components/ui/Button';
 import PasswordStrength from '@/features/auth/ui/PasswordStrength';
+import FormField from '@/components/ui/FormField';
+import { getFormFieldControlClasses } from '@/components/ui/formFieldClasses';
 import { toast } from '@/stores/useToastStore';
 
 export default function PasswordChangeForm() {
@@ -14,6 +16,7 @@ export default function PasswordChangeForm() {
     newPassword: '',
     confirmPassword: '',
   });
+  const [fieldErrors, setFieldErrors] = useState({});
 
   // Показувати/ховати паролі
   const [showPasswords, setShowPasswords] = useState({
@@ -25,6 +28,7 @@ export default function PasswordChangeForm() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    setFieldErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
   const togglePassword = (field) => {
@@ -33,39 +37,39 @@ export default function PasswordChangeForm() {
 
   // Валідація перед відправкою
   const validateForm = () => {
+    const nextErrors = {};
+
     if (!formData.currentPassword) {
-      toast.error('Введіть поточний пароль');
-      return false;
+      nextErrors.currentPassword = 'Введіть поточний пароль';
     }
     if (!formData.newPassword) {
-      toast.error('Введіть новий пароль');
-      return false;
+      nextErrors.newPassword = 'Введіть новий пароль';
     }
     if (formData.newPassword.length < 8) {
-      toast.error('Новий пароль має містити мінімум 8 символів');
-      return false;
+      nextErrors.newPassword = 'Новий пароль має містити мінімум 8 символів';
     }
     if (!/[a-zа-яіїєґ]/.test(formData.newPassword)) {
-      toast.error('Пароль має містити малу літеру');
-      return false;
+      nextErrors.newPassword = 'Пароль має містити малу літеру';
     }
     if (!/[A-ZА-ЯІЇЄҐ]/.test(formData.newPassword)) {
-      toast.error('Пароль має містити велику літеру');
-      return false;
+      nextErrors.newPassword = 'Пароль має містити велику літеру';
     }
     if (!/\d/.test(formData.newPassword)) {
-      toast.error('Пароль має містити цифру');
-      return false;
+      nextErrors.newPassword = 'Пароль має містити цифру';
     }
     if (formData.newPassword !== formData.confirmPassword) {
-      toast.error('Паролі не співпадають');
-      return false;
+      nextErrors.confirmPassword = 'Паролі не співпадають';
     }
     if (formData.currentPassword === formData.newPassword) {
-      toast.error('Новий пароль має відрізнятися від поточного');
-      return false;
+      nextErrors.newPassword = 'Новий пароль має відрізнятися від поточного';
     }
-    return true;
+
+    if (Object.keys(nextErrors).length > 0) {
+      toast.error(Object.values(nextErrors)[0]);
+    }
+
+    setFieldErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
   const handleSubmit = (e) => {
@@ -82,19 +86,19 @@ export default function PasswordChangeForm() {
           newPassword: '',
           confirmPassword: '',
         });
+        setFieldErrors({});
       }
     });
   };
 
-  const inputClasses = "w-full px-4 py-3 pr-12 rounded-xl border-2 border-[#9DC88D]/30 focus:border-[#164A41] focus:outline-none transition-colors";
-
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Поточний пароль */}
-      <div>
-        <label htmlFor="currentPassword" className="block text-sm font-medium text-[#164A41] mb-2">
-          Поточний пароль
-        </label>
+      <FormField
+        id="currentPassword"
+        label="Поточний пароль"
+        error={fieldErrors.currentPassword}
+      >
         <div className="relative">
           <input
             id="currentPassword"
@@ -103,13 +107,16 @@ export default function PasswordChangeForm() {
             value={formData.currentPassword}
             onChange={handleChange}
             placeholder="Введіть поточний пароль"
-            className={inputClasses}
+            className={getFormFieldControlClasses({
+              error: fieldErrors.currentPassword,
+              className: 'pr-12',
+            })}
             autoComplete="current-password"
           />
           <button
             type="button"
             onClick={() => togglePassword('current')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4D774E] hover:text-[#164A41] transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-medium hover:text-brand-dark transition-colors"
           >
             {showPasswords.current ? (
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -123,13 +130,14 @@ export default function PasswordChangeForm() {
             )}
           </button>
         </div>
-      </div>
+      </FormField>
 
       {/* Новий пароль */}
-      <div>
-        <label htmlFor="newPassword" className="block text-sm font-medium text-[#164A41] mb-2">
-          Новий пароль
-        </label>
+      <FormField
+        id="newPassword"
+        label="Новий пароль"
+        error={fieldErrors.newPassword}
+      >
         <div className="relative">
           <input
             id="newPassword"
@@ -138,13 +146,16 @@ export default function PasswordChangeForm() {
             value={formData.newPassword}
             onChange={handleChange}
             placeholder="Введіть новий пароль"
-            className={inputClasses}
+            className={getFormFieldControlClasses({
+              error: fieldErrors.newPassword,
+              className: 'pr-12',
+            })}
             autoComplete="new-password"
           />
           <button
             type="button"
             onClick={() => togglePassword('new')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4D774E] hover:text-[#164A41] transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-medium hover:text-brand-dark transition-colors"
           >
             {showPasswords.new ? (
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -160,13 +171,14 @@ export default function PasswordChangeForm() {
         </div>
         {/* Індикатор сили пароля */}
         <PasswordStrength password={formData.newPassword} />
-      </div>
+      </FormField>
 
       {/* Підтвердження пароля */}
-      <div>
-        <label htmlFor="confirmPassword" className="block text-sm font-medium text-[#164A41] mb-2">
-          Підтвердіть новий пароль
-        </label>
+      <FormField
+        id="confirmPassword"
+        label="Підтвердіть новий пароль"
+        error={fieldErrors.confirmPassword}
+      >
         <div className="relative">
           <input
             id="confirmPassword"
@@ -175,13 +187,16 @@ export default function PasswordChangeForm() {
             value={formData.confirmPassword}
             onChange={handleChange}
             placeholder="Повторіть новий пароль"
-            className={inputClasses}
+            className={getFormFieldControlClasses({
+              error: fieldErrors.confirmPassword,
+              className: 'pr-12',
+            })}
             autoComplete="new-password"
           />
           <button
             type="button"
             onClick={() => togglePassword('confirm')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4D774E] hover:text-[#164A41] transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-medium hover:text-brand-dark transition-colors"
           >
             {showPasswords.confirm ? (
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -196,18 +211,19 @@ export default function PasswordChangeForm() {
           </button>
         </div>
         {/* Підказка співпадіння */}
-        {formData.confirmPassword && (
+        {formData.confirmPassword && !fieldErrors.confirmPassword && (
           <p className={`text-xs mt-2 ${formData.newPassword === formData.confirmPassword ? 'text-green-600' : 'text-red-500'}`}>
             {formData.newPassword === formData.confirmPassword ? '✓ Паролі співпадають' : '✗ Паролі не співпадають'}
           </p>
         )}
-      </div>
+      </FormField>
 
       {/* Кнопка збереження */}
       <div className="pt-4">
         <Button 
           type="submit" 
           disabled={saving}
+          fullWidth
           className="w-full"
         >
           {saving ? 'Зміна пароля...' : 'Змінити пароль'}
@@ -218,24 +234,10 @@ export default function PasswordChangeForm() {
       <div className="text-center">
         <Link 
           to="/forgot-password" 
-          className="text-sm text-[#4D774E] hover:text-[#164A41] hover:underline transition-colors"
+          className="text-sm text-brand-medium hover:text-brand-dark hover:underline transition-colors"
         >
           Не пам'ятаєте поточний пароль?
         </Link>
-      </div>
-
-      {/* Підказка безпеки */}
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mt-4">
-        <div className="flex gap-2">
-          <span>⚠️</span>
-          <div className="text-sm text-amber-800">
-            <p className="font-medium">Після зміни пароля:</p>
-            <ul className="list-disc list-inside mt-1 text-xs">
-              <li>Використовуйте новий пароль для входу</li>
-              <li>Рекомендуємо оновити пароль в менеджері паролів</li>
-            </ul>
-          </div>
-        </div>
       </div>
     </form>
   );

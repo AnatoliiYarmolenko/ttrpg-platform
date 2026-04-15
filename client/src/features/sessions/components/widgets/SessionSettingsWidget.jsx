@@ -146,7 +146,7 @@ function SessionSettingsWidgetContent({
   };
 
   const inputClasses =
-    'w-full p-3 border-2 border-[#9DC88D]/50 rounded-xl focus:border-[#164A41] outline-none text-[#164A41] bg-white transition-colors';
+    'w-full p-3 border-2 border-brand-light/50 rounded-xl focus:border-brand-dark text-brand-dark bg-white transition-colors';
 
   return (
     <DashboardCard title="Налаштування сесії">
@@ -280,6 +280,7 @@ function SessionSettingsWidgetContent({
           variant="primary"
           isLoading={isLoading}
           loadingText="Збереження..."
+          fullWidth={true}
         >
           Зберегти зміни
         </Button>
@@ -290,6 +291,7 @@ function SessionSettingsWidgetContent({
             <Button
               variant="danger"
               onClick={() => setDeleteModal(true)}
+              fullWidth={true}
             >
               Видалити сесію
             </Button>
@@ -303,6 +305,7 @@ function SessionSettingsWidgetContent({
           title="Видалити сесію?"
           message={`Ви впевнені, що хочете видалити сесію "${session.title}"? Цю дію неможливо відмінити.`}
           variant="danger"
+          confirmText="Видалити"
           onConfirm={handleDelete}
           onCancel={() => setDeleteModal(false)}
         />

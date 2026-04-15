@@ -19,13 +19,13 @@ function SessionCard({ session, navigate, formatDuration }) {
   return (
     <button
       onClick={() => navigate(`/session/${session.id}`)}
-      className="w-full text-left p-4 border-2 border-[#9DC88D]/30 rounded-xl hover:border-[#164A41]/40 hover:shadow-md transition-all"
+      className="w-full text-left p-4 border-2 border-brand-light/30 rounded-xl hover:border-brand-dark/40 hover:shadow-md transition-all"
     >
       <div className="flex items-start justify-between mb-1">
-        <h4 className="font-bold text-[#164A41] truncate">{session.title}</h4>
+        <h4 className="font-bold text-brand-dark truncate">{session.title}</h4>
         <StatusBadge status={session.status} size="sm" />
       </div>
-      <div className="flex items-center gap-3 text-sm text-[#4D774E] mt-1 flex-wrap">
+      <div className="flex items-center gap-3 text-sm text-brand-medium mt-1 flex-wrap">
         {session.myRole && <RoleBadge role={session.myRole} />}
         <span className="flex items-center gap-1">
           <Data className="w-4 h-4" /> <DateTimeDisplay value={session.date} format="short" />
@@ -147,13 +147,13 @@ export default function MyGamesListWidget() {
         {/* === Розділ: Сесії в кампаніях === */}
         {campaignGroups.length > 0 && (
           <section>
-            <h3 className="text-lg font-bold text-[#164A41] mb-3">
+            <h3 className="text-lg font-bold text-brand-dark mb-3">
               Сесії в кампаніях
             </h3>
             <div className="flex flex-col gap-4">
               {campaignGroups.map((group) => (
                 <div key={group.id}>
-                  <p className="text-sm font-semibold text-[#4D774E] mb-2 pl-1">{group.title}</p>
+                  <p className="text-sm font-semibold text-brand-medium mb-2 pl-1">{group.title}</p>
                   <div className="flex flex-col gap-2">
                     {group.sessions.map((session) => (
                       <SessionCard key={session.id} session={session} navigate={navigate} formatDuration={formatDuration} />
@@ -168,7 +168,7 @@ export default function MyGamesListWidget() {
         {/* === Розділ: Мої сесії (one-shot) === */}
         {oneShotSessions.length > 0 && (
           <section>
-            <h3 className="text-lg font-bold text-[#164A41] mb-3 flex items-center gap-2">
+            <h3 className="text-lg font-bold text-brand-dark mb-3 flex items-center gap-2">
               <Dice20 className="w-5 h-5" /> Мої сесії (one-shot)
             </h3>
             <div className="flex flex-col gap-2">

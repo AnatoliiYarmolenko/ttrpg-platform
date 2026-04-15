@@ -1,43 +1,118 @@
+import React from 'react';
+import {
+  getFormFieldControlClasses,
+} from './formFieldClasses';
+
 /**
- * FormField — обгортка для поля форми з лейблом та повідомленням про помилку.
+ * FormField — стандартне поле форми з label/hint/error та уніфікованими стилями.
  *
- * Забезпечує семантичний зв'язок label ↔ input через htmlFor/id,
- * уніфіковані стилі лейблів і виведення помилок.
- *
- * Використання:
- *   <FormField id="title" label="Назва" error={errors.title} required>
- *     <input id="title" name="title" ... />
- *   </FormField>
- *
- * @param {string}    id        — id поля (має збігатися з id input/select/textarea)
- * @param {string}    label     — текст лейблу
- * @param {string}    [error]   — повідомлення про помилку
- * @param {string}    [hint]    — підказка під полем (відображається якщо немає помилки)
- * @param {boolean}   [required=false] — додає * до лейблу
- * @param {ReactNode} children  — поле форми (input, select, textarea тощо)
+ * Підтримує 2 режими:
+ * 1) children-режим (повна кастомізація control)
+ * 2) вбудований control через props (as/input/textarea/select)
  */
 export default function FormField({
+  as = 'input',
   id,
+  name,
+  type = 'text',
   label,
+  value,
+  defaultValue,
+  onChange,
+  onBlur,
+  placeholder,
+  disabled,
+  required = false,
+  autoComplete,
+  maxLength,
+  minLength,
+  min,
+  max,
+  step,
+  rows = 4,
+  inputMode,
   error,
   hint,
-  required = false,
+  register,
+  rules,
   children,
+  className,
+  controlClassName,
+  ...rest
 }) {
+  const fieldId = id || name;
+  const errorText = typeof error === 'string' ? error : error?.message;
+  const registerProps = register && name ? register(name, rules) : {};
+
+  const shouldRenderControl = !children;
+  const controlClasses = getFormFieldControlClasses({
+    error: Boolean(errorText),
+    className: controlClassName,
+  });
+
   return (
-    <div>
+    <div className={className}>
       {label && (
         <label
-          htmlFor={id}
-          className="block text-sm font-medium text-[#164A41] mb-1"
+          htmlFor={fieldId}
+          className="mb-2 block text-sm font-medium text-brand-dark"
         >
           {label}
-          {required && <span className="text-red-500 ml-0.5">*</span>}
+          {required && <span className="ml-0.5 text-red-500">*</span>}
         </label>
       )}
+
+      {shouldRenderControl && as === 'textarea' && (
+        <textarea
+          id={fieldId}
+          name={name}
+          value={value}
+          defaultValue={defaultValue}
+          onChange={onChange}
+          onBlur={onBlur}
+          placeholder={placeholder}
+          disabled={disabled}
+          required={required}
+          autoComplete={autoComplete}
+          maxLength={maxLength}
+          minLength={minLength}
+          rows={rows}
+          className={controlClasses}
+          aria-invalid={Boolean(errorText)}
+          {...registerProps}
+          {...rest}
+        />
+      )}
+
+      {shouldRenderControl && as !== 'textarea' &&
+        React.createElement(as, {
+          id: fieldId,
+          name,
+          type,
+          value,
+          defaultValue,
+          onChange,
+          onBlur,
+          placeholder,
+          disabled,
+          required,
+          autoComplete,
+          maxLength,
+          minLength,
+          min,
+          max,
+          step,
+          inputMode,
+          className: controlClasses,
+          'aria-invalid': Boolean(errorText),
+          ...registerProps,
+          ...rest,
+        })}
+
       {children}
-      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-      {hint && !error && <p className="text-xs text-[#4D774E] mt-1">{hint}</p>}
+
+      {errorText && <p className="mt-1 text-xs text-red-500">{errorText}</p>}
+      {hint && !errorText && <p className="mt-1 text-xs text-brand-medium">{hint}</p>}
     </div>
   );
 }

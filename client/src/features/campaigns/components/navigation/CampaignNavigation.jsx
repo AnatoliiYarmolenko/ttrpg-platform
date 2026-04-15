@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import Button from '@/components/ui/Button';
 import TopBarTabButton from '@/components/ui/TopBarTabButton';
 
 const TABS = {
@@ -38,14 +39,14 @@ export default function CampaignNavigation({
   return (
     <nav className="flex items-center gap-4 justify-between w-full">
       <div className="flex items-center gap-4 min-w-0 flex-1">
-        <div className="bg-white px-4 py-2 rounded-xl border-2 border-[#9DC88D]/30 shadow-md flex items-center gap-2 min-w-0">
-          <div className="w-6 h-6 bg-[#164A41] rounded-full flex items-center justify-center text-[#F1B24A] font-bold text-xs">
+        <div className="bg-white px-4 py-2 rounded-xl border-2 border-brand-light/30 shadow-md flex items-center gap-2 min-w-0">
+          <div className="w-6 h-6 bg-brand-dark rounded-full flex items-center justify-center text-brand-accent font-bold text-xs">
             D20
           </div>
-          <span className="font-bold text-[#164A41] hidden md:block shrink-0">TTRPG Platform</span>
+          <span className="font-bold text-brand-dark hidden md:block shrink-0">TTRPG Platform</span>
 
-          <span className="text-[#164A41]/50 hidden md:inline">/</span>
-          <span className="font-bold text-[#164A41] text-sm truncate max-w-[220px]" title={campaignTitle}>
+          <span className="text-brand-dark/50 hidden md:inline">/</span>
+          <span className="font-bold text-brand-dark text-sm truncate max-w-[220px]" title={campaignTitle}>
             {campaignTitle || 'Кампанія'}
           </span>
         </div>
@@ -63,12 +64,15 @@ export default function CampaignNavigation({
       </div>
 
       <div className="flex items-center justify-end flex-1">
-        <button
+        <Button
           onClick={() => navigate('/')}
-          className="px-4 py-2 rounded-xl border-2 border-white/50 bg-[#164A41] text-white hover:bg-[#F1B24A] hover:text-[#164A41] hover:border-[#164A41] transition-all font-bold shadow-lg"
+          variant="topbar"
+          size="md"
+          fullWidth={false}
+          className="font-bold"
         >
           На головну
-        </button>
+        </Button>
       </div>
     </nav>
   );

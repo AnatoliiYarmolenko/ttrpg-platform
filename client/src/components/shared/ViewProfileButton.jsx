@@ -19,10 +19,11 @@ export default function ViewProfileButton({ username }) {
   return (
     <button
       onClick={() => navigate(`/user/${username}`, { state: { fromPath: location.pathname } })}
-      className="flex items-center justify-center gap-2 px-4 py-2 text-sm rounded-lg border border-[#9DC88D]/40 text-[#164A41] hover:bg-[#9DC88D]/10 transition-colors w-full"
-      title={`Відкрити профіль @${username}`}
+      type="button"
+      className="inline-flex items-center justify-center gap-2 rounded-xl border border-brand-light/40 bg-white px-4 py-2 text-sm font-semibold text-brand-dark shadow-none transition-colors hover:border-brand-dark hover:bg-brand-light/15 hover:text-brand-dark hover:shadow-sm"
+      title={`Відрити повний профіль @${username}`}
     >
-      Відкрити профіль
+      Відрити повний профіль
       <Arrow className="w-4 h-4" direction="right" />
     </button>
   );

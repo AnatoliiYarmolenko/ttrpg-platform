@@ -65,7 +65,7 @@ export default function ForgotPasswordForm() {
 
       {/* 👇 Додано кнопку "Назад", щоб не блокувати юзера */}
       <div className="mt-6 text-center">
-        <Link to="/login" className="text-[#164A41] hover:text-[#F1B24A] font-semibold transition-colors flex items-center justify-center gap-2">
+        <Link to="/login" className="text-brand-dark hover:text-brand-accent font-semibold transition-colors flex items-center justify-center gap-2">
           <Arrow className="w-4 h-4" direction="left" /> Назад до входу
         </Link>
       </div>

@@ -1,6 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 
-import useDashboardStore, { VIEW_MODES } from './useDashboardStore';
+import useDashboardStore, { VIEW_MODES } from '@/stores/useDashboardStore';
 
 describe('useDashboardStore calendar regressions', () => {
   beforeEach(() => {

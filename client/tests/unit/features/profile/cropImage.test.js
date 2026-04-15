@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getCroppedImageFile } from '../../utils/cropImage';
+import { getCroppedImageFile } from '@/features/profile/utils/cropImage';
 
 describe('cropImage utilities', () => {
   it('throws error when croppedAreaPixels is null', async () => {

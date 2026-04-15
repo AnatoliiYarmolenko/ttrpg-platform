@@ -1,7 +1,7 @@
 ﻿const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { ingestClientLog } = require('../../src/controllers/clientLogs.controller');
+const { ingestClientLog } = require('../../src/controllers/client-logs.controller');
 const { logger } = require('../../src/lib/logger');
 
 function createMockResponse() {

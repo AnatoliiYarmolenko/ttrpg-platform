@@ -1,7 +1,8 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
-import { VIEW_MODES } from '@/stores/dashboardConstants';
+import { VIEW_MODES } from '@/features/dashboard/constants';
+import Button from '@/components/ui/Button';
 import NavButton from '@/components/ui/NavButton';
 import useAuthStore, { selectIsAdmin } from '@/stores/useAuthStore';
 
@@ -10,70 +11,125 @@ export default function DashboardNavigation({ currentView, onNavigate, user, onL
   const navigate = useNavigate();
   const isAdmin = useAuthStore(selectIsAdmin);
 
+  const dashboardTabs = [
+    { key: VIEW_MODES.HOME, label: 'Дашборд', to: '/' },
+    { key: VIEW_MODES.CALENDAR, label: 'Календар', to: '/?tab=calendar' },
+    { key: VIEW_MODES.MY_GAMES, label: 'Мої ігри', to: '/?tab=my-games' },
+    { key: VIEW_MODES.SEARCH, label: 'Пошук', to: '/?tab=search' },
+    { key: VIEW_MODES.PROFILE, label: 'Профіль', to: '/?tab=profile' },
+  ];
+
   return (
-    <nav className="flex items-center gap-4 justify-between w-full">
-      {/* Ліва частина: Лого та кнопки навігації */}
-      <div className="flex items-center gap-4">
-        <div className="bg-white px-4 py-2 rounded-xl border-2 border-[#9DC88D]/30 shadow-md flex items-center gap-2">
-           <div className="w-6 h-6 bg-[#164A41] rounded-full flex items-center justify-center text-[#F1B24A] font-bold text-xs">
-             D20
-           </div>
-           <span className="font-bold text-[#164A41] hidden md:block">TTRPG Platform</span>
+    <>
+      <nav className="hidden lg:flex items-center gap-4 justify-between w-full">
+        {/* Ліва частина: Лого та кнопки навігації */}
+        <div className="flex items-center gap-4">
+          <div className="bg-white px-4 py-2 rounded-xl border-2 border-brand-light/30 shadow-md flex items-center gap-2">
+             <div className="w-6 h-6 bg-brand-dark rounded-full flex items-center justify-center text-brand-accent font-bold text-xs">
+               D20
+             </div>
+             <span className="font-bold text-brand-dark hidden md:block">TTRPG Platform</span>
+          </div>
+
+          {dashboardTabs.map((tab) => (
+            <NavButton
+              key={tab.key}
+              label={tab.label}
+              isActive={currentView === tab.key}
+              to={tab.to}
+              onClick={() => onNavigate(tab.key)}
+              className="justify-center"
+            />
+          ))}
         </div>
 
-        <NavButton
-          label="Дашборд"
-          isActive={currentView === VIEW_MODES.HOME}
-          onClick={() => onNavigate(VIEW_MODES.HOME)}
-        />
-        <NavButton 
-          label="Календар" 
-          isActive={currentView === VIEW_MODES.CALENDAR}
-          onClick={() => onNavigate(VIEW_MODES.CALENDAR)}
-        />
-        <NavButton 
-          label="Мої ігри" 
-          isActive={currentView === VIEW_MODES.MY_GAMES}
-          onClick={() => onNavigate(VIEW_MODES.MY_GAMES)}
-        />
-        <NavButton 
-          label="Пошук" 
-          isActive={currentView === VIEW_MODES.SEARCH}
-          onClick={() => onNavigate(VIEW_MODES.SEARCH)}
-        />
-        <NavButton 
-          label="Профіль" 
-          isActive={currentView === VIEW_MODES.PROFILE}
-          onClick={() => onNavigate(VIEW_MODES.PROFILE)}
-        />
-      </div>
-
-      {/* Права частина: Інфо про юзера та Логаут */}
-      <div className="flex items-center gap-3">
-        {isAdmin && (
-          <button
-            onClick={() => navigate('/admin')}
-            title="Адмін-панель"
-            className="px-4 py-2 rounded-xl border-2 border-[#F1B24A] bg-[#F1B24A] text-[#164A41] hover:bg-[#164A41] hover:text-[#F1B24A] transition-all font-bold shadow-lg"
+        {/* Права частина: Інфо про юзера та Логаут */}
+        <div className="flex items-center gap-3">
+          {isAdmin && (
+            <Button
+              onClick={() => navigate('/admin')}
+              variant="topbarAccent"
+              size="md"
+              fullWidth={false}
+              className="font-bold"
+            >
+              ⚙ Адмін
+            </Button>
+          )}
+          {user && (
+            <span className="text-white font-medium drop-shadow-md hidden sm:block">
+              {user.username}
+            </span>
+          )}
+          
+          <Button 
+            onClick={onLogout}
+            variant="topbar"
+            size="md"
+            fullWidth={false}
+            className="font-bold"
           >
-            ⚙ Адмін
-          </button>
-        )}
+            Вийти
+          </Button>
+        </div>
+      </nav>
+
+      <nav className="lg:hidden flex flex-col gap-2 w-full">
+        <div className="flex items-center justify-between gap-2">
+          <div className="bg-white px-3 py-2 rounded-xl border-2 border-brand-light/30 shadow-md flex items-center gap-2 min-w-0">
+            <div className="w-6 h-6 bg-brand-dark rounded-full flex items-center justify-center text-brand-accent font-bold text-xs">
+              D20
+            </div>
+            <span className="font-bold text-brand-dark text-sm truncate">TTRPG Platform</span>
+          </div>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {isAdmin && (
+              <Button
+                onClick={() => navigate('/admin')}
+                variant="topbarAccent"
+                size="sm"
+                fullWidth={false}
+                className="font-bold whitespace-nowrap"
+              >
+                ⚙ Адмін
+              </Button>
+            )}
+            <Button 
+              onClick={onLogout}
+              variant="topbar"
+              size="sm"
+              fullWidth={false}
+              className="font-bold whitespace-nowrap"
+            >
+              Вийти
+            </Button>
+          </div>
+        </div>
+
         {user && (
-          <span className="text-white font-medium drop-shadow-md hidden sm:block">
+          <span className="text-white/90 font-medium drop-shadow-md text-sm px-1 truncate">
             {user.username}
           </span>
         )}
-        
-        <button 
-          onClick={onLogout}
-          title="Вийти з акаунту"
-          className="px-4 py-2 rounded-xl border-2 border-white/50 bg-[#164A41] text-white hover:bg-[#F1B24A] hover:text-[#164A41] hover:border-[#164A41] transition-all font-bold shadow-lg"
-        >
-          Вийти
-        </button>
-      </div>
-    </nav>
+
+        <div className="overflow-x-auto pb-1 -mx-1 px-1">
+          <div className="flex items-center gap-2 min-w-max">
+            {dashboardTabs.map((tab) => (
+              <NavButton
+                key={tab.key}
+                label={tab.label}
+                isActive={currentView === tab.key}
+                to={tab.to}
+                onClick={() => onNavigate(tab.key)}
+                size="sm"
+                className="px-3 py-1.5 text-sm whitespace-nowrap flex-shrink-0 justify-center"
+              />
+            ))}
+          </div>
+        </div>
+      </nav>
+    </>
   );
 }
 

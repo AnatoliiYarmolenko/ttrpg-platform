@@ -20,7 +20,7 @@ export default function PublicProfilePage() {
   const { profile, isLoading, error } = useProfileByUsername(username);
 
   return (
-    <div className="min-h-screen bg-[#164A41] p-6">
+    <div className="min-h-screen bg-brand-dark p-6">
       <div className="max-w-2xl mx-auto">
         <DashboardCard
           title={`Профіль гравця${profile?.username ? ` — @${profile.username}` : ''}`}

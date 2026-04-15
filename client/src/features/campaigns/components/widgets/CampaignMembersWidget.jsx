@@ -1,6 +1,7 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import DashboardCard from '@/components/ui/DashboardCard';
 import { EmptyState, ConfirmModal, ParticipantsList } from '@/components/shared';
+import useConfirmDialog from '@/hooks/useConfirmDialog';
 import MemberCard from '../ui/MemberCard';
 import ParticipantCard from '@/features/sessions/components/ui/ParticipantCard';
 import {
@@ -29,29 +30,15 @@ export default function CampaignMembersWidget({
   const { data: joinRequests = [] } = useCampaignJoinRequestsQuery(campaignId, canModerateRequests);
   const mutations = useCampaignMutations(campaignId);
   const campaignMembers = queriedMembers.length > 0 ? queriedMembers : initialMembers;
-
-  const [confirmModal, setConfirmModal] = useState({
-    isOpen: false,
-    title: '',
-    message: '',
-    onConfirm: null,
-    variant: 'primary',
-  });
-
-  const closeConfirmModal = useCallback(() => {
-    setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-  }, []);
+  const { openConfirm, confirmModalProps } = useConfirmDialog();
 
   const handleRemove = (memberId) => {
-    setConfirmModal({
-      isOpen: true,
+    openConfirm({
       title: 'Видалити учасника?',
       message: 'Видалити цього учасника з кампанії?',
       variant: 'danger',
-      onConfirm: async () => {
-        closeConfirmModal();
-        await mutations.removeMember(memberId);
-      },
+      confirmText: 'Видалити',
+      onConfirm: async () => mutations.removeMember(memberId),
     });
   };
 
@@ -172,12 +159,7 @@ export default function CampaignMembersWidget({
       </DashboardCard>
 
       <ConfirmModal
-        isOpen={confirmModal.isOpen}
-        title={confirmModal.title}
-        message={confirmModal.message}
-        variant={confirmModal.variant}
-        onConfirm={confirmModal.onConfirm}
-        onCancel={closeConfirmModal}
+        {...confirmModalProps}
       />
     </div>
   );

@@ -4,10 +4,10 @@ import DashboardCard from '@/components/ui/DashboardCard';
 import CalendarDayCell from '../ui/CalendarDayCell';
 import useDashboardStore from '@/stores/useDashboardStore';
 import useSearchStore from '@/stores/useSearchStore';
-import { VIEW_MODES } from '@/stores/dashboardConstants';
+import { VIEW_MODES } from '@/features/dashboard/constants';
 import Button from '@/components/ui/Button';
 import { formatDate } from '@/components/shared';
-import { getLocalDateKey, getMillisecondsUntilNextLocalDay } from '@/components/shared/dateTime.utils';
+import { getLocalDateKey, getMillisecondsUntilNextLocalDay } from '@/utils/dateTime';
 import Arrow from '@/components/ui/icons/Arrow';
 import { useCalendarStatsQuery } from '../../hooks/useCalendarQueries';
 
@@ -103,7 +103,8 @@ const navigationActions = (
     <div className="flex gap-2 items-center">
       <button
         onClick={goToPrevMonth}
-        className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#9DC88D]/30 hover:bg-[#9DC88D]/20 transition-colors text-[#164A41]"
+        type="button"
+        className="duration-300 inline-flex items-center justify-center w-10 h-10 rounded-full text-brand-dark bg-white/0 hover:bg-brand-light/20 transition-colors"
         aria-label="Попередній місяць"
       >
         <Arrow direction="left" className="w-5 h-5" />
@@ -114,8 +115,9 @@ const navigationActions = (
           <Button
             onClick={goToToday}
             variant="primary"
+            size="md"
             fullWidth={false}
-            className="h-8 px-3 text-base !font-semibold flex items-center justify-center"
+            className="h-8 px-4"
           >
             Сьогодні
           </Button>
@@ -124,7 +126,8 @@ const navigationActions = (
       
       <button
         onClick={goToNextMonth}
-        className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#9DC88D]/30 hover:bg-[#9DC88D]/20 transition-colors text-[#164A41]"
+        type="button"
+        className="duration-300 inline-flex items-center justify-center w-10 h-10 rounded-full text-brand-dark bg-white/0 hover:bg-brand-light/20 transition-colors"
         aria-label="Наступний місяць"
       >
         <Arrow direction="right" className="w-5 h-5" />
@@ -158,7 +161,7 @@ const navigationActions = (
     >
       {/* {isCalendarLoading ? (
         <div className="flex items-center justify-center h-full">
-          <div className="animate-pulse text-[#164A41]">Завантаження...</div>
+          <div className="animate-pulse text-brand-dark">Завантаження...</div>
         </div>
       ) : ( */}
       {
@@ -168,7 +171,7 @@ const navigationActions = (
             {weekDays.map((day) => (
               <div 
                 key={day} 
-                className="text-center font-bold text-[#4D774E] text-xs py-0.5"
+                className="text-center font-bold text-brand-medium text-xs py-0.5"
               >
                 {day}
               </div>

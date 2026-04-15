@@ -7,7 +7,10 @@ export default function AuthButton({
   loadingText = "Зачекайте...", 
   type = "submit", 
   disabled,
-  onClick
+  onClick,
+  size = "lg",
+  fullWidth = true,
+  className = "",
 }) {
   return (
     <Button
@@ -16,6 +19,9 @@ export default function AuthButton({
       loadingText={loadingText}
       disabled={disabled}
       onClick={onClick}
+      size={size}
+      fullWidth={fullWidth}
+      className={className}
     >
       {children}
     </Button>
