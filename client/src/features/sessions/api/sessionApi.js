@@ -47,6 +47,16 @@ export const getSessionByShareToken = async (shareToken) => {
   return normalizeApiEnvelope(response.data);
 };
 
+export const getSessionPageById = async (sessionId) => {
+  const response = await api.get(`/sessions/${sessionId}/page`);
+  return normalizeApiEnvelope(response.data);
+};
+
+export const getSessionPageByShareToken = async (shareToken) => {
+  const response = await api.get(`/sessions/share/${shareToken}/page`);
+  return normalizeApiEnvelope(response.data);
+};
+
 /**
  * Оновити сесію
  * @param {number} sessionId

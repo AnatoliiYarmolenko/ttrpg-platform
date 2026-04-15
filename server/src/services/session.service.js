@@ -14,6 +14,7 @@ const createSessionQueryService = require('./session/session-query.service');
 const createSessionCalendarService = require('./session/session-calendar.service');
 const createSessionLifecycleService = require('./session/session-lifecycle.service');
 const createSessionParticipantsService = require('./session/session-participants.service');
+const createSessionPageService = require('./session/session-page.service');
 
 class SessionService {
   constructor() {
@@ -48,6 +49,9 @@ class SessionService {
       assertNoSessionTimeConflict: (userId, targetStart, targetDuration, options = {}) => {
         return this._assertNoSessionTimeConflict(userId, targetStart, targetDuration, options);
       },
+    });
+    this.pageService = createSessionPageService({
+      sessionQueryService: this.queryService,
     });
   }
 
@@ -219,6 +223,14 @@ class SessionService {
 
   async getSessionByShareToken(rawToken, userId = null) {
     return this.queryService.getSessionByShareToken(rawToken, userId);
+  }
+
+  async getSessionPageById(sessionId, userId = null, options = {}) {
+    return this.pageService.getSessionPageById(sessionId, userId, options);
+  }
+
+  async getSessionPageByShareToken(rawToken, userId = null) {
+    return this.pageService.getSessionPageByShareToken(rawToken, userId);
   }
 
   async updateSession(sessionId, requesterId, updateData, options = {}) {

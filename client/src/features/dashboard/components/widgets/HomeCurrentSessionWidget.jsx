@@ -109,9 +109,15 @@ const buildRelativeSessionTime = (session, nowMs) => {
 
 const getCardTitle = (session) => (session?.status === 'ACTIVE' ? 'Поточна сесія' : 'Наступна сесія');
 
-const VISIBILITY_LABELS = {
-  PUBLIC: 'За заявкою',
-  PRIVATE: 'Приватна',
+const CAMPAIGN_SESSION_VISIBILITY_LABELS = {
+  PRIVATE: 'Звичайна',
+  PUBLIC: 'Гостьова',
+  LINK_ONLY: 'За посиланням',
+};
+
+const ONE_SHOT_VISIBILITY_LABELS = {
+  PUBLIC: 'Публічна',
+  PRIVATE: 'За підтвердженням',
   LINK_ONLY: 'За посиланням',
 };
 
@@ -148,7 +154,6 @@ export default function HomeCurrentSessionWidget() {
     data: session,
     isLoading,
     isError,
-    error,
     refetch,
   } = useNextRelevantSessionQuery(true);
 
@@ -176,7 +181,14 @@ export default function HomeCurrentSessionWidget() {
     : 0;
   const playersCapacity = Number(session?.maxPlayers);
   const hasPlayersCapacity = Number.isFinite(playersCapacity) && playersCapacity > 0;
-  const availabilityLabel = VISIBILITY_LABELS[session?.visibility] || VISIBILITY_LABELS.PRIVATE;
+  const isCampaignSession = Boolean(session?.campaign?.id || session?.campaignId);
+  const visibilityLabels = isCampaignSession
+    ? CAMPAIGN_SESSION_VISIBILITY_LABELS
+    : ONE_SHOT_VISIBILITY_LABELS;
+  const availabilityLabel = visibilityLabels[session?.visibility]
+    || (isCampaignSession
+      ? CAMPAIGN_SESSION_VISIBILITY_LABELS.PRIVATE
+      : ONE_SHOT_VISIBILITY_LABELS.PRIVATE);
 
   if (isLoading) {
     return (
@@ -194,7 +206,7 @@ export default function HomeCurrentSessionWidget() {
         <div className="flex flex-col gap-4 h-full justify-center">
           <EmptyState
             title="Не вдалося завантажити сесію"
-            description={error?.message || 'Спробуйте ще раз'}
+            description={'Спробуйте ще раз'}
             className="h-full"
           />
           <Button onClick={() => refetch()} variant="outline" fullWidth className="w-full">

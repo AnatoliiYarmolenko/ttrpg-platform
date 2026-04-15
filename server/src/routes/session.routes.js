@@ -89,9 +89,21 @@ router.get(
 );
 
 router.get(
+  '/share/:shareToken/page',
+  [optionalAuthenticateToken, ...validateSessionShareToken],
+  (req, res, next) => sessionCrudController.getSessionPageByShareToken(req, res, next)
+);
+
+router.get(
   '/:id',
   [authenticateToken, ...validateSessionId],
   (req, res, next) => sessionCrudController.getSessionById(req, res, next)
+);
+
+router.get(
+  '/:id/page',
+  [authenticateToken, ...validateSessionId],
+  (req, res, next) => sessionCrudController.getSessionPageById(req, res, next)
 );
 
 router.post(

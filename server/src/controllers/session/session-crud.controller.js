@@ -120,6 +120,38 @@ const sessionCrudController = {
     }
   },
 
+  async getSessionPageById(req, res, next) {
+    try {
+      const { id: sessionId } = req.params;
+      const userId = req.user?.id;
+
+      const pageData = await sessionService.getSessionPageById(sessionId, userId);
+
+      res.json({
+        success: true,
+        data: pageData,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getSessionPageByShareToken(req, res, next) {
+    try {
+      const { shareToken } = req.params;
+      const userId = req.user?.id || null;
+
+      const pageData = await sessionService.getSessionPageByShareToken(shareToken, userId);
+
+      res.json({
+        success: true,
+        data: pageData,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
   async updateSession(req, res, next) {
     try {
       const { id: sessionId } = req.params;

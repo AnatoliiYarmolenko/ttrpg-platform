@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/stores/useToastStore';
 import {
-  getSessionById,
-  getSessionByShareToken,
+  getSessionPageById,
+  getSessionPageByShareToken,
   getSessionParticipants,
   updateSession,
   deleteSession,
@@ -16,16 +16,46 @@ import {
   removeParticipant,
 } from '../api/sessionApi';
 
-export const useSessionQuery = ({ sessionId = null, shareToken = null } = {}) => {
+export const sessionPageQueryKeys = {
+  all: ['session-page'],
+  byId: (sessionId) => ['session-page', sessionId || null, null],
+  byShare: (shareToken) => ['session-page', null, shareToken || null],
+  detail: ({ sessionId = null, shareToken = null } = {}) => ['session-page', sessionId || null, shareToken || null],
+};
+
+export const invalidateSessionPage = async (
+  queryClient,
+  { sessionId = null, shareToken = null } = {}
+) => {
+  const tasks = [];
+  const isValidId = Number.isInteger(sessionId) && sessionId > 0;
+  const hasShareToken = typeof shareToken === 'string' && shareToken.trim().length > 0;
+
+  if (isValidId) {
+    tasks.push(queryClient.invalidateQueries({ queryKey: sessionPageQueryKeys.byId(sessionId) }));
+  }
+
+  if (hasShareToken) {
+    tasks.push(queryClient.invalidateQueries({ queryKey: sessionPageQueryKeys.byShare(shareToken) }));
+  }
+
+  if (!isValidId && !hasShareToken) {
+    tasks.push(queryClient.invalidateQueries({ queryKey: sessionPageQueryKeys.all }));
+  }
+
+  await Promise.all(tasks);
+};
+
+export const useSessionPageQuery = ({ sessionId = null, shareToken = null } = {}) => {
   const isValidId = Number.isInteger(sessionId) && sessionId > 0;
   const hasShareToken = typeof shareToken === 'string' && shareToken.trim().length > 0;
 
   return useQuery({
-    queryKey: ['session', sessionId || null, shareToken || null],
+    queryKey: sessionPageQueryKeys.detail({ sessionId, shareToken }),
     queryFn: async () => {
       const res = hasShareToken
-        ? await getSessionByShareToken(shareToken)
-        : await getSessionById(sessionId);
+        ? await getSessionPageByShareToken(shareToken)
+        : await getSessionPageById(sessionId);
 
       if (!res.success) {
         throw new Error(res.error || 'Failed to fetch session');
@@ -76,6 +106,7 @@ export const useSessionMutations = (sessionId, options = {}) => {
   const queryClient = useQueryClient();
 
   const invalidateSession = () => queryClient.invalidateQueries({ queryKey: ['session', sessionId] });
+  const invalidateSessionPageQuery = () => invalidateSessionPage(queryClient, { sessionId, shareToken });
   const invalidateParticipants = () => queryClient.invalidateQueries({ queryKey: ['session', sessionId, 'participants'] });
   const invalidateShareLink = () => queryClient.invalidateQueries({ queryKey: ['session', sessionId, 'share-link'] });
 
@@ -102,32 +133,32 @@ export const useSessionMutations = (sessionId, options = {}) => {
 
   const updateSessionMutation = useMutation({
     mutationFn: (data) => updateSession(sessionId, data),
-    ...handleMutation('Сесію успішно оновлено', [invalidateSession, invalidateParticipants, invalidateShareLink]),
+    ...handleMutation('Сесію успішно оновлено', [invalidateSessionPageQuery, invalidateSession, invalidateParticipants, invalidateShareLink]),
   });
 
   const deleteSessionMutation = useMutation({
     mutationFn: () => deleteSession(sessionId),
-    ...handleMutation('Сесію видалено', [invalidateSession, invalidateParticipants]),
+    ...handleMutation('Сесію видалено', [invalidateSessionPageQuery, invalidateSession, invalidateParticipants]),
   });
 
   const cancelSessionMutation = useMutation({
     mutationFn: () => cancelSession(sessionId),
-    ...handleMutation('Сесію скасовано', [invalidateSession, invalidateParticipants]),
+    ...handleMutation('Сесію скасовано', [invalidateSessionPageQuery, invalidateSession, invalidateParticipants]),
   });
 
   const finishSessionMutation = useMutation({
     mutationFn: () => markSessionAsFinished(sessionId),
-    ...handleMutation('Сесію завершено', [invalidateSession, invalidateParticipants]),
+    ...handleMutation('Сесію завершено', [invalidateSessionPageQuery, invalidateSession, invalidateParticipants]),
   });
 
   const regenerateShareLinkMutation = useMutation({
     mutationFn: () => regenerateSessionShareLink(sessionId),
-    ...handleMutation('Share-посилання оновлено', [invalidateSession, invalidateShareLink]),
+    ...handleMutation('Share-посилання оновлено', [invalidateSessionPageQuery, invalidateSession, invalidateShareLink]),
   });
 
   const updateStatusMutation = useMutation({
     mutationFn: (status) => updateSession(sessionId, { status }),
-    ...handleMutation('Статус сесії оновлено', [invalidateSession, invalidateParticipants]),
+    ...handleMutation('Статус сесії оновлено', [invalidateSessionPageQuery, invalidateSession, invalidateParticipants]),
   });
 
   const joinSessionMutation = useMutation({
@@ -135,22 +166,22 @@ export const useSessionMutations = (sessionId, options = {}) => {
       ...payload,
       ...(shareToken ? { shareToken } : {}),
     }),
-    ...handleMutation('Ви успішно приєдналися до сесії', [invalidateSession, invalidateParticipants]),
+    ...handleMutation('Ви успішно приєдналися до сесії', [invalidateSessionPageQuery, invalidateSession, invalidateParticipants]),
   });
 
   const leaveSessionMutation = useMutation({
     mutationFn: () => leaveSession(sessionId),
-    ...handleMutation('Ви покинули сесію', [invalidateSession, invalidateParticipants]),
+    ...handleMutation('Ви покинули сесію', [invalidateSessionPageQuery, invalidateSession, invalidateParticipants]),
   });
 
   const updateParticipantStatusMutation = useMutation({
     mutationFn: ({ participantId, status }) => updateParticipantStatus(sessionId, participantId, status),
-    ...handleMutation('Статус учасника оновлено', [invalidateParticipants, invalidateSession]),
+    ...handleMutation('Статус учасника оновлено', [invalidateParticipants, invalidateSessionPageQuery, invalidateSession]),
   });
 
   const removeParticipantMutation = useMutation({
     mutationFn: (participantId) => removeParticipant(sessionId, participantId),
-    ...handleMutation('Учасника видалено', [invalidateParticipants, invalidateSession]),
+    ...handleMutation('Учасника видалено', [invalidateParticipants, invalidateSessionPageQuery, invalidateSession]),
   });
 
   return {
