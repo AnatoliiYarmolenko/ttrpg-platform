@@ -245,20 +245,23 @@ export default function HomeCurrentSessionWidget() {
           )}
         </div>
 
-        {(session.campaign?.title || session.myRole) && (
-          <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3">
             <div className="text-brand-medium text-sm leading-tight truncate flex-1 min-w-0">
-              {session.campaign?.title && (
+              {session.campaign?.title ? (
                 <>
                   <span className="font-medium">Кампанія:</span> {session.campaign.title}
                 </>
+              ) : (
+                <>
+                  <span className="font-medium">Формат:</span> One-shot
+                </>
               )}
             </div>
+            
             <div className="shrink-0 flex justify-end">
               {session.myRole && <RoleBadge role={session.myRole} size="md" />}
             </div>
-          </div>
-        )}
+        </div>
 
       </div>
 
