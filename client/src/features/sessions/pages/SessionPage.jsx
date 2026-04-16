@@ -6,13 +6,11 @@ import useSessionPageController from '../hooks/useSessionPageController';
 
 // Layout & Navigation
 import SessionLayout from '../components/layout/SessionLayout';
-import SessionNavigation, { TABS } from '../components/navigation/SessionNavigation';
+import SessionNavigation from '../components/navigation/SessionNavigation';
+import SessionTabRenderer from '../components/layout/SessionTabRenderer';
 
 // Widgets
-import SessionInfoWidget from '../components/widgets/SessionInfoWidget';
-import SessionSettingsWidget from '../components/widgets/SessionSettingsWidget';
 import SessionPagePreviewWidget from '../components/widgets/SessionPreviewWidget';
-import SessionPageParticipantsWidget from '../components/widgets/SessionParticipantsWidget';
 
 // Shared
 import { UserProfilePreview } from '@/components/shared';
@@ -37,7 +35,10 @@ export default function SessionPage() {
     error,
     shouldRedirectToLogin,
     activeTab,
+    availableTabs,
     setActiveTab,
+    communicationPanelMode,
+    setCommunicationPanelMode,
     viewingUserId,
     isPreviewMode,
     myRole,
@@ -51,6 +52,8 @@ export default function SessionPage() {
     canManageGmRequests,
     canManageShareLink,
     canManageSettings,
+    canManageSession,
+    participantsSection,
     canJoin,
     canApplyAsGm,
     showCampaignInfo,
@@ -62,7 +65,6 @@ export default function SessionPage() {
     handleMarkAsFinished,
     handleSaveSettings,
     handleDelete,
-    handleParticipantStatusChange,
     handleRegenerateShareLink,
     handleCopyShareLink,
     handleViewProfile,
@@ -91,105 +93,81 @@ export default function SessionPage() {
   }
 
   // === Left panel ===
-  const renderLeftPanel = () => {
-    if (viewingUserId) {
-      return (
-        <UserProfilePreview
-          userId={viewingUserId}
-          onBack={handleBackFromProfile}
-          participants={currentSession.participants}
-        />
-      );
-    }
+  const profilePreviewNode = viewingUserId ? (
+    <UserProfilePreview
+      userId={viewingUserId}
+      onBack={handleBackFromProfile}
+      participants={Array.isArray(participantsSection?.items) ? participantsSection.items : []}
+    />
+  ) : null;
 
-    if (isPreviewMode) {
-      return (
-        <SessionPagePreviewWidget
-          session={currentSession}
-          onJoin={handleJoin}
-          canJoin={canJoin}
-          canApplyAsGm={canApplyAsGm}
-          showCampaignInfo={showCampaignInfo}
-          canNavigateToCampaignDirectly={canNavigateToCampaignDirectly}
-          isLoading={isLoading}
-        />
-      );
-    }
-
-    switch (activeTab) {
-      case TABS.SETTINGS:
-        if (canManageSettings) {
-          return (
-            <SessionSettingsWidget
-              session={currentSession}
-              onSave={handleSaveSettings}
-              onDelete={handleDelete}
-              canDelete={canDeleteSession}
-              isLoading={isLoading}
-            />
-          );
-        }
-        return (
-          <SessionInfoWidget
-            session={currentSession}
-            myRole={myRole}
-            canManage={canManageStatus}
-            canStartSession={canStartSession}
-            canFinishSession={canFinishSession}
-            canCancelSession={canCancelSession}
-            canManageShareLink={canManageShareLink}
-            currentShareLink={currentShareLink}
-            onLeave={handleLeave}
-            onStatusChange={handleStatusChange}
-            onMarkAsFinished={handleMarkAsFinished}
-            onRegenerateShareLink={handleRegenerateShareLink}
-            onCopyShareLink={handleCopyShareLink}
-            showCampaignInfo={showCampaignInfo}
-            canNavigateToCampaignDirectly={canNavigateToCampaignDirectly}
-            isLoading={isLoading}
-          />
-        );
-
-      case TABS.DETAILS:
-      default:
-        return (
-          <SessionInfoWidget
-            session={currentSession}
-            myRole={myRole}
-            canManage={canManageStatus}
-            canStartSession={canStartSession}
-            canFinishSession={canFinishSession}
-            canCancelSession={canCancelSession}
-            canManageShareLink={canManageShareLink}
-            currentShareLink={currentShareLink}
-            onLeave={handleLeave}
-            onStatusChange={handleStatusChange}
-            onMarkAsFinished={handleMarkAsFinished}
-            onRegenerateShareLink={handleRegenerateShareLink}
-            onCopyShareLink={handleCopyShareLink}
-            showCampaignInfo={showCampaignInfo}
-            canNavigateToCampaignDirectly={canNavigateToCampaignDirectly}
-            isLoading={isLoading}
-          />
-        );
-    }
+  const sessionInfoProps = {
+    session: currentSession,
+    myRole,
+    currentUserId: user?.id,
+    canManage: canManageStatus,
+    canStartSession,
+    canFinishSession,
+    canCancelSession,
+    onLeave: handleLeave,
+    onStatusChange: handleStatusChange,
+    onMarkAsFinished: handleMarkAsFinished,
+    showCampaignInfo,
+    isLoading,
   };
 
-  // === Right panel ===
-  const renderRightPanel = () => (
-    <SessionPageParticipantsWidget
-      sessionId={id}
-      session={currentSession}
-      initialParticipants={currentSession.participants || []}
-      canReadParticipants={canReadParticipants}
-      canManage={canManageParticipants}
-      canManageGmRequests={canManageGmRequests}
-      onParticipantStatusChange={handleParticipantStatusChange}
-      currentUserId={user?.id}
-      onViewProfile={handleViewProfile}
-      maxPlayers={currentSession.maxPlayers}
-    />
-  );
+  const sessionSettingsProps = {
+    session: currentSession,
+    onSave: handleSaveSettings,
+    onDelete: handleDelete,
+    canManageShareLink,
+    currentShareLink,
+    onRegenerateShareLink: handleRegenerateShareLink,
+    onCopyShareLink: handleCopyShareLink,
+    canDelete: canDeleteSession,
+    isLoading,
+  };
+
+  const participantsProps = {
+    sessionId: id,
+    session: currentSession,
+    participantsSection,
+    canReadParticipants,
+    canManage: canManageParticipants,
+    canManageGmRequests,
+    currentUserId: user?.id,
+    onViewProfile: handleViewProfile,
+    maxPlayers: currentSession.maxPlayers,
+  };
+
+  const tabPanels = SessionTabRenderer({
+    activeTab,
+    sessionInfoProps,
+    sessionSettingsProps,
+    participantsProps,
+    viewingUserId,
+    profilePreviewNode,
+    communicationPanelMode,
+    setCommunicationPanelMode,
+    sessionTitle: currentSession.title,
+  });
+
+  const previewPanels = {
+    leftPanel: (
+      <SessionPagePreviewWidget
+        session={currentSession}
+        onJoin={handleJoin}
+        canJoin={canJoin}
+        canApplyAsGm={canApplyAsGm}
+        showCampaignInfo={showCampaignInfo}
+        canNavigateToCampaignDirectly={canNavigateToCampaignDirectly}
+        isLoading={isLoading}
+      />
+    ),
+    rightPanel: tabPanels.rightPanel,
+  };
+
+  const panelState = isPreviewMode ? previewPanels : tabPanels;
 
   return (
     <SessionLayout
@@ -244,14 +222,16 @@ export default function SessionPage() {
           <SessionNavigation
             sessionTitle={currentSession.title}
             activeTab={activeTab}
+            availableTabs={availableTabs}
             onTabChange={setActiveTab}
             canManage={canManageSettings}
+            canManageSession={canManageSession}
             campaignTitle={currentSession.campaign?.title}
           />
         )
       }
-      leftPanel={renderLeftPanel()}
-      rightPanel={renderRightPanel()}
+      leftPanel={panelState.leftPanel}
+      rightPanel={panelState.rightPanel}
     />
   );
 }

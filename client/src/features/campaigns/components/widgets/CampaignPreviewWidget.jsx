@@ -75,7 +75,7 @@ export default function CampaignPreviewWidget({
           {/* Учасники */}
           <div className="flex items-center gap-2 text-brand-medium">
             <GroupPeople className="w-4 h-4" />
-            <span>{campaign.members?.length || campaign._count?.members || 0} учасників</span>
+            <span>{campaign.membersCount ?? campaign.members?.length ?? campaign._count?.members ?? 0} учасників</span>
           </div>
           {/* Власник/Майстер */}
           {campaign.owner && (
@@ -86,7 +86,7 @@ export default function CampaignPreviewWidget({
           {/* Сесій */}
           <div className="flex items-center gap-2 text-brand-medium">
             <Data className="w-4 h-4" />
-            <span>{campaign.sessions?.length || campaign._count?.sessions || 0} сесій</span>
+            <span>{campaign.sessionsCount ?? campaign.sessions?.length ?? campaign._count?.sessions ?? 0} сесій</span>
           </div>
           {/* Створено */}
           <div className="flex items-center gap-2 text-brand-medium col-span-2">

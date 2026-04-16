@@ -19,10 +19,13 @@ export default function CampaignPage() {
     id,
     user,
     currentCampaign,
-    campaignMembers,
+    membersSection,
+    joinRequestsSection,
+    sessionsSection,
     isLoading,
     error,
     activeTab,
+    availableTabs,
     setActiveTab,
     viewingUserId,
     isPreviewMode,
@@ -36,7 +39,6 @@ export default function CampaignPage() {
     canRemovePlayers,
     canCreateCampaignSessions,
     canManageShareLink,
-    canUseOwnerSessionOverrides,
     isCampaignFinished,
     canJoin,
     pendingRequestStatus,
@@ -75,7 +77,7 @@ export default function CampaignPage() {
         <UserProfilePreview
           userId={viewingUserId}
           onBack={handleBackFromProfile}
-          participants={campaignMembers.map((m) => ({ ...m, user: m.user }))}
+          participants={(membersSection.items || []).map((member) => ({ ...member, user: member.user }))}
         />
       );
     }
@@ -107,11 +109,10 @@ export default function CampaignPage() {
         }
         return (
           <CampaignSessionsWidget
-            campaign={currentCampaign}
-            canOwnerOverride={canUseOwnerSessionOverrides}
-            onCancelForeignSession={handleCancelForeignSession}
-            onDeleteForeignSession={handleDeleteForeignSession}
-            onSessionCreated={handleRefreshCampaign}
+            campaignStatus={currentCampaign.status}
+            sessionsSection={sessionsSection}
+            onCancelSession={handleCancelForeignSession}
+            onDeleteSession={handleDeleteForeignSession}
           />
         );
 
@@ -133,11 +134,10 @@ export default function CampaignPage() {
       default:
         return (
           <CampaignSessionsWidget
-            campaign={currentCampaign}
-            canOwnerOverride={canUseOwnerSessionOverrides}
-            onCancelForeignSession={handleCancelForeignSession}
-            onDeleteForeignSession={handleDeleteForeignSession}
-            onSessionCreated={handleRefreshCampaign}
+            campaignStatus={currentCampaign.status}
+            sessionsSection={sessionsSection}
+            onCancelSession={handleCancelForeignSession}
+            onDeleteSession={handleDeleteForeignSession}
           />
         );
     }
@@ -158,7 +158,8 @@ export default function CampaignPage() {
     return (
       <CampaignMembersWidget
         campaignId={id}
-        initialMembers={campaignMembers}
+        membersSection={membersSection}
+        joinRequestsSection={joinRequestsSection}
         canReadMembers={canReadMembers}
         isOwner={isOwner}
         isGM={isGM}
@@ -205,6 +206,7 @@ export default function CampaignPage() {
           <CampaignNavigation
             campaignTitle={currentCampaign.title}
             activeTab={activeTab}
+            availableTabs={availableTabs}
             onTabChange={setActiveTab}
             canManageSettings={canManageCampaignSettings}
           />

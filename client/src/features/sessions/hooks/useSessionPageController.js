@@ -171,7 +171,9 @@ function normalizeServerAvailableTabs(rawTabs) {
     return [SESSION_TABS.DETAILS, SESSION_TABS.COMMUNICATION];
   }
 
-  const normalizedTabs = rawTabs.filter((tab) => SESSION_TAB_VALUES.includes(tab));
+  const normalizedTabs = rawTabs
+    .map((tab) => (tab === 'manage' ? SESSION_TABS.SETTINGS : tab))
+    .filter((tab, index, source) => SESSION_TAB_VALUES.includes(tab) && source.indexOf(tab) === index);
   return normalizedTabs.length > 0
     ? normalizedTabs
     : [SESSION_TABS.DETAILS, SESSION_TABS.COMMUNICATION];
@@ -261,6 +263,8 @@ export default function useSessionPageController() {
     SESSION_TAB_VALUES,
     SESSION_TABS.DETAILS
   );
+  const rawTab = searchParams.get('tab');
+  const normalizedActiveTab = rawTab === 'manage' ? SESSION_TABS.SETTINGS : activeTab;
   const viewingUserId = parsePositiveIntSearchParam(searchParams, 'viewing');
   const communicationPanelMode = parseEnumSearchParam(
     searchParams,
@@ -272,12 +276,12 @@ export default function useSessionPageController() {
   useEffect(() => {
     normalizeSessionUrlState({
       searchParams,
-      activeTab,
+      activeTab: normalizedActiveTab,
       viewingUserId,
       communicationPanelMode,
       setSearchParams,
     });
-  }, [activeTab, communicationPanelMode, searchParams, setSearchParams, viewingUserId]);
+  }, [communicationPanelMode, normalizedActiveTab, searchParams, setSearchParams, viewingUserId]);
 
   const setActiveTab = useCallback((tab) => {
     updateSearchParams(setSearchParams, (next) => {
@@ -305,10 +309,10 @@ export default function useSessionPageController() {
   }, [setSearchParams]);
 
   useEffect(() => {
-    if (!availableTabs.includes(activeTab)) {
+    if (!availableTabs.includes(normalizedActiveTab)) {
       setActiveTab(SESSION_TABS.DETAILS);
     }
-  }, [activeTab, availableTabs, setActiveTab]);
+  }, [availableTabs, normalizedActiveTab, setActiveTab]);
 
   const isPreviewMode = Boolean(ui.previewMode);
 
@@ -388,7 +392,6 @@ export default function useSessionPageController() {
 
   const handleViewProfile = useCallback((targetUserId) => {
     updateSearchParams(setSearchParams, (next) => {
-      setOrDeleteParam(next, 'tab', SESSION_TABS.COMMUNICATION, SESSION_TABS.DETAILS);
       next.set('viewing', targetUserId);
     });
   }, [setSearchParams]);
@@ -407,7 +410,7 @@ export default function useSessionPageController() {
     isLoading,
     error,
     shouldRedirectToLogin,
-    activeTab,
+    activeTab: normalizedActiveTab,
     availableTabs,
     setActiveTab,
     communicationPanelMode,

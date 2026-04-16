@@ -70,11 +70,11 @@ export default function CampaignInfoWidget({
           )}
           <div className="flex items-center gap-2 text-brand-medium">
             <GroupPeople className="w-4 h-4" />
-            <span>{campaign.members?.length || 0} учасників</span>
+            <span>{campaign.membersCount ?? campaign.members?.length ?? 0} учасників</span>
           </div>
           <div className="flex items-center gap-2 text-brand-medium">
             <Data className="w-4 h-4" />
-            <span>{campaign.sessions?.length || 0} сесій</span>
+            <span>{campaign.sessionsCount ?? campaign.sessions?.length ?? 0} сесій</span>
           </div>
           {campaign.owner && (
             <div className="flex items-center gap-2 text-brand-medium">

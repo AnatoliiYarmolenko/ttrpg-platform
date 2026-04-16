@@ -30,7 +30,6 @@ const sortByClosestDate = (a, b) => {
 function CampaignSessionSection({
   section,
   sessions,
-  canOwnerOverride,
   openCancelModal,
   openDeleteModal,
 }) {
@@ -59,9 +58,8 @@ function CampaignSessionSection({
             <SessionListItem
               key={session.id}
               session={session}
-              showOwnerOverrideActions={Boolean(canOwnerOverride)}
-              onCancelOwnerAction={() => openCancelModal(session.id)}
-              onDeleteOwnerAction={() => openDeleteModal(session.id)}
+              onCancelAction={() => openCancelModal(session)}
+              onDeleteAction={() => openDeleteModal(session)}
             />
           ))}
         </div>
@@ -71,45 +69,48 @@ function CampaignSessionSection({
 }
 
 export default function CampaignSessionsWidget({
-  campaign,
-  canOwnerOverride = false,
-  onCancelForeignSession,
-  onDeleteForeignSession,
-  onSessionCreated,
+  campaignStatus = 'ACTIVE',
+  sessionsSection = null,
+  onCancelSession,
+  onDeleteSession,
 }) {
   const { openConfirm, confirmModalProps } = useConfirmDialog();
 
-  if (!campaign) return null;
-
-  const sessions = campaign.sessions || [];
+  const sessions = Array.isArray(sessionsSection?.items) ? sessionsSection.items : [];
   const activeCount = sessions.filter((session) => session.status === "ACTIVE").length;
   const plannedCount = sessions.filter((session) => session.status === "PLANNED").length;
   const finishedCount = sessions.filter((session) => session.status === "FINISHED").length;
   const canceledCount = sessions.filter((session) => session.status === "CANCELED").length;
   const title = `Сесії кампанії (${sessions.length})`;
 
-  const openCancelModal = (sessionId) => {
+  const openCancelModal = (session) => {
+    if (!session?.actions?.canCancel) {
+      return;
+    }
+
     openConfirm({
       title: 'Скасувати сесію?',
       message: 'Сесія змінить статус на CANCELED. Продовжити?',
       variant: 'danger',
       confirmText: 'Скасувати',
       onConfirm: async () => {
-        await onCancelForeignSession?.(sessionId);
-        await onSessionCreated?.();
+        await onCancelSession?.(session.id);
       },
     });
   };
 
-  const openDeleteModal = (sessionId) => {
+  const openDeleteModal = (session) => {
+    if (!session?.actions?.canDelete) {
+      return;
+    }
+
     openConfirm({
       title: 'Видалити сесію?',
       message: 'Сесію буде видалено без можливості відновлення. Продовжити?',
       variant: 'danger',
       confirmText: 'Видалити',
       onConfirm: async () => {
-        await onDeleteForeignSession?.(sessionId);
-        await onSessionCreated?.();
+        await onDeleteSession?.(session.id);
       },
     });
   };
@@ -119,7 +120,7 @@ export default function CampaignSessionsWidget({
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between p-3 rounded-xl bg-brand-light/8 border border-brand-light/25">
           <span className="text-sm font-semibold text-brand-dark">Статус кампанії</span>
-          <StatusBadge status={campaign.status || 'ACTIVE'} size="sm" />
+          <StatusBadge status={campaignStatus || 'ACTIVE'} size="sm" />
         </div>
 
         {sessions.length > 0 && (
@@ -144,7 +145,6 @@ export default function CampaignSessionsWidget({
                 key={section.key}
                 section={section}
                 sessions={sessions}
-                canOwnerOverride={canOwnerOverride}
                 openCancelModal={openCancelModal}
                 openDeleteModal={openDeleteModal}
               />

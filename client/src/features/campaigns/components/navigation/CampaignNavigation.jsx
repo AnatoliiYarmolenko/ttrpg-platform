@@ -25,16 +25,20 @@ const TABS = {
 export default function CampaignNavigation({
   campaignTitle,
   activeTab,
+  availableTabs = null,
   onTabChange,
   canManageSettings = false,
 }) {
   const navigate = useNavigate();
 
-  const tabs = [
+  const defaultTabs = [
     { key: TABS.SESSIONS, label: 'Сесії' },
     { key: TABS.DETAILS, label: 'Деталі' },
     ...(canManageSettings ? [{ key: TABS.SETTINGS, label: 'Налаштування' }] : []),
   ];
+  const tabs = Array.isArray(availableTabs) && availableTabs.length > 0
+    ? defaultTabs.filter((tab) => availableTabs.includes(tab.key))
+    : defaultTabs;
 
   return (
     <nav className="flex items-center gap-4 justify-between w-full">
