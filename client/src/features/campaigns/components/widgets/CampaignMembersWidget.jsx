@@ -24,8 +24,14 @@ export default function CampaignMembersWidget({
   onViewProfile,
 }) {
   const mutations = useCampaignMutations(campaignId);
-  const campaignMembers = Array.isArray(membersSection?.items) ? membersSection.items : [];
-  const joinRequests = Array.isArray(joinRequestsSection?.items) ? joinRequestsSection.items : [];
+  const campaignMembers = useMemo(
+    () => (Array.isArray(membersSection?.items) ? membersSection.items : []),
+    [membersSection]
+  );
+  const joinRequests = useMemo(
+    () => (Array.isArray(joinRequestsSection?.items) ? joinRequestsSection.items : []),
+    [joinRequestsSection]
+  );
   const { openConfirm, confirmModalProps } = useConfirmDialog();
 
   const handleRemove = (memberId) => {

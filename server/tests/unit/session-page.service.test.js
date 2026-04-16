@@ -110,7 +110,7 @@ test('hides participants section for outsider viewer', async () => {
   assert.equal(page.ui.previewMode, true);
 });
 
-test('includes management actions for owner and exposes settings/manage tabs', async () => {
+test('includes management actions for owner and exposes settings tab', async () => {
   const session = buildSession();
   const service = createServiceWithSession(session);
 
@@ -121,7 +121,7 @@ test('includes management actions for owner and exposes settings/manage tabs', a
   assert.equal(page.actions.canCancel, true);
   assert.equal(page.actions.canManageParticipants, true);
   assert.equal(page.ui.availableTabs.includes('settings'), true);
-  assert.equal(page.ui.availableTabs.includes('manage'), true);
+  assert.equal(page.ui.availableTabs.includes('manage'), false);
   assert.equal(page.ui.previewMode, false);
 });
 
@@ -201,7 +201,8 @@ test('confirmed player can manage share link for one-shot LINK_ONLY session with
   const page = await service.getSessionPageById(session.id, 33);
 
   assert.equal(page.actions.canManageShareLink, true);
-  assert.equal(page.ui.availableTabs.includes('manage'), true);
+  assert.equal(page.ui.availableTabs.includes('settings'), true);
+  assert.equal(page.ui.availableTabs.includes('manage'), false);
 });
 
 test('share-token endpoint reuses page DTO builder', async () => {
@@ -271,8 +272,8 @@ test('campaign owner override grants only cancel/delete for чужої campaign 
   assert.equal(page.actions.canEditSettings, false);
   assert.equal(page.actions.canManageParticipants, false);
   assert.equal(page.actions.canManageGmRequests, false);
-  assert.equal(page.ui.availableTabs.includes('manage'), true);
-  assert.equal(page.ui.availableTabs.includes('settings'), false);
+  assert.equal(page.ui.availableTabs.includes('settings'), true);
+  assert.equal(page.ui.availableTabs.includes('manage'), false);
 });
 
 test('finished session disables settings and share-link management actions', async () => {

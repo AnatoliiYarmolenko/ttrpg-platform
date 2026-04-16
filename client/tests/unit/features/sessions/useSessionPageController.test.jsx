@@ -133,7 +133,7 @@ describe('useSessionPageController tab state', () => {
     });
   });
 
-  it('opens profile preview inside communication context', async () => {
+  it('opens profile preview via viewingUserId url param', async () => {
     mockUseSessionPageQuery.mockReturnValue({
       data: buildSessionPageData(),
       isLoading: false,
@@ -149,7 +149,6 @@ describe('useSessionPageController tab state', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.activeTab).toBe(SESSION_TABS.COMMUNICATION);
       expect(result.current.viewingUserId).toBe(42);
     });
   });

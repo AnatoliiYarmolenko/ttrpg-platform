@@ -149,7 +149,6 @@ export default function SessionPage() {
     profilePreviewNode,
     communicationPanelMode,
     setCommunicationPanelMode,
-    sessionTitle: currentSession.title,
   });
 
   const previewPanels = {
@@ -159,9 +158,6 @@ export default function SessionPage() {
         onJoin={handleJoin}
         canJoin={canJoin}
         canApplyAsGm={canApplyAsGm}
-        showCampaignInfo={showCampaignInfo}
-        canNavigateToCampaignDirectly={canNavigateToCampaignDirectly}
-        isLoading={isLoading}
       />
     ),
     rightPanel: tabPanels.rightPanel,

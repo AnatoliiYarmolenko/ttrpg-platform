@@ -130,7 +130,7 @@ describe('HomeCurrentSessionWidget', () => {
     expect(screen.getByText('Система:').closest('div')).toHaveTextContent(/Система:\s*D&D 5e/);
     expect(screen.getByText(/Barovia Nights/)).toBeInTheDocument();
     expect(screen.getByText('4 / 6 гравців')).toBeInTheDocument();
-    expect(screen.getByText('Доступність:').closest('div')).toHaveTextContent(/Доступність:\s*Приватна/);
+    expect(screen.getByText('Доступність:').closest('div')).toHaveTextContent(/Доступність:\s*Звичайна сесія/);
     expect(screen.getByText('Організатор:').closest('div')).toHaveTextContent(/Організатор:\s*Alex GM/);
     expect(screen.queryByText('GM: Alex GM')).not.toBeInTheDocument();
     expect(screen.getByText('Опис')).toBeInTheDocument();

@@ -135,8 +135,8 @@ export default function useCampaignPageController() {
   const entity = pageData?.entity || null;
   const viewer = pageData?.viewer || {};
   const actions = pageData?.actions || {};
-  const sections = pageData?.sections || {};
   const ui = pageData?.ui || {};
+  const sections = useMemo(() => pageData?.sections || {}, [pageData]);
 
   const membersSection = useMemo(
     () => sections.members || { visible: false, count: 0, items: [] },
@@ -255,9 +255,13 @@ export default function useCampaignPageController() {
       return { success: false, message: 'Учасника кампанії не знайдено' };
     }
 
-    await mutations.removeMember(myMember.userId);
-    navigate("/");
-    return { success: true };
+    try {
+      await mutations.removeMember(myMember.userId);
+      navigate('/');
+      return { success: true };
+    } catch {
+      return { success: false, message: 'Не вдалося покинути кампанію' };
+    }
   }, [membersSection.items, user, isCampaignFinished, mutations, navigate]);
 
   const handleRegenerateShareLink = useCallback(async () => {

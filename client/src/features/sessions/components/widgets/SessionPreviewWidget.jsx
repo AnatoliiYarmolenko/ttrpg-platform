@@ -12,40 +12,6 @@ import Data from "@/components/ui/icons/Data";
 import Timer from "@/components/ui/icons/Timer";
 import GroupPeople from "@/components/ui/icons/GroupPeople";
 
-function formatDuration(minutes) {
-  if (!minutes) return "";
-
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-
-  if (hours === 0) return `${mins} хв`;
-  if (mins === 0) return `${hours} год`;
-  return `${hours} год ${mins} хв`;
-}
-
-function getPlayerCount(session) {
-  // If participants array is available with actual data, use it for accurate count
-  if (Array.isArray(session?.participants) && session.participants.length > 0) {
-    return session.participants.filter((participant) => participant.role === "PLAYER").length;
-  }
-
-  // Otherwise fallback to summary count (for preview/share modes without full data)
-  if (Number.isFinite(Number(session?.participantsSummaryCount))) {
-    return Number(session.participantsSummaryCount);
-  }
-
-  // Last resort: try to count from array even if seems empty
-  if (Array.isArray(session?.participants)) {
-    return session.participants.filter((participant) => participant.role === "PLAYER").length;
-  }
-
-  return 0;
-}
-
-function getFreeSpots(session) {
-  if (!session?.maxPlayers) return '∞';
-  return String(Math.max(0, session.maxPlayers - getPlayerCount(session)));
-}
 
 function getAvailabilityLabel(session) {
   if (session?.campaign) {
@@ -191,8 +157,6 @@ export default function SessionPagePreviewWidget({
   onJoin,
   canJoin = false,
   canApplyAsGm = false,
-  showCampaignInfo = true,
-  canNavigateToCampaignDirectly = true,
 }) {
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinError, setJoinError] = useState(null);
@@ -292,7 +256,7 @@ export default function SessionPagePreviewWidget({
           <div className="flex items-center gap-2 text-brand-medium text-sm">
             <GroupPeople className="w-4 h-4 shrink-0" />
             <span>
-              {getPlayerCount(session)}
+              {session.participants?.filter((p) => p.role === "PLAYER").length ?? 0}
               {session.maxPlayers ? ` / ${session.maxPlayers}` : ''} гравців
             </span>
           </div>
@@ -383,6 +347,4 @@ SessionPagePreviewWidget.propTypes = {
   onJoin: PropTypes.func,
   canJoin: PropTypes.bool,
   canApplyAsGm: PropTypes.bool,
-  showCampaignInfo: PropTypes.bool,
-  canNavigateToCampaignDirectly: PropTypes.bool,
 };

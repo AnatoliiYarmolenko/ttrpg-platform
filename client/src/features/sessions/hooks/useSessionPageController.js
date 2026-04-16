@@ -172,7 +172,6 @@ function normalizeServerAvailableTabs(rawTabs) {
   }
 
   const normalizedTabs = rawTabs
-    .map((tab) => (tab === 'manage' ? SESSION_TABS.SETTINGS : tab))
     .filter((tab, index, source) => SESSION_TAB_VALUES.includes(tab) && source.indexOf(tab) === index);
   return normalizedTabs.length > 0
     ? normalizedTabs
@@ -206,8 +205,8 @@ export default function useSessionPageController() {
   const entity = pageData?.entity || null;
   const viewer = pageData?.viewer || {};
   const actions = pageData?.actions || {};
-  const sections = pageData?.sections || {};
   const ui = pageData?.ui || {};
+  const sections = useMemo(() => pageData?.sections || {}, [pageData]);
 
   const participantsSection = useMemo(
     () => sections.participants || { visible: false, items: [], count: 0, maxPlayers: null },
@@ -263,8 +262,6 @@ export default function useSessionPageController() {
     SESSION_TAB_VALUES,
     SESSION_TABS.DETAILS
   );
-  const rawTab = searchParams.get('tab');
-  const normalizedActiveTab = rawTab === 'manage' ? SESSION_TABS.SETTINGS : activeTab;
   const viewingUserId = parsePositiveIntSearchParam(searchParams, 'viewing');
   const communicationPanelMode = parseEnumSearchParam(
     searchParams,
@@ -276,12 +273,12 @@ export default function useSessionPageController() {
   useEffect(() => {
     normalizeSessionUrlState({
       searchParams,
-      activeTab: normalizedActiveTab,
+      activeTab,
       viewingUserId,
       communicationPanelMode,
       setSearchParams,
     });
-  }, [communicationPanelMode, normalizedActiveTab, searchParams, setSearchParams, viewingUserId]);
+  }, [communicationPanelMode, activeTab, searchParams, setSearchParams, viewingUserId]);
 
   const setActiveTab = useCallback((tab) => {
     updateSearchParams(setSearchParams, (next) => {
@@ -309,10 +306,10 @@ export default function useSessionPageController() {
   }, [setSearchParams]);
 
   useEffect(() => {
-    if (!availableTabs.includes(normalizedActiveTab)) {
+    if (!availableTabs.includes(activeTab)) {
       setActiveTab(SESSION_TABS.DETAILS);
     }
-  }, [availableTabs, normalizedActiveTab, setActiveTab]);
+  }, [availableTabs, activeTab, setActiveTab]);
 
   const isPreviewMode = Boolean(ui.previewMode);
 
@@ -410,7 +407,7 @@ export default function useSessionPageController() {
     isLoading,
     error,
     shouldRedirectToLogin,
-    activeTab: normalizedActiveTab,
+    activeTab,
     availableTabs,
     setActiveTab,
     communicationPanelMode,

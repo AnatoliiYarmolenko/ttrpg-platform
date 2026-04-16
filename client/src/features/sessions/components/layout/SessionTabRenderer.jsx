@@ -19,7 +19,6 @@ function renderCommunicationRightPanel({
   communicationPanelMode,
   setCommunicationPanelMode,
   participantsProps,
-  sessionTitle,
 }) {
   return (
     communicationPanelMode === COMMUNICATION_MODES.PARTICIPANTS ? (
@@ -39,7 +38,6 @@ function renderCommunicationRightPanel({
       />
     ) : (
       <SessionCommunicationChatWidget
-        sessionTitle={sessionTitle}
         onToggleMode={() => setCommunicationPanelMode(COMMUNICATION_MODES.PARTICIPANTS)}
       />
     )
@@ -55,7 +53,6 @@ export default function SessionTabRenderer({
   profilePreviewNode,
   communicationPanelMode,
   setCommunicationPanelMode,
-  sessionTitle,
 }) {
   const detailsParticipantsProps = {
     ...participantsProps,
@@ -77,7 +74,6 @@ export default function SessionTabRenderer({
         communicationPanelMode,
         setCommunicationPanelMode,
         participantsProps,
-        sessionTitle,
       }),
     };
   }

@@ -150,8 +150,8 @@ function createSessionPageService({ sessionQueryService }) {
       tabs.push('settings');
     }
 
-    if (canManageSession) {
-      tabs.push('manage');
+    if (canManageSession && !canEditSettings) {
+      tabs.push('settings');
     }
 
     return tabs;
