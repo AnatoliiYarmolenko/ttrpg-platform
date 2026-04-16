@@ -68,6 +68,7 @@ const ERROR_MESSAGES = {
   [ERROR_CODES.SESSION_CANCEL_FINISHED_FORBIDDEN]: 'Неможливо скасувати завершену сесію',
   [ERROR_CODES.SESSION_ALREADY_CANCELED]: 'Сесію вже скасовано',
   [ERROR_CODES.SESSION_UPDATE_PAST_SETTINGS_FORBIDDEN]: 'Неможливо змінювати налаштування сесії, яка вже відбулася',
+  [ERROR_CODES.SESSION_SETTINGS_UPDATE_FORBIDDEN]: 'Неможливо змінювати налаштування завершеної або скасованої сесії',
   [ERROR_CODES.SESSION_STATUS_TRANSITION_INVALID]: 'Недопустимий перехід статусу сесії',
   [ERROR_CODES.SESSION_LINK_ONLY_ONE_SHOT_ONLY]: 'Режим LINK_ONLY дозволений лише для одиночних сесій',
   [ERROR_CODES.SESSION_DELETE_FORBIDDEN]: 'Видаляти можна лише заплановані сесії',

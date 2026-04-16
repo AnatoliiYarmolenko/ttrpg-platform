@@ -1,70 +1,169 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
 import DashboardCard from '@/components/ui/DashboardCard';
 import Button from '@/components/ui/Button';
 import {
-  StatusBadge,
-  RoleBadge,
   DateTimeDisplay,
+  RoleBadge,
   ConfirmModal,
 } from '@/components/shared';
 import useConfirmDialog from '@/hooks/useConfirmDialog';
 import Data from '@/components/ui/icons/Data';
 import Timer from '@/components/ui/icons/Timer';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
-import Dice20 from '@/components/ui/icons/Dice20';
 import { getSessionStartState } from '../../utils/sessionStartRules';
+
+const UI_LOCALE = 'uk-UA';
+
+const CAMPAIGN_SESSION_VISIBILITY_LABELS = {
+  PRIVATE: 'Звичайна сесія',
+  PUBLIC: 'Гостьова сесія',
+};
+
+const ONE_SHOT_VISIBILITY_LABELS = {
+  PUBLIC: 'Публічна сесія',
+  PRIVATE: 'Сесія з підтвердженням',
+  LINK_ONLY: 'Сесія за посиланням',
+};
+
+function selectRelativeUnit(diffMs) {
+  const absMs = Math.abs(diffMs);
+
+  if (absMs < 60 * 1000) {
+    return { unit: 'second', value: Math.round(diffMs / 1000) };
+  }
+
+  if (absMs < 60 * 60 * 1000) {
+    return { unit: 'minute', value: Math.round(diffMs / (60 * 1000)) };
+  }
+
+  if (absMs < 24 * 60 * 60 * 1000) {
+    return { unit: 'hour', value: Math.round(diffMs / (60 * 60 * 1000)) };
+  }
+
+  return { unit: 'day', value: Math.round(diffMs / (24 * 60 * 60 * 1000)) };
+}
+
+function buildRelativeSessionTime(date, status, nowMs) {
+  if (!date || status !== 'PLANNED') {
+    return null;
+  }
+
+  const startDate = new Date(date);
+  if (Number.isNaN(startDate.getTime())) {
+    return null;
+  }
+
+  const diffMs = startDate.getTime() - nowMs;
+  if (diffMs <= 30 * 1000 && diffMs >= -30 * 1000) {
+    return 'Почнеться зовсім скоро';
+  }
+
+  const relativeTime = new Intl.RelativeTimeFormat(UI_LOCALE, { numeric: 'auto' });
+  const { unit, value } = selectRelativeUnit(diffMs);
+  return `Почнеться ${relativeTime.format(value, unit)}`;
+}
+
+const getCardTitle = (session) => ('Деталі сесії');
+
+const formatStartAt = (value) => {
+  if (!value) {
+    return 'Дата не вказана';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return 'Дата не вказана';
+  }
+
+  return date.toLocaleString(UI_LOCALE, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+};
+
+const formatTimeOnly = (value) => {
+  if (!value) {
+    return '--:--';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '--:--';
+  }
+
+  return date.toLocaleTimeString(UI_LOCALE, { hour: '2-digit', minute: '2-digit' });
+};
 
 export default function SessionInfoWidget({
   session,
   myRole,
+  currentUserId,
   canManage = false,
   canStartSession = false,
   canFinishSession = false,
   canCancelSession = false,
-  canManageShareLink = false,
-  currentShareLink = '',
   onLeave,
   onStatusChange,
   onMarkAsFinished,
-  onRegenerateShareLink,
-  onCopyShareLink,
   showCampaignInfo = true,
-  canNavigateToCampaignDirectly = true,
   isLoading = false,
 }) {
-  const navigate = useNavigate();
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const { openConfirm, confirmModalProps } = useConfirmDialog();
 
-  const formatDuration = (minutes) => {
-    if (!minutes) return '';
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    if (hours === 0) return `${mins} хв`;
-    if (mins === 0) return `${hours} год`;
-    return `${hours} год ${mins} хв`;
-  };
+  useEffect(() => {
+    const intervalId = globalThis.setInterval(() => {
+      setNowMs(Date.now());
+    }, 30 * 1000);
 
-  const getFreeSpots = () => {
-    if (!session?.maxPlayers) return '∞';
-    const currentPlayers =
-      session.participants?.filter((participant) => participant.role === 'PLAYER').length || 0;
-    return String(Math.max(0, session.maxPlayers - currentPlayers));
-  };
+    return () => {
+      globalThis.clearInterval(intervalId);
+    };
+  }, []);
 
   const getPlayerCount = () => {
-    return session?.participants?.filter((participant) => participant.role === 'PLAYER').length || 0;
+    // If participants array is available with actual data, use it
+    if (Array.isArray(session?.participants) && session.participants.length > 0) {
+      return session.participants.filter((participant) => participant.role === 'PLAYER').length;
+    }
+
+    // Fallback to summary count (server-provided participant count)
+    if (Number.isFinite(Number(session?.participantsSummaryCount))) {
+      return Number(session.participantsSummaryCount);
+    }
+
+    // Last resort: count from array even if empty
+    if (Array.isArray(session?.participants)) {
+      return session.participants.filter((participant) => participant.role === 'PLAYER').length;
+    }
+
+    return 0;
   };
 
-  const organizerName = session?.owner?.displayName || session?.owner?.username || 'Організатор';
-  const confirmedGm = session?.participants?.find(
-    (participant) => participant.role === 'GM' && participant.status === 'CONFIRMED'
+  const displayMyRole = myRole;
+  const isSessionOwner = Number(session?.ownerId) === Number(currentUserId);
+  const organizerName = session?.owner?.displayName || session?.owner?.username || null;
+  const playersCount = getPlayerCount();
+  const playersCapacity = Number(session?.maxPlayers);
+  const hasPlayersCapacity = Number.isFinite(playersCapacity) && playersCapacity > 0;
+  const isCampaignSession = Boolean(session?.campaign?.id || session?.campaignId);
+  const visibilityLabels = isCampaignSession
+    ? CAMPAIGN_SESSION_VISIBILITY_LABELS
+    : ONE_SHOT_VISIBILITY_LABELS;
+  const availabilityLabel = visibilityLabels[session?.visibility]
+    || (isCampaignSession
+      ? CAMPAIGN_SESSION_VISIBILITY_LABELS.PRIVATE
+      : ONE_SHOT_VISIBILITY_LABELS.PRIVATE);
+
+  if (!session) return null;
+
+  const startState = getSessionStartState(session?.date, session?.duration);
+
+  const relativeSessionTime = useMemo(
+    () => buildRelativeSessionTime(session?.date, session?.status, nowMs),
+    [nowMs, session?.date, session?.status]
   );
-  const confirmedGmName = confirmedGm?.user?.displayName || confirmedGm?.user?.username || null;
-  const ownerParticipantRole = session?.participants?.find(
-    (participant) => participant.userId === session?.ownerId
-  )?.role;
-  const displayMyRole = myRole === 'OWNER' ? (ownerParticipantRole || 'GM') : myRole;
+  const cardTitle = getCardTitle(session);
 
   const handleLeave = () => {
     openConfirm({
@@ -75,10 +174,6 @@ export default function SessionInfoWidget({
       onConfirm: onLeave,
     });
   };
-
-  if (!session) return null;
-
-  const startState = getSessionStartState(session?.date, session?.duration);
 
   const handleStatusChange = (newStatus) => {
     const statusLabels = {
@@ -119,213 +214,142 @@ export default function SessionInfoWidget({
     });
   };
 
-  const handleRotateShareLink = () => {
-    openConfirm({
-      title: 'Оновити share-посилання?',
-      message: 'Старе share-посилання перестане працювати. Нове посилання буде згенеровано та скопійовано.',
-      variant: 'danger',
-      confirmText: 'Оновити',
-      onConfirm: onRegenerateShareLink,
-    });
-  };
-
   return (
-    <DashboardCard title="Інформація про сесію">
-      <div className="flex flex-col gap-5">
-        <div>
-          <div className="flex items-start justify-between mb-2">
-            <h2 className="text-xl font-bold text-brand-dark flex-1 pr-3">
+    <DashboardCard title={cardTitle}>
+      <div className="flex flex-col gap-4 h-full">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="text-xl font-bold text-brand-dark leading-tight truncate flex-1 min-w-0">
               {session.title}
-            </h2>
-            <StatusBadge status={session.status} />
+            </h3>
+            {relativeSessionTime && (
+              <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 bg-brand-light/20 text-brand-dark text-sm font-medium whitespace-nowrap shrink-0">
+                <Timer className="w-4 h-4 shrink-0" />
+                <span>{relativeSessionTime}</span>
+              </div>
+            )}
           </div>
-          {displayMyRole && <RoleBadge role={displayMyRole} size="md" />}
+
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-brand-medium text-sm leading-tight truncate flex-1 min-w-0">
+              {session.campaign?.title && showCampaignInfo ? (
+                <>
+                  <span className="font-medium">Кампанія:</span> {session.campaign.title}
+                </>
+              ) : (
+                <>
+                  <span className="font-medium">Формат:</span> One-shot
+                </>
+              )}
+            </div>
+
+            <div className="shrink-0 flex justify-end">
+              {displayMyRole && <RoleBadge role={displayMyRole} size="md" />}
+            </div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 p-4 bg-brand-light/10 rounded-xl">
-          <div className="flex items-center gap-2 text-brand-medium">
-            <Data className="w-4 h-4" />
-            <DateTimeDisplay value={session.date} format="long" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 p-4 bg-brand-light/10 rounded-xl">
+          <div className="flex items-center gap-2 text-brand-medium text-sm">
+            <Data className="w-4 h-4 shrink-0" />
+            <DateTimeDisplay value={session.date} format="long" fallback={formatStartAt(session.date)} />
           </div>
-          <div className="flex items-center gap-2 text-brand-medium">
-            <Timer className="w-4 h-4" />
-            <DateTimeDisplay value={session.date} format="time" />
+          <div className="flex items-center gap-2 text-brand-medium text-sm">
+            <span className="font-medium">Система:</span>
+            <span>{session.system || 'Не вказана'}</span>
           </div>
-          {session.duration && (
-            <div className="flex items-center gap-2 text-brand-medium">
-              <Timer className="w-4 h-4" />
-              <span>{formatDuration(session.duration)}</span>
-            </div>
-          )}
-          <div className="flex items-center gap-2 text-brand-medium">
-            <GroupPeople className="w-4 h-4" />
+
+          <div className="flex items-center gap-2 text-brand-medium text-sm">
+            <Timer className="w-4 h-4 shrink-0" />
+            <time>{formatTimeOnly(session.date)}</time>
+          </div>
+          <div className="flex items-center gap-2 text-brand-medium text-sm">
+            <span className="font-medium">Доступність:</span>
+            <span>{availabilityLabel}</span>
+          </div>
+
+          <div className="flex items-center gap-2 text-brand-medium text-sm">
+            <GroupPeople className="w-4 h-4 shrink-0" />
             <span>
-              {getPlayerCount()}
-              {session.maxPlayers ? ` / ${session.maxPlayers}` : ''} гравців
+              {hasPlayersCapacity ? `${playersCount} / ${playersCapacity} гравців` : `${playersCount} гравців`}
             </span>
           </div>
-          {session.system && (
-            <div className="flex items-center gap-2 text-brand-medium">
-              <span>{session.system}</span>
-            </div>
-          )}
-          <div className="flex items-center gap-2 text-brand-medium">
-            <span>Вільних: {getFreeSpots()}</span>
-          </div>
-          <div className="flex items-center gap-2 text-brand-medium">
-            <span>Організатор: {organizerName}</span>
-          </div>
-          <div className="flex items-center gap-2 text-brand-medium">
-            <span>GM: {confirmedGmName || 'Шукаємо GM'}</span>
-          </div>
-        </div>
-
-        {session.description && (
-          <div className="border-t border-brand-light/20 pt-4">
-            <h4 className="text-sm font-bold text-brand-dark mb-2">Опис сесії</h4>
-            <p className="text-sm text-brand-medium whitespace-pre-wrap">
-              {session.description}
-            </p>
-          </div>
-        )}
-
-        {canManageShareLink && (
-          <div className="border-t border-brand-light/20 pt-4">
-            <h4 className="text-sm font-bold text-brand-dark mb-3">Share-посилання</h4>
-            <div className="p-4 bg-brand-light/20 rounded-xl flex flex-col gap-3">
-              {currentShareLink ? (
-                <code className="px-3 py-2 bg-white rounded-lg font-mono text-brand-dark text-xs break-all">
-                  {currentShareLink}
-                </code>
-              ) : (
-                <p className="text-sm text-brand-medium">
-                  Share-посилання буде доступне тут після завантаження або перевипуску.
-                </p>
-              )}
-              <div className="flex gap-3 flex-wrap">
-                {currentShareLink && (
-                  <Button
-                    onClick={onCopyShareLink}
-                    variant="secondary"
-                    fullWidth={false}
-                    className="w-full lg:w-auto px-5"
-                  >
-                    Копіювати посилання
-                  </Button>
-                )}
-                <Button
-                  onClick={handleRotateShareLink}
-                  variant="secondary"
-                  fullWidth={false}
-                  className="w-full lg:w-auto px-5"
-                >
-                  Оновити share-посилання
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="border-t border-brand-light/20 pt-4">
-          {session.campaign && showCampaignInfo ? (
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-bold text-brand-dark">Кампанія:</span>
-              {canNavigateToCampaignDirectly ? (
-                <Button
-                  onClick={() => navigate(`/campaign/${session.campaign.id}`)}
-                  variant="light"
-                  size="sm"
-                  fullWidth={false}
-                  className="p-0 h-auto bg-transparent hover:bg-transparent shadow-none hover:shadow-none text-sm text-brand-medium hover:text-brand-dark underline transition-colors"
-                >
-                  {session.campaign.title}
-                </Button>
-              ) : (
-                <span className="text-sm text-brand-medium">{session.campaign.title}</span>
-              )}
-              {session.campaign.system && (
-                <span className="text-xs px-2 py-0.5 bg-brand-light/20 rounded">
-                  {session.campaign.system}
-                </span>
-              )}
+          {organizerName ? (
+            <div className="flex items-center gap-2 text-brand-medium text-sm">
+              <span className="font-medium">Організатор:</span>
+              <span>{organizerName}</span>
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-sm text-brand-medium">
-              <Dice20 className="w-4 h-4" />
-              <span>{session.campaign ? 'Сесія кампанії' : 'One-shot сесія'}</span>
-            </div>
+            <div className="hidden sm:block" />
           )}
         </div>
 
-        {session.price > 0 && (
-          <div className="text-sm font-bold text-brand-dark">
-            {session.price} грн
+        <div className="border-t border-brand-light/20 pt-3">
+          <h4 className="text-sm font-bold text-brand-dark mb-3">Опис</h4>
+          <p className="text-sm text-brand-medium whitespace-pre-wrap leading-relaxed">
+            {session.description?.trim() || 'Опис відсутній'}
+          </p>
+        </div>
+
+        <div className="border-t border-brand-light/20 pt-4 mt-auto">
+          <div className="grid grid-flow-col auto-cols-fr gap-3 w-full">
+            {session.status === 'PLANNED' && myRole && myRole !== 'OWNER' && !isSessionOwner && onLeave && (
+              <Button
+                onClick={handleLeave}
+                variant="danger"
+                isLoading={isLoading}
+                loadingText="Вихід..."
+                fullWidth={true}
+                className="w-full"
+              >
+                Покинути сесію
+              </Button>
+            )}
+
+            {canManage && canStartSession && session.status === 'PLANNED' && startState.canShowStartButton && (
+              <Button
+                onClick={() => handleStatusChange('ACTIVE')}
+                variant="primary"
+                fullWidth={true}
+                className="w-full"
+              >
+                Розпочати
+              </Button>
+            )}
+
+            {canManage && canFinishSession && session.status === 'ACTIVE' && (
+              <Button
+                onClick={() => handleStatusChange('FINISHED')}
+                variant="secondary"
+                fullWidth={true}
+                className="w-full"
+              >
+                Завершити
+              </Button>
+            )}
+
+            {canManage && canCancelSession && (session.status === 'PLANNED' || session.status === 'ACTIVE') && (
+              <Button
+                onClick={() => handleStatusChange('CANCELED')}
+                variant="danger"
+                fullWidth={true}
+                className="w-full"
+              >
+                Скасувати
+              </Button>
+            )}
+
+            {canManage && canFinishSession && session.status === 'PLANNED' && startState.canMarkAsFinished && (
+              <Button
+                onClick={handleMarkAsFinished}
+                variant="secondary"
+                fullWidth={true}
+                className="w-full"
+              >
+                Позначити як проведену
+              </Button>
+            )}
           </div>
-        )}
-
-        <div className="border-t border-brand-light/20 pt-4 flex flex-col gap-3">
-          {session.status === 'PLANNED' && myRole && myRole !== 'OWNER' && onLeave && (
-            <Button
-              onClick={handleLeave}
-              variant="danger"
-              isLoading={isLoading}
-              loadingText="Вихід..."
-              fullWidth={false}
-              className="w-full lg:w-auto"
-            >
-              Покинути сесію
-            </Button>
-          )}
-
-          {canManage && (
-            <div className="pt-2 border-t border-brand-light/20">
-              <h4 className="font-medium text-brand-dark mb-2 text-sm">
-                Управління статусом
-              </h4>
-              <div className="flex gap-3 flex-wrap">
-                {canStartSession && session.status === 'PLANNED' && startState.canShowStartButton && (
-                  <Button
-                    onClick={() => handleStatusChange('ACTIVE')}
-                    variant="primary"
-                    fullWidth={false}
-                    className="w-full lg:w-auto px-5"
-                  >
-                    Розпочати
-                  </Button>
-                )}
-                {canFinishSession && session.status === 'ACTIVE' && (
-                  <Button
-                    onClick={() => handleStatusChange('FINISHED')}
-                    variant="secondary"
-                    fullWidth={false}
-                    className="w-full lg:w-auto px-5"
-                  >
-                    Завершити
-                  </Button>
-                )}
-                {canCancelSession && (session.status === 'PLANNED' || session.status === 'ACTIVE') && (
-                  <Button
-                    onClick={() => handleStatusChange('CANCELED')}
-                    variant="danger"
-                    fullWidth={false}
-                    className="w-full lg:w-auto px-5"
-                  >
-                    Скасувати
-                  </Button>
-                )}
-                {canFinishSession && session.status === 'PLANNED' && startState.canMarkAsFinished && (
-                  <Button
-                    onClick={handleMarkAsFinished}
-                    variant="secondary"
-                    fullWidth={false}
-                    className="w-full lg:w-auto px-5"
-                  >
-                    Позначити як проведену
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 

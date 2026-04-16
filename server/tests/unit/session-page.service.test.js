@@ -161,6 +161,49 @@ test('confirmed GM can cancel only active session and cannot edit settings', asy
   assert.equal(page.actions.canManageShareLink, false);
 });
 
+test('confirmed player can manage share link for one-shot LINK_ONLY session without confirmed GM', async () => {
+  const session = buildSession({
+    visibility: 'LINK_ONLY',
+    campaignId: null,
+    ownerId: 10,
+    participants: [
+      {
+        id: 711,
+        userId: 10,
+        role: 'PLAYER',
+        status: 'CONFIRMED',
+        isGuest: false,
+        user: { id: 10, username: 'owner_player', displayName: null, avatarUrl: null },
+      },
+      {
+        id: 712,
+        userId: 33,
+        role: 'PLAYER',
+        status: 'CONFIRMED',
+        isGuest: false,
+        user: { id: 33, username: 'player33', displayName: null, avatarUrl: null },
+      },
+    ],
+    viewer: {
+      role: 'PLAYER',
+      isSessionOwner: false,
+      isParticipant: true,
+      isCampaignMember: false,
+      isCampaignOwner: false,
+      participationStatus: 'CONFIRMED',
+      canManage: false,
+      canManageParticipants: false,
+      joinMode: 'OPEN',
+    },
+  });
+
+  const service = createServiceWithSession(session);
+  const page = await service.getSessionPageById(session.id, 33);
+
+  assert.equal(page.actions.canManageShareLink, true);
+  assert.equal(page.ui.availableTabs.includes('manage'), true);
+});
+
 test('share-token endpoint reuses page DTO builder', async () => {
   const session = buildSession({
     viewer: {
@@ -230,4 +273,33 @@ test('campaign owner override grants only cancel/delete for чужої campaign 
   assert.equal(page.actions.canManageGmRequests, false);
   assert.equal(page.ui.availableTabs.includes('manage'), true);
   assert.equal(page.ui.availableTabs.includes('settings'), false);
+});
+
+test('finished session disables settings and share-link management actions', async () => {
+  const session = buildSession({
+    status: 'FINISHED',
+    date: new Date(Date.now() + 86_400_000).toISOString(),
+    visibility: 'LINK_ONLY',
+    campaignId: null,
+    campaign: null,
+    viewer: {
+      role: 'OWNER',
+      isSessionOwner: true,
+      isParticipant: true,
+      isCampaignMember: false,
+      isCampaignOwner: false,
+      participationStatus: 'CONFIRMED',
+      canManage: true,
+      canManageParticipants: true,
+      joinMode: 'OPEN',
+    },
+  });
+
+  const service = createServiceWithSession(session);
+  const page = await service.getSessionPageById(session.id, 10);
+
+  assert.equal(page.actions.canEditSettings, false);
+  assert.equal(page.actions.canManageShareLink, false);
+  assert.equal(page.ui.availableTabs.includes('settings'), false);
+  assert.equal(page.ui.availableTabs.includes('manage'), false);
 });

@@ -5,6 +5,7 @@ const sessionService = require('../../src/services/session.service');
 const createSessionCalendarService = require('../../src/services/session/session-calendar.service');
 const { prisma } = require('../../src/lib/prisma');
 const permissionHelpers = require('../../src/services/session/session-permission.helpers');
+const { createRawEncryptedAndHashedShareToken } = require('../../src/utils/token.helper');
 
 class CalendarAppError extends Error {
   constructor(code, message) {
@@ -59,6 +60,28 @@ function withMockedCanChangeSessionStatus(mockImpl, callback) {
     .then(callback)
     .finally(() => {
       permissionHelpers._canChangeSessionStatus = original;
+    });
+}
+
+function withMockedSessionById(mockImpl, callback) {
+  const original = sessionService.queryService.getSessionById;
+  sessionService.queryService.getSessionById = mockImpl;
+
+  return Promise.resolve()
+    .then(callback)
+    .finally(() => {
+      sessionService.queryService.getSessionById = original;
+    });
+}
+
+function withMockedPrismaFindUnique(mockImpl, callback) {
+  const originalFindUnique = prisma.session.findUnique;
+  prisma.session.findUnique = mockImpl;
+
+  return Promise.resolve()
+    .then(callback)
+    .finally(() => {
+      prisma.session.findUnique = originalFindUnique;
     });
 }
 
@@ -223,6 +246,133 @@ test('Cannot update campaign session visibility to LINK_ONLY', async () => {
       { preloadedSession }
     ),
     (error) => error?.code === 'SESSION_LINK_ONLY_ONE_SHOT_ONLY'
+  );
+});
+
+test('Confirmed player can regenerate share link for one-shot LINK_ONLY session without confirmed GM', async () => {
+  const session = {
+    id: 901,
+    ownerId: 10,
+    campaignId: null,
+    visibility: 'LINK_ONLY',
+    campaign: null,
+    participants: [
+      { id: 1, userId: 10, role: 'PLAYER', status: 'CONFIRMED' },
+      { id: 2, userId: 33, role: 'PLAYER', status: 'CONFIRMED' },
+    ],
+  };
+
+  await withMockedSessionById(
+    async () => session,
+    async () => {
+      await withMockedPrismaUpdate(async () => ({ id: session.id }), async () => {
+        const result = await sessionService.regenerateShareToken(session.id, 33);
+        assert.equal(result.sessionId, session.id);
+        assert.equal(typeof result.token, 'string');
+        assert.equal(result.token.length > 0, true);
+      });
+    }
+  );
+});
+
+test('Confirmed player can read share link for one-shot LINK_ONLY session without confirmed GM', async () => {
+  const shareTokenData = createRawEncryptedAndHashedShareToken();
+  const session = {
+    id: 902,
+    ownerId: 10,
+    campaignId: null,
+    visibility: 'LINK_ONLY',
+    campaign: null,
+    participants: [
+      { id: 1, userId: 10, role: 'PLAYER', status: 'CONFIRMED' },
+      { id: 2, userId: 33, role: 'PLAYER', status: 'CONFIRMED' },
+    ],
+  };
+
+  await withMockedSessionById(
+    async () => session,
+    async () => {
+      await withMockedPrismaFindUnique(
+        async () => ({ shareTokenEncrypted: shareTokenData.tokenEncrypted }),
+        async () => {
+          const result = await sessionService.getSessionShareLink(session.id, 33);
+          assert.equal(typeof result.token, 'string');
+          assert.equal(result.shareUrl.includes('/session/share/'), true);
+        }
+      );
+    }
+  );
+});
+
+test('Cannot update settings for FINISHED session', async () => {
+  const preloadedSession = {
+    id: 903,
+    ownerId: 11,
+    status: 'FINISHED',
+    date: new Date(Date.now() + 86_400_000).toISOString(),
+    duration: 180,
+    participants: [
+      {
+        id: 1101,
+        userId: 11,
+        role: 'GM',
+        status: 'CONFIRMED',
+      },
+    ],
+    campaign: null,
+  };
+
+  await assert.rejects(
+    () => sessionService.updateSession(preloadedSession.id, 11, { title: 'Updated title' }, { preloadedSession }),
+    (error) => error?.code === 'SESSION_SETTINGS_UPDATE_FORBIDDEN'
+  );
+});
+
+test('Cannot update settings for CANCELED session', async () => {
+  const preloadedSession = {
+    id: 904,
+    ownerId: 11,
+    status: 'CANCELED',
+    date: new Date(Date.now() + 86_400_000).toISOString(),
+    duration: 180,
+    participants: [
+      {
+        id: 1102,
+        userId: 11,
+        role: 'GM',
+        status: 'CONFIRMED',
+      },
+    ],
+    campaign: null,
+  };
+
+  await assert.rejects(
+    () => sessionService.updateSession(preloadedSession.id, 11, { title: 'Updated title' }, { preloadedSession }),
+    (error) => error?.code === 'SESSION_SETTINGS_UPDATE_FORBIDDEN'
+  );
+});
+
+test('Cannot regenerate share link for FINISHED LINK_ONLY session', async () => {
+  const session = {
+    id: 905,
+    ownerId: 10,
+    status: 'FINISHED',
+    campaignId: null,
+    visibility: 'LINK_ONLY',
+    campaign: null,
+    participants: [
+      { id: 1, userId: 10, role: 'PLAYER', status: 'CONFIRMED' },
+    ],
+  };
+
+  await withMockedSessionById(
+    async () => session,
+    async () => {
+      await assert.rejects(
+        () => sessionService.regenerateShareToken(session.id, 10),
+        (error) => error?.code === 'SECURITY_ACCESS_DENIED'
+      );
+    }
   );
 });
 

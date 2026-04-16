@@ -96,6 +96,50 @@ class SessionService {
     return permissionHelpers._canEditSessionSettings(session, userId);
   }
 
+  _canManageLinkOnlyShare(session, userId) {
+    if (!session) {
+      return false;
+    }
+
+    if (['FINISHED', 'CANCELED'].includes(session.status)) {
+      return false;
+    }
+
+    if (session.visibility !== 'LINK_ONLY') {
+      return false;
+    }
+
+    if (session?.campaign?.status === 'FINISHED') {
+      return false;
+    }
+
+    if (this._isSessionOwner(session, userId)) {
+      return true;
+    }
+
+    if (session.campaignId) {
+      return false;
+    }
+
+    const hasConfirmedGm = Boolean(
+      session.participants?.some(
+        (participant) => participant.role === 'GM' && participant.status === 'CONFIRMED'
+      )
+    );
+
+    if (hasConfirmedGm) {
+      return false;
+    }
+
+    return Boolean(
+      session.participants?.some(
+        (participant) => participant.userId === userId
+          && participant.role === 'PLAYER'
+          && participant.status === 'CONFIRMED'
+      )
+    );
+  }
+
   _getDateKeyInTimeZone(dateValue, timeZone) {
     return datetimeHelpers._getDateKeyInTimeZone(dateValue, timeZone);
   }
@@ -297,8 +341,8 @@ class SessionService {
       );
     }
 
-    if (!this._isSessionOwner(session, userId)) {
-      throw new AppError(ERROR_CODES.SESSION_OWNER_ONLY);
+    if (!this._canManageLinkOnlyShare(session, userId)) {
+      throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED);
     }
 
     const { rawToken, tokenHash, tokenEncrypted } = createRawEncryptedAndHashedShareToken();
@@ -329,8 +373,8 @@ class SessionService {
       );
     }
 
-    if (!this._isSessionOwner(session, userId)) {
-      throw new AppError(ERROR_CODES.SESSION_OWNER_ONLY);
+    if (!this._canManageLinkOnlyShare(session, userId)) {
+      throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED);
     }
 
     const stored = await prisma.session.findUnique({

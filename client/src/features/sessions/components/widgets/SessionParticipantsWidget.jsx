@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import DashboardCard from '@/components/ui/DashboardCard';
 import { EmptyState, ConfirmModal, ParticipantsList } from '@/components/shared';
 import ParticipantCard from '../ui/ParticipantCard';
-import { useSessionParticipantsQuery, useSessionMutations } from '../../hooks/useSessionQueries';
+import { useSessionMutations } from '../../hooks/useSessionQueries';
 import useConfirmDialog from '@/hooks/useConfirmDialog';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
 
@@ -22,17 +22,21 @@ import GroupPeople from '@/components/ui/icons/GroupPeople';
 export default function SessionPageParticipantsWidget({
   sessionId,
   session,
-  initialParticipants = [],
+  participantsSection = null,
   canReadParticipants = true,
   canManage = false,
   canManageGmRequests = false,
   currentUserId,
   onViewProfile,
   maxPlayers,
+  embedded = false,
+  actions = null,
 }) {
-  const { data: queriedParticipants = [] } = useSessionParticipantsQuery(sessionId, canReadParticipants);
   const mutations = useSessionMutations(sessionId);
-  const participants = queriedParticipants.length > 0 ? queriedParticipants : initialParticipants;
+  const participants = useMemo(
+    () => (Array.isArray(participantsSection?.items) ? participantsSection.items : []),
+    [participantsSection]
+  );
   const { openConfirm, confirmModalProps } = useConfirmDialog();
 
   // Дані завантажуються автоматично через useQuery
@@ -87,10 +91,6 @@ export default function SessionPageParticipantsWidget({
     });
   };
 
-  const title = maxPlayers
-    ? `Учасники (${participants.filter((participant) => participant.role === 'PLAYER').length}/${maxPlayers})`
-    : `Учасники (${participants.length})`;
-
   const sortedParticipants = useMemo(() => {
     return participants
       .map((participant, index) => ({ participant, index }))
@@ -107,8 +107,25 @@ export default function SessionPageParticipantsWidget({
       .map(({ participant }) => participant);
   }, [participants]);
 
-  return (
-    <DashboardCard title={title}>
+  if (!canReadParticipants || participantsSection?.visible === false) {
+    const hiddenContent = (
+      <EmptyState
+        icon={<GroupPeople className="w-10 h-10" />}
+        title="Список учасників прихований"
+        description="Для цього режиму перегляду список учасників недоступний."
+        className="h-full"
+      />
+    );
+
+    return embedded ? hiddenContent : <DashboardCard title="Учасники" actions={actions}>{hiddenContent}</DashboardCard>;
+  }
+
+  const title = maxPlayers
+    ? `Учасники (${participants.filter((participant) => participant.role === 'PLAYER').length}/${maxPlayers})`
+    : `Учасники (${participants.length})`;
+
+  const content = (
+    <>
       {sortedParticipants.length === 0 ? (
         <EmptyState
           icon={<GroupPeople className="w-10 h-10" />}
@@ -152,6 +169,12 @@ export default function SessionPageParticipantsWidget({
       <ConfirmModal
         {...confirmModalProps}
       />
-    </DashboardCard>
+    </>
   );
+
+  if (embedded) {
+    return content;
+  }
+
+  return <DashboardCard title={title} actions={actions}>{content}</DashboardCard>;
 }

@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import DashboardCard from '@/components/ui/DashboardCard';
 import FormField from '@/components/ui/FormField';
 import Button from '@/components/ui/Button';
+import Dropdown from '@/components/ui/Dropdown';
 import { ConfirmModal } from '@/components/shared';
+import useConfirmDialog from '@/hooks/useConfirmDialog';
 import { GAME_SYSTEMS } from '@/constants/gameSystems';
 import {
   formatDateTimeLocalValue,
@@ -80,6 +82,10 @@ function SessionSettingsWidgetContent({
   session,
   onSave,
   onDelete,
+  canManageShareLink = false,
+  currentShareLink = '',
+  onRegenerateShareLink,
+  onCopyShareLink,
   canDelete = true,
   isLoading = false,
 }) {
@@ -87,6 +93,7 @@ function SessionSettingsWidgetContent({
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
   const [dateError, setDateError] = useState('');
+  const { openConfirm, confirmModalProps } = useConfirmDialog();
 
   const isCampaignSession = Boolean(session?.campaignId);
   const visibilityOptions = isCampaignSession
@@ -95,10 +102,21 @@ function SessionSettingsWidgetContent({
         { value: 'PUBLIC', label: 'Гостьова' },
       ]
     : [
-        { value: 'PUBLIC', label: 'Публічна (в календарі, без підтвердження)' },
-        { value: 'PRIVATE', label: 'За підтвердженням (в календарі, з підтвердженням)' },
-        { value: 'LINK_ONLY', label: 'За посиланням (без календаря, з підтвердженням)' },
+        { value: 'PUBLIC', label: 'Публічна' },
+        { value: 'PRIVATE', label: 'За підтвердженням' },
+        { value: 'LINK_ONLY', label: 'За посиланням' },
       ];
+
+  const visibilityHelpByValue = isCampaignSession
+    ? {
+      PRIVATE: 'Звичайна: доступна в межах кампанії за її стандартними правилами.',
+      PUBLIC: 'Гостьова: видима користувачам поза кампанією, приєднання через заявку.',
+    }
+    : {
+      PUBLIC: 'Публічна: відображається користувачам, заявки гравців підтверджуються автоматично.',
+      PRIVATE: 'За підтвердженням: відображається користувачам, приєднання потребує схвалення.',
+      LINK_ONLY: 'За посиланням: не відображається на платформі, доступ лише через secret link.',
+    };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -145,129 +163,183 @@ function SessionSettingsWidgetContent({
     onDelete?.();
   };
 
+  const handleRotateShareLink = () => {
+    openConfirm({
+      title: 'Оновити share-посилання?',
+      message: 'Старе share-посилання перестане працювати. Нове посилання буде згенеровано та скопійовано.',
+      variant: 'danger',
+      confirmText: 'Оновити',
+      onConfirm: onRegenerateShareLink,
+    });
+  };
+
   const inputClasses =
     'w-full p-3 border-2 border-brand-light/50 rounded-xl focus:border-brand-dark text-brand-dark bg-white transition-colors';
 
   return (
-    <DashboardCard title="Налаштування сесії">
+    <DashboardCard title="Керування сесією">
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        <FormField id="title" label="Назва сесії" required>
-          <input
-            id="title"
-            type="text"
-            name="title"
-            value={formData.title}
-            onChange={handleChange}
-            className={inputClasses}
-            required
-            maxLength={100}
-          />
-        </FormField>
+        <div className="rounded-xl border border-brand-light/30 bg-brand-light/5 p-4">
+          <h3 className="text-sm font-bold text-brand-dark mb-3">Паспорт сесії</h3>
 
-        <FormField id="description" label="Опис">
-          <textarea
-            id="description"
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            className={`${inputClasses} resize-none`}
-            rows={3}
-            maxLength={2000}
-          />
-        </FormField>
+          <div className="flex flex-col gap-4">
+            <FormField id="title" label="Назва сесії" required>
+              <input
+                id="title"
+                type="text"
+                name="title"
+                value={formData.title}
+                onChange={handleChange}
+                className={inputClasses}
+                required
+                maxLength={100}
+              />
+            </FormField>
 
-        <div className="grid grid-cols-2 gap-3">
-          <FormField id="date" label="Дата і час" required>
-            <input
-              id="date"
-              type="datetime-local"
-              name="date"
-              value={formData.date}
-              onChange={handleChange}
-              className={inputClasses}
-              required
-            />
-            {dateError && (
-              <p className="mt-2 text-sm text-red-600">{dateError}</p>
+            <FormField id="description" label="Опис">
+              <textarea
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                className={`${inputClasses} resize-none`}
+                rows={3}
+                maxLength={2000}
+              />
+            </FormField>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <FormField id="date" label="Дата і час" required>
+                <input
+                  id="date"
+                  type="datetime-local"
+                  name="date"
+                  value={formData.date}
+                  onChange={handleChange}
+                  className={inputClasses}
+                  required
+                />
+                {dateError && (
+                  <p className="mt-2 text-sm text-red-600">{dateError}</p>
+                )}
+              </FormField>
+
+              <FormField id="duration" label="Тривалість (хв)">
+                <input
+                  id="duration"
+                  type="number"
+                  name="duration"
+                  value={formData.duration}
+                  onChange={handleChange}
+                  className={inputClasses}
+                  min={30}
+                  max={480}
+                  placeholder="180"
+                />
+              </FormField>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <FormField id="maxPlayers" label="Макс. гравців">
+                <input
+                  id="maxPlayers"
+                  type="number"
+                  name="maxPlayers"
+                  value={formData.maxPlayers}
+                  onChange={handleChange}
+                  className={inputClasses}
+                  min={1}
+                  max={20}
+                  placeholder="6"
+                />
+              </FormField>
+
+              <FormField id="system" label="Ігрова система">
+                <Dropdown
+                  options={[
+                    { value: '', label: 'Не вказано' },
+                    ...GAME_SYSTEMS.map((system) => ({
+                      value: system.value,
+                      label: system.label,
+                    })),
+                  ]}
+                  value={formData.system}
+                  onChange={(option) => {
+                    setFormData((prev) => ({ ...prev, system: option.value }));
+                    setSaveSuccess(false);
+                  }}
+                />
+              </FormField>
+            </div>
+
+            <FormField id="visibility" label={isCampaignSession ? 'Тип сесії' : 'Видимість'}>
+              <Dropdown
+                options={visibilityOptions}
+                value={formData.visibility}
+                onChange={(option) => {
+                  setFormData((prev) => ({ ...prev, visibility: option.value }));
+                  setSaveSuccess(false);
+                }}
+              />
+            </FormField>
+            <p className="mt-1 -mb-3 text-xs text-brand-medium">
+              {visibilityHelpByValue[formData.visibility] || 'Оберіть режим доступу до сесії.'}
+            </p>
+
+            <FormField id="price" label="Ціна (грн)">
+              <input
+                id="price"
+                type="number"
+                name="price"
+                value={formData.price}
+                onChange={handleChange}
+                className={inputClasses}
+                min={0}
+                placeholder="0"
+              />
+            </FormField>
+
+            {canManageShareLink && (
+              <div className="border-t border-brand-light/20 pt-4 flex flex-col gap-2">
+                <h4 className="text-sm font-bold text-brand-dark">Share-посилання</h4>
+
+                <div className="p-3 bg-brand-light/20 rounded-xl flex flex-col gap-2">
+                  {currentShareLink ? (
+                    <code className="px-3 py-2 bg-white rounded-lg font-mono text-brand-dark text-xs break-all">
+                      {currentShareLink}
+                    </code>
+                  ) : (
+                    <p className="text-sm text-brand-medium">
+                      Share-посилання буде згенероване після натискання кнопки нижче.
+                    </p>
+                  )}
+                </div>
+
+                <div className="grid grid-flow-col auto-cols-fr gap-3 w-full">
+                  {currentShareLink && (
+                    <Button
+                      onClick={onCopyShareLink}
+                      variant="outline"
+                      fullWidth={true}
+                      className="w-full min-h-[44px] !shadow-none"
+                    >
+                      Копіювати посилання
+                    </Button>
+                  )}
+
+                  <Button
+                    onClick={handleRotateShareLink}
+                    variant="outline"
+                    fullWidth={true}
+                    className="w-full min-h-[44px] !shadow-none"
+                  >
+                    {currentShareLink ? 'Оновити share-посилання' : 'Згенерувати share-посилання'}
+                  </Button>
+                </div>
+              </div>
             )}
-          </FormField>
-
-          <FormField id="duration" label="Тривалість (хв)">
-            <input
-              id="duration"
-              type="number"
-              name="duration"
-              value={formData.duration}
-              onChange={handleChange}
-              className={inputClasses}
-              min={30}
-              max={480}
-              placeholder="180"
-            />
-          </FormField>
+          </div>
         </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <FormField id="maxPlayers" label="Макс. гравців">
-            <input
-              id="maxPlayers"
-              type="number"
-              name="maxPlayers"
-              value={formData.maxPlayers}
-              onChange={handleChange}
-              className={inputClasses}
-              min={1}
-              max={20}
-              placeholder="6"
-            />
-          </FormField>
-
-          <FormField id="system" label="Ігрова система">
-            <select
-              id="system"
-              name="system"
-              value={formData.system}
-              onChange={handleChange}
-              className={inputClasses}
-            >
-              <option value="">Не вказано</option>
-              {GAME_SYSTEMS.map((system) => (
-                <option key={system.value} value={system.value}>
-                  {system.icon} {system.label}
-                </option>
-              ))}
-            </select>
-          </FormField>
-        </div>
-
-        <FormField id="visibility" label={isCampaignSession ? 'Тип сесії' : 'Видимість'}>
-          <select
-            id="visibility"
-            name="visibility"
-            value={formData.visibility}
-            onChange={handleChange}
-            className={inputClasses}
-          >
-            {visibilityOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </FormField>
-
-        <FormField id="price" label="Ціна (грн)">
-          <input
-            id="price"
-            type="number"
-            name="price"
-            value={formData.price}
-            onChange={handleChange}
-            className={inputClasses}
-            min={0}
-            placeholder="0"
-          />
-        </FormField>
 
         {saveSuccess && (
           <div className="text-sm text-green-600 p-3 bg-green-50 rounded-lg">
@@ -275,23 +347,27 @@ function SessionSettingsWidgetContent({
           </div>
         )}
 
-        <Button
-          type="submit"
-          variant="primary"
-          isLoading={isLoading}
-          loadingText="Збереження..."
-          fullWidth={true}
-        >
-          Зберегти зміни
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Button
+            type="submit"
+            variant="primary"
+            isLoading={isLoading}
+            loadingText="Збереження..."
+            fullWidth={true}
+            className="w-full min-h-[44px]"
+          >
+            Зберегти зміни
+          </Button>
+        </div>
 
         {canDelete && (
-          <div className="border-t border-red-200 pt-4 mt-2">
+          <div className="border-t border-red-200 pt-4 mt-2 rounded-xl bg-red-50/40 p-4">
             <h4 className="text-sm font-bold text-red-600 mb-3">Небезпечна зона</h4>
             <Button
               variant="danger"
               onClick={() => setDeleteModal(true)}
               fullWidth={true}
+              className="w-full min-h-[44px]"
             >
               Видалити сесію
             </Button>
@@ -310,6 +386,10 @@ function SessionSettingsWidgetContent({
           onCancel={() => setDeleteModal(false)}
         />
       )}
+
+      <ConfirmModal
+        {...confirmModalProps}
+      />
     </DashboardCard>
   );
 }

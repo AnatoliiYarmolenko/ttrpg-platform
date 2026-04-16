@@ -98,6 +98,39 @@ function createSessionPageService({ sessionQueryService }) {
     return canUseJoin;
   };
 
+  const canManageShareLinkForViewer = ({ session, isOwner, myParticipant, isCampaignFinished }) => {
+    if (session.visibility !== 'LINK_ONLY' || isCampaignFinished) {
+      return false;
+    }
+
+    if (['FINISHED', 'CANCELED'].includes(session.status)) {
+      return false;
+    }
+
+    if (isOwner) {
+      return true;
+    }
+
+    if (session.campaignId) {
+      return false;
+    }
+
+    const hasConfirmedGm = Boolean(
+      session.participants?.some(
+        (participant) => participant.role === 'GM' && participant.status === 'CONFIRMED'
+      )
+    );
+
+    if (hasConfirmedGm) {
+      return false;
+    }
+
+    return Boolean(
+      myParticipant?.role === 'PLAYER'
+      && myParticipant?.status === 'CONFIRMED'
+    );
+  };
+
   const shouldShowCampaignSection = ({ session, viewer }) => {
     if (!session?.campaign) {
       return false;
@@ -155,18 +188,29 @@ function createSessionPageService({ sessionQueryService }) {
       isCampaignMember,
     });
 
-    const canStart = isConfirmedGm;
-    const canFinish = isConfirmedGm;
+    const canStart = Boolean(isConfirmedGm && session.status === 'PLANNED');
+    const canFinish = Boolean(isConfirmedGm && ['PLANNED', 'ACTIVE'].includes(session.status));
     const canCancel = Boolean(
-      isOwner
-      || isCampaignOwnerOverride
-      || (session.status === 'ACTIVE' && isConfirmedGm)
+      ['PLANNED', 'ACTIVE'].includes(session.status)
+      && (
+        isOwner
+        || isCampaignOwnerOverride
+        || (session.status === 'ACTIVE' && isConfirmedGm)
+      )
     );
     const canDelete = Boolean((isOwner || isCampaignOwnerOverride) && session.status === 'PLANNED');
-    const canEditSettings = Boolean(viewer.canManage) && !isPastDate(session.date) && !isCampaignFinished;
+    const canEditSettings = Boolean(viewer.canManage)
+      && !isPastDate(session.date)
+      && !isCampaignFinished
+      && !['FINISHED', 'CANCELED'].includes(session.status);
     const canManageParticipants = Boolean(viewer.canManageParticipants || isConfirmedGm);
     const canManageGmRequests = isOwner;
-    const canManageShareLink = Boolean(isOwner && session.visibility === 'LINK_ONLY' && !isCampaignFinished);
+    const canManageShareLink = canManageShareLinkForViewer({
+      session,
+      isOwner,
+      myParticipant,
+      isCampaignFinished,
+    });
     const canOpenCampaign = Boolean(session.campaign && session.campaign.visibility !== 'LINK_ONLY');
     const canManageSession = Boolean(canStart || canFinish || canCancel || canDelete || canManageShareLink);
     const canReadParticipants = Boolean(isOwner || isParticipant || isCampaignMember);

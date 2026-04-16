@@ -2,11 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '@/components/ui/Button';
 import TopBarTabButton from '@/components/ui/TopBarTabButton';
-
-const TABS = {
-  DETAILS: 'details',
-  SETTINGS: 'settings',
-};
+import { buildSessionTabs } from '../../constants/sessionTabs';
 
 /**
  * SessionNavigation — topBar навігація на сторінці сесії.
@@ -25,16 +21,21 @@ const TABS = {
 export default function SessionNavigation({
   sessionTitle,
   activeTab,
+  availableTabs = null,
   onTabChange,
   canManage = false,
+  canManageSession = false,
   campaignTitle,
 }) {
   const navigate = useNavigate();
 
-  const tabs = [
-    { key: TABS.DETAILS, label: 'Деталі' },
-    ...(canManage ? [{ key: TABS.SETTINGS, label: 'Налаштування' }] : []),
-  ];
+  const defaultTabs = buildSessionTabs({
+    canManageSettings: canManage,
+    canManageSession,
+  });
+  const tabs = Array.isArray(availableTabs) && availableTabs.length > 0
+    ? defaultTabs.filter((tab) => availableTabs.includes(tab.key))
+    : defaultTabs;
 
   return (
     <nav className="flex items-center gap-4 justify-between w-full">
@@ -77,5 +78,3 @@ export default function SessionNavigation({
     </nav>
   );
 }
-
-export { TABS };

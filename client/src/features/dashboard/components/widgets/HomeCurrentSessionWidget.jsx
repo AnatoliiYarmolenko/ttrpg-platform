@@ -110,15 +110,14 @@ const buildRelativeSessionTime = (session, nowMs) => {
 const getCardTitle = (session) => (session?.status === 'ACTIVE' ? 'Поточна сесія' : 'Наступна сесія');
 
 const CAMPAIGN_SESSION_VISIBILITY_LABELS = {
-  PRIVATE: 'Звичайна',
-  PUBLIC: 'Гостьова',
-  LINK_ONLY: 'За посиланням',
+  PRIVATE: 'Звичайна сесія',
+  PUBLIC: 'Гостьова сесія',
 };
 
 const ONE_SHOT_VISIBILITY_LABELS = {
-  PUBLIC: 'Публічна',
-  PRIVATE: 'За підтвердженням',
-  LINK_ONLY: 'За посиланням',
+  PUBLIC: 'Публічна сесія',
+  PRIVATE: 'Сесія з підтвердженням',
+  LINK_ONLY: 'Сесія за посиланням',
 };
 
 export default function HomeCurrentSessionWidget() {
