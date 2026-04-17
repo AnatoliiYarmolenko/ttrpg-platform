@@ -17,7 +17,7 @@ import { UserProfilePreview } from '@/components/shared';
 import FullPageLoader from '@/components/shared/FullPageLoader';
 import ErrorScreen from '@/components/shared/ErrorScreen';
 import Button from '@/components/ui/Button';
-
+import Dice20 from '@/components/ui/icons/Dice20';
 /**
  * SessionPage — тонкий shell-компонент для /session/:id.
  *
@@ -172,9 +172,7 @@ export default function SessionPage() {
           <nav className="flex items-center gap-4 justify-between w-full">
             <div className="flex items-center gap-3 min-w-0 flex-1">
               <div className="bg-white px-4 py-2 rounded-xl border-2 border-brand-light/30 shadow-md flex items-center gap-2">
-                <div className="w-6 h-6 bg-brand-dark rounded-full flex items-center justify-center text-brand-accent font-bold text-xs">
-                  D20
-                </div>
+                <Dice20 className="w-6 h-6 text-brand-dark" />
                 <span className="font-bold text-brand-dark hidden md:block">
                   TTRPG Platform
                 </span>

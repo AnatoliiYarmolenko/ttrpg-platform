@@ -1,14 +1,17 @@
-import React from "react";
+import React, { useState } from "react";
 import DashboardCard from "@/components/ui/DashboardCard";
-import { ConfirmModal, EmptyState, StatusBadge } from "@/components/shared";
+import Button from "@/components/ui/Button";
+import { ConfirmModal, EmptyState, BackButton } from "@/components/shared";
 import useConfirmDialog from '@/hooks/useConfirmDialog';
 import SessionListItem from "../ui/SessionListItem";
+import CreateSessionForm from '@/features/dashboard/components/widgets/CreateSessionForm';
+import Dice20 from '@/components/ui/icons/Dice20';
 
 const STATUS_SECTIONS = [
-  { key: 'ACTIVE', title: 'Активні', emptyText: 'Активних сесій немає' },
-  { key: 'PLANNED', title: 'Заплановані', emptyText: 'Запланованих сесій немає' },
-  { key: 'FINISHED', title: 'Завершені', emptyText: 'Завершених сесій немає' },
-  { key: 'CANCELED', title: 'Скасовані', emptyText: 'Скасованих сесій немає' },
+  { key: 'ACTIVE', title: 'Активні' },
+  { key: 'PLANNED', title: 'Заплановані' },
+  { key: 'FINISHED', title: 'Завершені' },
+  { key: 'CANCELED', title: 'Скасовані' },
 ];
 
 const parseSessionTime = (sessionDate) => {
@@ -37,6 +40,10 @@ function CampaignSessionSection({
     .filter((session) => session.status === section.key)
     .sort(sortByClosestDate);
 
+  if (groupedSessions.length === 0) {
+    return null;
+  }
+
   return (
     <section key={section.key} className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
@@ -48,40 +55,41 @@ function CampaignSessionSection({
         </span>
       </div>
 
-      {groupedSessions.length === 0 ? (
-        <div className="text-xs text-brand-medium/80 px-3 py-2 border border-dashed border-brand-light/40 rounded-lg bg-brand-light/5">
-          {section.emptyText}
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {groupedSessions.map((session) => (
-            <SessionListItem
-              key={session.id}
-              session={session}
-              onCancelAction={() => openCancelModal(session)}
-              onDeleteAction={() => openDeleteModal(session)}
-            />
-          ))}
-        </div>
-      )}
+      <div className="flex flex-col gap-2">
+        {groupedSessions.map((session) => (
+          <SessionListItem
+            key={session.id}
+            session={session}
+            onCancelAction={() => openCancelModal(session)}
+            onDeleteAction={() => openDeleteModal(session)}
+          />
+        ))}
+      </div>
     </section>
   );
 }
 
+/**
+ * CampaignSessionsWidget — права панель таба "Сесії".
+ *
+ * Показує всі сесії кампанії, згруповані за статусом.
+ * Якщо є права — показує кнопку "Створити сесію" знизу (sticky footer).
+ * При настиканні — замінює контент на форму створення сесії.
+ */
 export default function CampaignSessionsWidget({
-  campaignStatus = 'ACTIVE',
+  campaignId,
   sessionsSection = null,
+  canCreateSessions = false,
+  isCampaignFinished = false,
   onCancelSession,
   onDeleteSession,
+  onSessionCreated,
 }) {
   const { openConfirm, confirmModalProps } = useConfirmDialog();
+  const [isCreating, setIsCreating] = useState(false);
 
   const sessions = Array.isArray(sessionsSection?.items) ? sessionsSection.items : [];
-  const activeCount = sessions.filter((session) => session.status === "ACTIVE").length;
-  const plannedCount = sessions.filter((session) => session.status === "PLANNED").length;
-  const finishedCount = sessions.filter((session) => session.status === "FINISHED").length;
-  const canceledCount = sessions.filter((session) => session.status === "CANCELED").length;
-  const title = `Сесії кампанії (${sessions.length})`;
+  const title = isCreating ? 'Створити сесію' : `Сесії кампанії (${sessions.length})`;
 
   const openCancelModal = (session) => {
     if (!session?.actions?.canCancel) {
@@ -115,40 +123,71 @@ export default function CampaignSessionsWidget({
     });
   };
 
+  const handleSessionCreated = async () => {
+    setIsCreating(false);
+    await onSessionCreated?.();
+  };
+
+  const canShowCreateButton = canCreateSessions && !isCampaignFinished;
+
+  if (isCreating) {
+    return (
+      <DashboardCard
+        title={title}
+        actions={
+          <BackButton label="Назад" onClick={() => setIsCreating(false)} variant="dark" />
+        }
+      >
+        <CreateSessionForm
+          campaignId={campaignId}
+          requireGmRole
+          onSuccess={handleSessionCreated}
+          onCancel={() => setIsCreating(false)}
+        />
+      </DashboardCard>
+    );
+  }
+
   return (
     <DashboardCard title={title}>
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between p-3 rounded-xl bg-brand-light/8 border border-brand-light/25">
-          <span className="text-sm font-semibold text-brand-dark">Статус кампанії</span>
-          <StatusBadge status={campaignStatus || 'ACTIVE'} size="sm" />
+      <div className="flex flex-col h-full">
+        <div className="flex-1 overflow-y-auto min-h-0 flex flex-col gap-4">
+          {sessions.length === 0 ? (
+            <EmptyState
+              icon={<Dice20 className="w-14 h-14" />}
+              title="Немає запланованих сесій"
+              description={
+                canCreateSessions
+                  ? 'Натисніть "Створити сесію" щоб додати першу'
+                  : 'В кампанії ще не створено жодної сесії'
+              }
+            />
+          ) : (
+            <div className="flex flex-col gap-4 pb-2">
+              {STATUS_SECTIONS.map((section) => (
+                <CampaignSessionSection
+                  key={section.key}
+                  section={section}
+                  sessions={sessions}
+                  openCancelModal={openCancelModal}
+                  openDeleteModal={openDeleteModal}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
-        {sessions.length > 0 && (
-          <div className="flex items-center gap-4 text-sm text-brand-medium p-3 bg-brand-light/10 rounded-xl flex-wrap">
-            <span>Активні: {activeCount}</span>
-            <span>Заплановано: {plannedCount}</span>
-            <span>Завершено: {finishedCount}</span>
-            <span>Скасовано: {canceledCount}</span>
-            <span>Всього: {sessions.length}</span>
-          </div>
-        )}
-
-        {sessions.length === 0 ? (
-          <EmptyState
-            title="Ще немає сесій"
-            description="В кампанії ще не створено жодної сесії"
-          />
-        ) : (
-          <div className="flex flex-col gap-4">
-            {STATUS_SECTIONS.map((section) => (
-              <CampaignSessionSection
-                key={section.key}
-                section={section}
-                sessions={sessions}
-                openCancelModal={openCancelModal}
-                openDeleteModal={openDeleteModal}
-              />
-            ))}
+        {/* Sticky Footer */}
+        {canShowCreateButton && (
+          <div className="pt-4 border-t border-brand-light/20 mt-auto flex-shrink-0">
+            <Button
+              onClick={() => setIsCreating(true)}
+              variant="primary"
+              fullWidth={true}
+              className="flex items-center justify-center gap-2"
+            >
+              Створити сесію
+            </Button>
           </div>
         )}
       </div>

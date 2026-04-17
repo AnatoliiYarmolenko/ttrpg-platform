@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
 
 const Button = forwardRef(function Button({ 
+  as: Component = "button",
   children, 
   isLoading, 
   loadingText = "Зачекайте...", 
@@ -36,17 +37,20 @@ const Button = forwardRef(function Button({
   const widthClass = fullWidth ? "w-full" : "";
   const displayClass = fullWidth ? "flex" : "inline-flex";
 
+  // If we are rendering as a Link or something else, it might not need a default type="button"
+  const buttonProps = Component === "button" ? { type } : {};
+
   return (
-    <button
+    <Component
       ref={ref}
-      type={type}
+      {...buttonProps}
       disabled={disabled || isLoading}
       onClick={onClick}
       className={`${displayClass} ${baseStyles} ${sizes[size] || sizes.md} ${variants[variant] || variants.primary} ${widthClass} ${className}`}
       {...rest}
     >
       {isLoading ? loadingText : children}
-    </button>
+    </Component>
   );
 });
 

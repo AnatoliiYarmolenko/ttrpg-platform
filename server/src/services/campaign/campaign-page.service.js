@@ -44,14 +44,22 @@ function createCampaignPageService({ getCampaignById, getCampaignByShareToken, g
     const canOwnerOverride = Boolean(viewer.isOwner);
     const canCancel = Boolean(canOwnerOverride && ['PLANNED', 'ACTIVE'].includes(session.status));
     const canDelete = Boolean(canOwnerOverride && session.status === 'PLANNED');
+    const ownerDisplayName = session?.owner?.displayName || session?.owner?.username || null;
+    const participantsCount = session?._count?.participants || 0;
 
     return {
       id: session.id,
       title: session.title,
+      description: session.description || null,
       date: session.date,
       status: session.status,
+      visibility: session.visibility,
+      system: session.system || null,
       ownerId: session.ownerId,
+      owner: mapOwner(session.owner),
+      organizerName: ownerDisplayName,
       maxPlayers: session.maxPlayers || null,
+      participantsSummaryCount: participantsCount,
       actions: {
         canCancel,
         canDelete,

@@ -7,7 +7,7 @@ import {
   useCampaignShareLinkQuery,
 } from "./useCampaignQueries";
 import useAuthStore from "@/stores/useAuthStore";
-import { TABS } from "../components/navigation/CampaignNavigation";
+import { CAMPAIGN_TABS as TABS, CAMPAIGN_TAB_VALUES as TAB_VALUES, CAMPAIGN_COMMUNICATION_MODES } from "../constants/campaignTabs";
 import {
   parseEnumSearchParam,
   parsePositiveIntSearchParam,
@@ -33,8 +33,6 @@ function normalizePageError(error, fallbackMessage) {
 
   return error.message || String(error);
 }
-
-const TAB_VALUES = Object.values(TABS);
 
 function normalizeCampaignUrlState({ searchParams, activeTab, viewingUserId, setSearchParams }) {
   const rawTab = searchParams.get("tab");
@@ -100,14 +98,29 @@ async function copyCampaignShareLink(currentShareLink) {
     : { success: false, message: 'Не вдалося скопіювати посилання' };
 }
 
-function normalizeAvailableTabs(rawTabs) {
+function normalizeAvailableTabs(rawTabs, { canManageSettings = false } = {}) {
   if (!Array.isArray(rawTabs) || rawTabs.length === 0) {
-    return [TABS.SESSIONS, TABS.DETAILS];
+    return canManageSettings
+      ? [TABS.SESSIONS, TABS.DETAILS, TABS.MANAGE]
+      : [TABS.SESSIONS, TABS.DETAILS];
   }
 
   const allowedTabs = Object.values(TABS);
-  const normalizedTabs = rawTabs.filter((tab) => allowedTabs.includes(tab));
-  return normalizedTabs.length > 0 ? normalizedTabs : [TABS.SESSIONS, TABS.DETAILS];
+  const normalizedTabs = rawTabs.filter((tab, index, source) =>
+    allowedTabs.includes(tab) && source.indexOf(tab) === index
+  );
+
+  if (canManageSettings && !normalizedTabs.includes(TABS.MANAGE)) {
+    normalizedTabs.push(TABS.MANAGE);
+  }
+
+  if (normalizedTabs.length > 0) {
+    return normalizedTabs;
+  }
+
+  return canManageSettings
+    ? [TABS.SESSIONS, TABS.DETAILS, TABS.MANAGE]
+    : [TABS.SESSIONS, TABS.DETAILS];
 }
 
 export default function useCampaignPageController() {
@@ -117,6 +130,7 @@ export default function useCampaignPageController() {
   const [searchParams, setSearchParams] = useSearchParams();
   const user = useAuthStore((state) => state.user);
   const [lastGeneratedShareLink, setLastGeneratedShareLink] = useState("");
+  const [campaignCommunicationMode, setCampaignCommunicationMode] = useState(CAMPAIGN_COMMUNICATION_MODES.CHAT);
 
   const hasShareToken = typeof routeShareToken === "string" && routeShareToken.trim().length > 0;
   const isValidId = Number.isInteger(campaignIdNumber) && campaignIdNumber > 0;
@@ -175,7 +189,11 @@ export default function useCampaignPageController() {
     shareToken: hasShareToken ? routeShareToken : null,
   });
 
-  const availableTabs = useMemo(() => normalizeAvailableTabs(ui.availableTabs), [ui.availableTabs]);
+  const canManageCampaignSettings = Boolean(actions.canEditSettings);
+  const availableTabs = useMemo(
+    () => normalizeAvailableTabs(ui.availableTabs, { canManageSettings: canManageCampaignSettings }),
+    [ui.availableTabs, canManageCampaignSettings]
+  );
 
   const activeTab = parseEnumSearchParam(searchParams, "tab", TAB_VALUES, TABS.SESSIONS);
   const viewingUserId = parsePositiveIntSearchParam(searchParams, "viewing");
@@ -200,7 +218,6 @@ export default function useCampaignPageController() {
     [availableTabs, setSearchParams]
   );
 
-  const canManageCampaignSettings = Boolean(actions.canEditSettings);
   const canManageCampaignVisibility = canManageCampaignSettings;
   const isOwner = Boolean(viewer.isOwner);
   const myRole = viewer.role || (isOwner ? "OWNER" : null);
@@ -348,6 +365,8 @@ export default function useCampaignPageController() {
     activeTab,
     availableTabs,
     setActiveTab,
+    campaignCommunicationMode,
+    setCampaignCommunicationMode,
     viewingUserId,
     isPreviewMode,
     myRole,

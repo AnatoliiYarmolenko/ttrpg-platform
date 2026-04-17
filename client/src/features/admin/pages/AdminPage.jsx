@@ -15,6 +15,7 @@ import AdminPagination from '../components/AdminPagination';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import NavButton from '@/components/ui/NavButton';
 import Button from '@/components/ui/Button';
+import Dice20 from '@/components/ui/icons/Dice20';
 import {
   parseEnumSearchParam,
   setOrDeleteParam,
@@ -416,9 +417,7 @@ export default function AdminPage() {
       <nav className="hidden lg:flex items-center gap-4 justify-between w-full">
         <div className="flex items-center gap-4">
           <div className="bg-white px-4 py-2 rounded-xl border-2 border-brand-light/30 shadow-md flex items-center gap-2">
-            <div className="w-6 h-6 bg-brand-dark rounded-full flex items-center justify-center text-brand-accent font-bold text-xs">
-              ⚙
-            </div>
+            <Dice20 className="w-6 h-6 text-brand-dark" />
             <span className="font-bold text-brand-dark hidden md:block">Адмін-панель</span>
           </div>
 
@@ -434,6 +433,12 @@ export default function AdminPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          
+          {user && (
+            <span className="text-white font-medium drop-shadow-md hidden sm:block">
+              {user.username}
+            </span>
+          )}
           <Button
             onClick={() => navigate('/')}
             variant="topbar"
@@ -442,11 +447,6 @@ export default function AdminPage() {
           >
             На головну
           </Button>
-          {user && (
-            <span className="text-white font-medium drop-shadow-md hidden sm:block">
-              {user.username}
-            </span>
-          )}
           <Button
             onClick={handleLogout}
             title="Вийти з акаунту"
@@ -462,9 +462,7 @@ export default function AdminPage() {
       <nav className="lg:hidden flex flex-col gap-2 w-full">
         <div className="flex items-center justify-between gap-2">
           <div className="bg-white px-3 py-2 rounded-xl border-2 border-brand-light/30 shadow-md flex items-center gap-2 min-w-0">
-            <div className="w-6 h-6 bg-brand-dark rounded-full flex items-center justify-center text-brand-accent font-bold text-xs">
-              ⚙
-            </div>
+            <Dice20 className="w-6 h-6 text-brand-dark" />
             <span className="font-bold text-brand-dark text-sm truncate">Адмін-панель</span>
           </div>
 

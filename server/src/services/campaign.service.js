@@ -238,7 +238,23 @@ class CampaignService {
           orderBy: { role: 'asc' },
         },
         sessions: {
-          select: { id: true, title: true, date: true, status: true, maxPlayers: true, ownerId: true },
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            date: true,
+            system: true,
+            status: true,
+            visibility: true,
+            maxPlayers: true,
+            ownerId: true,
+            _count: {
+              select: { participants: true },
+            },
+            owner: {
+              select: { id: true, username: true, displayName: true, avatarUrl: true },
+            },
+          },
           orderBy: { date: 'asc' },
         },
         joinRequests: {

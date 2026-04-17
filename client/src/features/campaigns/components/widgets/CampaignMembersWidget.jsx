@@ -22,6 +22,7 @@ export default function CampaignMembersWidget({
   canRemovePlayers = false,
   currentUserId,
   onViewProfile,
+  actions,
 }) {
   const mutations = useCampaignMutations(campaignId);
   const campaignMembers = useMemo(
@@ -174,6 +175,7 @@ export default function CampaignMembersWidget({
             ? `Учасники (${campaignMembers.length}) • Заявки (${visiblePendingRequests.length})`
             : `Учасники (${campaignMembers.length})`
         }
+        actions={actions}
       >
         {cardContent}
       </DashboardCard>

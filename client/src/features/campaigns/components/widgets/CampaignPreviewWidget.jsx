@@ -96,28 +96,26 @@ export default function CampaignPreviewWidget({
           </div>
         </div>
 
+        {/* Зображення */}
+        {campaign.imageUrl && (
+          <div className="w-full h-48 rounded-xl overflow-hidden">
+            <img
+              src={campaign.imageUrl}
+              alt={campaign.title}
+              className="w-full h-full object-cover"
+              loading="lazy"
+              decoding="async"
+            />
+          </div>
+        )}
+
         {/* Опис */}
         {campaign.description && (
           <div className="border-t border-brand-light/20 pt-4">
             <h4 className="text-sm font-bold text-brand-dark mb-2">Опис</h4>
-            <p className="text-sm text-brand-medium whitespace-pre-wrap">
+            <p className="text-sm text-brand-medium whitespace-pre-wrap leading-relaxed">
               {campaign.description}
             </p>
-          </div>
-        )}
-
-        {/* Зображення */}
-        {campaign.imageUrl && (
-          <div className="border-t border-brand-light/20 pt-4">
-            <div className="w-full h-48 rounded-xl overflow-hidden">
-              <img
-                src={campaign.imageUrl}
-                alt={campaign.title}
-                className="w-full h-full object-cover"
-                loading="lazy"
-                decoding="async"
-              />
-            </div>
           </div>
         )}
 

@@ -2,60 +2,61 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '@/components/ui/Button';
 import TopBarTabButton from '@/components/ui/TopBarTabButton';
-
-const TABS = {
-  SESSIONS: 'sessions',
-  DETAILS: 'details',
-  SETTINGS: 'settings',
-};
+import { CAMPAIGN_TABS } from '../../constants/campaignTabs';
+import { BrandLogo } from '@/components/shared';
 
 /**
  * CampaignNavigation — topBar навігація на сторінці кампанії.
  *
  * Показує:
  * - Кнопку "Назад" (на Dashboard)
- * - Назву кампанії
- * - Таби: Сесії | Деталі | Налаштування (тільки Власник)
+ * - Таби: Деталі | Сесії | Керування
  *
- * @param {string} campaignTitle — назва кампанії
- * @param {string} activeTab — поточний таб ('sessions' | 'details' | 'settings')
+ * @param {string} activeTab — поточний таб
  * @param {Function} onTabChange — колбек зміни табу
- * @param {boolean} canManageSettings — чи є юзер власником (для відображення табу "Налаштування")
+ * @param {boolean} canManage — чи є юзер власником (для відображення табу "Керування")
  */
 export default function CampaignNavigation({
-  campaignTitle,
   activeTab,
   availableTabs = null,
   onTabChange,
-  canManageSettings = false,
+  canManage = false,
 }) {
   const navigate = useNavigate();
 
   const defaultTabs = [
-    { key: TABS.SESSIONS, label: 'Сесії' },
-    { key: TABS.DETAILS, label: 'Деталі' },
-    ...(canManageSettings ? [{ key: TABS.SETTINGS, label: 'Налаштування' }] : []),
+    { key: CAMPAIGN_TABS.DETAILS, label: 'Деталі' },
+    { key: CAMPAIGN_TABS.SESSIONS, label: 'Сесії' },
+    ...(canManage ? [{ key: CAMPAIGN_TABS.MANAGE, label: 'Керування' }] : []),
   ];
   const tabs = Array.isArray(availableTabs) && availableTabs.length > 0
     ? defaultTabs.filter((tab) => availableTabs.includes(tab.key))
     : defaultTabs;
 
+  const homeButton = (
+    <Button
+      onClick={() => navigate('/')}
+      variant="topbar"
+      size="md"
+      fullWidth={false}
+      className="font-bold lg:py-2 lg:px-4 lg:text-base whitespace-nowrap"
+    >
+      На головну
+    </Button>
+  );
+
   return (
-    <nav className="flex items-center gap-4 justify-between w-full">
-      <div className="flex items-center gap-4 min-w-0 flex-1">
-        <div className="bg-white px-4 py-2 rounded-xl border-2 border-brand-light/30 shadow-md flex items-center gap-2 min-w-0">
-          <div className="w-6 h-6 bg-brand-dark rounded-full flex items-center justify-center text-brand-accent font-bold text-xs">
-            D20
-          </div>
-          <span className="font-bold text-brand-dark hidden md:block shrink-0">TTRPG Platform</span>
-
-          <span className="text-brand-dark/50 hidden md:inline">/</span>
-          <span className="font-bold text-brand-dark text-sm truncate max-w-[220px]" title={campaignTitle}>
-            {campaignTitle || 'Кампанія'}
-          </span>
+    <nav className="flex flex-col lg:flex-row gap-2 lg:items-center justify-between w-full">
+      <div className="flex items-center justify-between gap-4 w-full lg:w-auto">
+        <BrandLogo className="min-w-0 max-w-[200px] sm:max-w-none lg:px-6" />
+        
+        <div className="flex lg:hidden items-center gap-2 flex-shrink-0">
+          {homeButton}
         </div>
+      </div>
 
-        <div className="flex items-center gap-4">
+      <div className="w-full lg:flex-1 overflow-x-auto pb-1 lg:pb-0 -mx-1 lg:mx-0 px-1 lg:px-0">
+        <div className="flex items-center gap-2 min-w-max lg:justify-start">
           {tabs.map((tab) => (
             <TopBarTabButton
               key={tab.key}
@@ -67,19 +68,10 @@ export default function CampaignNavigation({
         </div>
       </div>
 
-      <div className="flex items-center justify-end flex-1">
-        <Button
-          onClick={() => navigate('/')}
-          variant="topbar"
-          size="md"
-          fullWidth={false}
-          className="font-bold"
-        >
-          На головну
-        </Button>
+      <div className="hidden lg:flex items-center gap-3 flex-shrink-0">
+        {homeButton}
       </div>
     </nav>
   );
 }
 
-export { TABS };

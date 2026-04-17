@@ -4,6 +4,7 @@ import FormField from '@/components/ui/FormField';
 import Button from '@/components/ui/Button';
 import { ConfirmModal, StatusBadge } from '@/components/shared';
 import { GAME_SYSTEMS } from '@/constants/gameSystems';
+import useConfirmDialog from '@/hooks/useConfirmDialog';
 
 const normalizeVisibility = (value) => (value === 'PRIVATE' ? 'LINK_ONLY' : value);
 
@@ -20,7 +21,13 @@ function CampaignSettingsWidgetContent({
   campaign,
   onSave,
   onTransferOwnership,
+  onLeave,
   canTransferOwnership = false,
+  canManageShareLink = false,
+  currentShareLink = '',
+  onRegenerateShareLink,
+  onCopyShareLink,
+  myRole,
   isLoading = false,
 }) {
   const [formData, setFormData] = useState(() => buildFormData(campaign));
@@ -87,6 +94,28 @@ function CampaignSettingsWidgetContent({
       setTransferModal(false);
       setSelectedNewOwnerId('');
     }
+  };
+
+  const { openConfirm, confirmModalProps: leaveConfirmProps } = useConfirmDialog();
+
+  const handleLeave = () => {
+    openConfirm({
+      title: 'Покинути кампанію?',
+      message: 'Ви впевнені, що хочете покинути цю кампанію? Ви втратите доступ до всіх сесій кампанії.',
+      variant: 'danger',
+      confirmText: 'Вийти',
+      onConfirm: onLeave,
+    });
+  };
+
+  const handleRegenerateShareLink = () => {
+    openConfirm({
+      title: 'Оновити share-посилання?',
+      message: 'Старе share-посилання перестане працювати. Нове посилання буде згенеровано та скопійовано.',
+      variant: 'danger',
+      confirmText: 'Оновити',
+      onConfirm: onRegenerateShareLink,
+    });
   };
 
   const inputClasses =
@@ -190,6 +219,61 @@ function CampaignSettingsWidgetContent({
           Зберегти зміни
         </Button>
 
+        {/* Share-посилання */}
+        {canManageShareLink && (
+          <div className="border-t border-brand-light/20 pt-4">
+            <h4 className="text-sm font-bold text-brand-dark mb-3">Share-посилання</h4>
+            <div className="p-4 bg-brand-light/20 rounded-xl flex flex-col gap-3">
+              {currentShareLink ? (
+                <code className="px-3 py-2 bg-white rounded-lg font-mono text-brand-dark text-xs break-all">
+                  {currentShareLink}
+                </code>
+              ) : (
+                <p className="text-sm text-brand-medium">
+                  Share-посилання буде доступне після натискання «Оновити».
+                </p>
+              )}
+              <div className="flex items-center gap-3 flex-wrap">
+                {currentShareLink && (
+                  <Button
+                    onClick={onCopyShareLink}
+                    variant="secondary"
+                    size="sm"
+                    fullWidth={false}
+                    className="w-full lg:w-auto"
+                  >
+                    Копіювати посилання
+                  </Button>
+                )}
+                <Button
+                  onClick={handleRegenerateShareLink}
+                  variant="outline"
+                  size="sm"
+                  fullWidth={false}
+                  className="w-full lg:w-auto"
+                >
+                  Оновити share-посилання
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Покинути кампанію (для не-власника) */}
+        {myRole && myRole !== 'OWNER' && !isCampaignFinished && onLeave && (
+          <div className="border-t border-brand-light/20 pt-4">
+            <Button
+              onClick={handleLeave}
+              variant="danger"
+              isLoading={isLoading}
+              loadingText="Вихід..."
+              fullWidth={true}
+            >
+              Покинути кампанію
+            </Button>
+          </div>
+        )}
+
         {canTransferOwnership && (
           <div className="border-t border-red-200 pt-4 mt-2">
             <h4 className="text-sm font-bold text-red-600 mb-3">Небезпечна зона</h4>
@@ -273,6 +357,8 @@ function CampaignSettingsWidgetContent({
           onCancel={() => setTransferModal(false)}
         />
       )}
+
+      <ConfirmModal {...leaveConfirmProps} />
     </DashboardCard>
   );
 }

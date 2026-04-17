@@ -7,10 +7,10 @@ export default function StatsCards({ stats }) {
   if (!stats) return null;
 
   const cards = [
-    { label: 'Користувачі', value: stats.users, icon: '👥' },
-    { label: 'Кампанії', value: stats.campaigns, icon: '🗺️' },
-    { label: 'Сесії', value: stats.sessions, icon: '🎲' },
-    { label: 'Активні сесії', value: stats.activeSessions, icon: '⚡' },
+    { label: 'Користувачі', value: stats.users},
+    { label: 'Кампанії', value: stats.campaigns},
+    { label: 'Сесії', value: stats.sessions},
+    { label: 'Активні сесії', value: stats.activeSessions},
   ];
 
   return (
