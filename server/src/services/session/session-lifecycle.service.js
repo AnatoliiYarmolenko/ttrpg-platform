@@ -44,6 +44,10 @@ function assertSessionUpdatePermissions({
     throw new AppError(ERROR_CODES.SESSION_OWNER_ONLY);
   }
 
+  if (updateMeta.hasSettingsUpdate && ['FINISHED', 'CANCELED'].includes(session.status)) {
+    throw new AppError(ERROR_CODES.SESSION_SETTINGS_UPDATE_FORBIDDEN);
+  }
+
   if (updateMeta.hasSettingsUpdate && session.campaign?.status === 'FINISHED') {
     throw new AppError(ERROR_CODES.CAMPAIGN_FINISHED);
   }

@@ -1,5 +1,4 @@
 import api from '@/lib/axios';
-import { normalizeApiEnvelope } from '@/utils/ownerCompatibility';
 
 // === CRUD Сесії ===
 
@@ -9,7 +8,7 @@ import { normalizeApiEnvelope } from '@/utils/ownerCompatibility';
  */
 export const createSession = async (sessionData) => {
   const response = await api.post('/sessions', sessionData);
-  return normalizeApiEnvelope(response.data);
+  return response.data;
 };
 
 /**
@@ -22,7 +21,7 @@ export const createSession = async (sessionData) => {
  */
 export const getMySessions = async (params = {}) => {
   const response = await api.get('/sessions', { params });
-  return normalizeApiEnvelope(response.data);
+  return response.data;
 };
 
 /**
@@ -30,7 +29,7 @@ export const getMySessions = async (params = {}) => {
  */
 export const getNextRelevantSession = async () => {
   const response = await api.get('/sessions/next-relevant');
-  return normalizeApiEnvelope(response.data);
+  return response.data;
 };
 
 /**
@@ -39,12 +38,22 @@ export const getNextRelevantSession = async () => {
  */
 export const getSessionById = async (sessionId) => {
   const response = await api.get(`/sessions/${sessionId}`);
-  return normalizeApiEnvelope(response.data);
+  return response.data;
 };
 
 export const getSessionByShareToken = async (shareToken) => {
   const response = await api.get(`/sessions/share/${shareToken}`);
-  return normalizeApiEnvelope(response.data);
+  return response.data;
+};
+
+export const getSessionPageById = async (sessionId) => {
+  const response = await api.get(`/sessions/${sessionId}/page`);
+  return response.data;
+};
+
+export const getSessionPageByShareToken = async (shareToken) => {
+  const response = await api.get(`/sessions/share/${shareToken}/page`);
+  return response.data;
 };
 
 /**
@@ -54,7 +63,7 @@ export const getSessionByShareToken = async (shareToken) => {
  */
 export const updateSession = async (sessionId, sessionData) => {
   const response = await api.patch(`/sessions/${sessionId}`, sessionData);
-  return normalizeApiEnvelope(response.data);
+  return response.data;
 };
 
 /**
@@ -63,7 +72,7 @@ export const updateSession = async (sessionId, sessionData) => {
  */
 export const deleteSession = async (sessionId) => {
   const response = await api.delete(`/sessions/${sessionId}`);
-  return normalizeApiEnvelope(response.data);
+  return response.data;
 };
 
 /**
@@ -72,7 +81,7 @@ export const deleteSession = async (sessionId) => {
  */
 export const cancelSession = async (sessionId) => {
   const response = await api.post(`/sessions/${sessionId}/cancel`);
-  return normalizeApiEnvelope(response.data);
+  return response.data;
 };
 
 /**
@@ -81,17 +90,17 @@ export const cancelSession = async (sessionId) => {
  */
 export const markSessionAsFinished = async (sessionId) => {
   const response = await api.post(`/sessions/${sessionId}/mark-finished`);
-  return normalizeApiEnvelope(response.data);
+  return response.data;
 };
 
 export const regenerateSessionShareLink = async (sessionId) => {
   const response = await api.post(`/sessions/${sessionId}/share/regenerate`, {});
-  return normalizeApiEnvelope(response.data);
+  return response.data;
 };
 
 export const getSessionShareLink = async (sessionId) => {
   const response = await api.get(`/sessions/${sessionId}/share-link`);
-  return normalizeApiEnvelope(response.data);
+  return response.data;
 };
 
 // === Календар ===
@@ -105,7 +114,7 @@ export const getSessionShareLink = async (sessionId) => {
  */
 export const getCalendar = async (params = {}) => {
   const response = await api.get('/sessions/calendar', { params });
-  return normalizeApiEnvelope(response.data);
+  return response.data;
 };
 
 /**
@@ -122,7 +131,7 @@ export const getCalendarStats = async (params = {}) => {
     ...(filters && { filters: JSON.stringify(filters) }),
   };
   const response = await api.get('/sessions/calendar-stats', { params: queryParams });
-  return normalizeApiEnvelope(response.data);
+  return response.data;
 };
 
 /**
@@ -132,7 +141,7 @@ export const getCalendarStats = async (params = {}) => {
  */
 export const getSessionsByDay = async (date, params = {}) => {
   const response = await api.get(`/sessions/day/${date}`, { params });
-  return normalizeApiEnvelope(response.data);
+  return response.data;
 };
 
 /**
@@ -150,7 +159,7 @@ export const getSessionsByDayFiltered = async (date, scope = 'global', filters =
     params.timeZone = timeZone;
   }
   const response = await api.get(`/sessions/day-filtered/${date}`, { params });
-  return normalizeApiEnvelope(response.data);
+  return response.data;
 };
 
 /**
@@ -160,7 +169,7 @@ export const getSessionsByDayFiltered = async (date, scope = 'global', filters =
  */
 export const getCampaignSessions = async (campaignId, params = {}) => {
   const response = await api.get(`/campaigns/${campaignId}/sessions`, { params });
-  return normalizeApiEnvelope(response.data);
+  return response.data;
 };
 
 // === Учасники сесії ===
@@ -171,7 +180,7 @@ export const getCampaignSessions = async (campaignId, params = {}) => {
  */
 export const getSessionParticipants = async (sessionId) => {
   const response = await api.get(`/sessions/${sessionId}/participants`);
-  return normalizeApiEnvelope(response.data);
+  return response.data;
 };
 
 /**
@@ -180,7 +189,7 @@ export const getSessionParticipants = async (sessionId) => {
  */
 export const joinSession = async (sessionId, payload = {}) => {
   const response = await api.post(`/sessions/${sessionId}/join`, payload);
-  return normalizeApiEnvelope(response.data);
+  return response.data;
 };
 
 /**
@@ -189,7 +198,7 @@ export const joinSession = async (sessionId, payload = {}) => {
  */
 export const leaveSession = async (sessionId) => {
   const response = await api.post(`/sessions/${sessionId}/leave`, {});
-  return normalizeApiEnvelope(response.data);
+  return response.data;
 };
 
 /**
@@ -203,7 +212,7 @@ export const updateParticipantStatus = async (sessionId, participantId, status) 
     `/sessions/${sessionId}/participants/${participantId}`,
     { status }
   );
-  return normalizeApiEnvelope(response.data);
+  return response.data;
 };
 
 /**
@@ -215,6 +224,6 @@ export const removeParticipant = async (sessionId, participantId) => {
   const response = await api.delete(
     `/sessions/${sessionId}/participants/${participantId}`
   );
-  return normalizeApiEnvelope(response.data);
+  return response.data;
 };
 

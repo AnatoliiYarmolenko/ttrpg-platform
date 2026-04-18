@@ -17,9 +17,9 @@ export default function TopBarTabButton({
       variant={isActive ? 'tabActive' : 'tabInactive'}
       size="md"
       fullWidth={false}
-      className={`justify-center ${className}`}
+      className={`justify-center px-3 py-1.5 text-sm lg:py-2 lg:px-6 lg:text-base ${className}`}
     >
-      <span className="font-bold text-base">{label}</span>
+      <span className="font-bold whitespace-nowrap">{label}</span>
     </Button>
   );
 }

@@ -5,7 +5,6 @@ const Dropdown = ({
   value, 
   onChange, 
   placeholder = "Оберіть...", 
-  label,
   error,
   disabled 
 }) => {
@@ -30,30 +29,20 @@ const Dropdown = ({
     setIsOpen(false);
   };
 
-  // Логіка стилів бордюру (ідентична до твого inputClass у формі)
+  // Логіка стилів бордюру (ідентична до формових інпутів)
   // Базовий: border-brand-light/30
   // Активний/Відкритий: border-brand-dark
-  // Помилка: border-red-300
+  // Помилка: border-red-500
   let borderClass = "border-brand-light/30";
   
   if (error) {
-    borderClass = "border-red-300";
+    borderClass = "border-red-500";
   } else if (isOpen) {
     borderClass = "border-brand-dark"; // Колір фокусу як у твоїх інпутів
   }
 
   return (
     <div className="w-full relative" ref={dropdownRef}>
-      {/* Лейбл як у твоїй формі */}
-      {label && (
-        <label
-          htmlFor={buttonId}
-          className="block text-sm font-medium text-brand-dark mb-1 cursor-pointer"
-        >
-          {label}
-        </label>
-      )}
-      
       <div className="relative">
         <button
           id={buttonId}
@@ -64,11 +53,12 @@ const Dropdown = ({
           aria-controls={listboxId}
           onClick={() => !disabled && setIsOpen(!isOpen)}
           className={`
-            w-full px-3 py-2 text-left bg-white border-2 rounded-lg 
+            w-full px-4 py-3 text-brand-dark text-left bg-white border-2 rounded-xl 
             flex items-center justify-between
-            transition-colors duration-200
+            placeholder:text-brand-medium/70 transition-colors
+            disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed
             ${borderClass}
-            ${disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'cursor-pointer hover:border-brand-light'}
+            ${disabled ? 'opacity-50' : 'cursor-pointer hover:border-brand-light'}
           `}
         >
           <span className={`block truncate ${value ? "text-gray-900" : "text-gray-400"}`}>
@@ -95,7 +85,6 @@ const Dropdown = ({
         {isOpen && (
           <ul
             id={listboxId}
-            aria-label={label}
             className="absolute z-50 w-full mt-1 bg-white border border-brand-light rounded-lg shadow-lg max-h-60 overflow-auto py-1"
           >
             {options.map((option) => {

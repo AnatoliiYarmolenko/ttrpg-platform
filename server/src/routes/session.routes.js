@@ -47,18 +47,6 @@ router.get(
 );
 
 router.get(
-  '/next-home-session',
-  [authenticateToken],
-  (req, res, next) => sessionCrudController.getNextRelevantSession(req, res, next)
-);
-
-router.get(
-  '/next-home',
-  [authenticateToken],
-  (req, res, next) => sessionCrudController.getNextRelevantSession(req, res, next)
-);
-
-router.get(
   '/calendar',
   [optionalAuthenticateToken, ...validateGetCalendar],
   (req, res, next) => sessionCalendarController.getCalendar(req, res, next)
@@ -89,9 +77,21 @@ router.get(
 );
 
 router.get(
+  '/share/:shareToken/page',
+  [optionalAuthenticateToken, ...validateSessionShareToken],
+  (req, res, next) => sessionCrudController.getSessionPageByShareToken(req, res, next)
+);
+
+router.get(
   '/:id',
   [authenticateToken, ...validateSessionId],
   (req, res, next) => sessionCrudController.getSessionById(req, res, next)
+);
+
+router.get(
+  '/:id/page',
+  [authenticateToken, ...validateSessionId],
+  (req, res, next) => sessionCrudController.getSessionPageById(req, res, next)
 );
 
 router.post(

@@ -14,6 +14,7 @@ const createSessionQueryService = require('./session/session-query.service');
 const createSessionCalendarService = require('./session/session-calendar.service');
 const createSessionLifecycleService = require('./session/session-lifecycle.service');
 const createSessionParticipantsService = require('./session/session-participants.service');
+const createSessionPageService = require('./session/session-page.service');
 
 class SessionService {
   constructor() {
@@ -48,6 +49,9 @@ class SessionService {
       assertNoSessionTimeConflict: (userId, targetStart, targetDuration, options = {}) => {
         return this._assertNoSessionTimeConflict(userId, targetStart, targetDuration, options);
       },
+    });
+    this.pageService = createSessionPageService({
+      sessionQueryService: this.queryService,
     });
   }
 
@@ -90,6 +94,50 @@ class SessionService {
 
   _canEditSessionSettings(session, userId) {
     return permissionHelpers._canEditSessionSettings(session, userId);
+  }
+
+  _canManageLinkOnlyShare(session, userId) {
+    if (!session) {
+      return false;
+    }
+
+    if (['FINISHED', 'CANCELED'].includes(session.status)) {
+      return false;
+    }
+
+    if (session.visibility !== 'LINK_ONLY') {
+      return false;
+    }
+
+    if (session?.campaign?.status === 'FINISHED') {
+      return false;
+    }
+
+    if (this._isSessionOwner(session, userId)) {
+      return true;
+    }
+
+    if (session.campaignId) {
+      return false;
+    }
+
+    const hasConfirmedGm = Boolean(
+      session.participants?.some(
+        (participant) => participant.role === 'GM' && participant.status === 'CONFIRMED'
+      )
+    );
+
+    if (hasConfirmedGm) {
+      return false;
+    }
+
+    return Boolean(
+      session.participants?.some(
+        (participant) => participant.userId === userId
+          && participant.role === 'PLAYER'
+          && participant.status === 'CONFIRMED'
+      )
+    );
   }
 
   _getDateKeyInTimeZone(dateValue, timeZone) {
@@ -221,6 +269,14 @@ class SessionService {
     return this.queryService.getSessionByShareToken(rawToken, userId);
   }
 
+  async getSessionPageById(sessionId, userId = null, options = {}) {
+    return this.pageService.getSessionPageById(sessionId, userId, options);
+  }
+
+  async getSessionPageByShareToken(rawToken, userId = null) {
+    return this.pageService.getSessionPageByShareToken(rawToken, userId);
+  }
+
   async updateSession(sessionId, requesterId, updateData, options = {}) {
     return this.lifecycleService.updateSession(sessionId, requesterId, updateData, options);
   }
@@ -285,8 +341,8 @@ class SessionService {
       );
     }
 
-    if (!this._isSessionOwner(session, userId)) {
-      throw new AppError(ERROR_CODES.SESSION_OWNER_ONLY);
+    if (!this._canManageLinkOnlyShare(session, userId)) {
+      throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED);
     }
 
     const { rawToken, tokenHash, tokenEncrypted } = createRawEncryptedAndHashedShareToken();
@@ -317,12 +373,12 @@ class SessionService {
       );
     }
 
-    if (!this._isSessionOwner(session, userId)) {
-      throw new AppError(ERROR_CODES.SESSION_OWNER_ONLY);
+    if (!this._canManageLinkOnlyShare(session, userId)) {
+      throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED);
     }
 
     const stored = await prisma.session.findUnique({
-      where: { id: this._parsePositiveInt(sessionId, 'ID СЃРµСЃС–С—') },
+      where: { id: this._parsePositiveInt(sessionId, 'ID сесії') },
       select: { shareTokenEncrypted: true },
     });
 

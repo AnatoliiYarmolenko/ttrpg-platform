@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/stores/useToastStore';
 import {
+  getCampaignPageById,
+  getCampaignPageByShareToken,
   getCampaignById,
   getCampaignByShareToken,
   getCampaignMembers,
@@ -17,6 +19,57 @@ import {
   cancelCampaignSession,
   deleteCampaignSession,
 } from '../api/campaignApi';
+
+export const campaignPageQueryKeys = {
+  all: ['campaign-page'],
+  byId: (campaignId) => ['campaign-page', campaignId || null, null],
+  byShare: (shareToken) => ['campaign-page', null, shareToken || null],
+  detail: ({ campaignId = null, shareToken = null } = {}) => ['campaign-page', campaignId || null, shareToken || null],
+};
+
+export const invalidateCampaignPage = async (
+  queryClient,
+  { campaignId = null, shareToken = null } = {}
+) => {
+  const tasks = [];
+  const isValidId = Number.isInteger(campaignId) && campaignId > 0;
+  const hasShareToken = typeof shareToken === 'string' && shareToken.trim().length > 0;
+
+  if (isValidId) {
+    tasks.push(queryClient.invalidateQueries({ queryKey: campaignPageQueryKeys.byId(campaignId) }));
+  }
+
+  if (hasShareToken) {
+    tasks.push(queryClient.invalidateQueries({ queryKey: campaignPageQueryKeys.byShare(shareToken) }));
+  }
+
+  if (!isValidId && !hasShareToken) {
+    tasks.push(queryClient.invalidateQueries({ queryKey: campaignPageQueryKeys.all }));
+  }
+
+  await Promise.all(tasks);
+};
+
+export const useCampaignPageQuery = ({ campaignId = null, shareToken = null } = {}) => {
+  const isValidId = Number.isInteger(campaignId) && campaignId > 0;
+  const hasShareToken = typeof shareToken === 'string' && shareToken.trim().length > 0;
+
+  return useQuery({
+    queryKey: campaignPageQueryKeys.detail({ campaignId, shareToken }),
+    queryFn: async () => {
+      const res = hasShareToken
+        ? await getCampaignPageByShareToken(shareToken)
+        : await getCampaignPageById(campaignId);
+
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to fetch campaign page');
+      }
+
+      return res.data;
+    },
+    enabled: isValidId || hasShareToken,
+  });
+};
 
 export const useCampaignQuery = ({ campaignId = null, shareToken = null } = {}) => {
   const isValidId = Number.isInteger(campaignId) && campaignId > 0;
@@ -95,6 +148,7 @@ export const useCampaignMutations = (campaignId, options = {}) => {
   const queryClient = useQueryClient();
 
   const invalidateCampaign = () => queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] });
+  const invalidateCampaignPageQuery = () => invalidateCampaignPage(queryClient, { campaignId, shareToken });
   const invalidateMembers = () => queryClient.invalidateQueries({ queryKey: ['campaign', campaignId, 'members'] });
   const invalidateRequests = () => queryClient.invalidateQueries({ queryKey: ['campaign', campaignId, 'requests'] });
 
@@ -116,52 +170,52 @@ export const useCampaignMutations = (campaignId, options = {}) => {
 
   const updateCampaignMutation = useMutation({
     mutationFn: (data) => updateCampaign(campaignId, data),
-    ...handleMutation('Кампанію успішно оновлено', [invalidateCampaign]),
+    ...handleMutation('Кампанію успішно оновлено', [invalidateCampaignPageQuery, invalidateCampaign]),
   });
 
   const transferOwnershipMutation = useMutation({
     mutationFn: (newOwnerId) => transferCampaignOwnership(campaignId, newOwnerId),
-    ...handleMutation('Власника кампанії змінено', [invalidateCampaign, invalidateMembers]),
+    ...handleMutation('Власника кампанії змінено', [invalidateCampaignPageQuery, invalidateCampaign, invalidateMembers]),
   });
 
   const regenerateShareLinkMutation = useMutation({
     mutationFn: () => regenerateShareLink(campaignId),
-    ...handleMutation('Share-посилання оновлено', [invalidateCampaign]),
+    ...handleMutation('Share-посилання оновлено', [invalidateCampaignPageQuery, invalidateCampaign]),
   });
 
   const submitJoinRequestMutation = useMutation({
     mutationFn: (message) => submitJoinRequest(campaignId, message, shareToken),
-    ...handleMutation('Заявку надіслано', [invalidateRequests, invalidateCampaign]),
+    ...handleMutation('Заявку надіслано', [invalidateCampaignPageQuery, invalidateRequests, invalidateCampaign]),
   });
 
   const approveRequestMutation = useMutation({
     mutationFn: ({ requestId, role }) => approveJoinRequest(requestId, role),
-    ...handleMutation('Заявку схвалено', [invalidateMembers, invalidateRequests, invalidateCampaign]),
+    ...handleMutation('Заявку схвалено', [invalidateCampaignPageQuery, invalidateMembers, invalidateRequests, invalidateCampaign]),
   });
 
   const rejectRequestMutation = useMutation({
     mutationFn: (requestId) => rejectJoinRequest(requestId),
-    ...handleMutation('Заявку відхилено', [invalidateRequests]),
+    ...handleMutation('Заявку відхилено', [invalidateCampaignPageQuery, invalidateRequests]),
   });
 
   const removeMemberMutation = useMutation({
     mutationFn: (memberId) => removeMemberFromCampaign(campaignId, memberId),
-    ...handleMutation('Учасника видалено', [invalidateMembers, invalidateCampaign]),
+    ...handleMutation('Учасника видалено', [invalidateCampaignPageQuery, invalidateMembers, invalidateCampaign]),
   });
 
   const changeMemberRoleMutation = useMutation({
     mutationFn: ({ memberId, role }) => updateMemberRole(campaignId, memberId, role),
-    ...handleMutation('Роль учасника змінено', [invalidateMembers, invalidateCampaign]),
+    ...handleMutation('Роль учасника змінено', [invalidateCampaignPageQuery, invalidateMembers, invalidateCampaign]),
   });
 
   const cancelSessionMutation = useMutation({
     mutationFn: (sessionId) => cancelCampaignSession(sessionId),
-    ...handleMutation('Сесію скасовано', [invalidateCampaign]),
+    ...handleMutation('Сесію скасовано', [invalidateCampaignPageQuery, invalidateCampaign]),
   });
 
   const deleteSessionMutation = useMutation({
     mutationFn: (sessionId) => deleteCampaignSession(sessionId),
-    ...handleMutation('Сесію видалено', [invalidateCampaign]),
+    ...handleMutation('Сесію видалено', [invalidateCampaignPageQuery, invalidateCampaign]),
   });
 
   return {

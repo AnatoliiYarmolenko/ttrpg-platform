@@ -1,37 +1,30 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
-import { useNavigate } from "react-router-dom";
 import DashboardCard from "@/components/ui/DashboardCard";
 import Button from "@/components/ui/Button";
 import {
   BaseModal,
-  StatusBadge,
+  SessionTimeBadge,
   DateTimeDisplay,
   BackButton,
 } from "@/components/shared";
 import Data from "@/components/ui/icons/Data";
 import Timer from "@/components/ui/icons/Timer";
 import GroupPeople from "@/components/ui/icons/GroupPeople";
-import Dice20 from "@/components/ui/icons/Dice20";
 
-function formatDuration(minutes) {
-  if (!minutes) return "";
 
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
+function getAvailabilityLabel(session) {
+  if (session?.campaign) {
+    return session.visibility === 'PUBLIC' ? 'Гостьова' : 'Звичайна';
+  }
 
-  if (hours === 0) return `${mins} хв`;
-  if (mins === 0) return `${hours} год`;
-  return `${hours} год ${mins} хв`;
-}
+  const oneShotLabels = {
+    PUBLIC: 'Публічна сесія',
+    PRIVATE: 'Сесія з підтвердженням',
+    LINK_ONLY: 'Сесія за посиланням',
+  };
 
-function getPlayerCount(session) {
-  return session?.participants?.filter((participant) => participant.role === "PLAYER").length || 0;
-}
-
-function getFreeSpots(session) {
-  if (!session?.maxPlayers) return '∞';
-  return String(Math.max(0, session.maxPlayers - getPlayerCount(session)));
+  return oneShotLabels[session?.visibility] || 'Приватна';
 }
 
 function getUnavailableJoinMessage(session) {
@@ -69,7 +62,7 @@ async function submitJoinRequest({ onJoin, role, setJoinError, setShowJoinModal 
 
   setJoinError(
     result?.error ||
-      (role === 'GM' ? 'Не вдалося подати заявку як GM' : 'Не вдалося приєднатися до сесії')
+    (role === 'GM' ? 'Не вдалося подати заявку як GM' : 'Не вдалося приєднатися до сесії')
   );
 }
 
@@ -164,10 +157,7 @@ export default function SessionPagePreviewWidget({
   onJoin,
   canJoin = false,
   canApplyAsGm = false,
-  showCampaignInfo = true,
-  canNavigateToCampaignDirectly = true,
 }) {
-  const navigate = useNavigate();
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinError, setJoinError] = useState(null);
   const [isJoining, setIsJoining] = useState(false);
@@ -180,7 +170,6 @@ export default function SessionPagePreviewWidget({
     (participant) => participant.role === "GM" && participant.status === "CONFIRMED"
   );
   const hasConfirmedGm = Boolean(confirmedGm);
-  const confirmedGmName = confirmedGm?.user?.displayName || confirmedGm?.user?.username || null;
   const canRequestJoin = canJoin || canApplyAsGm;
 
   const closeJoinModal = () => {
@@ -219,104 +208,92 @@ export default function SessionPagePreviewWidget({
   return (
     <DashboardCard
       title="Деталі сесії"
-      actions={<BackButton to="/" label="Панель" variant="dark" />}
+      actions={<BackButton to="/" label="Назад" variant="dark" />}
     >
-      <div className="flex flex-col gap-5">
-        <div>
-          <div className="flex items-start justify-between mb-2">
-            <h2 className="text-xl font-bold text-brand-dark flex-1 pr-3">{session.title}</h2>
-            <StatusBadge status={session.status} />
+      <div className="flex flex-col gap-4 h-full">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="text-xl font-bold text-brand-dark leading-tight truncate flex-1 min-w-0">
+              {session.title}
+            </h3>
+            <SessionTimeBadge session={session} />
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-brand-medium text-sm leading-tight truncate flex-1 min-w-0">
+              {session.campaign ? (
+                <>
+                  <span className="font-medium">Кампанія:</span> {session.campaign.title}
+                </>
+              ) : (
+                <>
+                  <span className="font-medium">Формат:</span> One-shot
+                </>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 p-4 bg-brand-light/10 rounded-xl">
-          <div className="flex items-center gap-2 text-brand-medium">
-            <Data className="w-4 h-4" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 p-4 bg-brand-light/10 rounded-xl">
+          <div className="flex items-center gap-2 text-brand-medium text-sm">
+            <Data className="w-4 h-4 shrink-0" />
             <DateTimeDisplay value={session.date} format="long" />
           </div>
-          <div className="flex items-center gap-2 text-brand-medium">
-            <Timer className="w-4 h-4" />
-            <DateTimeDisplay value={session.date} format="time" />
+          <div className="flex items-center gap-2 text-brand-medium text-sm">
+            <span className="font-medium">Система:</span>
+            <span>{session.system || 'Не вказана'}</span>
           </div>
-          {session.duration && (
-            <div className="flex items-center gap-2 text-brand-medium">
-              <Timer className="w-4 h-4" />
-              <span>{formatDuration(session.duration)}</span>
-            </div>
-          )}
-          <div className="flex items-center gap-2 text-brand-medium">
-            <GroupPeople className="w-4 h-4" />
+
+          <div className="flex items-center gap-2 text-brand-medium text-sm">
+            <Timer className="w-4 h-4 shrink-0" />
+            <time>{session.date ? new Date(session.date).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' }) : '--:--'}</time>
+          </div>
+          <div className="flex items-center gap-2 text-brand-medium text-sm">
+            <span className="font-medium">Доступність:</span>
+            <span>{getAvailabilityLabel(session)}</span>
+          </div>
+
+          <div className="flex items-center gap-2 text-brand-medium text-sm">
+            <GroupPeople className="w-4 h-4 shrink-0" />
             <span>
-              {getPlayerCount(session)}
+              {session.participants?.filter((p) => p.role === "PLAYER").length ?? 0}
               {session.maxPlayers ? ` / ${session.maxPlayers}` : ''} гравців
             </span>
           </div>
-          {session.system && (
-            <div className="flex items-center gap-2 text-brand-medium">
-              <span>{session.system}</span>
+          {organizerName ? (
+            <div className="flex items-center gap-2 text-brand-medium text-sm">
+              <span className="font-medium">Організатор:</span>
+              <span>{organizerName}</span>
             </div>
+          ) : (
+            <div className="hidden sm:block" />
           )}
-          <div className="flex items-center gap-2 text-brand-medium">
-            <span>Вільних: {getFreeSpots(session)}</span>
-          </div>
-          <div className="flex items-center gap-2 text-brand-medium">
-            <span>Організатор: {organizerName}</span>
-          </div>
-          <div className="flex items-center gap-2 text-brand-medium">
-            <span>GM: {confirmedGmName || 'Шукаємо GM'}</span>
-          </div>
         </div>
 
         {session.description && (
-          <div className="border-t border-brand-light/20 pt-4">
-            <h4 className="text-sm font-bold text-brand-dark mb-2">Опис</h4>
-            <p className="text-sm text-brand-medium whitespace-pre-wrap">{session.description}</p>
+          <div className="border-t border-brand-light/20 pt-3">
+            <h4 className="text-sm font-bold text-brand-dark mb-3">Опис</h4>
+            <p className="text-sm text-brand-medium whitespace-pre-wrap leading-relaxed">
+              {session.description?.trim() || 'Опис відсутній'}
+            </p>
           </div>
-        )}
-
-        <div className="border-t border-brand-light/20 pt-4">
-          {session.campaign && showCampaignInfo ? (
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-bold text-brand-dark">Кампанія:</span>
-              {canNavigateToCampaignDirectly ? (
-                <Button
-                  onClick={() => navigate(`/campaign/${session.campaign.id}`)}
-                  variant="light"
-                  size="sm"
-                  fullWidth={false}
-                  className="p-0 h-auto bg-transparent hover:bg-transparent shadow-none hover:shadow-none text-sm text-brand-medium hover:text-brand-dark underline transition-colors"
-                >
-                  {session.campaign.title}
-                </Button>
-              ) : (
-                <span className="text-sm text-brand-medium">{session.campaign.title}</span>
-              )}
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 text-sm text-brand-medium">
-              <Dice20 className="w-4 h-4" />
-              <span>{session.campaign ? 'Сесія кампанії' : 'One-shot сесія'}</span>
-            </div>
-          )}
-        </div>
-
-        {session.price > 0 && (
-          <div className="text-sm font-bold text-brand-dark">{session.price} грн</div>
         )}
 
         {joinError && (
           <div className="text-sm text-red-600 p-3 bg-red-50 rounded-lg">{joinError}</div>
         )}
 
-        {canRequestJoin ? (
-          <Button onClick={() => setShowJoinModal(true)} variant="primary" fullWidth={false} className="w-full lg:w-auto">
-            Приєднатись до сесії
-          </Button>
-        ) : (
-          <div className="text-sm text-brand-medium text-center p-3 bg-brand-light/10 rounded-lg">
-            {getUnavailableJoinMessage(session)}
-          </div>
-        )}
+        <div className="mt-auto">
+          {canRequestJoin ? (
+            <Button onClick={() => setShowJoinModal(true)} variant="primary" fullWidth className="w-full min-h-[43px]">
+              Приєднатись до сесії
+            </Button>
+          ) : (
+            <div className="text-sm text-brand-medium text-center p-3 bg-brand-light/10 rounded-lg">
+              {getUnavailableJoinMessage(session)}
+            </div>
+          )}
+        </div>
       </div>
 
       {showJoinModal && (
@@ -370,6 +347,4 @@ SessionPagePreviewWidget.propTypes = {
   onJoin: PropTypes.func,
   canJoin: PropTypes.bool,
   canApplyAsGm: PropTypes.bool,
-  showCampaignInfo: PropTypes.bool,
-  canNavigateToCampaignDirectly: PropTypes.bool,
 };

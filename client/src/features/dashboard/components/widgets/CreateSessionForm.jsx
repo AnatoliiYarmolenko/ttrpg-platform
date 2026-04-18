@@ -191,9 +191,9 @@ export default function CreateSessionForm({
   };
 
   const inputClass = (fieldName) => `
-    w-full px-3 py-2 rounded-lg border-2
+    w-full px-4 py-3 rounded-xl border-2
     ${errors[fieldName]
-      ? 'border-red-300 focus:border-red-500'
+      ? 'border-red-500 focus:border-red-600'
       : 'border-brand-light/30 focus:border-brand-dark'}
     transition-colors
   `;
@@ -234,6 +234,10 @@ export default function CreateSessionForm({
       </div>
 
       <div>
+        <label htmlFor="system" className="block text-sm font-medium text-brand-dark mb-1">
+              Ігрова система
+          </label>
+
         <Dropdown
           label="Ігрова система"
           options={GAME_SYSTEMS}
@@ -302,8 +306,12 @@ export default function CreateSessionForm({
 
       <div className="grid grid-cols-2 gap-4">
         <div>
+          <label htmlFor="duration" className="block text-sm font-medium text-brand-dark mb-1">
+              Час гри
+          </label>
+
           <Dropdown
-            label="Тривалість"
+            label="duration"
             options={[
               { value: 60, label: '1 година' },
               { value: 90, label: '1.5 години' },
@@ -365,8 +373,11 @@ export default function CreateSessionForm({
         </div>
 
         <div>
+          <label htmlFor="visibility" className="block text-sm font-medium text-brand-dark mb-1">
+              Доступність
+          </label>
           <Dropdown
-            label={isCampaignSession ? 'Тип сесії' : 'Видимість'}
+            label="Доступність"
             options={visibilityOptions}
             value={formData.visibility}
             onChange={(option) => {

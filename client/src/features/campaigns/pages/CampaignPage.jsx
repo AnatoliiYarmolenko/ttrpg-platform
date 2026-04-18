@@ -2,28 +2,32 @@ import React from 'react';
 
 import useCampaignPageController from '../hooks/useCampaignPageController';
 import CampaignLayout from '../components/layout/CampaignLayout';
-import CampaignNavigation, { TABS } from '../components/navigation/CampaignNavigation';
-import CampaignSessionsWidget from '../components/widgets/CampaignSessionsWidget';
-import CampaignInfoWidget from '../components/widgets/CampaignInfoWidget';
-import CampaignSettingsWidget from '../components/widgets/CampaignSettingsWidget';
-import CampaignMembersWidget from '../components/widgets/CampaignMembersWidget';
-import CampaignCreateSessionWidget from '../components/widgets/CampaignCreateSessionWidget';
+import CampaignNavigation from '../components/navigation/CampaignNavigation';
 import CampaignPreviewWidget from '../components/widgets/CampaignPreviewWidget';
-import { UserProfilePreview } from '@/components/shared';
+import CampaignTabRenderer from '../components/layout/CampaignTabRenderer';
+import { UserProfilePreview, EmptyState } from '@/components/shared';
 import FullPageLoader from '@/components/shared/FullPageLoader';
 import ErrorScreen from '@/components/shared/ErrorScreen';
 import Button from '@/components/ui/Button';
+import { BrandLogo } from '@/components/shared';
+import DashboardCard from '@/components/ui/DashboardCard';
+import GroupPeople from '@/components/ui/icons/GroupPeople';
 
 export default function CampaignPage() {
   const {
     id,
     user,
     currentCampaign,
-    campaignMembers,
+    membersSection,
+    joinRequestsSection,
+    sessionsSection,
     isLoading,
     error,
     activeTab,
+    availableTabs,
     setActiveTab,
+    campaignCommunicationMode,
+    setCampaignCommunicationMode,
     viewingUserId,
     isPreviewMode,
     myRole,
@@ -36,7 +40,6 @@ export default function CampaignPage() {
     canRemovePlayers,
     canCreateCampaignSessions,
     canManageShareLink,
-    canUseOwnerSessionOverrides,
     isCampaignFinished,
     canJoin,
     pendingRequestStatus,
@@ -69,107 +72,99 @@ export default function CampaignPage() {
     return <FullPageLoader text="Завантаження кампанії..." />;
   }
 
-  const renderLeftPanel = () => {
-    if (viewingUserId) {
-      return (
-        <UserProfilePreview
-          userId={viewingUserId}
-          onBack={handleBackFromProfile}
-          participants={campaignMembers.map((m) => ({ ...m, user: m.user }))}
-        />
-      );
-    }
+  const renderContent = () => {
+    const profilePreviewNode = viewingUserId ? (
+      <UserProfilePreview
+        userId={viewingUserId}
+        onBack={handleBackFromProfile}
+        participants={(membersSection.items || []).map((member) => ({ ...member, user: member.user }))}
+      />
+    ) : null;
 
     if (isPreviewMode) {
-      return (
-        <CampaignPreviewWidget
-          campaign={currentCampaign}
-          onJoinRequest={handleJoinRequest}
-          canJoin={canJoin}
-          pendingRequestStatus={pendingRequestStatus}
-          isLoading={isLoading}
-        />
-      );
-    }
-
-    switch (activeTab) {
-      case TABS.SETTINGS:
-        if (canManageCampaignSettings) {
-          return (
-            <CampaignSettingsWidget
-              campaign={currentCampaign}
-              onSave={handleSaveSettings}
-              onTransferOwnership={handleTransferOwnership}
-              canTransferOwnership={isOwner}
-              isLoading={isLoading}
-            />
-          );
-        }
-        return (
-          <CampaignSessionsWidget
+      return {
+        leftPanel: (
+          <CampaignPreviewWidget
             campaign={currentCampaign}
-            canOwnerOverride={canUseOwnerSessionOverrides}
-            onCancelForeignSession={handleCancelForeignSession}
-            onDeleteForeignSession={handleDeleteForeignSession}
-            onSessionCreated={handleRefreshCampaign}
-          />
-        );
-
-      case TABS.DETAILS:
-        return (
-          <CampaignInfoWidget
-            campaign={currentCampaign}
-            myRole={myRole}
-            canManageShareLink={canManageShareLink}
-            currentShareLink={currentShareLink}
-            onLeave={handleLeave}
-            onRegenerateShareLink={handleRegenerateShareLink}
-            onCopyShareLink={handleCopyShareLink}
+            onJoinRequest={handleJoinRequest}
+            canJoin={canJoin}
+            pendingRequestStatus={pendingRequestStatus}
             isLoading={isLoading}
           />
-        );
-
-      case TABS.SESSIONS:
-      default:
-        return (
-          <CampaignSessionsWidget
-            campaign={currentCampaign}
-            canOwnerOverride={canUseOwnerSessionOverrides}
-            onCancelForeignSession={handleCancelForeignSession}
-            onDeleteForeignSession={handleDeleteForeignSession}
-            onSessionCreated={handleRefreshCampaign}
-          />
-        );
-    }
-  };
-
-  const renderRightPanel = () => {
-    if (!isPreviewMode && activeTab === TABS.SESSIONS && !viewingUserId) {
-      return (
-        <CampaignCreateSessionWidget
-          campaignId={id}
-          canCreateSessions={canCreateCampaignSessions}
-          isCampaignFinished={isCampaignFinished}
-          onSessionCreated={handleRefreshCampaign}
-        />
-      );
+        ),
+        rightPanel: (
+          <DashboardCard title="Учасники">
+            <div className="flex flex-col items-center justify-center h-full min-h-[300px]">
+              <EmptyState
+                icon={<GroupPeople className="w-12 h-12" />}
+                title="Список учасників прихований"
+                description="Для цього режиму перегляду список учасників недоступний."
+              />
+            </div>
+          </DashboardCard>
+        ),
+      };
     }
 
-    return (
-      <CampaignMembersWidget
-        campaignId={id}
-        initialMembers={campaignMembers}
-        canReadMembers={canReadMembers}
-        isOwner={isOwner}
-        isGM={isGM}
-        canAssignRoles={canAssignCampaignRoles}
-        canModerateRequests={canModerateJoinRequests}
-        canRemovePlayers={canRemovePlayers}
-        currentUserId={user?.id}
-        onViewProfile={handleViewProfile}
-      />
-    );
+    return CampaignTabRenderer({
+      activeTab,
+      campaignCommunicationMode,
+      setCampaignCommunicationMode,
+      viewingUserId,
+      profilePreviewNode,
+      infoProps: {
+        campaign: currentCampaign,
+        myRole,
+      },
+      membersProps: {
+        campaignId: id,
+        membersSection,
+        joinRequestsSection,
+        canReadMembers,
+        isOwner,
+        isGM,
+        canAssignRoles: canAssignCampaignRoles,
+        canModerateRequests: canModerateJoinRequests,
+        canRemovePlayers,
+        currentUserId: user?.id,
+        onViewProfile: handleViewProfile,
+      },
+      nextSessionProps: {
+        sessions: sessionsSection.items,
+        campaignOwner: currentCampaign.owner,
+        campaignMembers: membersSection.items,
+        campaignId: id,
+        canCreateSessions: canCreateCampaignSessions,
+        isCampaignFinished,
+        onCreateSession: () => {}, // Handled directly in right panel header now
+      },
+      sessionsProps: {
+        campaignId: id,
+        campaignStatus: currentCampaign.status,
+        sessionsSection,
+        canCreateSessions: canCreateCampaignSessions,
+        isCampaignFinished,
+        onCancelSession: handleCancelForeignSession,
+        onDeleteSession: handleDeleteForeignSession,
+        onSessionCreated: handleRefreshCampaign,
+      },
+      settingsProps: {
+        campaign: currentCampaign,
+        myRole,
+        canManageShareLink,
+        currentShareLink,
+        onLeave: handleLeave,
+        onRegenerateShareLink: handleRegenerateShareLink,
+        onCopyShareLink: handleCopyShareLink,
+        onSave: handleSaveSettings,
+        onTransferOwnership: handleTransferOwnership,
+        canTransferOwnership: isOwner,
+        isLoading,
+      },
+    });
   };
+
+  const { leftPanel, rightPanel } = renderContent();
 
   return (
     <CampaignLayout
@@ -177,18 +172,7 @@ export default function CampaignPage() {
         isPreviewMode ? (
           <nav className="flex items-center gap-4 justify-between w-full">
             <div className="flex items-center gap-3 min-w-0 flex-1">
-              <div className="bg-white px-4 py-2 rounded-xl border-2 border-brand-light/30 shadow-md flex items-center gap-2">
-                <div className="w-6 h-6 bg-brand-dark rounded-full flex items-center justify-center text-brand-accent font-bold text-xs">
-                  D20
-                </div>
-                <span className="font-bold text-brand-dark hidden md:block">
-                  TTRPG Platform
-                </span>
-              </div>
-              <span className="text-white/40 hidden sm:inline">/</span>
-              <span className="text-white font-bold text-sm truncate">
-                {currentCampaign.title}
-              </span>
+              <BrandLogo />
             </div>
             <div className="flex items-center justify-end flex-1">
               <Button
@@ -197,7 +181,7 @@ export default function CampaignPage() {
                 size="md"
                 fullWidth={false}
               >
-                На головну
+                Назад
               </Button>
             </div>
           </nav>
@@ -205,13 +189,14 @@ export default function CampaignPage() {
           <CampaignNavigation
             campaignTitle={currentCampaign.title}
             activeTab={activeTab}
+            availableTabs={availableTabs}
             onTabChange={setActiveTab}
-            canManageSettings={canManageCampaignSettings}
+            canManage={canManageCampaignSettings}
           />
         )
       }
-      leftPanel={renderLeftPanel()}
-      rightPanel={renderRightPanel()}
+      leftPanel={leftPanel}
+      rightPanel={rightPanel}
     />
   );
 }

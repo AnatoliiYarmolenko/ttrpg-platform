@@ -11,6 +11,7 @@ const { getCampaignViewerCapabilities } = require('../domain/campaign/campaign.p
 
 const permissionHelpers = require('./campaign/campaign-permission.helpers');
 const createCampaignMembersService = require('./campaign/campaign-members.service');
+const createCampaignPageService = require('./campaign/campaign-page.service');
 
 class CampaignService {
   constructor() {
@@ -20,6 +21,11 @@ class CampaignService {
       ERROR_CODES,
       getCampaignById: this.getCampaignById.bind(this),
       permissionHelpers,
+    });
+    this.pageService = createCampaignPageService({
+      getCampaignById: this.getCampaignById.bind(this),
+      getCampaignByShareToken: this.getCampaignByShareToken.bind(this),
+      getJoinRequests: this.membersService.getJoinRequests.bind(this.membersService),
     });
   }
 
@@ -51,15 +57,37 @@ class CampaignService {
     );
   }
 
-  _buildCampaignUpdateData(existingCampaign, updateData, nextStatus) {
-    return {
-      title: updateData.title,
-      description: updateData.description,
-      imageUrl: updateData.imageUrl,
-      system: updateData.system,
-      visibility: updateData.visibility,
-      status: nextStatus,
-    };
+  _normalizeNullableString(value) {
+    if (typeof value !== 'string') {
+      return value;
+    }
+
+    const normalizedValue = value.trim();
+    return normalizedValue === '' ? null : normalizedValue;
+  }
+
+  _assignIfOwn(target, source, field, normalize = (value) => value) {
+    if (!Object.hasOwn(source, field)) {
+      return;
+    }
+
+    target[field] = normalize(source[field]);
+  }
+
+  _buildCampaignUpdateData(updateData, nextStatus) {
+    const campaignUpdateData = {};
+
+    this._assignIfOwn(campaignUpdateData, updateData, 'title');
+    this._assignIfOwn(campaignUpdateData, updateData, 'description', this._normalizeNullableString);
+    this._assignIfOwn(campaignUpdateData, updateData, 'imageUrl', this._normalizeNullableString);
+    this._assignIfOwn(campaignUpdateData, updateData, 'system', this._normalizeNullableString);
+    this._assignIfOwn(campaignUpdateData, updateData, 'visibility');
+
+    if (nextStatus !== undefined) {
+      campaignUpdateData.status = nextStatus;
+    }
+
+    return campaignUpdateData;
   }
 
   _hasValidCampaignAccessToken(campaign, rawToken = null) {
@@ -232,7 +260,23 @@ class CampaignService {
           orderBy: { role: 'asc' },
         },
         sessions: {
-          select: { id: true, title: true, date: true, status: true, maxPlayers: true, ownerId: true },
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            date: true,
+            system: true,
+            status: true,
+            visibility: true,
+            maxPlayers: true,
+            ownerId: true,
+            _count: {
+              select: { participants: true },
+            },
+            owner: {
+              select: { id: true, username: true, displayName: true, avatarUrl: true },
+            },
+          },
           orderBy: { date: 'asc' },
         },
         joinRequests: {
@@ -292,7 +336,6 @@ class CampaignService {
       delete campaign.joinRequests;
     }
 
-    delete campaign.inviteCode;
     delete campaign.shareTokenHash;
     delete campaign.shareTokenEncrypted;
     delete campaign.shareTokenCreatedAt;
@@ -338,7 +381,7 @@ class CampaignService {
     const isFinishingCampaign = campaign.status !== 'FINISHED' && nextStatus === 'FINISHED';
     const shareTokenUpdate = this._buildCampaignShareTokenUpdate(campaign, updateData.visibility);
     const campaignUpdateData = {
-      ...this._buildCampaignUpdateData(campaign, updateData, nextStatus),
+        ...this._buildCampaignUpdateData(updateData, nextStatus),
       ...(Object.hasOwn(shareTokenUpdate, 'shareTokenHash')
         ? {
           shareTokenHash: shareTokenUpdate.shareTokenHash,
@@ -445,6 +488,14 @@ class CampaignService {
     }
 
     return this.getCampaignById(campaign.id, userId, normalizedToken);
+  }
+
+  async getCampaignPageById(campaignId, userId = null) {
+    return this.pageService.getCampaignPageById(campaignId, userId);
+  }
+
+  async getCampaignPageByShareToken(rawToken, userId = null) {
+    return this.pageService.getCampaignPageByShareToken(rawToken, userId);
   }
 
   async regenerateShareToken(campaignId, userId) {

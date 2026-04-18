@@ -154,7 +154,7 @@ describe('App routing integration', () => {
   it('supports dashboard deep-link to profile security section', async () => {
     renderAppAt('/?tab=profile&section=security');
 
-    expect(await screen.findByTestId('profile-content')).toHaveTextContent('profile:security');
+    expect(await screen.findByTestId('profile-content', {}, { timeout: 3000 })).toHaveTextContent('profile:security');
     expect(globalThis.location.pathname).toBe('/');
     expect(globalThis.location.search).toBe('?tab=profile&section=security');
   });

@@ -73,6 +73,38 @@ class CampaignController {
     }
   }
 
+  async getCampaignPageById(req, res, next) {
+    try {
+      const { campaignId } = req.params;
+      const userId = req.user?.id;
+
+      const pageData = await campaignService.getCampaignPageById(campaignId, userId);
+
+      res.json({
+        success: true,
+        data: pageData,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getCampaignPageByShareToken(req, res, next) {
+    try {
+      const { shareToken } = req.params;
+      const userId = req.user?.id || null;
+
+      const pageData = await campaignService.getCampaignPageByShareToken(shareToken, userId);
+
+      res.json({
+        success: true,
+        data: pageData,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async updateCampaign(req, res, next) {
     try {
       const { campaignId } = req.params;

@@ -2,14 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "@/stores/useToastStore";
 import {
-  useCampaignQuery,
-  useCampaignMembersQuery,
+  useCampaignPageQuery,
   useCampaignMutations,
   useCampaignShareLinkQuery,
 } from "./useCampaignQueries";
 import useAuthStore from "@/stores/useAuthStore";
-import usePreviewMode from "@/hooks/usePreviewMode";
-import { TABS } from "../components/navigation/CampaignNavigation";
+import { CAMPAIGN_TABS as TABS, CAMPAIGN_TAB_VALUES as TAB_VALUES, CAMPAIGN_COMMUNICATION_MODES } from "../constants/campaignTabs";
 import {
   parseEnumSearchParam,
   parsePositiveIntSearchParam,
@@ -35,38 +33,6 @@ function normalizePageError(error, fallbackMessage) {
 
   return error.message || String(error);
 }
-
-function resolveCampaignRole({ currentCampaign, user, viewer }) {
-  if (!currentCampaign || !user) return null;
-  if (viewer.role) return viewer.role;
-  if (viewer.isOwner || currentCampaign.ownerId === user.id) return "OWNER";
-
-  const member = currentCampaign.members?.find((entry) => entry.userId === user.id);
-  return member?.role || null;
-}
-
-function canReadCampaignMembers(currentCampaign, viewer) {
-  if (!currentCampaign) return false;
-  if (currentCampaign.visibility === "PUBLIC") return true;
-  return Boolean(viewer.isOwner || viewer.isMember || viewer.canManage);
-}
-
-function resolvePendingRequestStatus({ amMember, currentCampaign, user, viewer }) {
-  if (amMember || !currentCampaign || !user) {
-    return null;
-  }
-
-  return viewer.pendingJoinRequestStatus || null;
-}
-
-function canJoinCampaign({ currentCampaign, user, amMember, pendingRequestStatus, viewer }) {
-  if (!currentCampaign || !user) return false;
-  if (amMember || pendingRequestStatus) return false;
-  if (currentCampaign.status === "FINISHED") return false;
-  return viewer.joinMode === "REQUEST";
-}
-
-const TAB_VALUES = Object.values(TABS);
 
 function normalizeCampaignUrlState({ searchParams, activeTab, viewingUserId, setSearchParams }) {
   const rawTab = searchParams.get("tab");
@@ -132,6 +98,31 @@ async function copyCampaignShareLink(currentShareLink) {
     : { success: false, message: 'Не вдалося скопіювати посилання' };
 }
 
+function normalizeAvailableTabs(rawTabs, { canManageSettings = false } = {}) {
+  if (!Array.isArray(rawTabs) || rawTabs.length === 0) {
+    return canManageSettings
+      ? [TABS.SESSIONS, TABS.DETAILS, TABS.MANAGE]
+      : [TABS.SESSIONS, TABS.DETAILS];
+  }
+
+  const allowedTabs = Object.values(TABS);
+  const normalizedTabs = rawTabs.filter((tab, index, source) =>
+    allowedTabs.includes(tab) && source.indexOf(tab) === index
+  );
+
+  if (canManageSettings && !normalizedTabs.includes(TABS.MANAGE)) {
+    normalizedTabs.push(TABS.MANAGE);
+  }
+
+  if (normalizedTabs.length > 0) {
+    return normalizedTabs;
+  }
+
+  return canManageSettings
+    ? [TABS.SESSIONS, TABS.DETAILS, TABS.MANAGE]
+    : [TABS.SESSIONS, TABS.DETAILS];
+}
+
 export default function useCampaignPageController() {
   const { id, shareToken: routeShareToken } = useParams();
   const campaignIdNumber = Number(id);
@@ -139,51 +130,70 @@ export default function useCampaignPageController() {
   const [searchParams, setSearchParams] = useSearchParams();
   const user = useAuthStore((state) => state.user);
   const [lastGeneratedShareLink, setLastGeneratedShareLink] = useState("");
+  const [campaignCommunicationMode, setCampaignCommunicationMode] = useState(CAMPAIGN_COMMUNICATION_MODES.CHAT);
 
   const hasShareToken = typeof routeShareToken === "string" && routeShareToken.trim().length > 0;
   const isValidId = Number.isInteger(campaignIdNumber) && campaignIdNumber > 0;
   const invalidIdError = !hasShareToken && !isValidId ? 'Кампанія не знайдена' : null;
 
   const {
-    data: currentCampaign,
+    data: pageData,
     isLoading: isCampaignLoading,
     error: campaignError,
-  } = useCampaignQuery({
+    refetch: refetchCampaignPage,
+  } = useCampaignPageQuery({
     campaignId: hasShareToken ? null : campaignIdNumber,
     shareToken: hasShareToken ? routeShareToken : null,
   });
 
-  const viewer = useMemo(() => currentCampaign?.viewer || {}, [currentCampaign]);
-  const myRole = useMemo(
-    () => resolveCampaignRole({ currentCampaign, user, viewer }),
-    [currentCampaign, user, viewer]
+  const entity = pageData?.entity || null;
+  const viewer = pageData?.viewer || {};
+  const actions = pageData?.actions || {};
+  const ui = pageData?.ui || {};
+  const sections = useMemo(() => pageData?.sections || {}, [pageData]);
+
+  const membersSection = useMemo(
+    () => sections.members || { visible: false, count: 0, items: [] },
+    [sections]
+  );
+  const joinRequestsSection = useMemo(
+    () => sections.joinRequests || { visible: false, count: 0, items: [] },
+    [sections]
+  );
+  const sessionsSection = useMemo(
+    () => sections.sessions || { visible: true, count: 0, items: [] },
+    [sections]
   );
 
-  const isOwner = Boolean(viewer.isOwner || (currentCampaign && user && currentCampaign.ownerId === user.id));
-  const isGM = myRole === "GM";
-  const amMember = Boolean(viewer.isOwner || viewer.isMember || isOwner);
-  const isCampaignFinished = currentCampaign?.status === "FINISHED";
-  const canReadMembers = useMemo(
-    () => canReadCampaignMembers(currentCampaign, viewer),
-    [currentCampaign, viewer]
-  );
+  const currentCampaign = useMemo(() => {
+    if (!entity) return null;
 
-  const { data: queriedMembers = [], isLoading: isMembersLoading } = useCampaignMembersQuery(
-    currentCampaign?.id ?? null,
-    canReadMembers && !hasShareToken
-  );
+    return {
+      ...entity,
+      members: membersSection.items,
+      sessions: sessionsSection.items,
+      joinRequests: joinRequestsSection.items,
+      membersCount: Number.isFinite(Number(membersSection.count))
+        ? Number(membersSection.count)
+        : 0,
+      sessionsCount: Number.isFinite(Number(sessionsSection.count))
+        ? Number(sessionsSection.count)
+        : 0,
+    };
+  }, [entity, joinRequestsSection.items, membersSection.count, membersSection.items, sessionsSection.count, sessionsSection.items]);
 
-  const campaignMembers = useMemo(() => {
-    if (queriedMembers.length > 0) return queriedMembers;
-    return currentCampaign?.members || [];
-  }, [queriedMembers, currentCampaign]);
-
-  const isLoading = isCampaignLoading || (canReadMembers && !hasShareToken && isMembersLoading);
+  const isLoading = isCampaignLoading;
   const error = normalizePageError(campaignError, invalidIdError);
   const activeCampaignId = currentCampaign?.id ?? (isValidId ? campaignIdNumber : null);
   const mutations = useCampaignMutations(activeCampaignId, {
     shareToken: hasShareToken ? routeShareToken : null,
   });
+
+  const canManageCampaignSettings = Boolean(actions.canEditSettings);
+  const availableTabs = useMemo(
+    () => normalizeAvailableTabs(ui.availableTabs, { canManageSettings: canManageCampaignSettings }),
+    [ui.availableTabs, canManageCampaignSettings]
+  );
 
   const activeTab = parseEnumSearchParam(searchParams, "tab", TAB_VALUES, TABS.SESSIONS);
   const viewingUserId = parsePositiveIntSearchParam(searchParams, "viewing");
@@ -200,42 +210,41 @@ export default function useCampaignPageController() {
   const setActiveTab = useCallback(
     (tab) => {
       updateSearchParams(setSearchParams, (next) => {
+        const targetTab = availableTabs.includes(tab) ? tab : TABS.SESSIONS;
         next.delete("viewing");
-        setOrDeleteParam(next, "tab", tab, TABS.SESSIONS);
+        setOrDeleteParam(next, "tab", targetTab, TABS.SESSIONS);
       });
     },
-    [setSearchParams]
+    [availableTabs, setSearchParams]
   );
 
-  const canManageCampaignSettings = Boolean(viewer.canManage);
   const canManageCampaignVisibility = canManageCampaignSettings;
-  const canAssignCampaignRoles = isOwner && !isCampaignFinished;
-  const canModerateJoinRequests = (isOwner || isGM) && !isCampaignFinished;
-  const canRemovePlayers = (isOwner || isGM) && !isCampaignFinished;
-  const canCreateCampaignSessions = (isOwner || isGM) && !isCampaignFinished;
-  const canManageShareLink =
-    isOwner && currentCampaign?.visibility === "LINK_ONLY" && !isCampaignFinished;
-  const canUseOwnerSessionOverrides = isOwner;
-  const { isPreviewMode } = usePreviewMode({ isMember: amMember, isLoading });
+  const isOwner = Boolean(viewer.isOwner);
+  const myRole = viewer.role || (isOwner ? "OWNER" : null);
+  const isGM = myRole === "GM";
+  const amMember = Boolean(viewer.isMember || isOwner);
+  const isCampaignFinished = currentCampaign?.status === "FINISHED";
+  const canReadMembers = Boolean(membersSection.visible);
+  const canAssignCampaignRoles = Boolean(isOwner && !isCampaignFinished);
+  const canModerateJoinRequests = Boolean(joinRequestsSection.visible);
+  const canRemovePlayers = Boolean((isOwner || isGM) && !isCampaignFinished);
+  const canCreateCampaignSessions = Boolean(actions.canCreateSessions);
+  const canManageShareLink = Boolean(actions.canManageShareLink);
+  const isPreviewMode = Boolean(ui.previewMode);
+
   const { data: shareLinkData } = useCampaignShareLinkQuery(
     activeCampaignId,
     canManageShareLink && !hasShareToken
   );
 
-  const pendingRequestStatus = useMemo(
-    () => resolvePendingRequestStatus({ amMember, currentCampaign, user, viewer }),
-    [amMember, currentCampaign, user, viewer]
-  );
-  const canJoin = useMemo(
-    () => canJoinCampaign({ currentCampaign, user, amMember, pendingRequestStatus, viewer }),
-    [currentCampaign, user, amMember, pendingRequestStatus, viewer]
-  );
+  const pendingRequestStatus = viewer.pendingJoinRequestStatus || null;
+  const canJoin = Boolean(actions.canSubmitJoinRequest);
 
   useEffect(() => {
-    if (activeTab === TABS.SETTINGS && !canManageCampaignSettings) {
+    if (!availableTabs.includes(activeTab)) {
       setActiveTab(TABS.SESSIONS);
     }
-  }, [activeTab, canManageCampaignSettings, setActiveTab]);
+  }, [activeTab, availableTabs, setActiveTab]);
 
   const currentShareLink = useMemo(() => {
     if (lastGeneratedShareLink) return lastGeneratedShareLink;
@@ -258,15 +267,19 @@ export default function useCampaignPageController() {
       return { success: false, message: 'Не можна покинути завершену кампанію' };
     }
 
-    const myMember = campaignMembers.find((member) => member.userId === user?.id);
+    const myMember = membersSection.items.find((member) => member.userId === user?.id);
     if (!myMember) {
       return { success: false, message: 'Учасника кампанії не знайдено' };
     }
 
-    await mutations.removeMember(myMember.userId);
-    navigate("/");
-    return { success: true };
-  }, [campaignMembers, user, isCampaignFinished, mutations, navigate]);
+    try {
+      await mutations.removeMember(myMember.userId);
+      navigate('/');
+      return { success: true };
+    } catch {
+      return { success: false, message: 'Не вдалося покинути кампанію' };
+    }
+  }, [membersSection.items, user, isCampaignFinished, mutations, navigate]);
 
   const handleRegenerateShareLink = useCallback(async () => {
     return regenerateCampaignShareLink({
@@ -280,7 +293,9 @@ export default function useCampaignPageController() {
     return copyCampaignShareLink(currentShareLink);
   }, [currentShareLink]);
 
-  const handleRefreshCampaign = useCallback(async () => {}, []);
+  const handleRefreshCampaign = useCallback(async () => {
+    await refetchCampaignPage();
+  }, [refetchCampaignPage]);
 
   const handleSaveSettings = useCallback(
     async (campaignData) => {
@@ -342,11 +357,16 @@ export default function useCampaignPageController() {
     routeShareToken,
     user,
     currentCampaign,
-    campaignMembers,
+    membersSection,
+    joinRequestsSection,
+    sessionsSection,
     isLoading,
     error,
     activeTab,
+    availableTabs,
     setActiveTab,
+    campaignCommunicationMode,
+    setCampaignCommunicationMode,
     viewingUserId,
     isPreviewMode,
     myRole,
@@ -360,7 +380,6 @@ export default function useCampaignPageController() {
     canRemovePlayers,
     canCreateCampaignSessions,
     canManageShareLink,
-    canUseOwnerSessionOverrides,
     isCampaignFinished,
     amMember,
     canJoin,

@@ -48,9 +48,9 @@ export default function CampaignPreviewWidget({
   return (
     <DashboardCard
       title="Деталі кампанії"
-      actions={<BackButton to="/" label="Dashboard" variant="dark" />}
+      actions={<BackButton to="/" label="Назад" variant="dark" />}
     >
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-5 h-full">
         {/* Заголовок + видимість */}
         <div>
           <div className="flex items-start justify-between mb-2">
@@ -66,94 +66,86 @@ export default function CampaignPreviewWidget({
 
         {/* Інформаційна сітка */}
         <div className="grid grid-cols-2 gap-3 p-4 bg-brand-light/10 rounded-xl">
-          {/* Система */}
-          {campaign.system && (
-            <div className="flex items-center gap-2 text-brand-medium">
+          <div className="flex items-center gap-2 text-brand-medium text-sm">
+            <GroupPeople className="w-4 h-4" />
+            <span>{campaign.membersCount ?? campaign.members?.length ?? campaign._count?.members ?? 0} учасників</span>
+          </div>
+            {campaign.system && (
+            <div className="flex items-center gap-2 text-brand-medium text-sm">
+              <span className="font-medium">Система:</span>
               <span>{campaign.system}</span>
             </div>
           )}
-          {/* Учасники */}
-          <div className="flex items-center gap-2 text-brand-medium">
-            <GroupPeople className="w-4 h-4" />
-            <span>{campaign.members?.length || campaign._count?.members || 0} учасників</span>
+
+          <div className="flex items-center gap-2 text-brand-medium text-sm">
+            <Data className="w-4 h-4" />
+            <span>{campaign.sessionsCount ?? campaign.sessions?.length ?? campaign._count?.sessions ?? 0} сесій</span>
           </div>
-          {/* Власник/Майстер */}
           {campaign.owner && (
-            <div className="flex items-center gap-2 text-brand-medium">
-              <span>{campaign.owner.displayName || campaign.owner.username || 'Власник'}</span>
+            <div className="flex items-center gap-2 text-brand-medium text-sm">
+              <span className="font-medium">Власник:</span>
+              <span className="truncate">
+                {campaign.owner.displayName || campaign.owner.username || 'Власник'}
+              </span>
             </div>
           )}
-          {/* Сесій */}
-          <div className="flex items-center gap-2 text-brand-medium">
+          <div className="flex items-center gap-2 text-brand-medium text-sm col-span-2">
             <Data className="w-4 h-4" />
-            <span>{campaign.sessions?.length || campaign._count?.sessions || 0} сесій</span>
-          </div>
-          {/* Створено */}
-          <div className="flex items-center gap-2 text-brand-medium col-span-2">
-            <Data className="w-4 h-4" />
-            <span>Створено: </span>
+            <span>Створено:</span>
             <DateTimeDisplay value={campaign.createdAt} format="long" />
           </div>
         </div>
 
         {/* Опис */}
-        {campaign.description && (
+        {campaign.description ? (
           <div className="border-t border-brand-light/20 pt-4">
-            <h4 className="text-sm font-bold text-brand-dark mb-2">Опис</h4>
-            <p className="text-sm text-brand-medium whitespace-pre-wrap">
+            <h4 className="text-sm font-bold text-brand-dark mb-2">Опис кампанії</h4>
+            <p className="text-sm text-brand-medium whitespace-pre-wrap leading-relaxed">
               {campaign.description}
             </p>
           </div>
-        )}
-
-        {/* Зображення */}
-        {campaign.imageUrl && (
+        ) : (
           <div className="border-t border-brand-light/20 pt-4">
-            <div className="w-full h-48 rounded-xl overflow-hidden">
-              <img
-                src={campaign.imageUrl}
-                alt={campaign.title}
-                className="w-full h-full object-cover"
-                loading="lazy"
-                decoding="async"
-              />
+            <p className="text-sm text-brand-medium/60 italic">Опис відсутній</p>
+          </div>
+        )}
+
+        {/* Блок дій (приєднання) */}
+        <div className="border-t border-brand-light/20 pt-4 mt-auto flex flex-col gap-3">
+          {/* Помилка */}
+          {joinError && (
+            <div className="text-sm text-red-600 p-3 bg-red-50 rounded-lg">
+              {joinError}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Помилка */}
-        {joinError && (
-          <div className="text-sm text-red-600 p-3 bg-red-50 rounded-lg">
-            {joinError}
-          </div>
-        )}
+          {/* Статус вже поданої заявки */}
+          {pendingRequestStatus && (
+            <div className="text-sm text-brand-medium text-center p-3 bg-brand-accent/10 rounded-lg border border-brand-accent/30">
+              Ваша заявка вже подана і очікує на розгляд
+            </div>
+          )}
 
-        {/* Статус вже поданої заявки */}
-        {pendingRequestStatus && (
-          <div className="text-sm text-brand-medium text-center p-3 bg-brand-accent/10 rounded-lg border border-brand-accent/30">
-            Ваша заявка вже подана і очікує на розгляд
-          </div>
-        )}
+          {/* Кнопка подачі заявки */}
+          {canJoin && !pendingRequestStatus && (
+            <Button
+              onClick={() => setShowJoinModal(true)}
+              variant="primary"
+              fullWidth={true}
+              className="w-full"
+            >
+              Подати заявку на вступ
+            </Button>
+          )}
 
-        {/* Кнопка подачі заявки */}
-        {canJoin && !pendingRequestStatus && (
-          <Button
-            onClick={() => setShowJoinModal(true)}
-            variant="primary"
-            fullWidth={false}
-            className="w-full lg:w-auto"
-          >
-            Подати заявку на вступ
-          </Button>
-        )}
-
-        {!canJoin && !pendingRequestStatus && (
-          <div className="text-sm text-brand-medium text-center p-3 bg-brand-light/10 rounded-lg">
-            {campaign.status === 'FINISHED'
-              ? 'Кампанія завершена та недоступна для приєднання'
-              : 'Ця кампанія недоступна для приєднання'}
-          </div>
-        )}
+          {!canJoin && !pendingRequestStatus && (
+            <div className="text-sm text-brand-medium text-center p-3 bg-brand-light/10 rounded-lg">
+              {campaign.status === 'FINISHED'
+                ? 'Кампанія завершена та недоступна для приєднання'
+                : 'Ця кампанія недоступна для приєднання'}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Модалка подачі заявки */}

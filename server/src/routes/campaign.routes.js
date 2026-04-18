@@ -29,6 +29,12 @@ router.get(
   (req, res, next) => campaignController.getCampaignByShareToken(req, res, next)
 );
 
+router.get(
+  '/share/:shareToken/page',
+  [optionalAuthenticateToken, ...validateShareToken],
+  (req, res, next) => campaignController.getCampaignPageByShareToken(req, res, next)
+);
+
 router.post(
   '/',
   [authenticateToken, verifyCSRFToken, ...validateCreateCampaign],
@@ -45,6 +51,12 @@ router.get(
   '/:campaignId',
   [authenticateToken, ...validateCampaignId],
   (req, res, next) => campaignController.getCampaignById(req, res, next)
+);
+
+router.get(
+  '/:campaignId/page',
+  [authenticateToken, ...validateCampaignId],
+  (req, res, next) => campaignController.getCampaignPageById(req, res, next)
 );
 
 router.put(

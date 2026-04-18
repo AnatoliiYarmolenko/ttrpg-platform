@@ -172,7 +172,6 @@ async function createCampaigns(usersByKey) {
       description: 'Sci-fi',
       system: 'Pathfinder 2e',
       visibility: 'LINK_ONLY',
-      inviteCode: 'seed-iron-frontier-link',
       ownerId: usersByKey.gm1.id,
     },
   });

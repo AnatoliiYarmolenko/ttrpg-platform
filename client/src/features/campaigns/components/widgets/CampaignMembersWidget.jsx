@@ -4,11 +4,7 @@ import { EmptyState, ConfirmModal, ParticipantsList } from '@/components/shared'
 import useConfirmDialog from '@/hooks/useConfirmDialog';
 import MemberCard from '../ui/MemberCard';
 import ParticipantCard from '@/features/sessions/components/ui/ParticipantCard';
-import {
-  useCampaignMembersQuery,
-  useCampaignJoinRequestsQuery,
-  useCampaignMutations,
-} from '../../hooks/useCampaignQueries';
+import { useCampaignMutations } from '../../hooks/useCampaignQueries';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
 
 /**
@@ -16,7 +12,8 @@ import GroupPeople from '@/components/ui/icons/GroupPeople';
  */
 export default function CampaignMembersWidget({
   campaignId,
-  initialMembers = [],
+  membersSection = null,
+  joinRequestsSection = null,
   canReadMembers = true,
   isOwner = false,
   isGM = false,
@@ -25,11 +22,17 @@ export default function CampaignMembersWidget({
   canRemovePlayers = false,
   currentUserId,
   onViewProfile,
+  actions,
 }) {
-  const { data: queriedMembers = [] } = useCampaignMembersQuery(campaignId, canReadMembers);
-  const { data: joinRequests = [] } = useCampaignJoinRequestsQuery(campaignId, canModerateRequests);
   const mutations = useCampaignMutations(campaignId);
-  const campaignMembers = queriedMembers.length > 0 ? queriedMembers : initialMembers;
+  const campaignMembers = useMemo(
+    () => (Array.isArray(membersSection?.items) ? membersSection.items : []),
+    [membersSection]
+  );
+  const joinRequests = useMemo(
+    () => (Array.isArray(joinRequestsSection?.items) ? joinRequestsSection.items : []),
+    [joinRequestsSection]
+  );
   const { openConfirm, confirmModalProps } = useConfirmDialog();
 
   const handleRemove = (memberId) => {
@@ -55,9 +58,9 @@ export default function CampaignMembersWidget({
   };
 
   const visiblePendingRequests = useMemo(() => {
-    if (!canModerateRequests) return [];
+    if (!canModerateRequests || joinRequestsSection?.visible === false) return [];
     return joinRequests.filter((request) => request.status === 'PENDING');
-  }, [canModerateRequests, joinRequests]);
+  }, [canModerateRequests, joinRequests, joinRequestsSection?.visible]);
 
   const combinedItems = useMemo(() => {
     const requestItems = visiblePendingRequests.map((request) => ({
@@ -98,6 +101,72 @@ export default function CampaignMembersWidget({
     return true;
   };
 
+  const shouldShowHiddenState = !canReadMembers && visiblePendingRequests.length === 0;
+  const shouldShowEmptyState = !shouldShowHiddenState && combinedItems.length === 0;
+
+  let cardContent = null;
+  if (shouldShowHiddenState) {
+    cardContent = (
+      <EmptyState
+        icon={<GroupPeople className="w-10 h-10" />}
+        title="Список учасників прихований"
+        description="Для цього режиму перегляду список учасників недоступний."
+      />
+    );
+  } else if (shouldShowEmptyState) {
+    cardContent = (
+      <EmptyState
+        icon={<GroupPeople className="w-10 h-10" />}
+        title="Ще немає учасників"
+        description="Запросіть гравців через share-посилання кампанії"
+      />
+    );
+  } else {
+    cardContent = (
+      <ParticipantsList
+        items={combinedItems}
+        getItemKey={(item) => item.id}
+        renderItem={(item) => {
+          if (item.type === 'request') {
+            const request = item.request;
+            return (
+              <ParticipantCard
+                participant={{
+                  id: request.id,
+                  userId: request.user?.id,
+                  user: request.user,
+                  role: 'PLAYER',
+                  status: 'PENDING',
+                }}
+                canManage={false}
+                currentUserId={currentUserId}
+                onViewProfile={onViewProfile}
+                playerModeration={{
+                  enabled: true,
+                  onApprove: handleApproveRequest,
+                  onReject: handleRejectRequest,
+                }}
+              />
+            );
+          }
+
+          const member = item.member;
+          return (
+            <MemberCard
+              member={member}
+              currentUserId={currentUserId}
+              canRemove={canRemoveMember(member)}
+              canChangeRole={canChangeMemberRole(member)}
+              onRemove={canRemoveMember(member) ? handleRemove : undefined}
+              onChangeRole={canChangeMemberRole(member) ? handleChangeRole : undefined}
+              onViewProfile={onViewProfile}
+            />
+          );
+        }}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col gap-3 h-full overflow-y-auto">
       <DashboardCard
@@ -106,56 +175,9 @@ export default function CampaignMembersWidget({
             ? `Учасники (${campaignMembers.length}) • Заявки (${visiblePendingRequests.length})`
             : `Учасники (${campaignMembers.length})`
         }
+        actions={actions}
       >
-        {combinedItems.length === 0 ? (
-          <EmptyState
-            icon={<GroupPeople className="w-10 h-10" />}
-            title="Ще немає учасників"
-            description="Запросіть гравців через share-посилання кампанії"
-          />
-        ) : (
-          <ParticipantsList
-            items={combinedItems}
-            getItemKey={(item) => item.id}
-            renderItem={(item) => {
-              if (item.type === 'request') {
-                const request = item.request;
-                return (
-                  <ParticipantCard
-                    participant={{
-                      id: request.id,
-                      userId: request.user?.id,
-                      user: request.user,
-                      role: 'PLAYER',
-                      status: 'PENDING',
-                    }}
-                    canManage={false}
-                    currentUserId={currentUserId}
-                    onViewProfile={onViewProfile}
-                    playerModeration={{
-                      enabled: true,
-                      onApprove: handleApproveRequest,
-                      onReject: handleRejectRequest,
-                    }}
-                  />
-                );
-              }
-
-              const member = item.member;
-              return (
-                <MemberCard
-                  member={member}
-                  currentUserId={currentUserId}
-                  canRemove={canRemoveMember(member)}
-                  canChangeRole={canChangeMemberRole(member)}
-                  onRemove={canRemoveMember(member) ? handleRemove : undefined}
-                  onChangeRole={canChangeMemberRole(member) ? handleChangeRole : undefined}
-                  onViewProfile={onViewProfile}
-                />
-              );
-            }}
-          />
-        )}
+        {cardContent}
       </DashboardCard>
 
       <ConfirmModal

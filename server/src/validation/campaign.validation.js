@@ -15,7 +15,7 @@ const createCampaignBodySchema = Joi.object({
   imageUrl: Joi.string().trim().uri().optional().messages({
     'string.uri': 'imageUrl повинна бути коректною URL',
   }),
-  system: Joi.string().trim().valid(...GAME_SYSTEM_VALUES).empty('').optional().messages({
+  system: Joi.string().trim().valid('', ...GAME_SYSTEM_VALUES).optional().messages({
     'any.only': 'Невірна ігрова система',
   }),
   visibility: Joi.string().trim().valid('PUBLIC', 'LINK_ONLY').required().messages({
@@ -35,13 +35,13 @@ const updateCampaignBodySchema = Joi.object({
     'string.min': 'Назва повинна містити від 3 до 100 символів',
     'string.max': 'Назва повинна містити від 3 до 100 символів',
   }),
-  description: Joi.string().trim().max(1000).optional().messages({
+  description: Joi.string().trim().allow('').max(1000).optional().messages({
     'string.max': 'Опис не повинен перевищувати 1000 символів',
   }),
   imageUrl: Joi.string().trim().uri().optional().messages({
     'string.uri': 'imageUrl повинна бути коректною URL',
   }),
-  system: Joi.string().trim().valid(...GAME_SYSTEM_VALUES).empty('').optional().messages({
+  system: Joi.string().trim().valid('', ...GAME_SYSTEM_VALUES).optional().messages({
     'any.only': 'Невірна ігрова система',
   }),
   visibility: Joi.string().trim().valid('PUBLIC', 'LINK_ONLY').optional().messages({

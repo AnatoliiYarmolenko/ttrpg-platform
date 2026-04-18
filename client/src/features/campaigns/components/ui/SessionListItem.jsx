@@ -19,9 +19,8 @@ import GroupPeople from '@/components/ui/icons/GroupPeople';
 export default function SessionListItem({
   session,
   index,
-  showOwnerOverrideActions = false,
-  onCancelOwnerAction,
-  onDeleteOwnerAction,
+  onCancelAction,
+  onDeleteAction,
 }) {
   const navigate = useNavigate();
 
@@ -36,8 +35,9 @@ export default function SessionListItem({
 
   const participantCount = session.participants?.length || session._count?.participants || 0;
 
-  const canCancelSession = session.status === 'PLANNED' || session.status === 'ACTIVE';
-  const canDeleteSession = session.status === 'PLANNED';
+  const canCancelSession = Boolean(session?.actions?.canCancel);
+  const canDeleteSession = Boolean(session?.actions?.canDelete);
+  const hasModerationActions = Boolean(canCancelSession || canDeleteSession);
 
   const handleOpenSession = () => {
     navigate(`/session/${session.id}`);
@@ -65,13 +65,13 @@ export default function SessionListItem({
           </h4>
         </div>
         <div className="flex items-center gap-2">
-          {showOwnerOverrideActions && (
+          {hasModerationActions && (
             <>
               <button
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation();
-                  onCancelOwnerAction?.();
+                  onCancelAction?.();
                 }}
                 disabled={!canCancelSession}
                 className="px-2 py-1 text-xs rounded border border-brand-accent/60 text-brand-dark hover:bg-brand-accent/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -83,7 +83,7 @@ export default function SessionListItem({
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation();
-                  onDeleteOwnerAction?.();
+                  onDeleteAction?.();
                 }}
                 disabled={!canDeleteSession}
                 className="px-2 py-1 text-xs rounded border border-red-300 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
