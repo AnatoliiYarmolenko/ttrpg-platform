@@ -39,15 +39,6 @@ function createSessionPageService({ sessionQueryService }) {
       : null,
   });
 
-  const isPastDate = (value) => {
-    if (!value) return false;
-
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return false;
-
-    return date.getTime() < Date.now();
-  };
-
   const canUseJoinFlow = ({ session, userId, viewer, hasSessionMembership, isCampaignMember }) => {
     if (!session || !userId || hasSessionMembership) {
       return false;
@@ -200,9 +191,8 @@ function createSessionPageService({ sessionQueryService }) {
     );
     const canDelete = Boolean((isOwner || isCampaignOwnerOverride) && session.status === 'PLANNED');
     const canEditSettings = Boolean(viewer.canManage)
-      && !isPastDate(session.date)
       && !isCampaignFinished
-      && !['FINISHED', 'CANCELED'].includes(session.status);
+      && session.status === 'PLANNED';
     const canManageParticipants = Boolean(viewer.canManageParticipants || isConfirmedGm);
     const canManageGmRequests = isOwner;
     const canManageShareLink = canManageShareLinkForViewer({

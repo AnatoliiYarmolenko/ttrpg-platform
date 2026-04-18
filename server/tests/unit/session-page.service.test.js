@@ -125,6 +125,19 @@ test('includes management actions for owner and exposes settings tab', async () 
   assert.equal(page.ui.previewMode, false);
 });
 
+test('owner can edit delayed planned session settings', async () => {
+  const session = buildSession({
+    status: 'PLANNED',
+    date: new Date(Date.now() - 3_600_000).toISOString(),
+  });
+  const service = createServiceWithSession(session);
+
+  const page = await service.getSessionPageById(session.id, 10);
+
+  assert.equal(page.actions.canEditSettings, true);
+  assert.equal(page.ui.availableTabs.includes('settings'), true);
+});
+
 test('confirmed GM can cancel only active session and cannot edit settings', async () => {
   const session = buildSession({
     ownerId: 10,

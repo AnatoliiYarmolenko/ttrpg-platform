@@ -40,16 +40,17 @@ export default function CampaignInfoWidget({
 
         {/* Статистика */}
         <div className="grid grid-cols-2 gap-3 p-4 bg-brand-light/10 rounded-xl">
-          {campaign.system && (
+          <div className="flex items-center gap-2 text-brand-medium text-sm">
+            <GroupPeople className="w-4 h-4" />
+            <span>{campaign.membersCount ?? campaign.members?.length ?? 0} учасників</span>
+          </div>
+            {campaign.system && (
             <div className="flex items-center gap-2 text-brand-medium text-sm">
               <span className="font-medium">Система:</span>
               <span>{campaign.system}</span>
             </div>
           )}
-          <div className="flex items-center gap-2 text-brand-medium text-sm">
-            <GroupPeople className="w-4 h-4" />
-            <span>{campaign.membersCount ?? campaign.members?.length ?? 0} учасників</span>
-          </div>
+
           <div className="flex items-center gap-2 text-brand-medium text-sm">
             <Data className="w-4 h-4" />
             <span>{campaign.sessionsCount ?? campaign.sessions?.length ?? 0} сесій</span>
@@ -68,19 +69,6 @@ export default function CampaignInfoWidget({
             <DateTimeDisplay value={campaign.createdAt} format="long" />
           </div>
         </div>
-
-        {/* Зображення */}
-        {campaign.imageUrl && (
-          <div className="w-full h-48 rounded-xl overflow-hidden">
-            <img
-              src={campaign.imageUrl}
-              alt={campaign.title}
-              className="w-full h-full object-cover"
-              loading="lazy"
-              decoding="async"
-            />
-          </div>
-        )}
 
         {/* Опис */}
         {campaign.description ? (

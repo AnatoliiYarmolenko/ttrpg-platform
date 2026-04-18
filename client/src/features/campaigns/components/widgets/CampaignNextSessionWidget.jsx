@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardCard from '@/components/ui/DashboardCard';
 import Button from '@/components/ui/Button';
-import { EmptyState, DateTimeDisplay } from '@/components/shared';
+import { EmptyState, DateTimeDisplay, SessionTimeBadge } from '@/components/shared';
 import Data from '@/components/ui/icons/Data';
 import Timer from '@/components/ui/icons/Timer';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
@@ -34,43 +34,7 @@ function findNextRelevantSession(sessions) {
   return upcoming ?? planned.at(-1);
 }
 
-const selectRelativeUnit = (diffMs) => {
-  const absMs = Math.abs(diffMs);
-  if (absMs < 60 * 1000) return { unit: 'second', value: Math.round(diffMs / 1000) };
-  if (absMs < 60 * 60 * 1000) return { unit: 'minute', value: Math.round(diffMs / (60 * 1000)) };
-  if (absMs < 24 * 60 * 60 * 1000) return { unit: 'hour', value: Math.round(diffMs / (60 * 60 * 1000)) };
-  return { unit: 'day', value: Math.round(diffMs / (24 * 60 * 60 * 1000)) };
-};
 
-const formatDelayedDuration = (lateMs) => {
-  const totalMinutes = Math.max(1, Math.ceil(lateMs / (60 * 1000)));
-  if (totalMinutes < 60) return `${totalMinutes} хв`;
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  if (minutes === 0) return `${hours} год`;
-  return `${hours} год ${minutes} хв`;
-};
-
-const buildRelativeSessionTime = (session, nowMs) => {
-  if (!session?.date) return null;
-  const startDate = new Date(session.date);
-  if (Number.isNaN(startDate.getTime())) return null;
-
-  if (session.status === 'PLANNED') {
-    const diffMs = startDate.getTime() - nowMs;
-
-    if (diffMs < 0) {
-      return `Сесія запізнюється на: ${formatDelayedDuration(Math.abs(diffMs))}`;
-    }
-    if (diffMs <= 30 * 1000) return 'Почнеться зовсім скоро';
-
-    const relativeTime = new Intl.RelativeTimeFormat(UI_LOCALE, { numeric: 'auto' });
-    const { unit, value } = selectRelativeUnit(diffMs);
-    return `Почнеться ${relativeTime.format(value, unit)}`;
-  }
-  if (session.status === 'ACTIVE') return 'Сесія вже йде!';
-  return null;
-};
 
 const CAMPAIGN_SESSION_VISIBILITY_LABELS = {
   PRIVATE: 'Звичайна сесія',
@@ -123,22 +87,22 @@ export default function CampaignNextSessionWidget({
 
   const session = useMemo(() => findNextRelevantSession(sessions), [sessions]);
 
-  const relativeSessionTime = useMemo(
-    () => buildRelativeSessionTime(session, nowMs),
-    [session, nowMs]
-  );
 
-  if (!session) {
+
+if (!session) {
     return (
       <DashboardCard title="Наступна сесія">
-        <EmptyState
-          icon={<Dice20 className="w-14 h-14" />}
-          title="Немає запланованих сесій"
-        />
+        {/* Додано обгортку h-full для заповнення висоти та flex для центрування */}
+        <div className="flex items-center justify-center w-full h-full min-h-[300px]">
+          <EmptyState
+            icon={<Dice20 className="w-14 h-14" />}
+            title="Немає запланованих сесій"
+          />
+        </div>
       </DashboardCard>
     );
   }
-
+  
   const participantCount =
     session?.participants?.length ??
     session?._count?.participants ??
@@ -162,12 +126,7 @@ export default function CampaignNextSessionWidget({
             <h3 className="text-xl font-bold text-brand-dark leading-tight truncate flex-1 min-w-0">
               {session.title}
             </h3>
-            {relativeSessionTime && (
-              <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 bg-brand-light/20 text-brand-dark text-sm font-medium whitespace-nowrap shrink-0">
-                <Timer className="w-4 h-4 shrink-0" />
-                <span>{relativeSessionTime}</span>
-              </div>
-            )}
+          <SessionTimeBadge session={session} nowMs={nowMs} />
           </div>
 
         {/* Деталі */}

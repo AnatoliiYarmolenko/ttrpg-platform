@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import DashboardCard from '@/components/ui/DashboardCard';
 import Button from '@/components/ui/Button';
 import {
   DateTimeDisplay,
   RoleBadge,
   ConfirmModal,
+  SessionTimeBadge,
 } from '@/components/shared';
 import useConfirmDialog from '@/hooks/useConfirmDialog';
 import Data from '@/components/ui/icons/Data';
@@ -25,49 +26,7 @@ const ONE_SHOT_VISIBILITY_LABELS = {
   LINK_ONLY: 'Сесія за посиланням',
 };
 
-function selectRelativeUnit(diffMs) {
-  const absMs = Math.abs(diffMs);
 
-  if (absMs < 60 * 1000) {
-    return { unit: 'second', value: Math.round(diffMs / 1000) };
-  }
-
-  if (absMs < 60 * 60 * 1000) {
-    return { unit: 'minute', value: Math.round(diffMs / (60 * 1000)) };
-  }
-
-  if (absMs < 24 * 60 * 60 * 1000) {
-    return { unit: 'hour', value: Math.round(diffMs / (60 * 60 * 1000)) };
-  }
-
-  return { unit: 'day', value: Math.round(diffMs / (24 * 60 * 60 * 1000)) };
-}
-
-const SESSION_STATUS_BADGE = {
-  FINISHED: { text: 'Сесія завершена', variant: 'finished' },
-  CANCELED: { text: 'Сесія скасована', variant: 'canceled' },
-  ACTIVE:   { text: 'Сесія в процесі', variant: 'active' },
-};
-
-function buildSessionTimeBadge(date, status, nowMs) {
-  if (SESSION_STATUS_BADGE[status]) {
-    return SESSION_STATUS_BADGE[status];
-  }
-
-  if (!date) return null;
-
-  const startDate = new Date(date);
-  if (Number.isNaN(startDate.getTime())) return null;
-
-  const diffMs = startDate.getTime() - nowMs;
-  if (diffMs <= 30 * 1000 && diffMs >= -30 * 1000) {
-    return { text: 'Почнеться зовсім скоро', variant: 'timer' };
-  }
-
-  const relativeTime = new Intl.RelativeTimeFormat(UI_LOCALE, { numeric: 'auto' });
-  const { unit, value } = selectRelativeUnit(diffMs);
-  return { text: `Почнеться ${relativeTime.format(value, unit)}`, variant: 'timer' };
-}
 
 const getCardTitle = () => ('Деталі сесії');
 
@@ -161,10 +120,7 @@ export default function SessionInfoWidget({
       ? CAMPAIGN_SESSION_VISIBILITY_LABELS.PRIVATE
       : ONE_SHOT_VISIBILITY_LABELS.PRIVATE);
 
-  const relativeSessionTime = useMemo(
-    () => buildSessionTimeBadge(session?.date, session?.status, nowMs),
-    [nowMs, session?.date, session?.status]
-  );
+
   const cardTitle = getCardTitle();
 
   if (!session) return null;
@@ -228,22 +184,7 @@ export default function SessionInfoWidget({
             <h3 className="text-xl font-bold text-brand-dark leading-tight truncate flex-1 min-w-0">
               {session.title}
             </h3>
-            {relativeSessionTime && (
-              <div className={[
-                'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap shrink-0',
-                relativeSessionTime.variant === 'active'   && 'bg-green-100 text-green-700',
-                relativeSessionTime.variant === 'finished' && 'bg-brand-light/20 text-brand-medium',
-                relativeSessionTime.variant === 'canceled' && 'bg-red-50 text-red-600',
-                relativeSessionTime.variant === 'timer'    && 'bg-brand-light/20 text-brand-dark',
-              ].filter(Boolean).join(' ')}
-              >
-                {relativeSessionTime.variant === 'timer' && <Timer className="w-4 h-4 shrink-0" />}
-                {relativeSessionTime.variant === 'active' && (
-                  <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
-                )}
-                <span>{relativeSessionTime.text}</span>
-              </div>
-            )}
+            <SessionTimeBadge session={session} nowMs={nowMs} />
           </div>
 
           <div className="flex items-center justify-between gap-3">

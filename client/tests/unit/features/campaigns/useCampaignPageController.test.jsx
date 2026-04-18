@@ -3,7 +3,7 @@ import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import useCampaignPageController from '@/features/campaigns/hooks/useCampaignPageController';
-import { TABS } from '@/features/campaigns/components/navigation/CampaignNavigation';
+import { CAMPAIGN_TABS as TABS } from '@/features/campaigns/constants/campaignTabs';
 
 const mockUseCampaignPageQuery = vi.fn();
 const mockUseCampaignMutations = vi.fn();

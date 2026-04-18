@@ -13,20 +13,16 @@ import { BrandLogo } from '@/components/shared';
  * - Назву сесії
  * - Таби: Деталі | Налаштування (GM only)
  *
- * @param {string} sessionTitle — назва сесії
  * @param {string} activeTab — поточний таб ('details' | 'settings')
  * @param {Function} onTabChange — колбек зміни табу
  * @param {boolean} canManage — чи є юзер GM/Owner (для відображення табу "Налаштування")
- * @param {string} campaignTitle — назва кампанії (опціонально)
  */
 export default function SessionNavigation({
-  sessionTitle,
   activeTab,
   availableTabs = null,
   onTabChange,
   canManage = false,
   canManageSession = false,
-  campaignTitle,
 }) {
   const navigate = useNavigate();
 

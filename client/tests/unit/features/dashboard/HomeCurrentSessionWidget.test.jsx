@@ -101,11 +101,12 @@ describe('HomeCurrentSessionWidget', () => {
 
   it('renders data state with badges and session details', async () => {
     const user = userEvent.setup();
+    const activeStartAt = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     mockQueryState({
       data: {
         id: 123,
         title: 'Curse of Strahd #5',
-        startAt: '2026-04-12T18:00:00.000Z',
+        startAt: activeStartAt,
         status: 'ACTIVE',
         myRole: 'PLAYER',
         visibility: 'PRIVATE',
@@ -283,7 +284,7 @@ describe('HomeCurrentSessionWidget', () => {
 
     render(<HomeCurrentSessionWidget />);
 
-    expect(screen.getByText('Оновлюємо статус...')).toBeInTheDocument();
+    expect(screen.getByText('Забута сесія')).toBeInTheDocument();
   });
 
   it('formats delayed message with hours and minutes after 60 minutes', () => {

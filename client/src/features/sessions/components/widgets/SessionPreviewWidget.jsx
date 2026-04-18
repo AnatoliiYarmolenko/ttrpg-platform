@@ -4,7 +4,7 @@ import DashboardCard from "@/components/ui/DashboardCard";
 import Button from "@/components/ui/Button";
 import {
   BaseModal,
-  StatusBadge,
+  SessionTimeBadge,
   DateTimeDisplay,
   BackButton,
 } from "@/components/shared";
@@ -17,7 +17,7 @@ function getAvailabilityLabel(session) {
   if (session?.campaign) {
     return session.visibility === 'PUBLIC' ? 'Гостьова' : 'Звичайна';
   }
-  
+
   const oneShotLabels = {
     PUBLIC: 'Публічна сесія',
     PRIVATE: 'Сесія з підтвердженням',
@@ -62,7 +62,7 @@ async function submitJoinRequest({ onJoin, role, setJoinError, setShowJoinModal 
 
   setJoinError(
     result?.error ||
-      (role === 'GM' ? 'Не вдалося подати заявку як GM' : 'Не вдалося приєднатися до сесії')
+    (role === 'GM' ? 'Не вдалося подати заявку як GM' : 'Не вдалося приєднатися до сесії')
   );
 }
 
@@ -208,7 +208,7 @@ export default function SessionPagePreviewWidget({
   return (
     <DashboardCard
       title="Деталі сесії"
-      actions={<BackButton to="/" label="Панель" variant="dark" />}
+      actions={<BackButton to="/" label="Назад" variant="dark" />}
     >
       <div className="flex flex-col gap-4 h-full">
         <div className="flex flex-col gap-2">
@@ -216,7 +216,7 @@ export default function SessionPagePreviewWidget({
             <h3 className="text-xl font-bold text-brand-dark leading-tight truncate flex-1 min-w-0">
               {session.title}
             </h3>
-            <StatusBadge status={session.status} />
+            <SessionTimeBadge session={session} />
           </div>
 
           <div className="flex items-center justify-between gap-3">

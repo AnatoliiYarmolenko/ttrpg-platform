@@ -13,11 +13,11 @@ import SessionTabRenderer from '../components/layout/SessionTabRenderer';
 import SessionPagePreviewWidget from '../components/widgets/SessionPreviewWidget';
 
 // Shared
-import { UserProfilePreview } from '@/components/shared';
+import UserProfilePreview from '@/components/shared/UserProfilePreview';
+import BrandLogo from '@/components/shared/BrandLogo';
 import FullPageLoader from '@/components/shared/FullPageLoader';
 import ErrorScreen from '@/components/shared/ErrorScreen';
 import Button from '@/components/ui/Button';
-import Dice20 from '@/components/ui/icons/Dice20';
 /**
  * SessionPage — тонкий shell-компонент для /session/:id.
  *
@@ -57,7 +57,6 @@ export default function SessionPage() {
     canJoin,
     canApplyAsGm,
     showCampaignInfo,
-    canNavigateToCampaignDirectly,
     currentShareLink,
     handleJoin,
     handleLeave,
@@ -171,35 +170,7 @@ export default function SessionPage() {
         isPreviewMode ? (
           <nav className="flex items-center gap-4 justify-between w-full">
             <div className="flex items-center gap-3 min-w-0 flex-1">
-              <div className="bg-white px-4 py-2 rounded-xl border-2 border-brand-light/30 shadow-md flex items-center gap-2">
-                <Dice20 className="w-6 h-6 text-brand-dark" />
-                <span className="font-bold text-brand-dark hidden md:block">
-                  TTRPG Platform
-                </span>
-              </div>
-              {currentSession.campaign && showCampaignInfo && (
-                <>
-                  <span className="text-white/40 hidden sm:inline">/</span>
-                  {canNavigateToCampaignDirectly ? (
-                    <button
-                      onClick={() =>
-                        navigate(`/campaign/${currentSession.campaign.id}`)
-                      }
-                      className="text-white/70 hover:text-brand-accent transition-colors text-sm truncate max-w-[150px]"
-                    >
-                      {currentSession.campaign.title}
-                    </button>
-                  ) : (
-                    <span className="text-white/70 text-sm truncate max-w-[150px]">
-                      {currentSession.campaign.title}
-                    </span>
-                  )}
-                </>
-              )}
-              <span className="text-white/40 hidden sm:inline">/</span>
-              <span className="text-white font-bold text-sm truncate">
-                {currentSession.title}
-              </span>
+              <BrandLogo />
             </div>
             <div className="flex items-center justify-end flex-1">
               <Button
@@ -208,19 +179,17 @@ export default function SessionPage() {
                 size="md"
                 fullWidth={false}
               >
-                На головну
+                Назад
               </Button>
             </div>
           </nav>
         ) : (
           <SessionNavigation
-            sessionTitle={currentSession.title}
             activeTab={activeTab}
             availableTabs={availableTabs}
             onTabChange={setActiveTab}
             canManage={canManageSettings}
             canManageSession={canManageSession}
-            campaignTitle={currentSession.campaign?.title}
           />
         )
       }

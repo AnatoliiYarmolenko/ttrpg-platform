@@ -5,11 +5,13 @@ import CampaignLayout from '../components/layout/CampaignLayout';
 import CampaignNavigation from '../components/navigation/CampaignNavigation';
 import CampaignPreviewWidget from '../components/widgets/CampaignPreviewWidget';
 import CampaignTabRenderer from '../components/layout/CampaignTabRenderer';
-import { UserProfilePreview } from '@/components/shared';
+import { UserProfilePreview, EmptyState } from '@/components/shared';
 import FullPageLoader from '@/components/shared/FullPageLoader';
 import ErrorScreen from '@/components/shared/ErrorScreen';
 import Button from '@/components/ui/Button';
 import { BrandLogo } from '@/components/shared';
+import DashboardCard from '@/components/ui/DashboardCard';
+import GroupPeople from '@/components/ui/icons/GroupPeople';
 
 export default function CampaignPage() {
   const {
@@ -90,7 +92,17 @@ export default function CampaignPage() {
             isLoading={isLoading}
           />
         ),
-        rightPanel: null,
+        rightPanel: (
+          <DashboardCard title="Учасники">
+            <div className="flex flex-col items-center justify-center h-full min-h-[300px]">
+              <EmptyState
+                icon={<GroupPeople className="w-12 h-12" />}
+                title="Список учасників прихований"
+                description="Для цього режиму перегляду список учасників недоступний."
+              />
+            </div>
+          </DashboardCard>
+        ),
       };
     }
 
@@ -169,7 +181,7 @@ export default function CampaignPage() {
                 size="md"
                 fullWidth={false}
               >
-                На головну
+                Назад
               </Button>
             </div>
           </nav>
