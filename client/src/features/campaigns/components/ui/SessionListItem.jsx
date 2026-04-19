@@ -19,10 +19,30 @@ import GroupPeople from '@/components/ui/icons/GroupPeople';
 export default function SessionListItem({
   session,
   index,
+  campaignShareToken = null,
   onCancelAction,
   onDeleteAction,
 }) {
   const navigate = useNavigate();
+
+  const resolveParticipantCount = (sessionData) => {
+    const numericCount = Number(
+      sessionData?.participantsSummaryCount
+      ?? sessionData?._count?.participants
+      ?? sessionData?.participantsCount
+      ?? sessionData?.currentPlayers
+    );
+
+    if (Number.isFinite(numericCount)) {
+      return numericCount;
+    }
+
+    if (Array.isArray(sessionData?.participants)) {
+      return sessionData.participants.length;
+    }
+
+    return 0;
+  };
 
   const formatDuration = (minutes) => {
     if (!minutes) return '';
@@ -33,14 +53,17 @@ export default function SessionListItem({
     return `${hours} год ${mins} хв`;
   };
 
-  const participantCount = session.participants?.length || session._count?.participants || 0;
+  const participantCount = resolveParticipantCount(session);
 
   const canCancelSession = Boolean(session?.actions?.canCancel);
   const canDeleteSession = Boolean(session?.actions?.canDelete);
   const hasModerationActions = Boolean(canCancelSession || canDeleteSession);
+  const sessionTarget = campaignShareToken
+    ? `/session/${session.id}?campaignShareToken=${encodeURIComponent(campaignShareToken)}`
+    : `/session/${session.id}`;
 
   const handleOpenSession = () => {
-    navigate(`/session/${session.id}`);
+    navigate(sessionTarget);
   };
 
   const handleKeyDown = (event) => {
@@ -51,11 +74,13 @@ export default function SessionListItem({
   };
 
   return (
-    <button
-      type="button"
+    <div
       onClick={handleOpenSession}
       onKeyDown={handleKeyDown}
-      className="w-full text-left p-4 border-2 border-brand-light/30 rounded-xl hover:border-brand-dark/30 hover:bg-brand-light/5 transition-all group block"
+      role="button"
+      tabIndex={0}
+      aria-label={`Відкрити сесію ${session.title}`}
+      className="w-full text-left p-4 border-2 border-brand-light/30 rounded-xl hover:border-brand-dark/30 hover:bg-brand-light/5 transition-all group block cursor-pointer"
     >
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -126,6 +151,6 @@ export default function SessionListItem({
           {session.description}
         </p>
       )}
-    </button>
+    </div>
   );
 }

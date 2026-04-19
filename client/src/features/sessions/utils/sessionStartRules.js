@@ -25,19 +25,13 @@ export function getSessionStartState(sessionDateValue, durationMinutes, now = ne
   }
 
   const canShowStartButton = isSameLocalDay(sessionDate, now);
+  const canMarkAsFinished = sessionDate.getTime() <= now.getTime();
 
   const diffMinutes = (now.getTime() - sessionDate.getTime()) / (1000 * 60);
   const normalizedDuration = Number(durationMinutes);
   const lateThreshold = Number.isFinite(normalizedDuration) && normalizedDuration > 0
     ? normalizedDuration / 2
     : Infinity;
-
-  const sessionEndWithGrace = new Date(
-    sessionDate.getTime()
-    + Math.max(0, Number.isFinite(normalizedDuration) ? normalizedDuration : 0) * 60 * 1000
-    + 2 * 60 * 60 * 1000
-  );
-  const canMarkAsFinished = now.getTime() >= sessionEndWithGrace.getTime();
 
   let warningType = null;
   let warningMessage = '';

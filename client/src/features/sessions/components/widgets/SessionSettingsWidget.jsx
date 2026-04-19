@@ -82,6 +82,7 @@ function SessionSettingsWidgetContent({
   session,
   onSave,
   onDelete,
+  canManageSettings = false,
   canManageShareLink = false,
   currentShareLink = '',
   onRegenerateShareLink,
@@ -94,6 +95,7 @@ function SessionSettingsWidgetContent({
   const [deleteModal, setDeleteModal] = useState(false);
   const [dateError, setDateError] = useState('');
   const { openConfirm, confirmModalProps } = useConfirmDialog();
+  const isReadOnly = !canManageSettings;
 
   const isCampaignSession = Boolean(session?.campaignId);
   const visibilityOptions = isCampaignSession
@@ -130,6 +132,10 @@ function SessionSettingsWidgetContent({
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    if (isReadOnly) {
+      return;
+    }
 
     const hasDateChanged = formData.date !== buildFormData(session).date;
     if (hasDateChanged) {
@@ -179,6 +185,12 @@ function SessionSettingsWidgetContent({
   return (
     <DashboardCard title="Керування сесією">
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        {isReadOnly && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Ви можете переглядати налаштування, але поточний режим доступу не дозволяє їх змінювати.
+          </div>
+        )}
+
         <div className="rounded-xl border border-brand-light/30 bg-brand-light/5 p-4">
           <h3 className="text-sm font-bold text-brand-dark mb-3">Паспорт сесії</h3>
 
@@ -191,6 +203,7 @@ function SessionSettingsWidgetContent({
                 value={formData.title}
                 onChange={handleChange}
                 className={inputClasses}
+                disabled={isReadOnly}
                 required
                 maxLength={100}
               />
@@ -203,6 +216,7 @@ function SessionSettingsWidgetContent({
                 value={formData.description}
                 onChange={handleChange}
                 className={`${inputClasses} resize-none`}
+                disabled={isReadOnly}
                 rows={3}
                 maxLength={2000}
               />
@@ -217,6 +231,7 @@ function SessionSettingsWidgetContent({
                   value={formData.date}
                   onChange={handleChange}
                   className={inputClasses}
+                  disabled={isReadOnly}
                   required
                 />
                 {dateError && (
@@ -232,6 +247,7 @@ function SessionSettingsWidgetContent({
                   value={formData.duration}
                   onChange={handleChange}
                   className={inputClasses}
+                  disabled={isReadOnly}
                   min={30}
                   max={480}
                   placeholder="180"
@@ -248,6 +264,7 @@ function SessionSettingsWidgetContent({
                   value={formData.maxPlayers}
                   onChange={handleChange}
                   className={inputClasses}
+                  disabled={isReadOnly}
                   min={1}
                   max={20}
                   placeholder="6"
@@ -264,6 +281,7 @@ function SessionSettingsWidgetContent({
                     })),
                   ]}
                   value={formData.system}
+                  disabled={isReadOnly}
                   onChange={(option) => {
                     setFormData((prev) => ({ ...prev, system: option.value }));
                     setSaveSuccess(false);
@@ -276,6 +294,7 @@ function SessionSettingsWidgetContent({
               <Dropdown
                 options={visibilityOptions}
                 value={formData.visibility}
+                disabled={isReadOnly}
                 onChange={(option) => {
                   setFormData((prev) => ({ ...prev, visibility: option.value }));
                   setSaveSuccess(false);
@@ -294,6 +313,7 @@ function SessionSettingsWidgetContent({
                 value={formData.price}
                 onChange={handleChange}
                 className={inputClasses}
+                disabled={isReadOnly}
                 min={0}
                 placeholder="0"
               />
@@ -352,11 +372,12 @@ function SessionSettingsWidgetContent({
             type="submit"
             variant="primary"
             isLoading={isLoading}
+            disabled={isReadOnly}
             loadingText="Збереження..."
             fullWidth={true}
             className="w-full min-h-[44px]"
           >
-            Зберегти зміни
+            {isReadOnly ? 'Лише перегляд' : 'Зберегти зміни'}
           </Button>
         </div>
 

@@ -57,14 +57,6 @@ export const getCampaignMembers = async (campaignId) => {
   return response.data;
 };
 
-export const addMemberToCampaign = async (campaignId, newMemberId, role = 'PLAYER') => {
-  const response = await api.post(`/campaigns/${campaignId}/members`, {
-    newMemberId,
-    role,
-  });
-  return response.data;
-};
-
 export const removeMemberFromCampaign = async (campaignId, memberId) => {
   const response = await api.delete(`/campaigns/${campaignId}/members/${memberId}`);
   return response.data;

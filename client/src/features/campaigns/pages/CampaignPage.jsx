@@ -5,17 +5,17 @@ import CampaignLayout from '../components/layout/CampaignLayout';
 import CampaignNavigation from '../components/navigation/CampaignNavigation';
 import CampaignPreviewWidget from '../components/widgets/CampaignPreviewWidget';
 import CampaignTabRenderer from '../components/layout/CampaignTabRenderer';
-import { UserProfilePreview, EmptyState } from '@/components/shared';
+import { UserProfilePreview, EmptyState, BrandLogo } from '@/components/shared';
 import FullPageLoader from '@/components/shared/FullPageLoader';
 import ErrorScreen from '@/components/shared/ErrorScreen';
 import Button from '@/components/ui/Button';
-import { BrandLogo } from '@/components/shared';
 import DashboardCard from '@/components/ui/DashboardCard';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
 
 export default function CampaignPage() {
   const {
     id,
+    routeShareToken,
     user,
     currentCampaign,
     membersSection,
@@ -115,6 +115,8 @@ export default function CampaignPage() {
       infoProps: {
         campaign: currentCampaign,
         myRole,
+        onLeave: handleLeave,
+        isCampaignFinished,
       },
       membersProps: {
         campaignId: id,
@@ -131,8 +133,9 @@ export default function CampaignPage() {
       },
       nextSessionProps: {
         sessions: sessionsSection.items,
-        campaignOwner: currentCampaign.owner,
-        campaignMembers: membersSection.items,
+        campaignTitle: currentCampaign.title,
+        campaignNavigationTarget: null,
+        campaignShareToken: routeShareToken || null,
         campaignId: id,
         canCreateSessions: canCreateCampaignSessions,
         isCampaignFinished,
@@ -142,6 +145,7 @@ export default function CampaignPage() {
         campaignId: id,
         campaignStatus: currentCampaign.status,
         sessionsSection,
+        campaignShareToken: routeShareToken || null,
         canCreateSessions: canCreateCampaignSessions,
         isCampaignFinished,
         onCancelSession: handleCancelForeignSession,

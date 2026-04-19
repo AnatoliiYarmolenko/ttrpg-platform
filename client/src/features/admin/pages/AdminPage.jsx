@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import useAuthStore from '@/stores/useAuthStore';
 import { logoutUser } from '@/features/auth/api/authApi';
+import { ConfirmModal } from '@/components/shared';
+import useConfirmDialog from '@/hooks/useConfirmDialog';
 import {
   useAdminStatsQuery,
   useAdminUsersQuery,
@@ -37,6 +39,7 @@ export default function AdminPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const user = useAuthStore((state) => state.user);
   const clearUser = useAuthStore((state) => state.clearUser);
+  const { openConfirm, confirmModalProps } = useConfirmDialog();
   const activeTab = parseEnumSearchParam(searchParams, TAB_PARAM, TAB_VALUES, TABS.DASHBOARD);
   const setActiveTab = useCallback((nextTab) => {
     const normalizedTab = TAB_VALUES.includes(nextTab) ? nextTab : TABS.DASHBOARD;
@@ -113,6 +116,16 @@ export default function AdminPage() {
       clearUser();
       navigate('/login');
     }
+  };
+
+  const handleLogoutClick = () => {
+    openConfirm({
+      title: 'Вийти з акаунту?',
+      message: 'Після виходу доведеться знову авторизуватися.',
+      variant: 'danger',
+      confirmText: 'Вийти',
+      onConfirm: handleLogout,
+    });
   };
 
   // ============== Форматування ==============
@@ -448,7 +461,7 @@ export default function AdminPage() {
             На головну
           </Button>
           <Button
-            onClick={handleLogout}
+            onClick={handleLogoutClick}
             title="Вийти з акаунту"
             variant="topbar"
             size="md"
@@ -477,7 +490,7 @@ export default function AdminPage() {
               На головну
             </Button>
             <Button
-              onClick={handleLogout}
+              onClick={handleLogoutClick}
               title="Вийти з акаунту"
               variant="topbar"
               size="sm"
@@ -540,6 +553,8 @@ export default function AdminPage() {
         onConfirm={handleDelete}
         onCancel={() => setDeleteModal({ open: false, type: '', id: null, title: '' })}
       />
+
+      <ConfirmModal {...confirmModalProps} />
     </>
   );
 }

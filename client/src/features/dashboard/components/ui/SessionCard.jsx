@@ -28,6 +28,7 @@ export default function SessionCard({
   onToggle,
 }) {
   const navigate = useNavigate();
+  const campaignTitle = session?.campaign?.title || session?.campaignTitle || null;
   // Форматування тривалості
   const formatDuration = (minutes) => {
     const hours = Math.floor(minutes / 60);
@@ -106,9 +107,9 @@ export default function SessionCard({
           )}
 
           {/* Кампанія */}
-          {session.campaign && (
+          {campaignTitle && (
             <div className="text-sm text-brand-medium mb-3">
-              <span className="font-medium">Кампанія:</span> {session.campaign.title}
+              <span className="font-medium">Кампанія:</span> {campaignTitle}
             </div>
           )}
 

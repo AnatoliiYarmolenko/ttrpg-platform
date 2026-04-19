@@ -172,5 +172,80 @@ describe('useSessionPageController tab state', () => {
       expect(result.current.communicationPanelMode).toBe(COMMUNICATION_MODES.PARTICIPANTS);
     });
   });
+
+  it('maps participants summary and confirmed GM flag into currentSession', () => {
+    mockUseSessionPageQuery.mockReturnValue({
+      data: buildSessionPageData({
+        sections: {
+          participants: {
+            visible: false,
+            items: [],
+            count: 3,
+            hasConfirmedGm: true,
+            maxPlayers: 4,
+          },
+          campaign: {
+            visible: false,
+            linkable: false,
+            data: null,
+          },
+        },
+      }),
+      isLoading: false,
+      error: null,
+    });
+
+    const { result } = renderHook(() => useSessionPageController(), {
+      wrapper: createWrapper('/session/5'),
+    });
+
+    expect(result.current.currentSession.participantsSummaryCount).toBe(3);
+    expect(result.current.currentSession.hasConfirmedGm).toBe(true);
+    expect(result.current.currentSession.participants).toEqual([]);
+  });
+
+  it('falls back to entity campaign for visibility and link when sections.campaign flags are absent', () => {
+    mockUseSessionPageQuery.mockReturnValue({
+      data: buildSessionPageData({
+        entity: {
+          id: 5,
+          title: 'Session test',
+          status: 'PLANNED',
+          date: new Date(Date.now() + 3_600_000).toISOString(),
+          visibility: 'PUBLIC',
+          ownerId: 1,
+          campaign: {
+            id: 77,
+            title: 'Fallback Campaign',
+          },
+        },
+        actions: {
+          canOpenCampaign: true,
+        },
+        sections: {
+          participants: {
+            visible: false,
+            items: [],
+            count: 0,
+            hasConfirmedGm: false,
+            maxPlayers: 4,
+          },
+          campaign: {
+            data: null,
+          },
+        },
+      }),
+      isLoading: false,
+      error: null,
+    });
+
+    const { result } = renderHook(() => useSessionPageController(), {
+      wrapper: createWrapper('/session/5'),
+    });
+
+    expect(result.current.showCampaignInfo).toBe(true);
+    expect(result.current.canNavigateToCampaignDirectly).toBe(true);
+    expect(result.current.campaignNavigationTarget).toBe('/campaign/77');
+  });
 });
 

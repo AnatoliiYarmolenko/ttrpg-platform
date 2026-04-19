@@ -5,12 +5,14 @@ import { VIEW_MODES } from '@/features/dashboard/constants';
 import Button from '@/components/ui/Button';
 import NavButton from '@/components/ui/NavButton';
 import useAuthStore, { selectIsAdmin } from '@/stores/useAuthStore';
-import { BrandLogo } from '@/components/shared';
+import { BrandLogo, ConfirmModal } from '@/components/shared';
+import useConfirmDialog from '@/hooks/useConfirmDialog';
 
 // Додаємо props: user та onLogout
 export default function DashboardNavigation({ currentView, onNavigate, user, onLogout }) {
   const navigate = useNavigate();
   const isAdmin = useAuthStore(selectIsAdmin);
+  const { openConfirm, confirmModalProps } = useConfirmDialog();
 
   const dashboardTabs = [
     { key: VIEW_MODES.CALENDAR, label: 'Календар', to: '/?tab=calendar' },
@@ -31,9 +33,19 @@ export default function DashboardNavigation({ currentView, onNavigate, user, onL
     </Button>
   );
 
+  const handleLogoutClick = () => {
+    openConfirm({
+      title: 'Вийти з акаунту?',
+      message: 'Після виходу доведеться знову авторизуватися.',
+      variant: 'danger',
+      confirmText: 'Вийти',
+      onConfirm: onLogout,
+    });
+  };
+
   const logoutButton = (
     <Button 
-      onClick={onLogout}
+      onClick={handleLogoutClick}
       variant="topbar"
       size="sm"
       fullWidth={false}
@@ -44,7 +56,8 @@ export default function DashboardNavigation({ currentView, onNavigate, user, onL
   );
 
   return (
-    <nav className="flex flex-col lg:flex-row gap-2 lg:items-center justify-between w-full">
+    <>
+      <nav className="flex flex-col lg:flex-row gap-2 lg:items-center justify-between w-full">
       
       {/* Верхній рядок (Mobile), або лівий блок (Desktop) */}
       <div className="flex items-center justify-between gap-4 w-full lg:w-auto">
@@ -96,7 +109,10 @@ export default function DashboardNavigation({ currentView, onNavigate, user, onL
         {adminButton}
         {logoutButton}
       </div>
-    </nav>
+      </nav>
+
+      <ConfirmModal {...confirmModalProps} />
+    </>
   );
 }
 

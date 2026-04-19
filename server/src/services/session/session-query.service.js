@@ -15,7 +15,7 @@ function createSessionQueryService({ prisma, AppError, ERROR_CODES }) {
 
   const getSessionById = async (sessionId, userId = null, options = {}) => {
     const sessionIdInt = parsePositiveInt(sessionId, 'ID сесії');
-    const { shareToken = null } = options;
+    const { shareToken = null, campaignShareToken = null } = options;
 
     const session = await prisma.session.findUnique({
       where: { id: sessionIdInt },
@@ -24,7 +24,15 @@ function createSessionQueryService({ prisma, AppError, ERROR_CODES }) {
           select: { id: true, username: true, displayName: true, avatarUrl: true },
         },
         campaign: {
-          select: { id: true, title: true, visibility: true, ownerId: true, status: true, system: true },
+          select: {
+            id: true,
+            title: true,
+            visibility: true,
+            ownerId: true,
+            status: true,
+            system: true,
+            shareTokenHash: true,
+          },
         },
         participants: {
           include: {
@@ -56,6 +64,14 @@ function createSessionQueryService({ prisma, AppError, ERROR_CODES }) {
       isCampaignMember = Boolean(campaignMembership || session.campaign?.ownerId === userId);
     }
 
+    const normalizedCampaignShareToken = String(campaignShareToken || '').trim();
+    const hasValidCampaignShareToken = Boolean(
+      session.campaignId
+      && normalizedCampaignShareToken
+      && session.campaign?.shareTokenHash
+      && session.campaign.shareTokenHash === hashToken(normalizedCampaignShareToken)
+    );
+
     const accessContext = buildSessionAccessContext({
       session,
       userId,
@@ -64,6 +80,7 @@ function createSessionQueryService({ prisma, AppError, ERROR_CODES }) {
           && session.shareTokenHash
           && session.shareTokenHash === hashToken(String(shareToken).trim())
       ),
+      hasValidCampaignShareToken,
       isCampaignMember,
     });
     const viewerCapabilities = getSessionViewerCapabilities(accessContext);
@@ -77,12 +94,17 @@ function createSessionQueryService({ prisma, AppError, ERROR_CODES }) {
       isCampaignMember: accessContext.isCampaignMember,
       isSessionOwner: accessContext.isOwner,
       isCampaignOwner: Boolean(userId && session.campaign?.ownerId === userId),
+      hasValidCampaignShareToken: accessContext.hasValidCampaignShareToken,
       role: accessContext.role,
       participationStatus: accessContext.participationStatus,
       ...viewerCapabilities,
     };
 
     session.hasShareLink = Boolean(session.shareTokenEncrypted);
+
+    if (session.campaign) {
+      delete session.campaign.shareTokenHash;
+    }
 
     delete session.shareTokenHash;
     delete session.shareTokenEncrypted;
