@@ -1,3 +1,5 @@
+const { canOpenCampaign: canOpenCampaignByAccess } = require('../../domain/access/access-rules');
+
 function createSessionPageService({ sessionQueryService }) {
   const mapOwner = (owner) => {
     if (!owner) return null;
@@ -39,6 +41,10 @@ function createSessionPageService({ sessionQueryService }) {
       : null,
   });
 
+  const hasConfirmedGm = (participants = []) => participants.some(
+    (participant) => participant.role === 'GM' && participant.status === 'CONFIRMED'
+  );
+
   const canUseJoinFlow = ({ session, userId, viewer, hasSessionMembership, isCampaignMember }) => {
     if (!session || !userId || hasSessionMembership) {
       return false;
@@ -78,11 +84,7 @@ function createSessionPageService({ sessionQueryService }) {
       return false;
     }
 
-    const hasConfirmedGm = session.participants?.some(
-      (participant) => participant.role === 'GM' && participant.status === 'CONFIRMED'
-    );
-
-    if (hasConfirmedGm) {
+    if (hasConfirmedGm(session.participants || [])) {
       return false;
     }
 
@@ -106,13 +108,7 @@ function createSessionPageService({ sessionQueryService }) {
       return false;
     }
 
-    const hasConfirmedGm = Boolean(
-      session.participants?.some(
-        (participant) => participant.role === 'GM' && participant.status === 'CONFIRMED'
-      )
-    );
-
-    if (hasConfirmedGm) {
+    if (hasConfirmedGm(session.participants || [])) {
       return false;
     }
 
@@ -122,17 +118,134 @@ function createSessionPageService({ sessionQueryService }) {
     );
   };
 
-  const shouldShowCampaignSection = ({ session, viewer }) => {
-    if (!session?.campaign) {
-      return false;
-    }
+  const resolveSessionPageAccess = ({ session, viewer, userId, participants, myParticipant }) => {
+    const isOwner = Boolean(viewer.isSessionOwner || (userId && session.ownerId === userId));
+    const isParticipant = Boolean(viewer.isParticipant || myParticipant);
+    const isCampaignMember = Boolean(viewer.isCampaignMember);
+    const hasSessionMembership = Boolean(isOwner || isParticipant);
+    const isCampaignFinished = session?.campaign?.status === 'FINISHED';
+    const isConfirmedGm = Boolean(
+      myParticipant?.role === 'GM'
+      && myParticipant?.status === 'CONFIRMED'
+    );
+    const isCampaignOwnerOverride = Boolean(
+      session.campaignId
+      && viewer.isCampaignOwner
+      && !isOwner
+    );
+    const isNonGuestCampaignParticipant = Boolean(
+      session?.campaignId
+      && myParticipant?.isGuest === false
+    );
+    const hasCampaignAccessEntitlement = Boolean(
+      isCampaignMember
+      || viewer.isCampaignOwner
+      || isNonGuestCampaignParticipant
+    );
+    const canUseJoin = canUseJoinFlow({
+      session,
+      userId,
+      viewer,
+      hasSessionMembership,
+      isCampaignMember,
+    });
+    const canStart = Boolean(isConfirmedGm && session.status === 'PLANNED');
+    const canFinish = Boolean(isConfirmedGm && ['PLANNED', 'ACTIVE'].includes(session.status));
+    const canCancel = Boolean(
+      ['PLANNED', 'ACTIVE'].includes(session.status)
+      && (
+        isOwner
+        || isCampaignOwnerOverride
+        || (session.status === 'ACTIVE' && isConfirmedGm)
+      )
+    );
+    const canDelete = Boolean((isOwner || isCampaignOwnerOverride) && session.status === 'PLANNED');
+    const canEditSettings = Boolean(viewer.canManage)
+      && !isCampaignFinished
+      && session.status === 'PLANNED';
+    const canManageParticipants = Boolean(viewer.canManageParticipants || isConfirmedGm);
+    const canManageGmRequests = isOwner;
+    const canManageShareLink = canManageShareLinkForViewer({
+      session,
+      isOwner,
+      myParticipant,
+      isCampaignFinished,
+    });
+    const canOpenCampaign = Boolean(
+      session.campaign
+      && canOpenCampaignByAccess({
+        visibility: session.campaign.visibility,
+        isOwner: Boolean(viewer.isCampaignOwner),
+        isCampaignMember: Boolean(isCampaignMember || viewer.isCampaignOwner || isNonGuestCampaignParticipant),
+        userId,
+        hasValidShareToken: Boolean(viewer.hasValidCampaignShareToken),
+      })
+    );
 
-    const isGuestViewForPublicCampaignSession = session.visibility === 'PUBLIC'
-      && session.campaign?.visibility === 'LINK_ONLY'
-      && viewer.isCampaignMember === false;
-
-    return !isGuestViewForPublicCampaignSession;
+    return {
+      isOwner,
+      isParticipant,
+      isCampaignMember,
+      hasSessionMembership,
+      isCampaignFinished,
+      isConfirmedGm,
+      isCampaignOwnerOverride,
+      isNonGuestCampaignParticipant,
+      hasCampaignAccessEntitlement,
+      canUseJoin,
+      canStart,
+      canFinish,
+      canCancel,
+      canDelete,
+      canEditSettings,
+      canManageParticipants,
+      canManageGmRequests,
+      canManageShareLink,
+      canOpenCampaign,
+    };
   };
+
+  const buildSessionPageActions = ({ session, viewerState }) => ({
+    canJoin: canJoinSession({
+      session,
+      userId: viewerState.userId,
+      hasSessionMembership: viewerState.hasSessionMembership,
+      canUseJoin: viewerState.canUseJoin,
+    }),
+    canApplyAsGm: canApplyAsGm({
+      session,
+      userId: viewerState.userId,
+      hasSessionMembership: viewerState.hasSessionMembership,
+      canUseJoin: viewerState.canUseJoin,
+    }),
+    canLeave: Boolean(viewerState.isParticipant && !viewerState.isOwner),
+    canStart: viewerState.canStart,
+    canFinish: viewerState.canFinish,
+    canCancel: viewerState.canCancel,
+    canDelete: viewerState.canDelete,
+    canEditSettings: viewerState.canEditSettings,
+    canManageParticipants: viewerState.canManageParticipants,
+    canManageGmRequests: viewerState.canManageGmRequests,
+    canManageShareLink: viewerState.canManageShareLink,
+    canOpenCampaign: viewerState.canOpenCampaign,
+  });
+
+  const buildSessionPageSections = ({ session, viewerState, participants, campaignSectionVisible, campaignData }) => ({
+    participants: {
+      visible: viewerState.isOwner || viewerState.isParticipant || viewerState.isCampaignMember,
+      count: participants.filter((participant) => participant.role === 'PLAYER').length,
+      hasConfirmedGm: hasConfirmedGm(participants),
+      maxPlayers: session.maxPlayers || null,
+      items: viewerState.isOwner || viewerState.isParticipant || viewerState.isCampaignMember
+        ? participants
+        : [],
+    },
+    campaign: {
+      visible: campaignSectionVisible,
+      linkable: campaignSectionVisible && viewerState.canOpenCampaign,
+      data: campaignSectionVisible ? campaignData : null,
+    },
+  });
 
   const buildAvailableTabs = ({ canEditSettings, canManageSession }) => {
     const tabs = ['details', 'communication'];
@@ -157,55 +270,24 @@ function createSessionPageService({ sessionQueryService }) {
     const myParticipant = userId
       ? participants.find((participant) => participant.userId === userId) || null
       : null;
-    const isOwner = Boolean(viewer.isSessionOwner || (userId && session.ownerId === userId));
-    const isParticipant = Boolean(viewer.isParticipant || myParticipant);
-    const isCampaignMember = Boolean(viewer.isCampaignMember);
-    const hasSessionMembership = Boolean(isOwner || isParticipant);
-    const isCampaignFinished = session?.campaign?.status === 'FINISHED';
-    const isConfirmedGm = Boolean(
-      myParticipant?.role === 'GM'
-      && myParticipant?.status === 'CONFIRMED'
+    const viewerState = resolveSessionPageAccess({ session, viewer, userId, participants, myParticipant });
+    const canManageSession = Boolean(
+      viewerState.canStart
+      || viewerState.canFinish
+      || viewerState.canCancel
+      || viewerState.canDelete
+      || viewerState.canManageShareLink
     );
-    const isCampaignOwnerOverride = Boolean(
-      session.campaignId
-      && viewer.isCampaignOwner
-      && !isOwner
-    );
-    const canUseJoin = canUseJoinFlow({
+    const campaignData = mapCampaign(session.campaign);
+    const campaignSectionVisible = Boolean(campaignData);
+    const actions = buildSessionPageActions({ session, viewerState: { ...viewerState, userId } });
+    const sections = buildSessionPageSections({
       session,
-      userId,
-      viewer,
-      hasSessionMembership,
-      isCampaignMember,
+      viewerState,
+      participants,
+      campaignSectionVisible,
+      campaignData,
     });
-
-    const canStart = Boolean(isConfirmedGm && session.status === 'PLANNED');
-    const canFinish = Boolean(isConfirmedGm && ['PLANNED', 'ACTIVE'].includes(session.status));
-    const canCancel = Boolean(
-      ['PLANNED', 'ACTIVE'].includes(session.status)
-      && (
-        isOwner
-        || isCampaignOwnerOverride
-        || (session.status === 'ACTIVE' && isConfirmedGm)
-      )
-    );
-    const canDelete = Boolean((isOwner || isCampaignOwnerOverride) && session.status === 'PLANNED');
-    const canEditSettings = Boolean(viewer.canManage)
-      && !isCampaignFinished
-      && session.status === 'PLANNED';
-    const canManageParticipants = Boolean(viewer.canManageParticipants || isConfirmedGm);
-    const canManageGmRequests = isOwner;
-    const canManageShareLink = canManageShareLinkForViewer({
-      session,
-      isOwner,
-      myParticipant,
-      isCampaignFinished,
-    });
-    const canOpenCampaign = Boolean(session.campaign && session.campaign.visibility !== 'LINK_ONLY');
-    const canManageSession = Boolean(canStart || canFinish || canCancel || canDelete || canManageShareLink);
-    const canReadParticipants = Boolean(isOwner || isParticipant || isCampaignMember);
-    const playerCount = participants.filter((participant) => participant.role === 'PLAYER').length;
-    const campaignSectionVisible = shouldShowCampaignSection({ session, viewer });
 
     return {
       entity: {
@@ -222,46 +304,21 @@ function createSessionPageService({ sessionQueryService }) {
         ownerId: session.ownerId,
         owner: mapOwner(session.owner),
         campaignId: session.campaignId,
-        campaign: mapCampaign(session.campaign),
+        campaign: campaignData,
       },
       viewer: {
-        role: viewer.role || (isOwner ? 'OWNER' : null),
-        isSessionOwner: isOwner,
-        isParticipant,
-        isCampaignMember,
+        role: viewer.role || (viewerState.isOwner ? 'OWNER' : null),
+        isSessionOwner: viewerState.isOwner,
+        isParticipant: viewerState.isParticipant,
+        isCampaignMember: viewerState.isCampaignMember,
         isCampaignOwner: Boolean(viewer.isCampaignOwner),
         participationStatus: viewer.participationStatus || myParticipant?.status || null,
       },
-      actions: {
-        canJoin: canJoinSession({ session, userId, hasSessionMembership, canUseJoin }),
-        canApplyAsGm: canApplyAsGm({ session, userId, hasSessionMembership, canUseJoin }),
-        canLeave: Boolean(isParticipant && !isOwner),
-        canStart,
-        canFinish,
-        canCancel,
-        canDelete,
-        canEditSettings,
-        canManageParticipants,
-        canManageGmRequests,
-        canManageShareLink,
-        canOpenCampaign,
-      },
-      sections: {
-        participants: {
-          visible: canReadParticipants,
-          count: playerCount,
-          maxPlayers: session.maxPlayers || null,
-          items: canReadParticipants ? participants : [],
-        },
-        campaign: {
-          visible: campaignSectionVisible,
-          linkable: campaignSectionVisible && canOpenCampaign,
-          data: campaignSectionVisible ? mapCampaign(session.campaign) : null,
-        },
-      },
+      actions,
+      sections,
       ui: {
-        previewMode: !hasSessionMembership,
-        availableTabs: buildAvailableTabs({ canEditSettings, canManageSession }),
+        previewMode: !viewerState.hasSessionMembership,
+        availableTabs: buildAvailableTabs({ canEditSettings: viewerState.canEditSettings, canManageSession }),
       },
     };
   };

@@ -33,6 +33,7 @@ const sortByClosestDate = (a, b) => {
 function CampaignSessionSection({
   section,
   sessions,
+  campaignShareToken,
   openCancelModal,
   openDeleteModal,
 }) {
@@ -60,6 +61,7 @@ function CampaignSessionSection({
           <SessionListItem
             key={session.id}
             session={session}
+            campaignShareToken={campaignShareToken}
             onCancelAction={() => openCancelModal(session)}
             onDeleteAction={() => openDeleteModal(session)}
           />
@@ -79,6 +81,7 @@ function CampaignSessionSection({
 export default function CampaignSessionsWidget({
   campaignId,
   sessionsSection = null,
+  campaignShareToken = null,
   canCreateSessions = false,
   isCampaignFinished = false,
   onCancelSession,
@@ -153,15 +156,18 @@ export default function CampaignSessionsWidget({
       <div className="flex flex-col h-full">
         <div className="flex-1 overflow-y-auto min-h-0 flex flex-col gap-4">
           {sessions.length === 0 ? (
-            <EmptyState
-              icon={<Dice20 className="w-14 h-14" />}
-              title="Немає запланованих сесій"
-              description={
-                canCreateSessions
-                  ? 'Натисніть "Створити сесію" щоб додати першу'
-                  : 'В кампанії ще не створено жодної сесії'
-              }
-            />
+            <div className="flex flex-1 items-center justify-center min-h-0">
+              <EmptyState
+                icon={<Dice20 className="w-14 h-14" />}
+                title="Немає запланованих сесій"
+                description={
+                  canCreateSessions
+                    ? 'Натисніть "Створити сесію" щоб додати першу'
+                    : 'В кампанії ще не створено жодної сесії'
+                }
+                className="py-0"
+              />
+            </div>
           ) : (
             <div className="flex flex-col gap-4 pb-2">
               {STATUS_SECTIONS.map((section) => (
@@ -169,6 +175,7 @@ export default function CampaignSessionsWidget({
                   key={section.key}
                   section={section}
                   sessions={sessions}
+                  campaignShareToken={campaignShareToken}
                   openCancelModal={openCancelModal}
                   openDeleteModal={openDeleteModal}
                 />

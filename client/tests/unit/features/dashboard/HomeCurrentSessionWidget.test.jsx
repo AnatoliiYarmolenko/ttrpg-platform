@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
 
 import { VIEW_MODES } from '@/features/dashboard/constants';
@@ -114,14 +115,14 @@ describe('HomeCurrentSessionWidget', () => {
         organizerName: 'Alex GM',
         confirmedGmName: 'Alex GM',
         description: 'Темна ніч у Баровії.',
-        campaign: { id: 7, title: 'Barovia Nights' },
+        campaign: { id: 7, title: 'Barovia Nights', canOpenDirectly: true },
         maxPlayers: 6,
         currentPlayers: 4,
         participantsCount: 5,
       },
     });
 
-    render(<HomeCurrentSessionWidget />);
+    render(<MemoryRouter><HomeCurrentSessionWidget /></MemoryRouter>);
 
     expect(screen.getByText('Поточна сесія')).toBeInTheDocument();
     expect(screen.getByText('Curse of Strahd #5')).toBeInTheDocument();
@@ -129,7 +130,8 @@ describe('HomeCurrentSessionWidget', () => {
     expect(screen.queryByText('В процесі')).not.toBeInTheDocument();
     expect(screen.getByText('Гравець')).toBeInTheDocument();
     expect(screen.getByText('Система:').closest('div')).toHaveTextContent(/Система:\s*D&D 5e/);
-    expect(screen.getByText(/Barovia Nights/)).toBeInTheDocument();
+    const campaignLink = screen.getByRole('link', { name: 'Barovia Nights' });
+    expect(campaignLink).toHaveAttribute('href', '/campaign/7');
     expect(screen.getByText('4 / 6 гравців')).toBeInTheDocument();
     expect(screen.getByText('Доступність:').closest('div')).toHaveTextContent(/Доступність:\s*Звичайна сесія/);
     expect(screen.getByText('Організатор:').closest('div')).toHaveTextContent(/Організатор:\s*Alex GM/);
@@ -139,6 +141,27 @@ describe('HomeCurrentSessionWidget', () => {
 
     await user.click(screen.getByRole('button', { name: 'Перейти до сесії' }));
     expect(mocks.navigate).toHaveBeenCalledWith('/session/123');
+  });
+
+  it('renders campaign title as plain text on home widget when campaign cannot be opened directly', () => {
+    mockQueryState({
+      data: {
+        id: 124,
+        title: 'Guest Session',
+        startAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+        status: 'PLANNED',
+        myRole: 'PLAYER',
+        visibility: 'PUBLIC',
+        campaign: { id: 8, title: 'Secret Archive', canOpenDirectly: false },
+        currentPlayers: 2,
+        participantsCount: 2,
+      },
+    });
+
+    render(<MemoryRouter><HomeCurrentSessionWidget /></MemoryRouter>);
+
+    expect(screen.getByText('Secret Archive')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Secret Archive' })).not.toBeInTheDocument();
   });
 
   it('does not use participantsCount as capacity fallback when maxPlayers is missing', () => {
@@ -274,6 +297,7 @@ describe('HomeCurrentSessionWidget', () => {
         startAt: '2026-04-12T10:00:00.000Z',
         status: 'PLANNED',
         plannedToleranceMinutes: 2,
+        duration: 1, // tolerance(2) + duration(1) = 3 хв — рівно на межі порогу
         myRole: 'PLAYER',
         visibility: 'PUBLIC',
         campaign: null,

@@ -1,20 +1,30 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import DashboardCard from '@/components/ui/DashboardCard';
 import Button from '@/components/ui/Button';
-import { EmptyState, DateTimeDisplay, SessionTimeBadge } from '@/components/shared';
+import { EmptyState, DateTimeDisplay, SessionTimeBadge, StatusBadge } from '@/components/shared';
 import Data from '@/components/ui/icons/Data';
 import Timer from '@/components/ui/icons/Timer';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
 import Dice20 from '@/components/ui/icons/Dice20';
+import { SESSION_VISIBILITY_LABELS } from '@/features/sessions/constants/visibility';
 
 const UI_LOCALE = 'uk-UA';
 
 /**
+ * Допуск для PLANNED сесій — відповідає серверному `plannedToleranceMinutes`.
+ * Сесія не вважається "минулою", якщо запізнення менше 2 хвилин.
+ */
+const PLANNED_TOLERANCE_MS = 2 * 60 * 1000;
+
+/**
  * Знаходить найрелевантнішу сесію для відображення:
  * 1. Перша ACTIVE сесія (якщо є)
- * 2. Найближча майбутня PLANNED сесія (дата >= зараз)
- * 3. Остання PLANNED сесія (якщо всі в минулому — крайній випадок)
+ * 2. Найближча майбутня PLANNED сесія (з допуском 2 хв на запізнення старту)
+ * 3. null — якщо жодна актуальна сесія не знайдена
+ *
+ * На відміну від попередньої реалізації, НЕ повертає минулі PLANNED сесії —
+ * щоб уникнути показу "наступної сесії", яка вже не відбудеться.
  */
 function findNextRelevantSession(sessions) {
   if (!Array.isArray(sessions) || sessions.length === 0) return null;
@@ -23,48 +33,16 @@ function findNextRelevantSession(sessions) {
   if (active) return active;
 
   const now = Date.now();
-  const planned = sessions
+  const upcoming = sessions
     .filter((s) => s.status === 'PLANNED')
     .map((s) => ({ ...s, _time: new Date(s.date).getTime() }))
+    .filter((s) => s._time >= now - PLANNED_TOLERANCE_MS)
     .sort((a, b) => a._time - b._time);
 
-  if (planned.length === 0) return null;
-
-  const upcoming = planned.find((s) => s._time >= now);
-  return upcoming ?? planned.at(-1);
+  return upcoming[0] ?? null;
 }
 
 
-
-const CAMPAIGN_SESSION_VISIBILITY_LABELS = {
-  PRIVATE: 'Звичайна сесія',
-  PUBLIC: 'Гостьова сесія',
-};
-
-const resolveOrganizerName = ({ session, campaignOwner, campaignMembers }) => {
-  const fromSession = session?.organizerName || session?.owner?.displayName || session?.owner?.username;
-  if (fromSession) return fromSession;
-
-  const ownerId = Number(session?.ownerId);
-  if (Number.isFinite(ownerId) && ownerId > 0) {
-    const member = Array.isArray(campaignMembers)
-      ? campaignMembers.find((item) => Number(item?.userId) === ownerId)
-      : null;
-
-    const memberName = member?.user?.displayName || member?.user?.username;
-    if (memberName) return memberName;
-
-    const campaignOwnerId = Number(campaignOwner?.id);
-    if (campaignOwnerId === ownerId) {
-      const campaignOwnerName = campaignOwner?.displayName || campaignOwner?.username;
-      if (campaignOwnerName) return campaignOwnerName;
-    }
-
-    return `User #${ownerId}`;
-  }
-
-  return 'Не вказаний';
-};
 
 /**
  * CampaignNextSessionWidget — ліва панель таба "Сесії".
@@ -72,27 +50,17 @@ const resolveOrganizerName = ({ session, campaignOwner, campaignMembers }) => {
  */
 export default function CampaignNextSessionWidget({
   sessions = [],
-  campaignOwner = null,
-  campaignMembers = [],
+  campaignTitle = '',
+  campaignNavigationTarget = null,
+  campaignShareToken = null,
 }) {
   const navigate = useNavigate();
-  const [nowMs, setNowMs] = useState(() => Date.now());
-
-  useEffect(() => {
-    const intervalId = globalThis.setInterval(() => {
-      setNowMs(Date.now());
-    }, 30 * 1000);
-    return () => globalThis.clearInterval(intervalId);
-  }, []);
 
   const session = useMemo(() => findNextRelevantSession(sessions), [sessions]);
 
-
-
-if (!session) {
+  if (!session) {
     return (
       <DashboardCard title="Наступна сесія">
-        {/* Додано обгортку h-full для заповнення висоти та flex для центрування */}
         <div className="flex items-center justify-center w-full h-full min-h-[300px]">
           <EmptyState
             icon={<Dice20 className="w-14 h-14" />}
@@ -102,32 +70,53 @@ if (!session) {
       </DashboardCard>
     );
   }
-  
-  const participantCount =
-    session?.participants?.length ??
-    session?._count?.participants ??
-    session?.participantsSummaryCount ??
-    0;
+
+  const participantCount = Number.isFinite(Number(session?.participantsSummaryCount))
+    ? Number(session.participantsSummaryCount)
+    : (
+      session?._count?.participants ??
+      session?.participants?.length ??
+      0
+    );
 
   const playersCapacity = Number(session?.maxPlayers);
   const hasPlayersCapacity = Number.isFinite(playersCapacity) && playersCapacity > 0;
-  
-  const availabilityLabel = CAMPAIGN_SESSION_VISIBILITY_LABELS[session?.visibility]
-    || CAMPAIGN_SESSION_VISIBILITY_LABELS.PRIVATE;
+
+  const availabilityLabel = SESSION_VISIBILITY_LABELS.CAMPAIGN[session?.visibility]
+    || SESSION_VISIBILITY_LABELS.CAMPAIGN.PRIVATE;
 
   const systemName = session.system || 'Не вказана';
-  const organizerName = resolveOrganizerName({ session, campaignOwner, campaignMembers });
+  const organizerName = session.organizerName || 'Не вказаний';
+  const sessionTarget = campaignShareToken
+    ? `/session/${session.id}?campaignShareToken=${encodeURIComponent(campaignShareToken)}`
+    : `/session/${session.id}`;
+  const shouldRenderCampaignLink = Boolean(campaignTitle && campaignNavigationTarget);
 
   return (
     <DashboardCard title="Наступна сесія">
       <div className="flex flex-col gap-4 h-full">
         {/* Заголовок */}
         <div className="flex items-start justify-between gap-2">
-            <h3 className="text-xl font-bold text-brand-dark leading-tight truncate flex-1 min-w-0">
-              {session.title}
-            </h3>
-          <SessionTimeBadge session={session} nowMs={nowMs} />
+          <h3 className="text-xl font-bold text-brand-dark leading-tight truncate flex-1 min-w-0">
+            {session.title}
+          </h3>
+          {['FINISHED', 'CANCELED'].includes(session.status)
+            ? <StatusBadge status={session.status} />
+            : <SessionTimeBadge session={session} />}
+        </div>
+
+        {campaignTitle && (
+          <div className="text-brand-medium text-sm leading-tight truncate">
+            <span className="font-medium">Кампанія:</span>{' '}
+            {shouldRenderCampaignLink ? (
+              <Link to={campaignNavigationTarget} className="underline hover:no-underline">
+                {campaignTitle}
+              </Link>
+            ) : (
+              campaignTitle
+            )}
           </div>
+        )}
 
         {/* Деталі */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 p-4 bg-brand-light/10 rounded-xl">
@@ -175,7 +164,7 @@ if (!session) {
         {/* CTA */}
         <div className="mt-auto pt-2">
           <Button
-            onClick={() => navigate(`/session/${session.id}`)}
+            onClick={() => navigate(sessionTarget)}
             fullWidth={true}
             className="w-full min-h-[43px]"
           >

@@ -176,6 +176,7 @@ function canOpenSession(context = {}) {
 
   if (!rule) return false;
   if (isEntitledSessionViewer(context)) return true;
+  if (context.isCampaignSession && context.hasValidCampaignShareToken) return true;
   if (rule.outsiderCanOpenDirectly) return true;
   if (rule.outsiderNeedsShareToken) {
     return Boolean(context.userId && context.hasValidShareToken);

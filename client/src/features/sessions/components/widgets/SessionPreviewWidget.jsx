@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
+import { Link } from "react-router-dom";
 import DashboardCard from "@/components/ui/DashboardCard";
 import Button from "@/components/ui/Button";
 import {
@@ -7,24 +8,19 @@ import {
   SessionTimeBadge,
   DateTimeDisplay,
   BackButton,
+  StatusBadge,
 } from "@/components/shared";
 import Data from "@/components/ui/icons/Data";
 import Timer from "@/components/ui/icons/Timer";
 import GroupPeople from "@/components/ui/icons/GroupPeople";
-
+import { SESSION_VISIBILITY_LABELS } from "../../constants/visibility";
 
 function getAvailabilityLabel(session) {
   if (session?.campaign) {
-    return session.visibility === 'PUBLIC' ? 'Гостьова' : 'Звичайна';
+    return SESSION_VISIBILITY_LABELS.CAMPAIGN[session.visibility] || SESSION_VISIBILITY_LABELS.CAMPAIGN.PRIVATE;
   }
 
-  const oneShotLabels = {
-    PUBLIC: 'Публічна сесія',
-    PRIVATE: 'Сесія з підтвердженням',
-    LINK_ONLY: 'Сесія за посиланням',
-  };
-
-  return oneShotLabels[session?.visibility] || 'Приватна';
+  return SESSION_VISIBILITY_LABELS.ONE_SHOT[session?.visibility] || SESSION_VISIBILITY_LABELS.ONE_SHOT.PRIVATE;
 }
 
 function getUnavailableJoinMessage(session) {
@@ -45,10 +41,16 @@ function getUnavailableJoinMessage(session) {
   return 'Приєднання до цієї сесії зараз недоступне';
 }
 
-function getJoinModalMessage(hasConfirmedGm) {
-  return hasConfirmedGm
-    ? 'Після підтвердження ви одразу приєднаєтесь як гравець.'
-    : 'У сесії поки немає підтвердженого GM. Оберіть роль, на яку хочете податися.';
+function getJoinModalMessage({ hasConfirmedGm, canApplyAsGm }) {
+  if (hasConfirmedGm) {
+    return 'Після підтвердження ви одразу приєднаєтесь як гравець.';
+  }
+
+  if (!canApplyAsGm) {
+    return 'Бажаєте приєднатися як гравець?';
+  }
+
+  return 'У сесії поки немає підтвердженого GM. Оберіть роль, на яку хочете податися.';
 }
 
 async function submitJoinRequest({ onJoin, role, setJoinError, setShowJoinModal }) {
@@ -86,7 +88,7 @@ function SessionJoinModal({
     >
       <div className="rounded-2xl bg-white p-6 shadow-xl">
         <h3 className="mb-2 text-lg font-bold text-brand-dark">Приєднатись до сесії</h3>
-        <p className="mb-6 text-brand-medium">{getJoinModalMessage(hasConfirmedGm)}</p>
+        <p className="mb-6 text-brand-medium">{getJoinModalMessage({ hasConfirmedGm, canApplyAsGm })}</p>
         <div className="flex flex-row flex-wrap justify-center gap-3">
           <Button
             onClick={closeModal}
@@ -154,6 +156,9 @@ SessionJoinModal.propTypes = {
 
 export default function SessionPagePreviewWidget({
   session,
+  showCampaignInfo = true,
+  canNavigateToCampaignDirectly = false,
+  campaignNavigationTarget = null,
   onJoin,
   canJoin = false,
   canApplyAsGm = false,
@@ -166,11 +171,20 @@ export default function SessionPagePreviewWidget({
   if (!session) return null;
 
   const organizerName = session.owner?.displayName || session.owner?.username || "Organizer";
+  const summaryPlayersCount = Number(session?.participantsSummaryCount);
+  const playersCount = Number.isFinite(summaryPlayersCount)
+    ? summaryPlayersCount
+    : (session.participants?.filter((participant) => participant.role === 'PLAYER').length || 0);
   const confirmedGm = session.participants?.find(
     (participant) => participant.role === "GM" && participant.status === "CONFIRMED"
   );
-  const hasConfirmedGm = Boolean(confirmedGm);
+  const hasConfirmedGm = typeof session?.hasConfirmedGm === 'boolean'
+    ? session.hasConfirmedGm
+    : Boolean(confirmedGm);
   const canRequestJoin = canJoin || canApplyAsGm;
+  const canRenderCampaign = Boolean(showCampaignInfo && session?.campaign?.title);
+  const campaignLink = campaignNavigationTarget || (session?.campaign?.id ? `/campaign/${session.campaign.id}` : null);
+  const shouldRenderCampaignLink = Boolean(canRenderCampaign && campaignLink && canNavigateToCampaignDirectly);
 
   const closeJoinModal = () => {
     setShowJoinModal(false);
@@ -216,20 +230,25 @@ export default function SessionPagePreviewWidget({
             <h3 className="text-xl font-bold text-brand-dark leading-tight truncate flex-1 min-w-0">
               {session.title}
             </h3>
-            <SessionTimeBadge session={session} />
+            {['FINISHED', 'CANCELED'].includes(session.status)
+              ? <StatusBadge status={session.status} />
+              : <SessionTimeBadge session={session} />}
           </div>
 
           <div className="flex items-center justify-between gap-3">
             <div className="text-brand-medium text-sm leading-tight truncate flex-1 min-w-0">
-              {session.campaign ? (
+              {canRenderCampaign ? (
                 <>
-                  <span className="font-medium">Кампанія:</span> {session.campaign.title}
+                  <span className="font-medium">Кампанія:</span>{' '}
+                  {shouldRenderCampaignLink ? (
+                    <Link to={campaignLink} className="underline hover:no-underline">
+                      {session.campaign.title}
+                    </Link>
+                  ) : (
+                    session.campaign.title
+                  )}
                 </>
-              ) : (
-                <>
-                  <span className="font-medium">Формат:</span> One-shot
-                </>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
@@ -256,7 +275,7 @@ export default function SessionPagePreviewWidget({
           <div className="flex items-center gap-2 text-brand-medium text-sm">
             <GroupPeople className="w-4 h-4 shrink-0" />
             <span>
-              {session.participants?.filter((p) => p.role === "PLAYER").length ?? 0}
+              {playersCount}
               {session.maxPlayers ? ` / ${session.maxPlayers}` : ''} гравців
             </span>
           </div>
@@ -345,6 +364,9 @@ SessionPagePreviewWidget.propTypes = {
     ),
   }),
   onJoin: PropTypes.func,
+  showCampaignInfo: PropTypes.bool,
+  canNavigateToCampaignDirectly: PropTypes.bool,
+  campaignNavigationTarget: PropTypes.string,
   canJoin: PropTypes.bool,
   canApplyAsGm: PropTypes.bool,
 };

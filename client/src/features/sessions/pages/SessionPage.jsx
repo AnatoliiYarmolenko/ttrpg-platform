@@ -13,11 +13,14 @@ import SessionTabRenderer from '../components/layout/SessionTabRenderer';
 import SessionPagePreviewWidget from '../components/widgets/SessionPreviewWidget';
 
 // Shared
-import UserProfilePreview from '@/components/shared/UserProfilePreview';
-import BrandLogo from '@/components/shared/BrandLogo';
-import FullPageLoader from '@/components/shared/FullPageLoader';
-import ErrorScreen from '@/components/shared/ErrorScreen';
-import Button from '@/components/ui/Button';
+import { 
+  UserProfilePreview, 
+  BrandLogo, 
+  FullPageLoader, 
+  ErrorScreen 
+} from '@/components/shared';
+
+import Button from '@/components/ui/Button'; 
 /**
  * SessionPage — тонкий shell-компонент для /session/:id.
  *
@@ -57,6 +60,8 @@ export default function SessionPage() {
     canJoin,
     canApplyAsGm,
     showCampaignInfo,
+    canNavigateToCampaignDirectly,
+    campaignNavigationTarget,
     currentShareLink,
     handleJoin,
     handleLeave,
@@ -112,6 +117,8 @@ export default function SessionPage() {
     onStatusChange: handleStatusChange,
     onMarkAsFinished: handleMarkAsFinished,
     showCampaignInfo,
+    canNavigateToCampaignDirectly,
+    campaignNavigationTarget,
     isLoading,
   };
 
@@ -119,6 +126,7 @@ export default function SessionPage() {
     session: currentSession,
     onSave: handleSaveSettings,
     onDelete: handleDelete,
+    canManageSettings,
     canManageShareLink,
     currentShareLink,
     onRegenerateShareLink: handleRegenerateShareLink,
@@ -154,6 +162,9 @@ export default function SessionPage() {
     leftPanel: (
       <SessionPagePreviewWidget
         session={currentSession}
+        showCampaignInfo={showCampaignInfo}
+        canNavigateToCampaignDirectly={canNavigateToCampaignDirectly}
+        campaignNavigationTarget={campaignNavigationTarget}
         onJoin={handleJoin}
         canJoin={canJoin}
         canApplyAsGm={canApplyAsGm}

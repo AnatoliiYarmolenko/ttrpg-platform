@@ -45,7 +45,14 @@ function createCampaignPageService({ getCampaignById, getCampaignByShareToken, g
     const canCancel = Boolean(canOwnerOverride && ['PLANNED', 'ACTIVE'].includes(session.status));
     const canDelete = Boolean(canOwnerOverride && session.status === 'PLANNED');
     const ownerDisplayName = session?.owner?.displayName || session?.owner?.username || null;
-    const participantsCount = session?._count?.participants || 0;
+    const hasParticipantsProjection = Array.isArray(session?.participants);
+    const participants = hasParticipantsProjection ? session.participants : [];
+    const playersCount = participants.filter(
+      (participant) => participant.role === 'PLAYER' && participant.status !== 'DECLINED'
+    ).length;
+    const participantsCount = hasParticipantsProjection
+      ? playersCount
+      : (session?._count?.participants || 0);
 
     return {
       id: session.id,

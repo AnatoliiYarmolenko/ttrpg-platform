@@ -23,6 +23,7 @@ function buildSessionAccessContext({
   session,
   userId = null,
   hasValidShareToken = false,
+  hasValidCampaignShareToken = false,
   isCampaignMember = null,
   isConfirmedGm = null,
 } = {}) {
@@ -30,16 +31,15 @@ function buildSessionAccessContext({
   const campaignMembership = resolveCampaignMembership(session, userId);
   const isOwner = Boolean(userId && session?.ownerId === userId);
   const isParticipant = Boolean(participation);
-  const resolvedCampaignMembership = isCampaignMember !== null
-    ? Boolean(isCampaignMember)
-    : Boolean(campaignMembership || (userId && session?.campaign?.ownerId === userId));
-  const resolvedConfirmedGm = isConfirmedGm !== null
-    ? Boolean(isConfirmedGm)
-    : Boolean(
-      participation
-      && participation.role === 'GM'
-      && participation.status === 'CONFIRMED'
-    );
+  const resolvedCampaignMembership = isCampaignMember === null
+    ? Boolean(campaignMembership || (userId && session?.campaign?.ownerId === userId))
+    : Boolean(isCampaignMember);
+
+  const resolvedConfirmedGm = isConfirmedGm === null
+    ? Boolean(
+      participation?.role === 'GM' && participation?.status === 'CONFIRMED'
+    )
+    : Boolean(isConfirmedGm);
 
   const context = {
     resourceType: RESOURCE_TYPES.SESSION,
@@ -48,6 +48,7 @@ function buildSessionAccessContext({
     visibility: session?.visibility || null,
     status: session?.status || null,
     hasValidShareToken: Boolean(hasValidShareToken),
+    hasValidCampaignShareToken: Boolean(hasValidCampaignShareToken),
     isOwner,
     isParticipant,
     isCampaignMember: resolvedCampaignMembership,

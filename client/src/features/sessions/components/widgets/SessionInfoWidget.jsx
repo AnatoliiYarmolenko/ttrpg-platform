@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { Link } from 'react-router-dom';
 import DashboardCard from '@/components/ui/DashboardCard';
 import Button from '@/components/ui/Button';
 import {
@@ -6,25 +7,18 @@ import {
   RoleBadge,
   ConfirmModal,
   SessionTimeBadge,
+  StatusBadge,
 } from '@/components/shared';
 import useConfirmDialog from '@/hooks/useConfirmDialog';
 import Data from '@/components/ui/icons/Data';
 import Timer from '@/components/ui/icons/Timer';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
 import { getSessionStartState } from '../../utils/sessionStartRules';
+import { SESSION_VISIBILITY_LABELS } from '../../constants/visibility';
 
 const UI_LOCALE = 'uk-UA';
 
-const CAMPAIGN_SESSION_VISIBILITY_LABELS = {
-  PRIVATE: 'Звичайна сесія',
-  PUBLIC: 'Гостьова сесія',
-};
 
-const ONE_SHOT_VISIBILITY_LABELS = {
-  PUBLIC: 'Публічна сесія',
-  PRIVATE: 'Сесія з підтвердженням',
-  LINK_ONLY: 'Сесія за посиланням',
-};
 
 
 
@@ -71,33 +65,19 @@ export default function SessionInfoWidget({
   onStatusChange,
   onMarkAsFinished,
   showCampaignInfo = true,
+  canNavigateToCampaignDirectly = false,
+  campaignNavigationTarget = null,
   isLoading = false,
 }) {
-  const [nowMs, setNowMs] = useState(() => Date.now());
   const { openConfirm, confirmModalProps } = useConfirmDialog();
 
-  useEffect(() => {
-    const intervalId = globalThis.setInterval(() => {
-      setNowMs(Date.now());
-    }, 30 * 1000);
-
-    return () => {
-      globalThis.clearInterval(intervalId);
-    };
-  }, []);
-
   const getPlayerCount = () => {
-    // If participants array is available with actual data, use it
-    if (Array.isArray(session?.participants) && session.participants.length > 0) {
-      return session.participants.filter((participant) => participant.role === 'PLAYER').length;
-    }
-
-    // Fallback to summary count (server-provided participant count)
+    // Prefer server-provided summary count (most reliable when participants list is partial)
     if (Number.isFinite(Number(session?.participantsSummaryCount))) {
       return Number(session.participantsSummaryCount);
     }
 
-    // Last resort: count from array even if empty
+    // Fall back to counting directly from participants array
     if (Array.isArray(session?.participants)) {
       return session.participants.filter((participant) => participant.role === 'PLAYER').length;
     }
@@ -113,12 +93,15 @@ export default function SessionInfoWidget({
   const hasPlayersCapacity = Number.isFinite(playersCapacity) && playersCapacity > 0;
   const isCampaignSession = Boolean(session?.campaign?.id || session?.campaignId);
   const visibilityLabels = isCampaignSession
-    ? CAMPAIGN_SESSION_VISIBILITY_LABELS
-    : ONE_SHOT_VISIBILITY_LABELS;
+    ? SESSION_VISIBILITY_LABELS.CAMPAIGN
+    : SESSION_VISIBILITY_LABELS.ONE_SHOT;
   const availabilityLabel = visibilityLabels[session?.visibility]
     || (isCampaignSession
-      ? CAMPAIGN_SESSION_VISIBILITY_LABELS.PRIVATE
-      : ONE_SHOT_VISIBILITY_LABELS.PRIVATE);
+      ? SESSION_VISIBILITY_LABELS.CAMPAIGN.PRIVATE
+      : SESSION_VISIBILITY_LABELS.ONE_SHOT.PRIVATE);
+  const canRenderCampaign = Boolean(showCampaignInfo && session?.campaign?.title);
+  const campaignLink = campaignNavigationTarget || (session?.campaign?.id ? `/campaign/${session.campaign.id}` : null);
+  const shouldRenderCampaignLink = Boolean(canRenderCampaign && campaignLink && canNavigateToCampaignDirectly);
 
 
   const cardTitle = getCardTitle();
@@ -184,20 +167,25 @@ export default function SessionInfoWidget({
             <h3 className="text-xl font-bold text-brand-dark leading-tight truncate flex-1 min-w-0">
               {session.title}
             </h3>
-            <SessionTimeBadge session={session} nowMs={nowMs} />
+            {['FINISHED', 'CANCELED'].includes(session.status)
+              ? <StatusBadge status={session.status} />
+              : <SessionTimeBadge session={session} />}
           </div>
 
           <div className="flex items-center justify-between gap-3">
             <div className="text-brand-medium text-sm leading-tight truncate flex-1 min-w-0">
-              {session.campaign?.title && showCampaignInfo ? (
+              {canRenderCampaign ? (
                 <>
-                  <span className="font-medium">Кампанія:</span> {session.campaign.title}
+                  <span className="font-medium">Кампанія:</span>{' '}
+                  {shouldRenderCampaignLink ? (
+                    <Link to={campaignLink} className="underline hover:no-underline">
+                      {session.campaign.title}
+                    </Link>
+                  ) : (
+                    session.campaign.title
+                  )}
                 </>
-              ) : (
-                <>
-                  <span className="font-medium">Формат:</span> One-shot
-                </>
-              )}
+              ) : null}
             </div>
 
             <div className="shrink-0 flex justify-end">

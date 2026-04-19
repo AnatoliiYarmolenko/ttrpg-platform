@@ -18,9 +18,11 @@ import {
 
 export const sessionPageQueryKeys = {
   all: ['session-page'],
-  byId: (sessionId) => ['session-page', sessionId || null, null],
+  byId: (sessionId, campaignShareToken = null) => ['session-page', sessionId || null, null, campaignShareToken || null],
   byShare: (shareToken) => ['session-page', null, shareToken || null],
-  detail: ({ sessionId = null, shareToken = null } = {}) => ['session-page', sessionId || null, shareToken || null],
+  detail: ({ sessionId = null, shareToken = null, campaignShareToken = null } = {}) => (
+    ['session-page', sessionId || null, shareToken || null, campaignShareToken || null]
+  ),
 };
 
 export const invalidateSessionPage = async (
@@ -32,7 +34,7 @@ export const invalidateSessionPage = async (
   const hasShareToken = typeof shareToken === 'string' && shareToken.trim().length > 0;
 
   if (isValidId) {
-    tasks.push(queryClient.invalidateQueries({ queryKey: sessionPageQueryKeys.byId(sessionId) }));
+    tasks.push(queryClient.invalidateQueries({ queryKey: ['session-page', sessionId || null] }));
   }
 
   if (hasShareToken) {
@@ -46,16 +48,20 @@ export const invalidateSessionPage = async (
   await Promise.all(tasks);
 };
 
-export const useSessionPageQuery = ({ sessionId = null, shareToken = null } = {}) => {
+export const useSessionPageQuery = ({
+  sessionId = null,
+  shareToken = null,
+  campaignShareToken = null,
+} = {}) => {
   const isValidId = Number.isInteger(sessionId) && sessionId > 0;
   const hasShareToken = typeof shareToken === 'string' && shareToken.trim().length > 0;
 
   return useQuery({
-    queryKey: sessionPageQueryKeys.detail({ sessionId, shareToken }),
+    queryKey: sessionPageQueryKeys.detail({ sessionId, shareToken, campaignShareToken }),
     queryFn: async () => {
       const res = hasShareToken
         ? await getSessionPageByShareToken(shareToken)
-        : await getSessionPageById(sessionId);
+        : await getSessionPageById(sessionId, { campaignShareToken });
 
       if (!res.success) {
         throw new Error(res.error || 'Failed to fetch session');

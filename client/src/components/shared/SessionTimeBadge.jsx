@@ -3,6 +3,7 @@ import Timer from '@/components/ui/icons/Timer';
 
 const UI_LOCALE = 'uk-UA';
 const DEFAULT_PLANNED_TOLERANCE_MINUTES = 2;
+const FORGOTTEN_SESSION_THRESHOLD_MS = 12 * 60 * 60 * 1000;
 
 const selectRelativeUnit = (diffMs) => {
   const absMs = Math.abs(diffMs);
@@ -21,78 +22,115 @@ const formatDelayedDuration = (lateMs) => {
   return `${hours} год ${minutes} хв`;
 };
 
-export default function SessionTimeBadge({ session, nowMs: externalNowMs, className = '' }) {
+const getSessionStartMs = (session) => {
+  const dateStr = session?.startAt || session?.date;
+  if (!dateStr) return null;
+
+  const parsedMs = new Date(dateStr).getTime();
+  return Number.isNaN(parsedMs) ? null : parsedMs;
+};
+
+const getPlannedToleranceMs = (session) => {
+  const toleranceMinutes = Number(session?.plannedToleranceMinutes);
+  const safeMinutes = Number.isFinite(toleranceMinutes) && toleranceMinutes > 0
+    ? toleranceMinutes
+    : DEFAULT_PLANNED_TOLERANCE_MINUTES;
+  return safeMinutes * 60 * 1000;
+};
+
+const getSessionDurationMs = (session) => {
+  const durationMinutes = Number(session?.duration);
+  const safeMinutes = Number.isFinite(durationMinutes) && durationMinutes > 0
+    ? durationMinutes
+    : 60;
+  return safeMinutes * 60 * 1000;
+};
+
+const isForgottenActiveSession = (session, nowMs) => {
+  const activeStartMs = getSessionStartMs(session);
+  if (activeStartMs === null) return false;
+  return nowMs - activeStartMs > FORGOTTEN_SESSION_THRESHOLD_MS;
+};
+
+const isForgottenPlannedSession = (session, nowMs) => {
+  const plannedStartMs = getSessionStartMs(session);
+  if (plannedStartMs === null) return false;
+
+  const diffMs = plannedStartMs - nowMs;
+  if (diffMs >= 0) return false;
+
+  const thresholdMs = getPlannedToleranceMs(session) + getSessionDurationMs(session);
+  return diffMs < -thresholdMs;
+};
+
+/**
+ * Перевіряє чи сесія забута (не завершена після тривалої активності).
+ * Для ACTIVE: перевіряє чи минуло більше 12 годин з моменту старту.
+ * Для PLANNED: перевіряє чи минув допуск затримки + тривалість сесії.
+ */
+const isForgottenSession = (session, nowMs) => {
+  if (!session) return false;
+  if (session.status === 'ACTIVE') return isForgottenActiveSession(session, nowMs);
+  if (session.status === 'PLANNED') return isForgottenPlannedSession(session, nowMs);
+  return false;
+};
+
+export default function SessionTimeBadge({ session, className = '' }) {
   const [internalNow, setInternalNow] = useState(() => Date.now());
 
   useEffect(() => {
-    if (typeof externalNowMs === 'number') return;
     const intervalId = setInterval(() => setInternalNow(Date.now()), 30 * 1000);
     return () => clearInterval(intervalId);
-  }, [externalNowMs]);
+  }, []);
 
-  const nowMs = typeof externalNowMs === 'number' ? externalNowMs : internalNow;
+  const nowMs = internalNow;
 
   const badgeProps = useMemo(() => {
-    if (!session) return null;
+    // SessionTimeBadge показується тільки для PLANNED і ACTIVE статусів
+    if (!session || !['PLANNED', 'ACTIVE'].includes(session.status)) {
+      return null;
+    }
 
-    if (session.status === 'FINISHED') return { text: 'Сесія завершена', variant: 'finished' };
-    if (session.status === 'CANCELED') return { text: 'Сесія скасована', variant: 'canceled' };
     if (session.status === 'ACTIVE') {
-      const activeDateStr = session.startAt || session.date;
-      if (activeDateStr) {
-        const activeStartMs = new Date(activeDateStr).getTime();
-        if (!Number.isNaN(activeStartMs) && nowMs - activeStartMs > 12 * 60 * 60 * 1000) {
-          return { text: 'Забута сесія (не завершена)', variant: 'forgotten' };
-        }
+      if (isForgottenSession(session, nowMs)) {
+        return { text: 'Забута сесія (не завершена)', variant: 'forgotten' };
       }
       return { text: 'Сесія вже йде!', variant: 'active' };
     }
 
+    // PLANNED status
     const dateStr = session.startAt || session.date;
     if (!dateStr) return null;
 
     const startDate = new Date(dateStr);
     if (Number.isNaN(startDate.getTime())) return null;
 
-    if (session.status === 'PLANNED') {
-      const diffMs = startDate.getTime() - nowMs;
-      
-      if (diffMs < 0) {
-        const toleranceMinutes = Number(session.plannedToleranceMinutes);
-        const plannedToleranceMs = (Number.isFinite(toleranceMinutes) && toleranceMinutes > 0 
-          ? toleranceMinutes 
-          : DEFAULT_PLANNED_TOLERANCE_MINUTES) * 60 * 1000;
+    const diffMs = startDate.getTime() - nowMs;
 
-        if (diffMs < -plannedToleranceMs) {
-          return { text: 'Забута сесія', variant: 'forgotten' };
-        }
-        return { text: `Сесія запізнюється на: ${formatDelayedDuration(Math.abs(diffMs))}`, variant: 'timer' };
+    if (diffMs < 0) {
+      if (isForgottenSession(session, nowMs)) {
+        return { text: 'Забута сесія', variant: 'forgotten' };
       }
-
-      if (diffMs <= 30 * 1000) return { text: 'Почнеться зовсім скоро', variant: 'timer' };
-
-      const relativeTime = new Intl.RelativeTimeFormat(UI_LOCALE, { numeric: 'auto' });
-      const { unit, value } = selectRelativeUnit(diffMs);
-      return { text: `Почнеться ${relativeTime.format(value, unit)}`, variant: 'timer' };
+      return { text: `Сесія запізнюється на: ${formatDelayedDuration(Math.abs(diffMs))}`, variant: 'timer' };
     }
 
-    return null;
+    if (diffMs <= 30 * 1000) return { text: 'Почнеться зовсім скоро', variant: 'timer' };
+
+    const relativeTime = new Intl.RelativeTimeFormat(UI_LOCALE, { numeric: 'auto' });
+    const { unit, value } = selectRelativeUnit(diffMs);
+    return { text: `Почнеться ${relativeTime.format(value, unit)}`, variant: 'timer' };
   }, [session, nowMs]);
 
   if (!badgeProps) return null;
 
-  let badgeStyles = 'bg-brand-light/20 text-brand-dark';
+  let badgeStyles = 'bg-brand-light/10 text-brand-dark';
   let showTimer = true;
 
-  if (badgeProps.variant === 'finished') {
-    badgeStyles = 'bg-brand-light/20 text-brand-medium';
+  if (badgeProps.variant === 'forgotten') {
+    badgeStyles = 'bg-orange-100 text-orange-700';
     showTimer = false;
-  } else if (badgeProps.variant === 'canceled') {
-    badgeStyles = 'bg-red-50 text-red-600';
-    showTimer = false;
-  } else if (badgeProps.variant === 'forgotten') {
-    badgeStyles = 'bg-orange-50 text-orange-600';
-    showTimer = false;
+  } else if (badgeProps.variant === 'active') {
+    badgeStyles = 'bg-green-100 text-green-700';
   }
 
   return (

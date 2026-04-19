@@ -1,3 +1,5 @@
+const { canOpenCampaign: canOpenCampaignByAccess } = require('../../domain/access/access-rules');
+
 function createSessionCoreService({
   prisma,
   AppError,
@@ -373,6 +375,36 @@ function createSessionCoreService({
         (participant) => participant.role === 'GM' && participant.status === 'CONFIRMED'
       );
 
+      let detailedSession = null;
+      let canOpenCampaign = false;
+
+      if (selected.campaign) {
+        detailedSession = await sessionQueryService.getSessionById(selected.id, userId);
+
+        const myDetailedParticipant = Array.isArray(detailedSession?.participants)
+          ? detailedSession.participants.find((participant) => participant.userId === userId)
+          : null;
+        const isNonGuestCampaignParticipant = Boolean(
+          detailedSession?.campaignId
+          && myDetailedParticipant?.isGuest === false
+        );
+
+        canOpenCampaign = Boolean(
+          detailedSession.campaign
+          && canOpenCampaignByAccess({
+            visibility: detailedSession.campaign.visibility,
+            isOwner: Boolean(detailedSession.viewer?.isCampaignOwner),
+            isCampaignMember: Boolean(
+              detailedSession.viewer?.isCampaignMember
+              || detailedSession.viewer?.isCampaignOwner
+              || isNonGuestCampaignParticipant
+            ),
+            userId,
+            hasValidShareToken: false,
+          })
+        );
+      }
+
       return {
         id: selected.id,
         title: selected.title,
@@ -387,11 +419,14 @@ function createSessionCoreService({
         organizerName: selected.owner?.displayName || selected.owner?.username || null,
         confirmedGmName: confirmedGm?.user?.displayName || confirmedGm?.user?.username || null,
         campaign: selected.campaign
+          && detailedSession?.campaign
           ? {
-            id: selected.campaign.id,
-            title: selected.campaign.title,
-            status: selected.campaign.status,
-            system: selected.campaign.system ?? null,
+            id: detailedSession.campaign.id,
+            title: detailedSession.campaign.title,
+            status: detailedSession.campaign.status,
+            system: detailedSession.campaign.system ?? null,
+            visibility: detailedSession.campaign.visibility,
+            canOpenDirectly: canOpenCampaign,
           }
           : null,
         maxPlayers: selected.maxPlayers,

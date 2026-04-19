@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import DashboardCard from '@/components/ui/DashboardCard';
 import Button from '@/components/ui/Button';
 import { DateTimeDisplay, EmptyState, RoleBadge, SessionTimeBadge } from '@/components/shared';
@@ -10,6 +10,7 @@ import Timer from '@/components/ui/icons/Timer';
 import { DASHBOARD_URL_PARAMS, VIEW_MODES } from '@/features/dashboard/constants';
 import { useNextRelevantSessionQuery } from '../../hooks/useDashboardQueries';
 import { setOrDeleteParam, updateSearchParams } from '@/utils/urlState';
+import { SESSION_VISIBILITY_LABELS } from '@/features/sessions/constants/visibility';
 
 const UI_LOCALE = 'uk-UA';
 
@@ -29,35 +30,13 @@ const formatStartAt = (value) => {
   });
 };
 
-
-
 const getCardTitle = (session) => (session?.status === 'ACTIVE' ? 'Поточна сесія' : 'Наступна сесія');
 
-const CAMPAIGN_SESSION_VISIBILITY_LABELS = {
-  PRIVATE: 'Звичайна сесія',
-  PUBLIC: 'Гостьова сесія',
-};
 
-const ONE_SHOT_VISIBILITY_LABELS = {
-  PUBLIC: 'Публічна сесія',
-  PRIVATE: 'Сесія з підтвердженням',
-  LINK_ONLY: 'Сесія за посиланням',
-};
 
 export default function HomeCurrentSessionWidget() {
   const navigate = useNavigate();
   const [, setSearchParams] = useSearchParams();
-  const [nowMs, setNowMs] = useState(() => Date.now());
-
-  useEffect(() => {
-    const intervalId = globalThis.setInterval(() => {
-      setNowMs(Date.now());
-    }, 30 * 1000);
-
-    return () => {
-      globalThis.clearInterval(intervalId);
-    };
-  }, []);
 
   const handleGoToSearch = () => {
     updateSearchParams(setSearchParams, (next) => {
@@ -80,6 +59,7 @@ export default function HomeCurrentSessionWidget() {
     refetch,
   } = useNextRelevantSessionQuery(true);
 
+  // Автоматично оновити запит, якщо запланована сесія вже почалась (за часом)
   useEffect(() => {
     if (!session?.startAt || session.status !== 'PLANNED') {
       return;
@@ -93,7 +73,6 @@ export default function HomeCurrentSessionWidget() {
     refetch();
   }, [session, refetch]);
 
-
   const cardTitle = getCardTitle(session);
 
   const playersCount = Number.isFinite(Number(session?.currentPlayers))
@@ -103,12 +82,15 @@ export default function HomeCurrentSessionWidget() {
   const hasPlayersCapacity = Number.isFinite(playersCapacity) && playersCapacity > 0;
   const isCampaignSession = Boolean(session?.campaign?.id || session?.campaignId);
   const visibilityLabels = isCampaignSession
-    ? CAMPAIGN_SESSION_VISIBILITY_LABELS
-    : ONE_SHOT_VISIBILITY_LABELS;
+    ? SESSION_VISIBILITY_LABELS.CAMPAIGN
+    : SESSION_VISIBILITY_LABELS.ONE_SHOT;
   const availabilityLabel = visibilityLabels[session?.visibility]
     || (isCampaignSession
-      ? CAMPAIGN_SESSION_VISIBILITY_LABELS.PRIVATE
-      : ONE_SHOT_VISIBILITY_LABELS.PRIVATE);
+      ? SESSION_VISIBILITY_LABELS.CAMPAIGN.PRIVATE
+      : SESSION_VISIBILITY_LABELS.ONE_SHOT.PRIVATE);
+  const campaignLink = session?.campaign?.canOpenDirectly && session?.campaign?.id
+    ? `/campaign/${session.campaign.id}`
+    : null;
 
   if (isLoading) {
     return (
@@ -169,14 +151,22 @@ export default function HomeCurrentSessionWidget() {
           <h3 className="text-xl font-bold text-brand-dark leading-tight truncate flex-1 min-w-0">
             {session.title}
           </h3>
-          <SessionTimeBadge session={session} nowMs={nowMs} />
+          {/* SessionTimeBadge manages its own update timer internally */}
+          <SessionTimeBadge session={session} />
         </div>
 
         <div className="flex items-center justify-between gap-3">
             <div className="text-brand-medium text-sm leading-tight truncate flex-1 min-w-0">
               {session.campaign?.title ? (
                 <>
-                  <span className="font-medium">Кампанія:</span> {session.campaign.title}
+                  <span className="font-medium">Кампанія:</span>{' '}
+                  {campaignLink ? (
+                    <Link to={campaignLink} className="underline hover:no-underline">
+                      {session.campaign.title}
+                    </Link>
+                  ) : (
+                    session.campaign.title
+                  )}
                 </>
               ) : (
                 <>
@@ -184,7 +174,7 @@ export default function HomeCurrentSessionWidget() {
                 </>
               )}
             </div>
-            
+
             <div className="shrink-0 flex justify-end">
               {session.myRole && <RoleBadge role={session.myRole} size="md" />}
             </div>

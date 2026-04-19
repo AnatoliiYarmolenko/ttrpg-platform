@@ -92,8 +92,11 @@ const sessionCrudController = {
     try {
       const { id: sessionId } = req.params;
       const userId = req.user?.id;
+      const campaignShareToken = String(req.query?.campaignShareToken || '').trim() || null;
 
-      const session = await sessionService.getSessionById(sessionId, userId);
+      const session = await sessionService.getSessionById(sessionId, userId, {
+        campaignShareToken,
+      });
 
       res.json({
         success: true,
@@ -124,8 +127,11 @@ const sessionCrudController = {
     try {
       const { id: sessionId } = req.params;
       const userId = req.user?.id;
+      const campaignShareToken = String(req.query?.campaignShareToken || '').trim() || null;
 
-      const pageData = await sessionService.getSessionPageById(sessionId, userId);
+      const pageData = await sessionService.getSessionPageById(sessionId, userId, {
+        campaignShareToken,
+      });
 
       res.json({
         success: true,

@@ -1,8 +1,8 @@
 const STATUS_CONFIG = {
-  PLANNED:   { text: 'Заплановано', class: 'bg-blue-100 text-blue-800' },
-  ACTIVE:    { text: 'В процесі',  class: 'bg-green-100 text-green-800' },
-  FINISHED:  { text: 'Завершено',  class: 'bg-gray-100 text-gray-800' },
-  CANCELED:  { text: 'Скасовано',  class: 'bg-red-100 text-red-800' },
+  PLANNED:   { text: 'Заплановано', class: 'bg-blue-100 text-blue-700' },
+  ACTIVE:    { text: 'В процесі',  class: 'bg-green-100 text-green-700' },
+  FINISHED:  { text: 'Завершено',  class: 'bg-gray-100 text-gray-700' },
+  CANCELED:  { text: 'Скасовано',  class: 'bg-red-100 text-red-700' },
 };
 
 /**

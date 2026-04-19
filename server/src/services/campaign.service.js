@@ -270,6 +270,12 @@ class CampaignService {
             visibility: true,
             maxPlayers: true,
             ownerId: true,
+            participants: {
+              select: {
+                role: true,
+                status: true,
+              },
+            },
             _count: {
               select: { participants: true },
             },

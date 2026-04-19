@@ -36,8 +36,10 @@ export const getNextRelevantSession = async () => {
  * Отримати деталі сесії
  * @param {number} sessionId
  */
-export const getSessionById = async (sessionId) => {
-  const response = await api.get(`/sessions/${sessionId}`);
+export const getSessionById = async (sessionId, options = {}) => {
+  const { campaignShareToken = null } = options;
+  const params = campaignShareToken ? { campaignShareToken } : undefined;
+  const response = await api.get(`/sessions/${sessionId}`, { params });
   return response.data;
 };
 
@@ -46,8 +48,10 @@ export const getSessionByShareToken = async (shareToken) => {
   return response.data;
 };
 
-export const getSessionPageById = async (sessionId) => {
-  const response = await api.get(`/sessions/${sessionId}/page`);
+export const getSessionPageById = async (sessionId, options = {}) => {
+  const { campaignShareToken = null } = options;
+  const params = campaignShareToken ? { campaignShareToken } : undefined;
+  const response = await api.get(`/sessions/${sessionId}/page`, { params });
   return response.data;
 };
 

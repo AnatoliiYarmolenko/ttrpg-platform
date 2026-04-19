@@ -15,25 +15,12 @@ import {
   setOrDeleteParam,
   updateSearchParams,
 } from '@/utils/urlState';
+import { normalizePageError } from '@/utils/errorUtils';
 
 function buildSessionShareUrl(token) {
   return `${globalThis.location.origin}/session/share/${token}`;
 }
 
-function normalizePageError(error, fallbackMessage) {
-  if (!error) return fallbackMessage;
-  if (typeof error === 'string') return error;
-
-  const responseData = error.response?.data;
-  const apiMessage = responseData?.error || responseData?.message;
-  if (apiMessage) return apiMessage;
-
-  if (error.response?.status === 403) {
-    return 'Недостатньо доступу';
-  }
-
-  return error.message || String(error);
-}
 
 function normalizeSessionUrlState({
   searchParams,
@@ -178,6 +165,31 @@ function normalizeServerAvailableTabs(rawTabs) {
     : [SESSION_TABS.DETAILS, SESSION_TABS.COMMUNICATION];
 }
 
+function resolveCampaignPresentationState({ campaignSection, currentSession, actions, campaignShareToken }) {
+  const hasCampaignData = Boolean(campaignSection.data || currentSession?.campaign);
+  const hasCampaignTitle = Boolean(campaignSection.data?.title || currentSession?.campaign?.title);
+  const showCampaignInfo = Boolean(campaignSection.visible || (hasCampaignData && hasCampaignTitle));
+  const campaignLinkable = typeof campaignSection.linkable === 'boolean'
+    ? campaignSection.linkable
+    : Boolean(actions.canOpenCampaign);
+  const canNavigateToCampaignDirectly = Boolean(campaignLinkable && hasCampaignData);
+
+  let campaignNavigationTarget = null;
+  if (canNavigateToCampaignDirectly) {
+    if (campaignShareToken) {
+      campaignNavigationTarget = `/campaign/share/${campaignShareToken}`;
+    } else if (currentSession?.campaign?.id) {
+      campaignNavigationTarget = `/campaign/${currentSession.campaign.id}`;
+    }
+  }
+
+  return {
+    showCampaignInfo,
+    canNavigateToCampaignDirectly,
+    campaignNavigationTarget,
+  };
+}
+
 export default function useSessionPageController() {
   const { id, shareToken: routeShareToken } = useParams();
   const sessionIdNumber = Number(id);
@@ -192,6 +204,7 @@ export default function useSessionPageController() {
   const hasShareToken = typeof routeShareToken === 'string' && routeShareToken.trim().length > 0;
   const isValidId = Number.isInteger(sessionIdNumber) && sessionIdNumber > 0;
   const invalidIdError = !hasShareToken && !isValidId ? 'Сесія не знайдена' : null;
+  const campaignShareToken = searchParams.get('campaignShareToken')?.trim() || null;
 
   const {
     data: pageData,
@@ -200,6 +213,7 @@ export default function useSessionPageController() {
   } = useSessionPageQuery({
     sessionId: hasShareToken ? null : sessionIdNumber,
     shareToken: hasShareToken ? routeShareToken : null,
+    campaignShareToken,
   });
 
   const entity = pageData?.entity || null;
@@ -209,7 +223,13 @@ export default function useSessionPageController() {
   const sections = useMemo(() => pageData?.sections || {}, [pageData]);
 
   const participantsSection = useMemo(
-    () => sections.participants || { visible: false, items: [], count: 0, maxPlayers: null },
+    () => sections.participants || {
+      visible: false,
+      items: [],
+      count: 0,
+      hasConfirmedGm: false,
+      maxPlayers: null,
+    },
     [sections]
   );
   const campaignSection = useMemo(
@@ -227,8 +247,15 @@ export default function useSessionPageController() {
       participantsSummaryCount: Number.isFinite(Number(participantsSection.count))
         ? Number(participantsSection.count)
         : 0,
+      hasConfirmedGm: Boolean(participantsSection.hasConfirmedGm),
     };
-  }, [campaignSection.data, entity, participantsSection.count, participantsSection.items]);
+  }, [
+    campaignSection.data,
+    entity,
+    participantsSection.count,
+    participantsSection.hasConfirmedGm,
+    participantsSection.items,
+  ]);
 
   const error = normalizePageError(queryError, invalidIdError);
   const shouldRedirectToLogin = shouldRedirectSharedGuestToLogin({ hasShareToken, user, queryError });
@@ -251,8 +278,16 @@ export default function useSessionPageController() {
   const canReadParticipants = Boolean(participantsSection.visible);
   const canJoin = Boolean(actions.canJoin);
   const canApplyAsGm = Boolean(actions.canApplyAsGm);
-  const showCampaignInfo = Boolean(campaignSection.visible);
-  const canNavigateToCampaignDirectly = Boolean(campaignSection.linkable);
+  const {
+    showCampaignInfo,
+    canNavigateToCampaignDirectly,
+    campaignNavigationTarget,
+  } = resolveCampaignPresentationState({
+    campaignSection,
+    currentSession,
+    actions,
+    campaignShareToken,
+  });
 
   const availableTabs = useMemo(() => normalizeServerAvailableTabs(ui.availableTabs), [ui.availableTabs]);
 
@@ -432,6 +467,7 @@ export default function useSessionPageController() {
     canApplyAsGm,
     showCampaignInfo,
     canNavigateToCampaignDirectly,
+    campaignNavigationTarget,
     currentShareLink,
     handleJoin,
     handleLeave,
