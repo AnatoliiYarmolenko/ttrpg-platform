@@ -14,14 +14,11 @@ function parseOptionalNumber(value) {
 }
 
 /**
- * SearchController — контролер для публічного пошуку
- * 
- * Доступний без авторизації (або з опціональною авторизацією)
- * для пошуку публічних кампаній та сесій.
+ * SearchController — контролер для пошуку для авторизованих користувачів
  */
 class SearchController {
   /**
-   * Пошук публічних кампаній
+   * Пошук кампаній, доступних поточному користувачу
    * GET /api/search/campaigns
    * 
    * Query params:
@@ -43,6 +40,7 @@ class SearchController {
       } = req.query;
 
       const result = await searchService.searchCampaigns({
+        userId: req.user.id,
         query,
         system,
         ownerUsername,
@@ -61,7 +59,7 @@ class SearchController {
   }
 
   /**
-   * Пошук публічних сесій
+    * Пошук сесій, доступних поточному користувачу
    * GET /api/search/sessions
    * 
    * Query params:
@@ -95,6 +93,7 @@ class SearchController {
       } = req.query;
 
       const result = await searchService.searchSessions({
+        userId: req.user.id,
         query,
         system,
         ownerUsername,

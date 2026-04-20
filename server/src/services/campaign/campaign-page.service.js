@@ -1,3 +1,5 @@
+const { filterCampaignSessionsForViewer } = require('../../domain/access/discovery.policy');
+
 function createCampaignPageService({ getCampaignById, getCampaignByShareToken, getJoinRequests }) {
   const mapOwner = (owner) => {
     if (!owner) return null;
@@ -133,7 +135,8 @@ function createCampaignPageService({ getCampaignById, getCampaignByShareToken, g
       joinRequestItems = Array.isArray(rawJoinRequests) ? rawJoinRequests.map(mapJoinRequest) : [];
     }
 
-    const sessionItems = sessions.map((session) => mapSessionItem(session, viewer));
+    const visibleSessions = filterCampaignSessionsForViewer(sessions, viewer);
+    const sessionItems = visibleSessions.map((session) => mapSessionItem(session, viewer));
 
     return {
       entity: {
