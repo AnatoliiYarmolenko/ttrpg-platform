@@ -1,19 +1,113 @@
 const { prisma } = require('../lib/prisma');
 
-function buildCampaignSearchWhere({ query, system }) {
+const MIN_SLOT_SCAN_CHUNK = 50;
+const MAX_SLOT_SCAN_CHUNK = 200;
+
+function buildCampaignUserFilter(ownerUsername) {
+  if (!ownerUsername?.trim()) {
+    return null;
+  }
+
+  const normalizedUsername = ownerUsername.trim();
+
+  return [
+    { owner: { username: { contains: normalizedUsername, mode: 'insensitive' } } },
+    { owner: { displayName: { contains: normalizedUsername, mode: 'insensitive' } } },
+    {
+      members: {
+        some: {
+          user: {
+            username: { contains: normalizedUsername, mode: 'insensitive' },
+          },
+        },
+      },
+    },
+    {
+      members: {
+        some: {
+          user: {
+            displayName: { contains: normalizedUsername, mode: 'insensitive' },
+          },
+        },
+      },
+    },
+  ];
+}
+
+function buildSessionUserFilter(ownerUsername) {
+  if (!ownerUsername?.trim()) {
+    return null;
+  }
+
+  const normalizedUsername = ownerUsername.trim();
+
+  return [
+    { owner: { username: { contains: normalizedUsername, mode: 'insensitive' } } },
+    { owner: { displayName: { contains: normalizedUsername, mode: 'insensitive' } } },
+    {
+      participants: {
+        some: {
+          status: 'CONFIRMED',
+          user: {
+            username: { contains: normalizedUsername, mode: 'insensitive' },
+          },
+        },
+      },
+    },
+    {
+      participants: {
+        some: {
+          status: 'CONFIRMED',
+          user: {
+            displayName: { contains: normalizedUsername, mode: 'insensitive' },
+          },
+        },
+      },
+    },
+  ];
+}
+
+function resolveRangeStart(dateFrom) {
+  if (!dateFrom) {
+    return null;
+  }
+
+  return new Date(dateFrom);
+}
+
+function resolveRangeEnd(dateTo) {
+  if (!dateTo) {
+    return null;
+  }
+
+  const resolvedDate = new Date(dateTo);
+
+  if (dateTo.length === 10) {
+    resolvedDate.setUTCHours(23, 59, 59, 999);
+  }
+
+  return resolvedDate;
+}
+
+function buildCampaignSearchWhere({ query, system, ownerUsername }) {
   const where = {
     visibility: 'PUBLIC',
   };
 
-  if (query && query.trim()) {
+  if (query?.trim()) {
     where.OR = [
       { title: { contains: query.trim(), mode: 'insensitive' } },
       { description: { contains: query.trim(), mode: 'insensitive' } },
     ];
   }
 
-  if (system && system.trim()) {
+  if (system?.trim()) {
     where.system = { contains: system.trim(), mode: 'insensitive' };
+  }
+
+  const userFilter = buildCampaignUserFilter(ownerUsername);
+  if (userFilter) {
+    where.AND = [...(where.AND || []), { OR: userFilter }];
   }
 
   return where;
@@ -49,6 +143,7 @@ function formatCampaignSearchResult(campaign) {
 function buildSessionSearchWhere({
   query,
   system,
+  ownerUsername,
   dateFrom,
   dateTo,
   minPrice,
@@ -60,28 +155,42 @@ function buildSessionSearchWhere({
     status: { in: ['PLANNED', 'ACTIVE'] },
   };
 
-  if (query && query.trim()) {
+  if (query?.trim()) {
     where.OR = [
       { title: { contains: query.trim(), mode: 'insensitive' } },
       { description: { contains: query.trim(), mode: 'insensitive' } },
     ];
   }
 
-  if (system && system.trim()) {
-    where.campaign = {
-      system: { contains: system.trim(), mode: 'insensitive' },
-    };
+  if (system?.trim()) {
+    const normalizedSystem = system.trim();
+    where.AND = [
+      {
+        OR: [
+          { system: { contains: normalizedSystem, mode: 'insensitive' } },
+          { campaign: { system: { contains: normalizedSystem, mode: 'insensitive' } } },
+        ],
+      },
+    ];
   }
 
-  if (dateFrom || dateTo) {
+  const userFilter = buildSessionUserFilter(ownerUsername);
+  if (userFilter) {
+    where.AND = [...(where.AND || []), { OR: userFilter }];
+  }
+
+  const rangeStart = resolveRangeStart(dateFrom);
+  const rangeEnd = resolveRangeEnd(dateTo);
+
+  if (rangeStart || rangeEnd) {
     where.date = {};
 
-    if (dateFrom) {
-      where.date.gte = new Date(dateFrom);
+    if (rangeStart) {
+      where.date.gte = rangeStart;
     }
 
-    if (dateTo) {
-      where.date.lte = new Date(dateTo);
+    if (rangeEnd) {
+      where.date.lte = rangeEnd;
     }
   } else {
     where.date = { gte: new Date() };
@@ -129,6 +238,10 @@ function buildSessionSearchQuery(where, orderBy) {
         select: { id: true, title: true, system: true },
       },
       participants: {
+        where: {
+          role: 'PLAYER',
+          status: 'CONFIRMED',
+        },
         select: { id: true, role: true, status: true },
       },
       _count: {
@@ -150,12 +263,44 @@ function hasAvailablePlayerSlots(session) {
 }
 
 async function findSessionsWithAvailableSlots({ baseQuery, offset, limit }) {
-  const allMatchingSessions = await prisma.session.findMany(baseQuery);
-  const filteredBySlots = allMatchingSessions.filter(hasAvailablePlayerSlots);
+  const chunkSize = Math.max(MIN_SLOT_SCAN_CHUNK, Math.min(MAX_SLOT_SCAN_CHUNK, limit * 4));
+  const pagedSessions = [];
+  let scannedOffset = 0;
+  let filteredTotal = 0;
+
+  while (true) {
+    const sessionsChunk = await prisma.session.findMany({
+      ...baseQuery,
+      skip: scannedOffset,
+      take: chunkSize,
+    });
+
+    if (sessionsChunk.length === 0) {
+      break;
+    }
+
+    for (const session of sessionsChunk) {
+      if (!hasAvailablePlayerSlots(session)) {
+        continue;
+      }
+
+      if (filteredTotal >= offset && pagedSessions.length < limit) {
+        pagedSessions.push(session);
+      }
+
+      filteredTotal += 1;
+    }
+
+    scannedOffset += sessionsChunk.length;
+
+    if (sessionsChunk.length < chunkSize) {
+      break;
+    }
+  }
 
   return {
-    sessions: filteredBySlots.slice(offset, offset + limit),
-    total: filteredBySlots.length,
+    sessions: pagedSessions,
+    total: filteredTotal,
   };
 }
 
@@ -193,14 +338,22 @@ function formatSessionSearchResult(session) {
     owner: session.owner,
     ownerId: session.ownerId,
     campaign: session.campaign,
+    system: session.system || session.campaign?.system || null,
     isOneShot: !session.campaignId,
     createdAt: session.createdAt,
   };
 }
 
 class SearchService {
-  async searchCampaigns({ query, system, limit = 20, offset = 0, sortBy = 'newest' }) {
-    const where = buildCampaignSearchWhere({ query, system });
+  async searchCampaigns({
+    query,
+    system,
+    ownerUsername,
+    limit = 20,
+    offset = 0,
+    sortBy = 'newest',
+  }) {
+    const where = buildCampaignSearchWhere({ query, system, ownerUsername });
     const orderBy = resolveCampaignOrderBy(sortBy);
 
     const [campaigns, total] = await Promise.all([
@@ -233,6 +386,7 @@ class SearchService {
   async searchSessions({
     query,
     system,
+    ownerUsername,
     dateFrom,
     dateTo,
     minPrice,
@@ -246,6 +400,7 @@ class SearchService {
     const where = buildSessionSearchWhere({
       query,
       system,
+      ownerUsername,
       dateFrom,
       dateTo,
       minPrice,

@@ -110,7 +110,7 @@ const approveJoinRequestBodySchema = Joi.object({
 });
 
 const getMyCampaignsQuerySchema = Joi.object({
-  role: Joi.string().trim().valid('all', 'owner', 'member').optional().messages({
+  role: Joi.string().trim().lowercase().valid('all', 'owner', 'member').optional().messages({
     'any.only': 'Невірна роль для фільтру',
   }),
 });

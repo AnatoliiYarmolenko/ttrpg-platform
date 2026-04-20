@@ -121,7 +121,7 @@ const getMySessionsQuerySchema = Joi.object({
   status: Joi.string().trim().valid(...STATUS_VALUES).optional().messages({
     'any.only': 'Invalid status filter',
   }),
-  role: Joi.string().trim().valid('GM', 'PLAYER', 'ALL').optional().messages({
+  role: Joi.string().trim().uppercase().valid('GM', 'PLAYER', 'ALL').optional().messages({
     'any.only': 'Invalid role filter',
   }),
   limit: Joi.number().integer().min(1).max(100).optional().messages({

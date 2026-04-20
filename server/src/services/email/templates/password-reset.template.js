@@ -8,9 +8,9 @@ function buildPasswordResetTemplate({ resetUrl, userName = 'Користувач
 
   return {
     headerTitle: 'Скидання пароля',
-    subject: '🔐 Скидання пароля - TTRPG Platform',
+    subject: 'Скидання пароля - TTRPG Platform',
     bodyContent: `
-      <h2>Привіт, ${safeUserName}! 👋</h2>
+      <h2>Привіт, ${safeUserName}!</h2>
       <p>Ми отримали запит на скидання пароля для вашого акаунту. Якщо це не ви, просто ігноруйте цей лист.</p>
       <p>Щоб встановити новий пароль, натисніть на кнопку нижче:</p>
 
@@ -19,7 +19,7 @@ function buildPasswordResetTemplate({ resetUrl, userName = 'Користувач
       </div>
 
       <div class="warning-box">
-        ⚠️ <strong>Важливо:</strong> Це посилання дійсне тільки 1 годину. Якщо ви не скидаєте пароль протягом цього часу, запросіть нове посилання.
+        <strong>Важливо:</strong> Це посилання дійсне тільки 1 годину. Якщо ви не скидаєте пароль протягом цього часу, запросіть нове посилання.
       </div>
 
       <p><strong>Безпека вашого акаунту:</strong></p>
