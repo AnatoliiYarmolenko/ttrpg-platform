@@ -34,6 +34,7 @@ class SearchController {
         q: query, 
         system, 
         ownerUsername,
+        onlyMyParticipation,
         limit = 20, 
         offset = 0, 
         sortBy = 'newest' 
@@ -44,6 +45,7 @@ class SearchController {
         query,
         system,
         ownerUsername,
+        onlyMyParticipation: normalizeBooleanFlag(onlyMyParticipation),
         limit: Math.min(Number.parseInt(limit, 10) || 20, 50), // Max 50
         offset: Number.parseInt(offset, 10) || 0,
         sortBy,
@@ -81,6 +83,7 @@ class SearchController {
         q: query,
         system,
         ownerUsername,
+        onlyMyParticipation,
         dateFrom,
         dateTo,
         minPrice,
@@ -97,6 +100,7 @@ class SearchController {
         query,
         system,
         ownerUsername,
+        onlyMyParticipation: normalizeBooleanFlag(onlyMyParticipation),
         dateFrom: dateFrom || null,
         dateTo: dateTo || null,
         minPrice: parseOptionalNumber(minPrice),

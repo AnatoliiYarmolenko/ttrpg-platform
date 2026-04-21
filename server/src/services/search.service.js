@@ -14,7 +14,7 @@ function appendAndClause(whereCondition, clause) {
   whereCondition.AND.push(clause);
 }
 
-function buildCampaignUserFilter(ownerUsername) {
+function buildOwnerUserFilter(ownerUsername) {
   if (!ownerUsername?.trim()) {
     return null;
   }
@@ -24,57 +24,6 @@ function buildCampaignUserFilter(ownerUsername) {
   return [
     { owner: { username: { contains: normalizedUsername, mode: 'insensitive' } } },
     { owner: { displayName: { contains: normalizedUsername, mode: 'insensitive' } } },
-    {
-      members: {
-        some: {
-          user: {
-            username: { contains: normalizedUsername, mode: 'insensitive' },
-          },
-        },
-      },
-    },
-    {
-      members: {
-        some: {
-          user: {
-            displayName: { contains: normalizedUsername, mode: 'insensitive' },
-          },
-        },
-      },
-    },
-  ];
-}
-
-function buildSessionUserFilter(ownerUsername) {
-  if (!ownerUsername?.trim()) {
-    return null;
-  }
-
-  const normalizedUsername = ownerUsername.trim();
-
-  return [
-    { owner: { username: { contains: normalizedUsername, mode: 'insensitive' } } },
-    { owner: { displayName: { contains: normalizedUsername, mode: 'insensitive' } } },
-    {
-      participants: {
-        some: {
-          status: 'CONFIRMED',
-          user: {
-            username: { contains: normalizedUsername, mode: 'insensitive' },
-          },
-        },
-      },
-    },
-    {
-      participants: {
-        some: {
-          status: 'CONFIRMED',
-          user: {
-            displayName: { contains: normalizedUsername, mode: 'insensitive' },
-          },
-        },
-      },
-    },
   ];
 }
 
@@ -100,7 +49,79 @@ function resolveRangeEnd(dateTo) {
   return resolvedDate;
 }
 
-function buildCampaignSearchWhere({ userId, query, system, ownerUsername }) {
+function applySessionOwnerFilter(where, ownerUsername) {
+  const userFilter = buildOwnerUserFilter(ownerUsername);
+  if (userFilter) {
+    appendAndClause(where, { OR: userFilter });
+  }
+}
+
+function applySessionParticipationFilter(where, userId, onlyMyParticipation) {
+  if (onlyMyParticipation !== true || !userId) {
+    return;
+  }
+
+  appendAndClause(where, {
+    OR: [
+      { ownerId: userId },
+      {
+        participants: {
+          some: {
+            userId,
+            status: 'CONFIRMED',
+          },
+        },
+      },
+    ],
+  });
+}
+
+function applySessionDateRange(where, dateFrom, dateTo) {
+  const rangeStart = resolveRangeStart(dateFrom);
+  const rangeEnd = resolveRangeEnd(dateTo);
+
+  if (rangeStart || rangeEnd) {
+    where.date = {};
+
+    if (rangeStart) {
+      where.date.gte = rangeStart;
+    }
+
+    if (rangeEnd) {
+      where.date.lte = rangeEnd;
+    }
+
+    return;
+  }
+
+  appendAndClause(where, {
+    OR: [
+      { status: 'ACTIVE' },
+      {
+        status: 'PLANNED',
+        date: { gte: new Date() },
+      },
+    ],
+  });
+}
+
+function applySessionPriceRange(where, minPrice, maxPrice) {
+  if (minPrice === undefined && maxPrice === undefined) {
+    return;
+  }
+
+  where.price = {};
+
+  if (minPrice !== undefined) {
+    where.price.gte = minPrice;
+  }
+
+  if (maxPrice !== undefined) {
+    where.price.lte = maxPrice;
+  }
+}
+
+function buildCampaignSearchWhere({ userId, query, system, ownerUsername, onlyMyParticipation }) {
   const where = {};
 
   applyCampaignDiscoveryFilter(where, userId);
@@ -116,9 +137,24 @@ function buildCampaignSearchWhere({ userId, query, system, ownerUsername }) {
     where.system = { contains: system.trim(), mode: 'insensitive' };
   }
 
-  const userFilter = buildCampaignUserFilter(ownerUsername);
+  const userFilter = buildOwnerUserFilter(ownerUsername);
   if (userFilter) {
     where.AND = [...(where.AND || []), { OR: userFilter }];
+  }
+
+  if (onlyMyParticipation === true && userId) {
+    appendAndClause(where, {
+      OR: [
+        { ownerId: userId },
+        {
+          members: {
+            some: {
+              userId,
+            },
+          },
+        },
+      ],
+    });
   }
 
   return where;
@@ -156,6 +192,7 @@ function buildSessionSearchWhere({
   query,
   system,
   ownerUsername,
+  onlyMyParticipation,
   dateFrom,
   dateTo,
   minPrice,
@@ -185,47 +222,10 @@ function buildSessionSearchWhere({
     });
   }
 
-  const userFilter = buildSessionUserFilter(ownerUsername);
-  if (userFilter) {
-    where.AND = [...(where.AND || []), { OR: userFilter }];
-  }
-
-  const rangeStart = resolveRangeStart(dateFrom);
-  const rangeEnd = resolveRangeEnd(dateTo);
-
-  if (rangeStart || rangeEnd) {
-    where.date = {};
-
-    if (rangeStart) {
-      where.date.gte = rangeStart;
-    }
-
-    if (rangeEnd) {
-      where.date.lte = rangeEnd;
-    }
-  } else {
-    appendAndClause(where, {
-      OR: [
-        { status: 'ACTIVE' },
-        {
-          status: 'PLANNED',
-          date: { gte: new Date() },
-        },
-      ],
-    });
-  }
-
-  if (minPrice !== undefined || maxPrice !== undefined) {
-    where.price = {};
-
-    if (minPrice !== undefined) {
-      where.price.gte = minPrice;
-    }
-
-    if (maxPrice !== undefined) {
-      where.price.lte = maxPrice;
-    }
-  }
+  applySessionOwnerFilter(where, ownerUsername);
+  applySessionParticipationFilter(where, userId, onlyMyParticipation);
+  applySessionDateRange(where, dateFrom, dateTo);
+  applySessionPriceRange(where, minPrice, maxPrice);
 
   if (oneShot === true) {
     where.campaignId = null;
@@ -370,11 +370,18 @@ class SearchService {
     query,
     system,
     ownerUsername,
+    onlyMyParticipation,
     limit = 20,
     offset = 0,
     sortBy = 'newest',
   }) {
-    const where = buildCampaignSearchWhere({ userId, query, system, ownerUsername });
+    const where = buildCampaignSearchWhere({
+      userId,
+      query,
+      system,
+      ownerUsername,
+      onlyMyParticipation,
+    });
     const orderBy = resolveCampaignOrderBy(sortBy);
 
     const [campaigns, total] = await Promise.all([
@@ -409,6 +416,7 @@ class SearchService {
     query,
     system,
     ownerUsername,
+    onlyMyParticipation,
     dateFrom,
     dateTo,
     minPrice,
@@ -424,6 +432,7 @@ class SearchService {
       query,
       system,
       ownerUsername,
+      onlyMyParticipation,
       dateFrom,
       dateTo,
       minPrice,

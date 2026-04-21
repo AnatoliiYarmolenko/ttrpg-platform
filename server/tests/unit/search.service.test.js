@@ -54,24 +54,6 @@ test('searchCampaigns applies entitlement visibility and owner/member text filte
       OR: [
         { owner: { username: { contains: 'gm_master', mode: 'insensitive' } } },
         { owner: { displayName: { contains: 'gm_master', mode: 'insensitive' } } },
-        {
-          members: {
-            some: {
-              user: {
-                username: { contains: 'gm_master', mode: 'insensitive' },
-              },
-            },
-          },
-        },
-        {
-          members: {
-            some: {
-              user: {
-                displayName: { contains: 'gm_master', mode: 'insensitive' },
-              },
-            },
-          },
-        },
       ],
     },
   ]);
@@ -212,26 +194,6 @@ test('searchSessions supports system filter, owner or participant filter, and in
       OR: [
         { owner: { username: { contains: 'keeper', mode: 'insensitive' } } },
         { owner: { displayName: { contains: 'keeper', mode: 'insensitive' } } },
-        {
-          participants: {
-            some: {
-              status: 'CONFIRMED',
-              user: {
-                username: { contains: 'keeper', mode: 'insensitive' },
-              },
-            },
-          },
-        },
-        {
-          participants: {
-            some: {
-              status: 'CONFIRMED',
-              user: {
-                displayName: { contains: 'keeper', mode: 'insensitive' },
-              },
-            },
-          },
-        },
       ],
     },
   ]);

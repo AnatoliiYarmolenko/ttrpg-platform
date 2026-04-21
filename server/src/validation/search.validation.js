@@ -14,6 +14,9 @@ const searchCampaignsQuerySchema = Joi.object({
   ownerUsername: Joi.string().trim().max(100).empty('').optional().messages({
     'string.max': 'Фільтр користувача не повинен перевищувати 100 символів',
   }),
+  onlyMyParticipation: Joi.boolean().truthy('true').falsy('false').optional().messages({
+    'boolean.base': 'onlyMyParticipation повинна бути true або false',
+  }),
   limit: Joi.number().integer().min(1).max(50).optional().messages({
     'number.base': 'Limit повинен бути від 1 до 50',
     'number.min': 'Limit повинен бути від 1 до 50',
@@ -41,6 +44,9 @@ const searchSessionsQuerySchema = Joi.object({
   }),
   ownerUsername: Joi.string().trim().max(100).empty('').optional().messages({
     'string.max': 'Фільтр користувача не повинен перевищувати 100 символів',
+  }),
+  onlyMyParticipation: Joi.boolean().truthy('true').falsy('false').optional().messages({
+    'boolean.base': 'onlyMyParticipation повинна бути true або false',
   }),
   dateFrom: Joi.string().isoDate().optional().messages({
     'string.isoDate': 'dateFrom повинна бути в форматі ISO8601',
