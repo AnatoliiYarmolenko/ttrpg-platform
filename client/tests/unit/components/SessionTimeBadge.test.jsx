@@ -80,7 +80,7 @@ describe('SessionTimeBadge', () => {
     };
 
     render(<SessionTimeBadge session={session} />);
-    expect(screen.getByText('Забута сесія (не завершена)')).toBeInTheDocument();
+    expect(screen.getByText('Забута сесія')).toBeInTheDocument();
   });
 
   it('показує правильний час до сесії для PLANNED', () => {

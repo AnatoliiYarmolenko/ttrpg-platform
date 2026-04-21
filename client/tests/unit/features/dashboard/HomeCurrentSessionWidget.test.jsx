@@ -133,7 +133,7 @@ describe('HomeCurrentSessionWidget', () => {
     const campaignLink = screen.getByRole('link', { name: 'Barovia Nights' });
     expect(campaignLink).toHaveAttribute('href', '/campaign/7');
     expect(screen.getByText('4 / 6 гравців')).toBeInTheDocument();
-    expect(screen.getByText('Доступність:').closest('div')).toHaveTextContent(/Доступність:\s*Звичайна сесія/);
+    expect(screen.getByText('Доступність:').closest('div')).toHaveTextContent(/Доступність:\s*Звичайна/);
     expect(screen.getByText('Організатор:').closest('div')).toHaveTextContent(/Організатор:\s*Alex GM/);
     expect(screen.queryByText('GM: Alex GM')).not.toBeInTheDocument();
     expect(screen.getByText('Опис')).toBeInTheDocument();

@@ -13,14 +13,10 @@ import {
 import Data from "@/components/ui/icons/Data";
 import Timer from "@/components/ui/icons/Timer";
 import GroupPeople from "@/components/ui/icons/GroupPeople";
-import { SESSION_VISIBILITY_LABELS } from "../../constants/visibility";
+import { VisibilityBadge } from '@/components/shared';
 
-function getAvailabilityLabel(session) {
-  if (session?.campaign) {
-    return SESSION_VISIBILITY_LABELS.CAMPAIGN[session.visibility] || SESSION_VISIBILITY_LABELS.CAMPAIGN.PRIVATE;
-  }
-
-  return SESSION_VISIBILITY_LABELS.ONE_SHOT[session?.visibility] || SESSION_VISIBILITY_LABELS.ONE_SHOT.PRIVATE;
+function getEntityType(session) {
+  return session?.campaign ? 'campaignSession' : 'oneShot';
 }
 
 function getUnavailableJoinMessage(session) {
@@ -269,7 +265,7 @@ export default function SessionPagePreviewWidget({
           </div>
           <div className="flex items-center gap-2 text-brand-medium text-sm">
             <span className="font-medium">Доступність:</span>
-            <span>{getAvailabilityLabel(session)}</span>
+            <VisibilityBadge visibility={session?.visibility} entityType={getEntityType(session)} plainText />
           </div>
 
           <div className="flex items-center gap-2 text-brand-medium text-sm">

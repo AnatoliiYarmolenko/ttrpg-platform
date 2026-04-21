@@ -35,7 +35,6 @@ export default function HomeRightWidget() {
   } = useDashboardStore();
 
   const searchFilters = useSearchStore((state) => state.searchFilters);
-  const hasSearched = useSearchStore((state) => state.hasSearched);
 
   const queryClient = useQueryClient();
   
@@ -43,7 +42,6 @@ export default function HomeRightWidget() {
     date: selectedDate,
     viewMode,
     searchFilters,
-    hasSearched,
   });
 
   // Форматування дати для відображення
@@ -123,6 +121,7 @@ export default function HomeRightWidget() {
               session={session}
               isExpanded={isExpanded}
               onToggle={() => toggleSessionExpanded(session.id)}
+              showDate={false}
             />
           );
         })}

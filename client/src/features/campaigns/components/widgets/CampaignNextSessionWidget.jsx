@@ -7,7 +7,7 @@ import Data from '@/components/ui/icons/Data';
 import Timer from '@/components/ui/icons/Timer';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
 import Dice20 from '@/components/ui/icons/Dice20';
-import { SESSION_VISIBILITY_LABELS } from '@/features/sessions/constants/visibility';
+import { VisibilityBadge } from '@/components/shared';
 
 const UI_LOCALE = 'uk-UA';
 
@@ -82,8 +82,6 @@ export default function CampaignNextSessionWidget({
   const playersCapacity = Number(session?.maxPlayers);
   const hasPlayersCapacity = Number.isFinite(playersCapacity) && playersCapacity > 0;
 
-  const availabilityLabel = SESSION_VISIBILITY_LABELS.CAMPAIGN[session?.visibility]
-    || SESSION_VISIBILITY_LABELS.CAMPAIGN.PRIVATE;
 
   const systemName = session.system || 'Не вказана';
   const organizerName = session.organizerName || 'Не вказаний';
@@ -137,7 +135,7 @@ export default function CampaignNextSessionWidget({
 
           <div className="flex items-center gap-2 text-brand-medium text-sm">
             <span className="font-medium">Доступність:</span>
-            <span>{availabilityLabel}</span>
+            <VisibilityBadge visibility={session?.visibility} entityType="campaignSession" plainText />
           </div>
 
           <div className="flex items-center gap-2 text-brand-medium text-sm">

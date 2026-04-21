@@ -28,7 +28,6 @@ const CalendarWidget = memo(function CalendarWidget({ title, showTodayButton }) 
   } = useDashboardStore();
 
   const searchFilters = useSearchStore((state) => state.searchFilters);
-  const hasSearched = useSearchStore((state) => state.hasSearched);
 
   const shouldShowTodayButton = showTodayButton ?? (viewMode === VIEW_MODES.MY_GAMES || viewMode === VIEW_MODES.CALENDAR);
   const [todayKey, setTodayKey] = useState(() => getLocalDateKey());
@@ -57,7 +56,6 @@ const CalendarWidget = memo(function CalendarWidget({ title, showTodayButton }) 
     currentMonth,
     viewMode,
     searchFilters,
-    hasSearched,
   });
 
   // Генеруємо дні для календаря

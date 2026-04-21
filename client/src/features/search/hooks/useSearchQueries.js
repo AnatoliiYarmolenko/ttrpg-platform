@@ -1,22 +1,77 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { searchCampaigns, searchSessions } from '../api/searchApi';
 
-const cleanParams = (baseFilters, pageParam) => {
-  const params = { ...baseFilters, offset: pageParam };
-  Object.keys(params).forEach((key) => {
-    if (params[key] === '' || params[key] === null || params[key] === false) {
-      delete params[key];
+const SESSION_PARAM_KEYS = [
+  'q',
+  'system',
+  'ownerUsername',
+  'onlyMyParticipation',
+  'dateFrom',
+  'dateTo',
+  'minPrice',
+  'maxPrice',
+  'hasAvailableSlots',
+  'oneShot',
+  'sortBy',
+  'limit',
+];
+
+const CAMPAIGN_PARAM_KEYS = [
+  'q',
+  'system',
+  'ownerUsername',
+  'onlyMyParticipation',
+  'sortBy',
+  'limit',
+];
+
+const sanitizeParams = (params) => {
+  const sanitized = { ...params };
+  Object.keys(sanitized).forEach((key) => {
+    if (sanitized[key] === '' || sanitized[key] === null || sanitized[key] === false) {
+      delete sanitized[key];
     }
   });
-  return params;
+  return sanitized;
 };
 
-export const useSearchCampaignsQuery = (baseFilters, options = {}) => {
+const pickFilterParams = (baseFilters, allowedKeys, pageParam) => {
+  const picked = allowedKeys.reduce((acc, key) => {
+    if (Object.hasOwn(baseFilters, key)) {
+      acc[key] = baseFilters[key];
+    }
+    return acc;
+  }, {});
+
+  return sanitizeParams({
+    ...picked,
+    offset: pageParam,
+  });
+};
+
+const unwrapSearchResponse = (response) => {
+  if (response?.success === false) {
+    throw new Error(response.error || 'Search request failed');
+  }
+
+  return response?.data ?? { campaigns: [], sessions: [], total: 0, hasMore: false };
+};
+
+export const buildSessionSearchParams = (baseFilters = {}, pageParam = 0) => (
+  pickFilterParams(baseFilters, SESSION_PARAM_KEYS, pageParam)
+);
+
+export const buildCampaignSearchParams = (baseFilters = {}, pageParam = 0) => (
+  pickFilterParams(baseFilters, CAMPAIGN_PARAM_KEYS, pageParam)
+);
+
+export const useSearchCampaignsQuery = (baseFilters = {}, options = {}) => {
   return useInfiniteQuery({
-    queryKey: ['search', 'campaigns', baseFilters],
+    queryKey: ['search', 'campaigns', sanitizeParams(baseFilters)],
+    initialPageParam: 0,
     queryFn: async ({ pageParam = 0 }) => {
-      const res = await searchCampaigns(cleanParams(baseFilters, pageParam));
-      return res;
+      const res = await searchCampaigns(buildCampaignSearchParams(baseFilters, pageParam));
+      return unwrapSearchResponse(res);
     },
     getNextPageParam: (lastPage, allPages) => {
       if (!lastPage?.hasMore) return undefined;
@@ -26,12 +81,13 @@ export const useSearchCampaignsQuery = (baseFilters, options = {}) => {
   });
 };
 
-export const useSearchSessionsQuery = (baseFilters, options = {}) => {
+export const useSearchSessionsQuery = (baseFilters = {}, options = {}) => {
   return useInfiniteQuery({
-    queryKey: ['search', 'sessions', baseFilters],
+    queryKey: ['search', 'sessions', sanitizeParams(baseFilters)],
+    initialPageParam: 0,
     queryFn: async ({ pageParam = 0 }) => {
-      const res = await searchSessions(cleanParams(baseFilters, pageParam));
-      return res;
+      const res = await searchSessions(buildSessionSearchParams(baseFilters, pageParam));
+      return unwrapSearchResponse(res);
     },
     getNextPageParam: (lastPage, allPages) => {
       if (!lastPage?.hasMore) return undefined;

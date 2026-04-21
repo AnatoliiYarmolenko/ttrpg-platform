@@ -26,6 +26,7 @@ export default function SessionCard({
   session, 
   isExpanded, 
   onToggle,
+  showDate = false,
 }) {
   const navigate = useNavigate();
   const campaignTitle = session?.campaign?.title || session?.campaignTitle || null;
@@ -67,6 +68,11 @@ export default function SessionCard({
 
         {/* Основна інформація */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-brand-medium">
+          {showDate && (
+            <span className="flex items-center gap-1 whitespace-nowrap">
+              <Data className="w-4 h-4" /> <DateTimeDisplay value={session.date} format="date" />
+            </span>
+          )}
           <span className="flex items-center gap-1 whitespace-nowrap">
             <Data className="w-4 h-4" /> <DateTimeDisplay value={session.date} format="time" />
           </span>
