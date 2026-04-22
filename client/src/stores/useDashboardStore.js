@@ -42,7 +42,6 @@ const useDashboardStore = create((set, get) => ({
 
     set(nextState);
 
-    useSearchStore.getState().setHasSearched(false);
   },
 
   setRightPanelMode: (mode) => {

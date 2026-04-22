@@ -29,7 +29,7 @@ function renderBaseTemplate(headerTitle, bodyContent) {
     <body>
       <div class="container">
         <div class="header">
-          <h1>🔐 TTRPG Platform</h1>
+          <h1>TTRPG Platform</h1>
           <p>${safeHeaderTitle}</p>
         </div>
         <div class="content">

@@ -10,7 +10,7 @@ import Timer from '@/components/ui/icons/Timer';
 import { DASHBOARD_URL_PARAMS, VIEW_MODES } from '@/features/dashboard/constants';
 import { useNextRelevantSessionQuery } from '../../hooks/useDashboardQueries';
 import { setOrDeleteParam, updateSearchParams } from '@/utils/urlState';
-import { SESSION_VISIBILITY_LABELS } from '@/features/sessions/constants/visibility';
+import { VisibilityBadge } from '@/components/shared';
 
 const UI_LOCALE = 'uk-UA';
 
@@ -81,13 +81,7 @@ export default function HomeCurrentSessionWidget() {
   const playersCapacity = Number(session?.maxPlayers);
   const hasPlayersCapacity = Number.isFinite(playersCapacity) && playersCapacity > 0;
   const isCampaignSession = Boolean(session?.campaign?.id || session?.campaignId);
-  const visibilityLabels = isCampaignSession
-    ? SESSION_VISIBILITY_LABELS.CAMPAIGN
-    : SESSION_VISIBILITY_LABELS.ONE_SHOT;
-  const availabilityLabel = visibilityLabels[session?.visibility]
-    || (isCampaignSession
-      ? SESSION_VISIBILITY_LABELS.CAMPAIGN.PRIVATE
-      : SESSION_VISIBILITY_LABELS.ONE_SHOT.PRIVATE);
+  const entityType = isCampaignSession ? 'campaignSession' : 'oneShot';
   const campaignLink = session?.campaign?.canOpenDirectly && session?.campaign?.id
     ? `/campaign/${session.campaign.id}`
     : null;
@@ -198,7 +192,7 @@ export default function HomeCurrentSessionWidget() {
         </div>
         <div className="flex items-center gap-2 text-brand-medium text-sm">
           <span className="font-medium">Доступність:</span>
-          <span>{availabilityLabel}</span>
+          <VisibilityBadge visibility={session?.visibility} entityType={entityType} plainText />
         </div>
 
         <div className="flex items-center gap-2 text-brand-medium text-sm">

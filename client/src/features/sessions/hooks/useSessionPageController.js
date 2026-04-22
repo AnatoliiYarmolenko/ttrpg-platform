@@ -177,9 +177,9 @@ function resolveCampaignPresentationState({ campaignSection, currentSession, act
   let campaignNavigationTarget = null;
   if (canNavigateToCampaignDirectly) {
     if (campaignShareToken) {
-      campaignNavigationTarget = `/campaign/share/${campaignShareToken}`;
+      campaignNavigationTarget = `/campaign/share/${campaignShareToken}?tab=details`;
     } else if (currentSession?.campaign?.id) {
-      campaignNavigationTarget = `/campaign/${currentSession.campaign.id}`;
+      campaignNavigationTarget = `/campaign/${currentSession.campaign.id}?tab=details`;
     }
   }
 

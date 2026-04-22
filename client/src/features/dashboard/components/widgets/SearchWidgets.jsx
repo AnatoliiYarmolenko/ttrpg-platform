@@ -1,39 +1,53 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { useNavigate } from "react-router-dom";
-import useSearchStore from "@/stores/useSearchStore";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import useSearchStore, { SEARCH_TABS } from "@/stores/useSearchStore";
 import {
   useSearchCampaignsQuery,
   useSearchSessionsQuery,
 } from "@/features/search/hooks/useSearchQueries";
+import SearchFiltersForm from "@/features/search/components/SearchFiltersForm";
 import { joinSession } from "@/features/sessions/api/sessionApi";
 import DashboardCard from "@/components/ui/DashboardCard";
-import SessionCard from "../ui/SessionCard";
+import Button from "@/components/ui/Button";
+import EmptyState from "@/components/shared/EmptyState";
 import { VisibilityBadge } from "@/components/shared";
+import SessionCard from "../ui/SessionCard";
 import Dice20 from "@/components/ui/icons/Dice20";
 import GroupPeople from "@/components/ui/icons/GroupPeople";
 import Data from "@/components/ui/icons/Data";
-import { GAME_SYSTEMS } from "@/constants/gameSystems";
 import { toast } from "@/stores/useToastStore";
-import Button from "@/components/ui/Button";
 
-function mapSearchFiltersToLocal(searchFilters) {
-  return {
-    q: searchFilters.q || "",
-    system: searchFilters.system || "",
-    dateFrom: searchFilters.dateFrom || "",
-    dateTo: searchFilters.dateTo || "",
-    minPrice: searchFilters.minPrice ?? "",
-    maxPrice: searchFilters.maxPrice ?? "",
-    hasAvailableSlots: searchFilters.hasAvailableSlots || false,
-    oneShot: searchFilters.oneShot || false,
-    sortBy: searchFilters.sortBy || "",
-  };
+const TAB_LABELS = {
+  [SEARCH_TABS.SESSIONS]: "Сесії",
+  [SEARCH_TABS.CAMPAIGNS]: "Кампанії",
+};
+
+function hasActiveFilters(searchActiveTab, filters) {
+  if (!filters) return false;
+
+  const sharedHasFilters = Boolean(
+    filters.q || filters.system || filters.ownerUsername || filters.onlyMyParticipation
+  );
+  if (sharedHasFilters) return true;
+
+  if (searchActiveTab === SEARCH_TABS.CAMPAIGNS) {
+    return false;
+  }
+
+  return Boolean(
+    filters.dateFrom
+    || filters.dateTo
+    || filters.minPrice !== null
+    || filters.maxPrice !== null
+    || filters.hasAvailableSlots
+    || filters.oneShot
+  );
 }
 
 function flattenSearchItems(searchActiveTab, campaignsData, sessionsData) {
-  if (searchActiveTab === "campaigns") {
+  if (searchActiveTab === SEARCH_TABS.CAMPAIGNS) {
     return campaignsData?.pages?.flatMap((page) => page?.campaigns || []) || [];
   }
 
@@ -41,14 +55,15 @@ function flattenSearchItems(searchActiveTab, campaignsData, sessionsData) {
 }
 
 function getSearchTotal(searchActiveTab, campaignsData, sessionsData) {
-  return searchActiveTab === "campaigns"
+  return searchActiveTab === SEARCH_TABS.CAMPAIGNS
     ? campaignsData?.pages?.[0]?.total || 0
     : sessionsData?.pages?.[0]?.total || 0;
 }
 
 function getJoinErrorMessage(error) {
-  return error?.response?.data?.error || error?.message || 'Помилка при приєднанні';
+  return error?.response?.data?.error || error?.message || "Помилка при приєднанні";
 }
+
 
 function CampaignSearchResultCard({ campaign, onOpen }) {
   return (
@@ -60,7 +75,7 @@ function CampaignSearchResultCard({ campaign, onOpen }) {
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <h4 className="font-bold text-brand-dark truncate">{campaign.title}</h4>
         </div>
-        <VisibilityBadge visibility={campaign.visibility} iconOnly />
+        <VisibilityBadge visibility={campaign.visibility} entityType="campaign" compact />
       </div>
 
       {campaign.description && (
@@ -113,7 +128,6 @@ CampaignSearchResultCard.propTypes = {
 function SearchResultsBody({
   searchActiveTab,
   items,
-  hasSearched,
   hasError,
   isSearchLoading,
   expandedSessionId,
@@ -125,44 +139,45 @@ function SearchResultsBody({
   hasMore,
   isFetchingMore,
   loadMoreSearchResults,
+  hasFiltersApplied,
 }) {
   if (isSearchLoading && items.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-pulse text-brand-dark">Шукаємо...</div>
-      </div>
+      <EmptyState
+        title={`Завантажуємо ${TAB_LABELS[searchActiveTab].toLowerCase()}...`}
+        description="Підтягуємо доступні результати пошуку"
+      />
     );
   }
 
   if (hasError) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-red-500">
-        <p>Помилка пошуку</p>
-      </div>
-    );
-  }
-
-  if (!hasSearched) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-brand-medium">
-        <p>Введіть параметри пошуку</p>
-        <p className="text-sm mt-2">та натисніть "Шукати"</p>
-      </div>
+      <EmptyState
+        title="Не вдалося завантажити результати"
+        description="Спробуйте змінити фільтри або оновити сторінку"
+      />
     );
   }
 
   if (items.length === 0) {
+    const isCampaignsTab = searchActiveTab === SEARCH_TABS.CAMPAIGNS;
+    const emptyEntity = isCampaignsTab ? "кампаній" : "сесій";
+    const emptyTitle = hasFiltersApplied ? "Нічого не знайдено" : `Немає доступних ${emptyEntity}`;
+    const emptyDescription = hasFiltersApplied
+      ? "Спробуйте змінити параметри пошуку"
+      : `Коли з'являться ${emptyEntity}, вони будуть тут`;
+
     return (
-      <div className="flex flex-col items-center justify-center h-full text-brand-medium">
-        <p>Нічого не знайдено</p>
-        <p className="text-sm mt-2">Спробуйте змінити фільтри</p>
-      </div>
+      <EmptyState
+        title={emptyTitle}
+        description={emptyDescription}
+      />
     );
   }
 
   return (
     <div className="flex flex-col gap-3">
-      {searchActiveTab === "sessions" &&
+      {searchActiveTab === SEARCH_TABS.SESSIONS &&
         items.map((session) => (
           <SessionCard
             key={session.id}
@@ -172,10 +187,11 @@ function SearchResultsBody({
             onJoin={handleJoinSession}
             isJoining={joiningSessionId === session.id}
             joinError={joinErrors[session.id] || null}
+            showDate={true}
           />
         ))}
 
-      {searchActiveTab === "campaigns" &&
+      {searchActiveTab === SEARCH_TABS.CAMPAIGNS &&
         items.map((campaign) => (
           <CampaignSearchResultCard
             key={campaign.id}
@@ -192,7 +208,7 @@ function SearchResultsBody({
           fullWidth
           className="w-full border-dashed border-brand-light/50 text-brand-medium hover:border-brand-dark hover:text-brand-dark shadow-none hover:shadow-none"
         >
-          {isFetchingMore ? 'Завантаження...' : 'Завантажити ще'}
+          {isFetchingMore ? "Завантаження..." : "Завантажити ще"}
         </Button>
       )}
     </div>
@@ -200,9 +216,8 @@ function SearchResultsBody({
 }
 
 SearchResultsBody.propTypes = {
-  searchActiveTab: PropTypes.string.isRequired,
+  searchActiveTab: PropTypes.oneOf(Object.values(SEARCH_TABS)).isRequired,
   items: PropTypes.array.isRequired,
-  hasSearched: PropTypes.bool.isRequired,
   hasError: PropTypes.bool.isRequired,
   isSearchLoading: PropTypes.bool.isRequired,
   expandedSessionId: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
@@ -214,257 +229,11 @@ SearchResultsBody.propTypes = {
   hasMore: PropTypes.bool.isRequired,
   isFetchingMore: PropTypes.bool.isRequired,
   loadMoreSearchResults: PropTypes.func.isRequired,
+  hasFiltersApplied: PropTypes.bool.isRequired,
 };
 
 export function SearchFiltersWidget({ onSearch }) {
-  const {
-    searchFilters,
-    setSearchFilters,
-    resetSearchFilters,
-    searchActiveTab,
-    setSearchActiveTab,
-    executeSearch,
-  } = useSearchStore();
-
-  const [localFilters, setLocalFilters] = useState(() => mapSearchFiltersToLocal(searchFilters));
-
-  const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setLocalFilters((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-  };
-
-  const handleSearch = async () => {
-    setSearchFilters({
-      ...localFilters,
-      minPrice: localFilters.minPrice ? Number(localFilters.minPrice) : null,
-      maxPrice: localFilters.maxPrice ? Number(localFilters.maxPrice) : null,
-    });
-
-    executeSearch();
-
-    if (onSearch) {
-      onSearch(localFilters);
-    }
-  };
-
-  const handleClear = async () => {
-    resetSearchFilters();
-    setLocalFilters(mapSearchFiltersToLocal({}));
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter") {
-      handleSearch();
-    }
-  };
-
-  const sortOptions =
-    searchActiveTab === 'sessions'
-      ? [
-          { value: 'date', label: 'За датою' },
-          { value: 'newest', label: 'Найновіші' },
-          { value: 'price', label: 'За ціною' },
-        ]
-      : [
-          { value: 'newest', label: 'Найновіші' },
-          { value: 'popular', label: 'Популярні' },
-          { value: 'title', label: 'За назвою' },
-        ];
-
-  return (
-    <DashboardCard title="Пошук ігор">
-      <div className="flex flex-col gap-4">
-        <div className="flex gap-2 border-b border-brand-light/30 pb-3">
-          <Button
-            onClick={() => setSearchActiveTab('sessions')}
-            variant="light"
-            fullWidth={false}
-            className={`px-4 py-2 rounded-t-lg transition-colors ${
-              searchActiveTab === 'sessions'
-                ? 'bg-brand-dark text-white hover:bg-brand-dark hover:text-white'
-                : 'text-brand-medium hover:bg-gray-100'
-            }`}
-          >
-            Сесії
-          </Button>
-          <Button
-            onClick={() => setSearchActiveTab('campaigns')}
-            variant="light"
-            fullWidth={false}
-            className={`px-4 py-2 rounded-t-lg transition-colors ${
-              searchActiveTab === 'campaigns'
-                ? 'bg-brand-dark text-white hover:bg-brand-dark hover:text-white'
-                : 'text-brand-medium hover:bg-gray-100'
-            }`}
-          >
-            Кампанії
-          </Button>
-        </div>
-
-        <div>
-          <input
-            type="text"
-            name="q"
-            value={localFilters.q}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            placeholder="Пошук за назвою або описом..."
-            className="w-full px-4 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark transition-colors"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="filter-system" className="block text-sm font-medium text-brand-dark mb-1">
-            Система
-          </label>
-          <select
-            id="filter-system"
-            name="system"
-            value={localFilters.system}
-            onChange={handleInputChange}
-            className="w-full px-4 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark transition-colors bg-white"
-          >
-            <option value="">Всі системи</option>
-            {GAME_SYSTEMS.map((sys) => (
-              <option key={sys.value} value={sys.value}>
-                {sys.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="filter-sortBy" className="block text-sm font-medium text-brand-dark mb-1">
-            Сортування
-          </label>
-          <select
-            id="filter-sortBy"
-            name="sortBy"
-            value={localFilters.sortBy || (searchActiveTab === 'sessions' ? 'date' : 'newest')}
-            onChange={handleInputChange}
-            className="w-full px-4 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark transition-colors bg-white"
-          >
-            {sortOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {searchActiveTab === 'sessions' && (
-          <>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label htmlFor="filter-dateFrom" className="block text-sm font-medium text-brand-dark mb-1">
-                  Від
-                </label>
-                <input
-                  id="filter-dateFrom"
-                  type="date"
-                  name="dateFrom"
-                  value={localFilters.dateFrom}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark transition-colors text-sm"
-                />
-              </div>
-              <div>
-                <label htmlFor="filter-dateTo" className="block text-sm font-medium text-brand-dark mb-1">
-                  До
-                </label>
-                <input
-                  id="filter-dateTo"
-                  type="date"
-                  name="dateTo"
-                  value={localFilters.dateTo}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark transition-colors text-sm"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label htmlFor="filter-minPrice" className="block text-sm font-medium text-brand-dark mb-1">
-                  Мін. ціна
-                </label>
-                <input
-                  id="filter-minPrice"
-                  type="number"
-                  name="minPrice"
-                  value={localFilters.minPrice}
-                  onChange={handleInputChange}
-                  placeholder="0"
-                  min="0"
-                  className="w-full px-3 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark transition-colors text-sm"
-                />
-              </div>
-              <div>
-                <label htmlFor="filter-maxPrice" className="block text-sm font-medium text-brand-dark mb-1">
-                  Макс. ціна
-                </label>
-                <input
-                  id="filter-maxPrice"
-                  type="number"
-                  name="maxPrice"
-                  value={localFilters.maxPrice}
-                  onChange={handleInputChange}
-                  placeholder="∞"
-                  min="0"
-                  className="w-full px-3 py-2 border-2 border-brand-light/30 rounded-xl focus:border-brand-dark transition-colors text-sm"
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  name="hasAvailableSlots"
-                  checked={localFilters.hasAvailableSlots}
-                  onChange={handleInputChange}
-                  className="w-4 h-4 accent-brand-dark"
-                />
-                <span className="text-sm text-brand-dark">Лише з вільними місцями</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  name="oneShot"
-                  checked={localFilters.oneShot}
-                  onChange={handleInputChange}
-                  className="w-4 h-4 accent-brand-dark"
-                />
-                <span className="text-sm text-brand-dark">Лише one-shot</span>
-              </label>
-            </div>
-          </>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-          <Button
-            onClick={handleSearch}
-            variant="secondary"
-            fullWidth
-            className="w-full py-2 font-medium"
-          >
-            Шукати
-          </Button>
-          <Button
-            onClick={handleClear}
-            variant="outline"
-            fullWidth
-            className="w-full py-2 border-brand-light/30 text-brand-medium hover:bg-gray-50"
-          >
-            Очистити
-          </Button>
-        </div>
-      </div>
-    </DashboardCard>
-  );
+  return <SearchFiltersForm onSearch={onSearch} />;
 }
 
 SearchFiltersWidget.propTypes = {
@@ -473,7 +242,15 @@ SearchFiltersWidget.propTypes = {
 
 export function SearchResultsWidget() {
   const navigate = useNavigate();
-  const { searchActiveTab, searchFilters, hasSearched } = useSearchStore();
+  const { searchActiveTab, searchFilters } = useSearchStore();
+  const activeFilters = useMemo(
+    () => searchFilters[searchActiveTab] || {},
+    [searchFilters, searchActiveTab]
+  );
+  const filtersApplied = useMemo(
+    () => hasActiveFilters(searchActiveTab, activeFilters),
+    [activeFilters, searchActiveTab]
+  );
 
   const queryClient = useQueryClient();
   const joinMutation = useMutation({
@@ -496,8 +273,8 @@ export function SearchResultsWidget() {
     isFetching: isFetchingCampaigns,
     isLoading: isCampLoading,
     isError: isCampError,
-  } = useSearchCampaignsQuery(searchFilters, {
-    enabled: hasSearched && searchActiveTab === "campaigns",
+  } = useSearchCampaignsQuery(searchFilters[SEARCH_TABS.CAMPAIGNS], {
+    enabled: searchActiveTab === SEARCH_TABS.CAMPAIGNS,
   });
 
   const {
@@ -507,11 +284,11 @@ export function SearchResultsWidget() {
     isFetching: isFetchingSessions,
     isLoading: isSessLoading,
     isError: isSessError,
-  } = useSearchSessionsQuery(searchFilters, {
-    enabled: hasSearched && searchActiveTab === "sessions",
+  } = useSearchSessionsQuery(searchFilters[SEARCH_TABS.SESSIONS], {
+    enabled: searchActiveTab === SEARCH_TABS.SESSIONS,
   });
 
-  const isCampaignsTab = searchActiveTab === "campaigns";
+  const isCampaignsTab = searchActiveTab === SEARCH_TABS.CAMPAIGNS;
   const isSearchLoading = isCampaignsTab ? isCampLoading : isSessLoading;
   const isFetchingMore = isCampaignsTab ? isFetchingCampaigns : isFetchingSessions;
   const hasError = isCampaignsTab ? isCampError : isSessError;
@@ -540,26 +317,25 @@ export function SearchResultsWidget() {
       const result = await joinMutation.mutateAsync(sessionId);
 
       if (result?.success) {
-        toast.success('Ви успішно приєдналися. Вашу заявку обробляють.');
+        toast.success("Ви успішно приєдналися. Вашу заявку обробляють.");
       } else {
         setJoinErrors((prev) => ({ ...prev, [sessionId]: result?.error || null }));
-        toast.error(result?.error || 'Не вдалося приєднатися до сесії');
+        toast.error(result?.error || "Не вдалося приєднатися до сесії");
       }
     } catch (error) {
       const message = getJoinErrorMessage(error);
       setJoinErrors((prev) => ({ ...prev, [sessionId]: message }));
-      toast.error(message || 'Сталася помилка');
+      toast.error(message || "Сталася помилка");
     } finally {
       setJoiningSessionId(null);
     }
   };
 
   return (
-    <DashboardCard title={`Результати (${total})`}>
+    <DashboardCard title={`${TAB_LABELS[searchActiveTab]} (${total})`}>
       <SearchResultsBody
         searchActiveTab={searchActiveTab}
         items={items}
-        hasSearched={hasSearched}
         hasError={hasError}
         isSearchLoading={isSearchLoading}
         expandedSessionId={expandedSessionId}
@@ -568,9 +344,10 @@ export function SearchResultsWidget() {
         handleToggleSession={handleToggleSession}
         handleJoinSession={handleJoinSession}
         openCampaign={(campaignId) => navigate(`/campaign/${campaignId}`)}
-        hasMore={hasMore}
+        hasMore={Boolean(hasMore)}
         isFetchingMore={isFetchingMore}
         loadMoreSearchResults={loadMoreSearchResults}
+        hasFiltersApplied={filtersApplied}
       />
     </DashboardCard>
   );

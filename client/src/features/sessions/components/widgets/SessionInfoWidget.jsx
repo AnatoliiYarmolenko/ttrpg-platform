@@ -8,13 +8,13 @@ import {
   ConfirmModal,
   SessionTimeBadge,
   StatusBadge,
+  VisibilityBadge,
 } from '@/components/shared';
 import useConfirmDialog from '@/hooks/useConfirmDialog';
 import Data from '@/components/ui/icons/Data';
 import Timer from '@/components/ui/icons/Timer';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
 import { getSessionStartState } from '../../utils/sessionStartRules';
-import { SESSION_VISIBILITY_LABELS } from '../../constants/visibility';
 
 const UI_LOCALE = 'uk-UA';
 
@@ -92,13 +92,7 @@ export default function SessionInfoWidget({
   const playersCapacity = Number(session?.maxPlayers);
   const hasPlayersCapacity = Number.isFinite(playersCapacity) && playersCapacity > 0;
   const isCampaignSession = Boolean(session?.campaign?.id || session?.campaignId);
-  const visibilityLabels = isCampaignSession
-    ? SESSION_VISIBILITY_LABELS.CAMPAIGN
-    : SESSION_VISIBILITY_LABELS.ONE_SHOT;
-  const availabilityLabel = visibilityLabels[session?.visibility]
-    || (isCampaignSession
-      ? SESSION_VISIBILITY_LABELS.CAMPAIGN.PRIVATE
-      : SESSION_VISIBILITY_LABELS.ONE_SHOT.PRIVATE);
+  const entityType = isCampaignSession ? 'campaignSession' : 'oneShot';
   const canRenderCampaign = Boolean(showCampaignInfo && session?.campaign?.title);
   const campaignLink = campaignNavigationTarget || (session?.campaign?.id ? `/campaign/${session.campaign.id}` : null);
   const shouldRenderCampaignLink = Boolean(canRenderCampaign && campaignLink && canNavigateToCampaignDirectly);
@@ -210,7 +204,7 @@ export default function SessionInfoWidget({
           </div>
           <div className="flex items-center gap-2 text-brand-medium text-sm">
             <span className="font-medium">Доступність:</span>
-            <span>{availabilityLabel}</span>
+            <VisibilityBadge visibility={session?.visibility} entityType={entityType} plainText />
           </div>
 
           <div className="flex items-center gap-2 text-brand-medium text-sm">

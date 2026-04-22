@@ -1,14 +1,24 @@
 const searchService = require('../services/search.service');
 
+function normalizeBooleanFlag(value) {
+  return value === true || value === 'true';
+}
+
+function parseOptionalNumber(value) {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  const parsedValue = Number.parseFloat(value);
+  return Number.isNaN(parsedValue) ? undefined : parsedValue;
+}
+
 /**
- * SearchController — контролер для публічного пошуку
- * 
- * Доступний без авторизації (або з опціональною авторизацією)
- * для пошуку публічних кампаній та сесій.
+ * SearchController — контролер для пошуку для авторизованих користувачів
  */
 class SearchController {
   /**
-   * Пошук публічних кампаній
+   * Пошук кампаній, доступних поточному користувачу
    * GET /api/search/campaigns
    * 
    * Query params:
@@ -23,16 +33,21 @@ class SearchController {
       const { 
         q: query, 
         system, 
+        ownerUsername,
+        onlyMyParticipation,
         limit = 20, 
         offset = 0, 
         sortBy = 'newest' 
       } = req.query;
 
       const result = await searchService.searchCampaigns({
+        userId: req.user.id,
         query,
         system,
-        limit: Math.min(parseInt(limit) || 20, 50), // Max 50
-        offset: parseInt(offset) || 0,
+        ownerUsername,
+        onlyMyParticipation: normalizeBooleanFlag(onlyMyParticipation),
+        limit: Math.min(Number.parseInt(limit, 10) || 20, 50), // Max 50
+        offset: Number.parseInt(offset, 10) || 0,
         sortBy,
       });
 
@@ -46,7 +61,7 @@ class SearchController {
   }
 
   /**
-   * Пошук публічних сесій
+    * Пошук сесій, доступних поточному користувачу
    * GET /api/search/sessions
    * 
    * Query params:
@@ -67,6 +82,8 @@ class SearchController {
       const {
         q: query,
         system,
+        ownerUsername,
+        onlyMyParticipation,
         dateFrom,
         dateTo,
         minPrice,
@@ -79,16 +96,19 @@ class SearchController {
       } = req.query;
 
       const result = await searchService.searchSessions({
+        userId: req.user.id,
         query,
         system,
+        ownerUsername,
+        onlyMyParticipation: normalizeBooleanFlag(onlyMyParticipation),
         dateFrom: dateFrom || null,
         dateTo: dateTo || null,
-        minPrice: minPrice !== undefined ? parseFloat(minPrice) : undefined,
-        maxPrice: maxPrice !== undefined ? parseFloat(maxPrice) : undefined,
-        hasAvailableSlots: hasAvailableSlots === 'true',
-        oneShot: oneShot === 'true',
-        limit: Math.min(parseInt(limit) || 20, 50), // Max 50
-        offset: parseInt(offset) || 0,
+        minPrice: parseOptionalNumber(minPrice),
+        maxPrice: parseOptionalNumber(maxPrice),
+        hasAvailableSlots: normalizeBooleanFlag(hasAvailableSlots),
+        oneShot: normalizeBooleanFlag(oneShot),
+        limit: Math.min(Number.parseInt(limit, 10) || 20, 50), // Max 50
+        offset: Number.parseInt(offset, 10) || 0,
         sortBy,
       });
 

@@ -1,14 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const searchController = require('../controllers/search.controller');
+const { authenticateToken } = require('../middlewares/auth.middleware');
 
 const {
   validateSearchCampaigns,
   validateSearchSessions,
 } = require('../validation/search.validation');
 
-// === Публічні маршрути пошуку ===
-// Ці маршрути доступні без авторизації
+// === Маршрути пошуку ===
+// Пошук доступний лише авторизованим користувачам платформи
 
 /**
  * Пошук публічних кампаній
@@ -23,7 +24,7 @@ const {
  */
 router.get(
   '/campaigns',
-  [...validateSearchCampaigns],
+  [authenticateToken, ...validateSearchCampaigns],
   (req, res, next) => searchController.searchCampaigns(req, res, next)
 );
 
@@ -46,7 +47,7 @@ router.get(
  */
 router.get(
   '/sessions',
-  [...validateSearchSessions],
+  [authenticateToken, ...validateSearchSessions],
   (req, res, next) => searchController.searchSessions(req, res, next)
 );
 

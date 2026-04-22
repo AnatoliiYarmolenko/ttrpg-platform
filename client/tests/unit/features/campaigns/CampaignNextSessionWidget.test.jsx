@@ -1,6 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 import CampaignNextSessionWidget from '@/features/campaigns/components/widgets/CampaignNextSessionWidget';
@@ -21,7 +20,7 @@ const baseSession = {
   id: 55,
   title: 'The Sunless Citadel',
   description: 'Наступна пригода.',
-  date: '2026-04-19T18:00:00.000Z',
+  date: '2026-04-25T18:00:00.000Z',
   duration: 180,
   status: 'PLANNED',
   visibility: 'PRIVATE',
@@ -37,6 +36,15 @@ const baseSession = {
 };
 
 describe('CampaignNextSessionWidget', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T12:00:00Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
   it('renders campaign title as link when navigation target is available', () => {
     render(
       <MemoryRouter>
@@ -67,7 +75,6 @@ describe('CampaignNextSessionWidget', () => {
   });
 
   it('preserves campaign share token when opening session', async () => {
-    const user = userEvent.setup();
 
     render(
       <MemoryRouter>
@@ -79,9 +86,7 @@ describe('CampaignNextSessionWidget', () => {
         />
       </MemoryRouter>
     );
-
-    await user.click(screen.getByRole('button', { name: 'Перейти до сесії' }));
-
+    fireEvent.click(screen.getByRole('button', { name: 'Перейти до сесії' }));
     expect(mocks.navigate).toHaveBeenCalledWith('/session/55?campaignShareToken=abc123');
   });
 });

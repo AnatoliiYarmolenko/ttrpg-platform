@@ -415,7 +415,7 @@ test('Global calendar filter for anonymous users is PUBLIC-only', async () => {
   assert.equal(visibilityClauses.every((clause) => clause.visibility === 'PUBLIC'), true);
 });
 
-test('Day sessions hide campaign info for outsider in PUBLIC session of LINK_ONLY campaign', async () => {
+test('Day sessions keep campaign title but hide campaign id for outsider in PUBLIC session of LINK_ONLY campaign', async () => {
   const mockSessions = [
     {
       id: 1,
@@ -447,7 +447,9 @@ test('Day sessions hide campaign info for outsider in PUBLIC session of LINK_ONL
   const sessions = await service.getSessionsByDayFiltered(42, '2026-03-12', 'global', {});
 
   assert.equal(sessions.length, 1);
-  assert.equal(sessions[0].campaign, null);
+  assert.equal(sessions[0].campaign?.title, 'Hidden Campaign');
+  assert.equal(sessions[0].campaign?.id, null);
+  assert.equal(sessions[0].campaign?.canOpenDirectly, false);
 });
 
 test('Day sessions keep campaign info for campaign member in PUBLIC session of LINK_ONLY campaign', async () => {

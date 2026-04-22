@@ -1,19 +1,160 @@
 const { prisma } = require('../lib/prisma');
+const {
+  applyCampaignDiscoveryFilter,
+  applySessionDiscoveryFilter,
+  buildNestedCampaignSelectForViewer,
+  sanitizeNestedCampaignForSession,
+} = require('../domain/access/discovery.policy');
 
-function buildCampaignSearchWhere({ query, system }) {
-  const where = {
-    visibility: 'PUBLIC',
-  };
+const MIN_SLOT_SCAN_CHUNK = 50;
+const MAX_SLOT_SCAN_CHUNK = 200;
 
-  if (query && query.trim()) {
+function appendAndClause(whereCondition, clause) {
+  whereCondition.AND = whereCondition.AND || [];
+  whereCondition.AND.push(clause);
+}
+
+function buildOwnerUserFilter(ownerUsername) {
+  if (!ownerUsername?.trim()) {
+    return null;
+  }
+
+  const normalizedUsername = ownerUsername.trim();
+
+  return [
+    { owner: { username: { contains: normalizedUsername, mode: 'insensitive' } } },
+    { owner: { displayName: { contains: normalizedUsername, mode: 'insensitive' } } },
+  ];
+}
+
+function resolveRangeStart(dateFrom) {
+  if (!dateFrom) {
+    return null;
+  }
+
+  return new Date(dateFrom);
+}
+
+function resolveRangeEnd(dateTo) {
+  if (!dateTo) {
+    return null;
+  }
+
+  const resolvedDate = new Date(dateTo);
+
+  if (dateTo.length === 10) {
+    resolvedDate.setUTCHours(23, 59, 59, 999);
+  }
+
+  return resolvedDate;
+}
+
+function applySessionOwnerFilter(where, ownerUsername) {
+  const userFilter = buildOwnerUserFilter(ownerUsername);
+  if (userFilter) {
+    appendAndClause(where, { OR: userFilter });
+  }
+}
+
+function applySessionParticipationFilter(where, userId, onlyMyParticipation) {
+  if (onlyMyParticipation !== true || !userId) {
+    return;
+  }
+
+  appendAndClause(where, {
+    OR: [
+      { ownerId: userId },
+      {
+        participants: {
+          some: {
+            userId,
+            status: 'CONFIRMED',
+          },
+        },
+      },
+    ],
+  });
+}
+
+function applySessionDateRange(where, dateFrom, dateTo) {
+  const rangeStart = resolveRangeStart(dateFrom);
+  const rangeEnd = resolveRangeEnd(dateTo);
+
+  if (rangeStart || rangeEnd) {
+    where.date = {};
+
+    if (rangeStart) {
+      where.date.gte = rangeStart;
+    }
+
+    if (rangeEnd) {
+      where.date.lte = rangeEnd;
+    }
+
+    return;
+  }
+
+  appendAndClause(where, {
+    OR: [
+      { status: 'ACTIVE' },
+      {
+        status: 'PLANNED',
+        date: { gte: new Date() },
+      },
+    ],
+  });
+}
+
+function applySessionPriceRange(where, minPrice, maxPrice) {
+  if (minPrice === undefined && maxPrice === undefined) {
+    return;
+  }
+
+  where.price = {};
+
+  if (minPrice !== undefined) {
+    where.price.gte = minPrice;
+  }
+
+  if (maxPrice !== undefined) {
+    where.price.lte = maxPrice;
+  }
+}
+
+function buildCampaignSearchWhere({ userId, query, system, ownerUsername, onlyMyParticipation }) {
+  const where = {};
+
+  applyCampaignDiscoveryFilter(where, userId);
+
+  if (query?.trim()) {
     where.OR = [
       { title: { contains: query.trim(), mode: 'insensitive' } },
       { description: { contains: query.trim(), mode: 'insensitive' } },
     ];
   }
 
-  if (system && system.trim()) {
+  if (system?.trim()) {
     where.system = { contains: system.trim(), mode: 'insensitive' };
+  }
+
+  const userFilter = buildOwnerUserFilter(ownerUsername);
+  if (userFilter) {
+    where.AND = [...(where.AND || []), { OR: userFilter }];
+  }
+
+  if (onlyMyParticipation === true && userId) {
+    appendAndClause(where, {
+      OR: [
+        { ownerId: userId },
+        {
+          members: {
+            some: {
+              userId,
+            },
+          },
+        },
+      ],
+    });
   }
 
   return where;
@@ -47,8 +188,11 @@ function formatCampaignSearchResult(campaign) {
 }
 
 function buildSessionSearchWhere({
+  userId,
   query,
   system,
+  ownerUsername,
+  onlyMyParticipation,
   dateFrom,
   dateTo,
   minPrice,
@@ -56,48 +200,32 @@ function buildSessionSearchWhere({
   oneShot,
 }) {
   const where = {
-    visibility: 'PUBLIC',
     status: { in: ['PLANNED', 'ACTIVE'] },
   };
 
-  if (query && query.trim()) {
+  applySessionDiscoveryFilter(where, userId);
+
+  if (query?.trim()) {
     where.OR = [
       { title: { contains: query.trim(), mode: 'insensitive' } },
       { description: { contains: query.trim(), mode: 'insensitive' } },
     ];
   }
 
-  if (system && system.trim()) {
-    where.campaign = {
-      system: { contains: system.trim(), mode: 'insensitive' },
-    };
+  if (system?.trim()) {
+    const normalizedSystem = system.trim();
+    appendAndClause(where, {
+      OR: [
+        { system: { contains: normalizedSystem, mode: 'insensitive' } },
+        { campaign: { system: { contains: normalizedSystem, mode: 'insensitive' } } },
+      ],
+    });
   }
 
-  if (dateFrom || dateTo) {
-    where.date = {};
-
-    if (dateFrom) {
-      where.date.gte = new Date(dateFrom);
-    }
-
-    if (dateTo) {
-      where.date.lte = new Date(dateTo);
-    }
-  } else {
-    where.date = { gte: new Date() };
-  }
-
-  if (minPrice !== undefined || maxPrice !== undefined) {
-    where.price = {};
-
-    if (minPrice !== undefined) {
-      where.price.gte = minPrice;
-    }
-
-    if (maxPrice !== undefined) {
-      where.price.lte = maxPrice;
-    }
-  }
+  applySessionOwnerFilter(where, ownerUsername);
+  applySessionParticipationFilter(where, userId, onlyMyParticipation);
+  applySessionDateRange(where, dateFrom, dateTo);
+  applySessionPriceRange(where, minPrice, maxPrice);
 
   if (oneShot === true) {
     where.campaignId = null;
@@ -118,7 +246,7 @@ function resolveSessionOrderBy(sortBy) {
   }
 }
 
-function buildSessionSearchQuery(where, orderBy) {
+function buildSessionSearchQuery(where, orderBy, userId = null) {
   return {
     where,
     include: {
@@ -126,9 +254,13 @@ function buildSessionSearchQuery(where, orderBy) {
         select: { id: true, username: true, displayName: true, avatarUrl: true },
       },
       campaign: {
-        select: { id: true, title: true, system: true },
+        select: buildNestedCampaignSelectForViewer(userId),
       },
       participants: {
+        where: {
+          role: 'PLAYER',
+          status: 'CONFIRMED',
+        },
         select: { id: true, role: true, status: true },
       },
       _count: {
@@ -150,12 +282,44 @@ function hasAvailablePlayerSlots(session) {
 }
 
 async function findSessionsWithAvailableSlots({ baseQuery, offset, limit }) {
-  const allMatchingSessions = await prisma.session.findMany(baseQuery);
-  const filteredBySlots = allMatchingSessions.filter(hasAvailablePlayerSlots);
+  const chunkSize = Math.max(MIN_SLOT_SCAN_CHUNK, Math.min(MAX_SLOT_SCAN_CHUNK, limit * 4));
+  const pagedSessions = [];
+  let scannedOffset = 0;
+  let filteredTotal = 0;
+
+  while (true) {
+    const sessionsChunk = await prisma.session.findMany({
+      ...baseQuery,
+      skip: scannedOffset,
+      take: chunkSize,
+    });
+
+    if (sessionsChunk.length === 0) {
+      break;
+    }
+
+    for (const session of sessionsChunk) {
+      if (!hasAvailablePlayerSlots(session)) {
+        continue;
+      }
+
+      if (filteredTotal >= offset && pagedSessions.length < limit) {
+        pagedSessions.push(session);
+      }
+
+      filteredTotal += 1;
+    }
+
+    scannedOffset += sessionsChunk.length;
+
+    if (sessionsChunk.length < chunkSize) {
+      break;
+    }
+  }
 
   return {
-    sessions: filteredBySlots.slice(offset, offset + limit),
-    total: filteredBySlots.length,
+    sessions: pagedSessions,
+    total: filteredTotal,
   };
 }
 
@@ -175,8 +339,9 @@ async function findPagedSessions({ baseQuery, where, offset, limit }) {
   };
 }
 
-function formatSessionSearchResult(session) {
+function formatSessionSearchResult(session, userId = null) {
   const confirmedPlayers = countConfirmedPlayers(session);
+  const campaign = sanitizeNestedCampaignForSession(session, userId);
 
   return {
     id: session.id,
@@ -192,15 +357,31 @@ function formatSessionSearchResult(session) {
     visibility: session.visibility,
     owner: session.owner,
     ownerId: session.ownerId,
-    campaign: session.campaign,
+    campaign,
+    system: session.system || campaign?.system || null,
     isOneShot: !session.campaignId,
     createdAt: session.createdAt,
   };
 }
 
 class SearchService {
-  async searchCampaigns({ query, system, limit = 20, offset = 0, sortBy = 'newest' }) {
-    const where = buildCampaignSearchWhere({ query, system });
+  async searchCampaigns({
+    userId = null,
+    query,
+    system,
+    ownerUsername,
+    onlyMyParticipation,
+    limit = 20,
+    offset = 0,
+    sortBy = 'newest',
+  }) {
+    const where = buildCampaignSearchWhere({
+      userId,
+      query,
+      system,
+      ownerUsername,
+      onlyMyParticipation,
+    });
     const orderBy = resolveCampaignOrderBy(sortBy);
 
     const [campaigns, total] = await Promise.all([
@@ -231,8 +412,11 @@ class SearchService {
   }
 
   async searchSessions({
+    userId = null,
     query,
     system,
+    ownerUsername,
+    onlyMyParticipation,
     dateFrom,
     dateTo,
     minPrice,
@@ -244,8 +428,11 @@ class SearchService {
     sortBy = 'date',
   }) {
     const where = buildSessionSearchWhere({
+      userId,
       query,
       system,
+      ownerUsername,
+      onlyMyParticipation,
       dateFrom,
       dateTo,
       minPrice,
@@ -253,13 +440,13 @@ class SearchService {
       oneShot,
     });
     const orderBy = resolveSessionOrderBy(sortBy);
-    const baseQuery = buildSessionSearchQuery(where, orderBy);
+    const baseQuery = buildSessionSearchQuery(where, orderBy, userId);
 
     const { sessions, total } = hasAvailableSlots === true
       ? await findSessionsWithAvailableSlots({ baseQuery, offset, limit })
       : await findPagedSessions({ baseQuery, where, offset, limit });
 
-    const formattedSessions = sessions.map(formatSessionSearchResult);
+    const formattedSessions = sessions.map((session) => formatSessionSearchResult(session, userId));
 
     return {
       sessions: formattedSessions,

@@ -93,7 +93,7 @@ export default function SessionTimeBadge({ session, className = '' }) {
 
     if (session.status === 'ACTIVE') {
       if (isForgottenSession(session, nowMs)) {
-        return { text: 'Забута сесія (не завершена)', variant: 'forgotten' };
+        return { text: 'Забута сесія', variant: 'forgotten' };
       }
       return { text: 'Сесія вже йде!', variant: 'active' };
     }

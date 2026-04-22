@@ -245,7 +245,7 @@ describe('useSessionPageController tab state', () => {
 
     expect(result.current.showCampaignInfo).toBe(true);
     expect(result.current.canNavigateToCampaignDirectly).toBe(true);
-    expect(result.current.campaignNavigationTarget).toBe('/campaign/77');
+    expect(result.current.campaignNavigationTarget).toBe('/campaign/77?tab=details');
   });
 });
 

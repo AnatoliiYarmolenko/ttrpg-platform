@@ -58,7 +58,7 @@ export default function CampaignPreviewWidget({
               {campaign.title}
             </h2>
             <div className="flex flex-col items-end gap-2">
-              <VisibilityBadge visibility={campaign.visibility} />
+              <VisibilityBadge visibility={campaign.visibility} entityType="campaign" />
               <StatusBadge status={campaign.status || 'ACTIVE'} size="sm" />
             </div>
           </div>
