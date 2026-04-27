@@ -56,7 +56,7 @@ const emailLimiter = createRedisLimiter({
   type: 'auth_forgot_password',
   windowMs: 60 * 60 * 1000, // 1 година
   max: 3, // Збільшив до 3, щоб було трохи лояльніше
-  message: { message: 'Забагато запитів на відновлення. Спробуйте через годину.' },
+  message: { message: 'Забагато запитів на відновлення. Спробуйте пізніше.' },
 });
 
 // Ліміт для повторної відправки підтвердження пошти
@@ -118,7 +118,7 @@ const emailChangeLimiter = createRedisLimiter({
   type: 'security_email_change',
   windowMs: 60 * 60 * 1000, // 1 година
   max: 3, // 3 спроби на годину
-  message: { message: 'Занадто багато запитів на зміну email. Спробуйте через годину.' },
+  message: { message: 'Занадто багато запитів на зміну email. Спробуйте пізніше.' },
   statusCode: 429,
   keyGenerator: (req) => String(req.user?.id || getClientIp(req)),
 });
@@ -169,7 +169,7 @@ const avatarUploadLimiter = createRedisLimiter({
   type: 'profile_avatar_upload',
   windowMs: 60 * 60 * 1000, // 1 година
   max: 10, // 10 завантажень на годину
-  message: { message: 'Занадто багато завантажень аватара. Спробуйте через годину.' },
+  message: { message: 'Занадто багато завантажень аватара. Спробуйте пізніше.' },
   statusCode: 429,
   keyGenerator: (req) => String(req.user?.id || getClientIp(req)),
 });

@@ -59,6 +59,7 @@ export default function SearchFiltersForm({ onSearch }) {
   );
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalFilters(mapSearchFiltersToLocal(activeFilters, searchActiveTab));
   }, [activeFilters, searchActiveTab]);
 

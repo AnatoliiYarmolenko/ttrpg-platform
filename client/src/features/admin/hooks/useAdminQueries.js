@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/stores/useToastStore';
+import useAuthStore from '@/stores/useAuthStore';
 import {
   getAdminStats,
   getAdminUsers,
@@ -10,34 +11,42 @@ import {
 } from '../api/adminApi';
 
 export const useAdminStatsQuery = (options = {}) => {
+  const user = useAuthStore((state) => state.user);
   return useQuery({
     queryKey: ['admin', 'stats'],
     queryFn: getAdminStats,
+    enabled: !!user,
     staleTime: 5 * 60 * 1000,
     ...options,
   });
 };
 
 export const useAdminUsersQuery = (params, options = {}) => {
+  const user = useAuthStore((state) => state.user);
   return useQuery({
     queryKey: ['admin', 'users', params],
     queryFn: () => getAdminUsers(params),
+    enabled: !!user,
     ...options,
   });
 };
 
 export const useAdminCampaignsQuery = (params, options = {}) => {
+  const user = useAuthStore((state) => state.user);
   return useQuery({
     queryKey: ['admin', 'campaigns', params],
     queryFn: () => getAdminCampaigns(params),
+    enabled: !!user,
     ...options,
   });
 };
 
 export const useAdminSessionsQuery = (params, options = {}) => {
+  const user = useAuthStore((state) => state.user);
   return useQuery({
     queryKey: ['admin', 'sessions', params],
     queryFn: () => getAdminSessions(params),
+    enabled: !!user,
     ...options,
   });
 };

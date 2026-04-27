@@ -32,6 +32,7 @@ vi.mock('@/stores/useAuthStore', () => ({
 }));
 
 vi.mock('@/features/auth/api/authApi', () => ({
+  getCurrentUser: vi.fn(() => Promise.resolve({ id: 1, username: 'admin-user', role: 'ADMIN' })),
   logoutUser: vi.fn(),
 }));
 

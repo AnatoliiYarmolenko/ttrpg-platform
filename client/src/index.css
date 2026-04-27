@@ -6,6 +6,14 @@
   --color-brand-light: #9DC88D;
   --color-brand-accent: #F1B24A;
   --color-brand-white: #FFFFFF;
+
+  --radius-card: 1rem;
+  --radius-control: 0.75rem;
+  --radius-pill: 9999px;
+
+  --spacing-18: 4.5rem;
+  --spacing-22: 5.5rem;
+  --spacing-30: 7.5rem;
 }
 
 :where(

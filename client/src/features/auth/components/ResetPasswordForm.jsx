@@ -2,17 +2,20 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useForm, useWatch } from 'react-hook-form';
 import { resetPassword } from '../api/authApi';
-import Arrow from '@/components/ui/icons/Arrow';
+import useAuthStore from '@/stores/useAuthStore';
+import { queryClient } from '@/lib/queryClient';
 
 import AuthInput from "../ui/AuthInput";
 import AuthButton from "../ui/AuthButton";
 import PasswordStrength from "../ui/PasswordStrength";
 import { VALIDATION_RULES } from "../../../utils/validationRules";
 import { toast } from '@/stores/useToastStore';
+import Dice20 from '@/components/ui/icons/Dice20';
 
 export default function ResetPasswordForm() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const clearUser = useAuthStore((state) => state.clearUser);
   const resetToken = searchParams.get('token') || '';
   const tokenError = resetToken ? '' : 'Невалідне посилання для скидання. Токен не знайдений.';
   const [success, setSuccess] = useState(false);
@@ -34,7 +37,12 @@ export default function ResetPasswordForm() {
       });
 
       setSuccess(true);
-      toast.success('✓ Пароль успішно скинуто! Перенаправляємо на вхід...');
+      toast.success('Пароль успішно скинуто! Виконується вихід...');
+      
+      // Розлогінюємо користувача для безпеки після скидання пароля
+      clearUser();
+      queryClient.clear();
+      
       setTimeout(() => {
         navigate('/login');
       }, 3000);
@@ -57,6 +65,19 @@ export default function ResetPasswordForm() {
             </Link>
         </div>
       );
+  }
+
+  if (success) {
+    return (
+      <div className="text-center pt-0 pb-8">
+        <Dice20 className="w-16 h-16 text-brand-accent mx-auto " />
+        <p className="text-brand-medium font-medium mb-6">Пароль успішно скинуто!</p>
+        <p className="text-brand-medium mb-3">Виконується автоматичний перехід на сторінку входу...</p>
+        <Link to="/login" className="text-brand-accent hover:text-brand-medium font-semibold transition-colors">
+          Перейти до входу зараз
+        </Link>
+      </div>
+    );
   }
   
   return (
@@ -99,7 +120,7 @@ export default function ResetPasswordForm() {
 
       <div className="mt-6 text-center">
         <Link to="/login" className="text-brand-dark hover:text-brand-accent font-semibold transition-colors flex items-center justify-center gap-2">
-          <Arrow className="w-4 h-4" direction="left" /> Назад до входу
+          Назад до входу
         </Link>
       </div>
     </form>

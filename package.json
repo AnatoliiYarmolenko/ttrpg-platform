@@ -1,0 +1,37 @@
+{
+  "name": "ttrpg-platform",
+  "private": true,
+  "version": "1.0.0",
+  "description": "TTRPG Platform - Monorepo with client and server",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:client": "npm run dev --workspace=client",
+    "dev:server": "npm run dev --workspace=server",
+    "build": "npm run build --workspaces --if-present",
+    "build:client": "npm run build --workspace=client",
+    "lint": "npm run lint --workspaces --if-present",
+    "lint:client": "npm run lint --workspace=client",
+    "lint:server": "npm run lint --workspace=server",
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e": "npm run test:e2e --workspace=client",
+    "test:all": "npm run test && npm run test:e2e",
+    "test:client": "npm run test --workspace=client",
+    "test:server": "npm run test --workspace=server",
+    "test:coverage": "npm run test:coverage --workspaces --if-present",
+    "test:coverage:client": "npm run test:coverage --workspace=client",
+    "test:coverage:server": "npm run test:coverage --workspace=server",
+    "clean": "npm run clean --workspaces --if-present",
+    "clean:client": "rm -rf client/node_modules client/dist client/coverage",
+    "clean:server": "rm -rf server/node_modules server/coverage"
+  },
+  "devDependencies": {
+    "npm-run-all": "^4.1.5"
+  }
+}

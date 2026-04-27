@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getProfileByUsername, getProfileByUserId, getMyProfile, updateProfile, uploadAvatar as uploadAvatarApi, deleteAvatar as deleteAvatarApi } from '../api/profileApi';
 import { toast } from '@/stores/useToastStore';
+import useAuthStore from '@/stores/useAuthStore';
 
 export const useProfileByUsernameQuery = (username) => {
   return useQuery({
@@ -46,6 +47,7 @@ export const useProfileByUserIdQuery = (userId, participants = []) => {
 };
 
 export const useMyProfileQuery = () => {
+  const user = useAuthStore((state) => state.user);
   return useQuery({
     queryKey: ['profile', 'me'],
     queryFn: async () => {
@@ -53,6 +55,7 @@ export const useMyProfileQuery = () => {
       if (!result?.profile) throw new Error('Профіль не знайдено');
       return result.profile;
     },
+    enabled: !!user,
     staleTime: 5 * 60 * 1000,
   });
 };

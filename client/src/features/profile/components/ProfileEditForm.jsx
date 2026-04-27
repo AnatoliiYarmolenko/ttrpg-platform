@@ -32,6 +32,7 @@ export default function ProfileEditForm({ onSuccess }) {
   // Заповнення форми даними
   useEffect(() => {
     if (profile) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         displayName: profile.displayName || '',
         bio: profile.bio || '',

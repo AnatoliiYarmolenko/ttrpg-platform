@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/stores/useToastStore';
 import {
   getCampaignPageById,
-  getCampaignPageByShareToken,
   updateCampaign,
   transferCampaignOwnership,
   cancelCampaignSession,
@@ -53,14 +52,11 @@ export const useCampaignPageQuery = ({
   shareToken = null,
 } = {}) => {
   const isValidId = Number.isInteger(campaignId) && campaignId > 0;
-  const hasShareToken = typeof shareToken === 'string' && shareToken.trim().length > 0;
 
   return useQuery({
     queryKey: campaignPageQueryKeys.detail({ campaignId, shareToken }),
     queryFn: async () => {
-      const res = hasShareToken
-        ? await getCampaignPageByShareToken(shareToken)
-        : await getCampaignPageById(campaignId);
+      const res = await getCampaignPageById(campaignId);
 
       if (!res.success) {
         throw new Error(res.error || 'Failed to fetch campaign');
@@ -68,7 +64,7 @@ export const useCampaignPageQuery = ({
 
       return res.data;
     },
-    enabled: isValidId || hasShareToken,
+    enabled: isValidId,
   });
 };
 

@@ -4,7 +4,9 @@
   "main": "index.js",
   "scripts": {
     "lint": "node scripts/lint.js",
+    "pretest": "prisma generate --schema=prisma/schema.prisma",
     "test": "node --test tests/**/*.test.js",
+    "pretest:coverage": "prisma generate --schema=prisma/schema.prisma",
     "test:coverage": "c8 --all --include=src/**/*.js --exclude=src/constants/** --exclude=src/validation/** --reporter=text-summary --reporter=lcov --reporter=html node --test tests/**/*.test.js",
     "dev": "nodemon index.js",
     "seed": "docker exec -it ttrpg_server node prisma/seed.js",

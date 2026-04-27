@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/stores/useToastStore';
 import {
   getSessionPageById,
-  getSessionPageByShareToken,
   getSessionParticipants,
   updateSession,
   deleteSession,
@@ -54,14 +53,11 @@ export const useSessionPageQuery = ({
   campaignShareToken = null,
 } = {}) => {
   const isValidId = Number.isInteger(sessionId) && sessionId > 0;
-  const hasShareToken = typeof shareToken === 'string' && shareToken.trim().length > 0;
 
   return useQuery({
     queryKey: sessionPageQueryKeys.detail({ sessionId, shareToken, campaignShareToken }),
     queryFn: async () => {
-      const res = hasShareToken
-        ? await getSessionPageByShareToken(shareToken)
-        : await getSessionPageById(sessionId, { campaignShareToken });
+      const res = await getSessionPageById(sessionId, { campaignShareToken });
 
       if (!res.success) {
         throw new Error(res.error || 'Failed to fetch session');
@@ -69,7 +65,7 @@ export const useSessionPageQuery = ({
 
       return res.data;
     },
-    enabled: isValidId || hasShareToken,
+    enabled: isValidId,
   });
 };
 

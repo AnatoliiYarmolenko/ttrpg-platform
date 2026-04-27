@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { verifyEmail } from "../api/authApi"; 
 import AuthLayout from "../components/AuthLayout";
 import { toast } from "@/stores/useToastStore";
+import useAuthStore from "@/stores/useAuthStore";
 
 function useQuery() {
   return new URLSearchParams(useLocation().search);
@@ -12,9 +13,13 @@ function useQuery() {
 export default function VerifyEmailPage() {
   const query = useQuery();
   const navigate = useNavigate();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const token = query.get("token");
   const [status, setStatus] = useState(token ? "loading" : "error");
   const [message, setMessage] = useState(token ? "" : "Токен підтвердження не вказано.");
+  
+  const destination = isAuthenticated ? "/" : "/login";
+  const linkText = isAuthenticated ? "Перейти на головну" : "Перейти до входу";
   
   const verifyCalled = useRef(false);
 
@@ -35,7 +40,7 @@ export default function VerifyEmailPage() {
         const successMessage = data.message || "Email успішно підтверджено! Тепер ви можете увійти.";
         setMessage(successMessage);
         toast.success(successMessage);
-        setTimeout(() => navigate("/login"), 4000);
+        setTimeout(() => navigate(destination), 4000);
       },
       onError: (err) => {
         setStatus("error");
@@ -44,7 +49,7 @@ export default function VerifyEmailPage() {
         toast.error(errorMessage);
       }
     });
-  }, [token, navigate, verifyEmailMutation]);
+  }, [token, navigate, verifyEmailMutation, destination]);
   
   return (
     <AuthLayout title="Підтвердження email">
@@ -52,7 +57,7 @@ export default function VerifyEmailPage() {
       <div className="py-4 text-center">
         {status === "loading" && (
             <div className="text-brand-medium animate-pulse font-medium">
-               ⏳ Перевіряємо ваш токен...
+               Перевіряємо ваш токен...
             </div>
         )}
 
@@ -65,10 +70,10 @@ export default function VerifyEmailPage() {
         {status !== "loading" && (
           <div className="mt-6">
             <Link 
-                to="/login" 
+                to={destination}
                 className="text-brand-dark hover:text-brand-accent font-semibold transition-colors border-b-2 border-transparent hover:border-brand-accent"
             >
-              Перейти до входу
+              {linkText}
             </Link>
           </div>
         )}
