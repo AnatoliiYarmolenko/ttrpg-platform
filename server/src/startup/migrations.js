@@ -63,7 +63,11 @@ async function runMigrations() {
   try {
     logger.info('Виконуємо міграції Prisma');
     const rootDir = path.resolve(__dirname, '../..');
-    execSync('npx prisma migrate deploy', { stdio: 'inherit', cwd: rootDir });
+    const prismaDir = path.join(rootDir, 'server');
+    // With workspaces, prisma binary is in root node_modules
+    const prismaBin = path.join(rootDir, 'node_modules', '.bin', 'prisma');
+    const nodePath = process.execPath;
+    execSync(nodePath, [prismaBin, 'migrate', 'deploy'], { stdio: 'inherit', cwd: prismaDir, env: { ...process.env } });
     logger.info('Міграції виконано успішно');
     return true;
   } catch (error) {

@@ -9,28 +9,37 @@
 ## Tech Stack
 
 - Frontend: React 19, Vite 7, React Router 7, TanStack Query, Zustand, Tailwind CSS
-- Backend: Node.js, Express 5, Prisma ORM
-- Database: PostgreSQL
-- Cache/Rate limiting: Redis
+- Backend: Node.js 22, Express 5, Prisma ORM
+- Database: PostgreSQL 15
+- Cache and rate limiting: Redis 7
 - Containerization: Docker, Docker Compose
 - CI: GitLab CI + GitHub Actions
 - Testing (Backend): Node test runner + c8 coverage
 - Testing (Frontend): Vitest + Testing Library + jsdom + V8 coverage
+
+## Dependency Management (Root-Only Workspaces)
+
+Проєкт працює у режимі root-only npm workspaces:
+
+- єдиний lock-файл: `package-lock.json` у корені;
+- інсталяція залежностей виконується з кореня;
+- CI також використовує root install (`npm ci`) і запускає workspace-скрипти.
+
+Не створюйте окремі lock-файли у `client/` або `server/`.
 
 ## Quick Start
 
 ### 1. Install dependencies
 
 ```bash
-npm --prefix server ci
-npm --prefix client ci
+npm ci
 ```
 
 ### 2. Run locally (without Docker)
 
 ```bash
-npm --prefix server run dev
-npm --prefix client run dev
+npm run dev:server
+npm run dev:client
 ```
 
 ### 3. Run with Docker Compose
@@ -39,43 +48,45 @@ npm --prefix client run dev
 docker compose up --build
 ```
 
-## Testing And Coverage
-
-### Backend
+## Common Scripts
 
 ```bash
-npm --prefix server run test
-npm --prefix server run test:coverage
+# Build
+npm run build
+npm run build:client
+
+# Lint
+npm run lint
+npm run lint:client
+npm run lint:server
+
+# Tests
+npm run test
+npm run test:client
+npm run test:server
+npm run test:e2e
+
+# Coverage
+npm run test:coverage
+npm run test:coverage:client
+npm run test:coverage:server
 ```
 
-Coverage artifacts are generated in:
+## Coverage Output
 
-- `server/coverage/`
-- `server/coverage/lcov.info`
+- Frontend: `client/coverage/` (including `lcov.info`)
+- Backend: `server/coverage/` (including `lcov.info`)
 
-### Frontend
+## CI Overview
 
-```bash
-npm --prefix client run test
-npm --prefix client run test:coverage
-```
-
-Coverage artifacts are generated in:
-
-- `client/coverage/`
-- `client/coverage/lcov.info`
-- `client/coverage/coverage-summary.json`
-
-## CI
-
-Pipeline checks currently include:
+GitHub Actions pipeline includes:
 
 - build_server
 - build_client
 - lint_client
+- lint_server
 - coverage_client
 - coverage_server
-- sonarcloud_scan (GitLab)
-- sonarcloud (GitHub)
+- sonarcloud
 
-Coverage values for frontend and backend are parsed in GitLab jobs and stored as pipeline artifacts.
+Усі кроки інсталяції в GitHub CI виконуються через `npm ci` з кореня.

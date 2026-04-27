@@ -18,13 +18,12 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: server/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install and build server prerequisites
         run: |
-          cd server
           npm ci
-          npx prisma generate
+          npm --workspace server exec prisma generate
 
   build_client:
     runs-on: ubuntu-latest
@@ -37,13 +36,12 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: client/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install and build client
         run: |
-          cd client
           npm ci
-          npm run build
+          npm run build:client
 
   lint_client:
     runs-on: ubuntu-latest
@@ -57,13 +55,13 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: client/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install client dependencies
-        run: npm --prefix client ci
+        run: npm ci
 
       - name: Lint client
-        run: npm --prefix client run lint
+        run: npm run lint:client
 
   lint_server:
     runs-on: ubuntu-latest
@@ -77,13 +75,13 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: server/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install server dependencies
-        run: npm --prefix server ci
+        run: npm ci
 
       - name: Lint server
-        run: npm --prefix server run lint
+        run: npm run lint:server
 
   coverage_client:
     runs-on: ubuntu-latest
@@ -97,13 +95,13 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: client/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install client dependencies
-        run: npm --prefix client ci
+        run: npm ci
 
       - name: Generate client coverage
-        run: npm --prefix client run test:coverage
+        run: npm run test:coverage:client
 
       - name: Upload client coverage artifacts
         uses: actions/upload-artifact@v4
@@ -127,16 +125,16 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: server/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install server dependencies
-        run: npm --prefix server ci
+        run: npm ci
 
       - name: Generate Prisma client
-        run: cd server && npx prisma generate
+        run: npm --workspace server exec prisma generate
 
       - name: Generate server coverage
-        run: npm --prefix server run test:coverage
+        run: npm run test:coverage:server
 
       - name: Upload server coverage artifacts
         uses: actions/upload-artifact@v4

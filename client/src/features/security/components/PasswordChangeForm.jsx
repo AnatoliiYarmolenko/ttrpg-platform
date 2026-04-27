@@ -1,15 +1,36 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useSecurityMutations } from '../hooks/useSecurityMutations';
+import useAuthStore from '@/stores/useAuthStore';
+import { forgotPassword } from '@/features/auth/api/authApi';
 import Button from '@/components/ui/Button';
+import { toast } from '@/stores/useToastStore';
 import PasswordStrength from '@/features/auth/ui/PasswordStrength';
 import FormField from '@/components/ui/FormField';
 import { getFormFieldControlClasses } from '@/components/ui/formFieldClasses';
-import { toast } from '@/stores/useToastStore';
 
 export default function PasswordChangeForm() {
   const { changePassword } = useSecurityMutations();
   const saving = changePassword.isPending;
+  const user = useAuthStore((state) => state.user);
+  const [isRequestingReset, setIsRequestingReset] = useState(false);
+
+  const handleRequestPasswordReset = async () => {
+    if (!user?.email) {
+      toast.error('Не вдалося отримати email користувача');
+      return;
+    }
+
+    setIsRequestingReset(true);
+    try {
+      await forgotPassword(user.email);
+      toast.success('Інструкції зі скидання пароля надіслано на вашу пошту');
+    } catch (err) {
+      const message = err.response?.data?.error || err.response?.data?.message || 'Помилка при відправці запиту';
+      toast.error(message);
+    } finally {
+      setIsRequestingReset(false);
+    }
+  };
   
   const [formData, setFormData] = useState({
     currentPassword: '',
@@ -232,12 +253,14 @@ export default function PasswordChangeForm() {
 
       {/* Забули пароль? */}
       <div className="text-center">
-        <Link 
-          to="/forgot-password" 
-          className="text-sm text-brand-medium hover:text-brand-dark hover:underline transition-colors"
+        <button
+          type="button"
+          onClick={handleRequestPasswordReset}
+          disabled={isRequestingReset}
+          className="text-sm text-brand-medium hover:text-brand-dark hover:underline transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Не пам'ятаєте поточний пароль?
-        </Link>
+          {isRequestingReset ? 'Відправка...' : "Не пам'ятаєте поточний пароль?"}
+        </button>
       </div>
     </form>
   );

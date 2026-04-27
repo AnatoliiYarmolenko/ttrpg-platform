@@ -8,6 +8,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  cacheDir: '/tmp/ttrpg-platform-client-vite-cache',
   server: {
     host: true, // Або '0.0.0.0' - дозволяє доступ ззовні контейнера
     port: 5173, // Стандартний порт Vite
@@ -25,6 +26,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './tests/setupTests.js',
+    fileParallelism: false,
+    exclude: ['tests/e2e/**', '**/node_modules/**', '**/dist/**'],
     coverage: {
       provider: 'v8',
       reportsDirectory: './coverage',

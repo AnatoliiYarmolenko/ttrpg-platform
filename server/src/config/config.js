@@ -6,12 +6,13 @@ const { logger } = require('../lib/logger');
  * Перевіряє наявність всіх необхідних змінних при завантаженні модуля
  */
 
+const nodeEnv = process.env.NODE_ENV || 'development';
+
 const requiredEnvVars = [
   'JWT_SECRET',
   'DATABASE_URL',
+  ...(nodeEnv === 'production' ? ['COOKIE_SECRET', 'CORS_ALLOWED_ORIGINS'] : [])
 ];
-
-const nodeEnv = process.env.NODE_ENV || 'development';
 const corsAllowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || process.env.FRONTEND_URL || 'http://localhost:5173')
   .split(',')
   .map(s => s.trim())

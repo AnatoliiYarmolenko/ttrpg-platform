@@ -2,6 +2,7 @@ require('dotenv').config();
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const { logger } = require('../src/lib/logger');
+const { createRawEncryptedAndHashedShareToken } = require('../src/utils/token.helper');
 
 const prisma = new PrismaClient();
 
@@ -166,12 +167,16 @@ async function createCampaigns(usersByKey) {
     data: { title: `${SEED_PREFIX} Shadows over Kyiv`, description: 'Містика', system: 'Call of Cthulhu', visibility: 'PUBLIC', ownerId: usersByKey.gm2.id },
   });
 
+  const campaign3ShareToken = createRawEncryptedAndHashedShareToken();
   const campaign3 = await prisma.campaign.create({
     data: {
       title: `${SEED_PREFIX} Iron Frontier`,
       description: 'Sci-fi',
       system: 'Pathfinder 2e',
       visibility: 'LINK_ONLY',
+      shareTokenHash: campaign3ShareToken.tokenHash,
+      shareTokenEncrypted: campaign3ShareToken.tokenEncrypted,
+      shareTokenCreatedAt: new Date(),
       ownerId: usersByKey.gm1.id,
     },
   });
@@ -312,7 +317,20 @@ async function createDynamicWeekSessions(usersByKey, campaigns) {
 
   for (const data of sessionsData) {
     const { extraParticipants, ...sessionData } = data;
-    const session = await prisma.session.create({ data: sessionData });
+    
+    // Generate share token for LINK_ONLY sessions
+    let sessionCreateData = { ...sessionData };
+    if (sessionData.visibility === 'LINK_ONLY') {
+      const shareTokenData = createRawEncryptedAndHashedShareToken();
+      sessionCreateData = {
+        ...sessionData,
+        shareTokenHash: shareTokenData.tokenHash,
+        shareTokenEncrypted: shareTokenData.tokenEncrypted,
+        shareTokenCreatedAt: new Date(),
+      };
+    }
+    
+    const session = await prisma.session.create({ data: sessionCreateData });
 
     const participants = buildParticipantsForSession({
       data: { ...sessionData, extraParticipants },

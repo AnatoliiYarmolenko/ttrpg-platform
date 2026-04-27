@@ -8,6 +8,36 @@ const { logger } = require('./logger');
  */
 
 let prisma;
+const isNodeTestRunner = typeof process.env.NODE_TEST_CONTEXT === 'string';
+
+function createPrismaTestStub(initError) {
+  const throwInitError = async () => {
+    throw initError;
+  };
+
+  return {
+    campaign: {
+      findUnique: throwInitError,
+      findMany: throwInitError,
+      count: throwInitError,
+      update: throwInitError,
+    },
+    session: {
+      findUnique: throwInitError,
+      findMany: throwInitError,
+      count: throwInitError,
+      update: throwInitError,
+      updateMany: throwInitError,
+    },
+    user: {
+      findUnique: throwInitError,
+      findFirst: throwInitError,
+      update: throwInitError,
+    },
+    $transaction: throwInitError,
+    $disconnect: async () => {},
+  };
+}
 
 try {
   prisma = new PrismaClient({
@@ -19,7 +49,13 @@ try {
   logger.info('Prisma Client ініціалізовано');
 } catch (error) {
   logger.fatal({ err: error }, 'Критична помилка ініціалізації Prisma Client');
-  process.exit(1); // Fail-fast: зупиняємо процес
+
+  if (isNodeTestRunner) {
+    prisma = createPrismaTestStub(error);
+    logger.warn('Prisma Client не ініціалізовано в test runner, використовуємо test stub');
+  } else {
+    process.exit(1); // Fail-fast: зупиняємо процес
+  }
 }
 
 // Graceful shutdown

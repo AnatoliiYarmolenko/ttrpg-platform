@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSecurityMutations } from '../hooks/useSecurityMutations';
+import useAuthStore from '@/stores/useAuthStore';
+import { queryClient } from '@/lib/queryClient';
 import FormField from '@/components/ui/FormField';
 import { getFormFieldControlClasses } from '@/components/ui/formFieldClasses';
 import { toast } from '@/stores/useToastStore';
 
 export default function DeleteAccountForm() {
   const navigate = useNavigate();
+  const clearUser = useAuthStore((state) => state.clearUser);
   const [step, setStep] = useState(1); // 1 - попередження, 2 - форма
   const { deleteAccount } = useSecurityMutations();
   const deleting = deleteAccount.isPending;
@@ -52,7 +55,8 @@ export default function DeleteAccountForm() {
 
     deleteAccount.mutate(formData, {
       onSuccess: () => {
-        localStorage.removeItem('ttrpg_app_user');
+        clearUser();
+        queryClient.clear();
         navigate('/login', { 
           replace: true,
           state: { message: 'Ваш акаунт було успішно видалено' }
@@ -142,19 +146,19 @@ export default function DeleteAccountForm() {
       </FormField>
 
       {/* Підтвердження */}
-      <FormField
-        as="input"
-        id="delete-confirmation"
-        name="confirmation"
-        type="text"
-        label={'Введіть "ВИДАЛИТИ" для підтвердження'}
-        value={formData.confirmation}
-        onChange={handleChange}
-        placeholder="ВИДАЛИТИ"
-        autoComplete="off"
-        controlClassName="border-red-200 focus:border-red-500"
-        error={fieldErrors.confirmation}
-      >
+      <div>
+        <FormField
+          id="delete-confirmation"
+          name="confirmation"
+          type="text"
+          label={'Введіть "ВИДАЛИТИ" для підтвердження'}
+          value={formData.confirmation}
+          onChange={handleChange}
+          placeholder="ВИДАЛИТИ"
+          autoComplete="off"
+          controlClassName="border-red-200 focus:border-red-500"
+          error={fieldErrors.confirmation}
+        />
         {formData.confirmation && formData.confirmation !== 'ВИДАЛИТИ' && !fieldErrors.confirmation && (
           <p className="text-xs text-red-500 mt-1">
             Введіть точно: ВИДАЛИТИ
@@ -165,7 +169,7 @@ export default function DeleteAccountForm() {
             ✓ Підтвердження правильне
           </p>
         )}
-      </FormField>
+      </div>
 
       {/* Кнопки */}
       <div className="flex gap-3 pt-2">

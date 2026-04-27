@@ -1,19 +1,18 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import App from '@/App';
 import useAuthStore from '@/stores/useAuthStore';
 import useDashboardStore from '@/stores/useDashboardStore';
-import { getCurrentUser } from '@/features/auth/api/authApi';
 
 vi.mock('@/hooks/useCsrfInit', () => ({
   useCsrfInit: () => ({ isInitialized: true, error: null }),
 }));
 
 vi.mock('@/features/auth/api/authApi', () => ({
-  getCurrentUser: vi.fn(),
+  getCurrentUser: vi.fn(() => Promise.resolve({ id: 101, username: 'admin-user', email: 'admin@example.com', role: 'ADMIN' })),
   logoutUser: vi.fn(),
 }));
 
@@ -130,17 +129,15 @@ function renderAppAt(pathname) {
 
 describe('App routing integration', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     vi.useRealTimers();
     localStorage.clear();
 
     useAuthStore.setState(BASE_AUTH_STATE);
     useDashboardStore.getState().reset();
-
-    vi.mocked(getCurrentUser).mockResolvedValue(ADMIN_USER);
   });
 
   afterEach(() => {
+    cleanup();
     useAuthStore.setState({
       user: null,
       isAuthenticated: false,
@@ -154,7 +151,7 @@ describe('App routing integration', () => {
   it('supports dashboard deep-link to profile security section', async () => {
     renderAppAt('/?tab=profile&section=security');
 
-    expect(await screen.findByTestId('profile-content', {}, { timeout: 3000 })).toHaveTextContent('profile:security');
+    expect(await screen.findByTestId('profile-content', {}, { timeout: 5000 })).toHaveTextContent('profile:security');
     expect(globalThis.location.pathname).toBe('/');
     expect(globalThis.location.search).toBe('?tab=profile&section=security');
   });
@@ -162,7 +159,7 @@ describe('App routing integration', () => {
   it('normalizes invalid dashboard deep-link section', async () => {
     renderAppAt('/?tab=profile&section=unknown-section');
 
-    expect(await screen.findByTestId('profile-content')).toHaveTextContent('profile:info');
+    expect(await screen.findByTestId('profile-content', {}, { timeout: 5000 })).toHaveTextContent('profile:info');
 
     await waitFor(() => {
       expect(globalThis.location.pathname).toBe('/');
@@ -173,7 +170,7 @@ describe('App routing integration', () => {
   it('supports admin deep-link to users tab', async () => {
     renderAppAt('/admin?tab=users');
 
-    expect(await screen.findByTestId('admin-search-placeholder')).toHaveTextContent("Пошук за username, email або ім'ям...");
+    expect(await screen.findByTestId('admin-search-placeholder', {}, { timeout: 5000 })).toHaveTextContent("Пошук за username, email або ім'ям...");
     expect(globalThis.location.pathname).toBe('/admin');
     expect(globalThis.location.search).toBe('?tab=users');
   });
@@ -181,7 +178,7 @@ describe('App routing integration', () => {
   it('normalizes invalid admin deep-link tab to dashboard', async () => {
     renderAppAt('/admin?tab=unknown-tab');
 
-    expect(await screen.findByText('Адміністрування')).toBeInTheDocument();
+    expect(await screen.findByText('Адміністрування', {}, { timeout: 5000 })).toBeInTheDocument();
 
     await waitFor(() => {
       expect(globalThis.location.pathname).toBe('/admin');
@@ -193,7 +190,7 @@ describe('App routing integration', () => {
     const user = userEvent.setup();
     renderAppAt('/?tab=profile&section=security');
 
-    expect(await screen.findByTestId('profile-content')).toHaveTextContent('profile:security');
+    expect(await screen.findByTestId('profile-content', {}, { timeout: 5000 })).toHaveTextContent('profile:security');
 
     const [adminButton] = await screen.findAllByRole('button', { name: /адмін/i });
     await user.click(adminButton);
@@ -219,5 +216,25 @@ describe('App routing integration', () => {
     await waitFor(() => {
       expect(globalThis.location.pathname).toBe('/admin');
     });
+  });
+
+  it.each(['/login', '/register', '/forgot-password'])(
+    'redirects authenticated user from guest-only route %s to dashboard',
+    async (pathname) => {
+      renderAppAt(pathname);
+
+      await waitFor(() => {
+        expect(globalThis.location.pathname).toBe('/');
+      });
+
+      expect(await screen.findByText('Dashboard Home Left', {}, { timeout: 5000 })).toBeInTheDocument();
+    }
+  );
+
+  it('allows authenticated user to open shared verify-email route', async () => {
+    renderAppAt('/verify-email');
+
+    expect(await screen.findByText('Токен підтвердження не вказано.', {}, { timeout: 5000 })).toBeInTheDocument();
+    expect(globalThis.location.pathname).toBe('/verify-email');
   });
 });

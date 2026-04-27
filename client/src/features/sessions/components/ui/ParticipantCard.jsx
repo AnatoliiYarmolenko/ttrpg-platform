@@ -84,10 +84,11 @@ export default function ParticipantCard({
   };
 
   return (
-    <button
-      type="button"
+    <div
       onClick={handleCardClick}
       onKeyDown={(e) => e.key === 'Enter' && handleCardClick()}
+      role="button"
+      tabIndex={0}
       className="flex items-center justify-between p-3 border-2 border-brand-light/30 rounded-xl hover:border-brand-light/60 hover:bg-brand-light/5 transition-colors cursor-pointer w-full text-left"
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -157,6 +158,6 @@ export default function ParticipantCard({
           </button>
         )}
       </div>
-    </button>
+    </div>
   );
 }

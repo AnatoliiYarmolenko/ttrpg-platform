@@ -1,13 +1,28 @@
-const crypto = require('crypto');
+const crypto = require('node:crypto');
 
-const SHARE_TOKEN_SECRET = process.env.SHARE_TOKEN_SECRET || process.env.SERVER_SECRET || process.env.JWT_SECRET;
+function resolveShareTokenSecret() {
+  const secret = process.env.SHARE_TOKEN_SECRET || process.env.SERVER_SECRET || process.env.JWT_SECRET;
+
+  if (secret) {
+    return secret;
+  }
+
+  // Node test runner executes isolated files where .env may be absent.
+  if (typeof process.env.NODE_TEST_CONTEXT === 'string') {
+    return 'test-share-token-secret';
+  }
+
+  return null;
+}
 
 function getShareTokenEncryptionKey() {
-  if (!SHARE_TOKEN_SECRET) {
+  const shareTokenSecret = resolveShareTokenSecret();
+
+  if (!shareTokenSecret) {
     throw new Error('SHARE_TOKEN_SECRET or SERVER_SECRET must be configured for share token encryption');
   }
 
-  return crypto.createHash('sha256').update(SHARE_TOKEN_SECRET).digest();
+  return crypto.createHash('sha256').update(shareTokenSecret).digest();
 }
 
 function hashToken(token) {

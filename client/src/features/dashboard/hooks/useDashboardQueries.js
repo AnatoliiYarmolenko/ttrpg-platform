@@ -61,6 +61,7 @@ export const useMyCampaignsQuery = (role = 'all') => {
       }
       return response.data || [];
     },
+    enabled: !!userId,
   });
 };
 
@@ -76,6 +77,7 @@ export const useMySessionsQuery = (params = {}) => {
       }
       return response.data || [];
     },
+    enabled: !!userId,
   });
 };
 

@@ -13,8 +13,7 @@ variables:
 cache:
   key:
     files:
-      - client/package-lock.json
-      - server/package-lock.json
+      - package-lock.json
   paths:
     - .npm/
 
@@ -23,8 +22,8 @@ build_server:
   stage: build
   tags: [student]
   script:
-    - cd server
     - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline
+    - cd server
     - npx prisma generate
   artifacts:
     paths:
@@ -35,9 +34,8 @@ build_client:
   stage: build
   tags: [student]
   script:
-    - cd client
     - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline
-    - npm run build
+    - npm run build --workspace=client
 
 # --- ЕТАП TEST ---
 lint_client:
@@ -45,18 +43,16 @@ lint_client:
   tags: [student]
   dependencies: []
   script:
-    - cd client
     - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline
-    - npm run lint
+    - npm run lint --workspace=client
 
 lint_server:
   stage: test
   tags: [student]
   dependencies: []
   script:
-    - cd server
     - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline
-    - npm run lint
+    - npm run lint --workspace=server
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH == "main"'
@@ -67,9 +63,8 @@ coverage_client:
   tags: [student]
   dependencies: []
   script:
-    - cd client
     - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline
-    - npm run test:coverage
+    - npm run test:coverage --workspace=client
   coverage: '/Lines\s*:\s*([0-9.]+)%/'
   artifacts:
     paths:
@@ -88,10 +83,10 @@ coverage_server:
     JWT_SECRET: "dummy_secret"
     DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
   script:
-    - cd server
     - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline
+    - cd server
     - npx prisma generate
-    - npm run test:coverage
+    - npm run test:coverage --workspace=server
   coverage: '/Lines\s*:\s*([0-9.]+)%/'
   artifacts:
     paths:
