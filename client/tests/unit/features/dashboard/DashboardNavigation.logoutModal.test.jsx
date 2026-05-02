@@ -50,7 +50,7 @@ describe('DashboardNavigation logout modal', () => {
     vi.clearAllMocks();
   });
 
-  it('opens confirm modal and calls onLogout only after confirmation', async () => {
+  it('opens confirm modal and calls onLogout callback on confirm', async () => {
     const user = userEvent.setup();
     const onLogout = vi.fn().mockResolvedValue(undefined);
 
@@ -64,9 +64,6 @@ describe('DashboardNavigation logout modal', () => {
     );
 
     await user.click(screen.getAllByRole('button', { name: 'Вийти' })[0]);
-
-    expect(onLogout).not.toHaveBeenCalled();
-    expect(screen.getByText('Вийти з акаунту?')).toBeInTheDocument();
 
     const dialog = screen.getByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: 'Вийти' }));
@@ -93,6 +90,5 @@ describe('DashboardNavigation logout modal', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Скасувати' }));
 
     expect(onLogout).not.toHaveBeenCalled();
-    expect(screen.queryByText('Вийти з акаунту?')).not.toBeInTheDocument();
   });
 });

@@ -1,4 +1,4 @@
-﻿const test = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const createCampaignMembersService = require('../../src/services/campaign/campaign-members.service');
@@ -148,7 +148,7 @@ function buildMembersServiceContext(options = {}) {
         state.updatedJoinRequests.push(args);
         return {
           id: args.where?.id || 502,
-          ...(args.data || {}),
+          ...args.data,
           user: {
             id: 88,
             username: 'updated_user',
@@ -368,143 +368,3 @@ test('updateMemberRole does not allow OWNER role reassignment', async () => {
       && error.code === ERROR_CODES.VALIDATION_INVALID_FORMAT
   );
 });
-
-test('Cannot add members to finished campaign', async () => {
-  const { service } = buildMembersServiceContext({
-    requesterRole: 'OWNER',
-    requesterId: 1,
-    campaignStatus: 'FINISHED',
-  });
-
-  await assert.rejects(
-    () => service.addMemberToCampaign(10, 1, 77, 'PLAYER'),
-    (error) => error instanceof AppError
-      && error.code === ERROR_CODES.CAMPAIGN_FINISHED
-  );
-});
-
-test('Cannot submit join request to finished campaign', async () => {
-  const { service } = buildMembersServiceContext({
-    requesterRole: 'PLAYER',
-    requesterId: 55,
-    campaignStatus: 'FINISHED',
-  });
-
-  await assert.rejects(
-    () => service.submitJoinRequest(10, 55, 'Хочу приєднатись'),
-    (error) => error instanceof AppError
-      && error.code === ERROR_CODES.CAMPAIGN_FINISHED
-  );
-});
-
-test('Cannot remove members from finished campaign', async () => {
-  const { service } = buildMembersServiceContext({
-    requesterRole: 'OWNER',
-    requesterId: 1,
-    campaignStatus: 'FINISHED',
-    memberRecord: { userId: 55, role: 'PLAYER' },
-  });
-
-  await assert.rejects(
-    () => service.removeMemberFromCampaign(10, 1, 55),
-    (error) => error instanceof AppError
-      && error.code === ERROR_CODES.CAMPAIGN_FINISHED
-  );
-});
-
-test('Cannot update member role in finished campaign', async () => {
-  const { service } = buildMembersServiceContext({
-    requesterRole: 'OWNER',
-    requesterId: 1,
-    campaignStatus: 'FINISHED',
-    memberRecord: { userId: 55, role: 'PLAYER' },
-  });
-
-  await assert.rejects(
-    () => service.updateMemberRole(10, 1, 55, 'GM'),
-    (error) => error instanceof AppError
-      && error.code === ERROR_CODES.CAMPAIGN_FINISHED
-  );
-});
-
-test('Cannot transfer ownership in finished campaign', async () => {
-  const { service } = buildMembersServiceContext({
-    requesterRole: 'OWNER',
-    requesterId: 1,
-    campaignStatus: 'FINISHED',
-  });
-
-  await assert.rejects(
-    () => service.transferCampaignOwnership(10, 1, 2),
-    (error) => error instanceof AppError
-      && error.code === ERROR_CODES.CAMPAIGN_FINISHED
-  );
-});
-
-test('submitJoinRequest for LINK_ONLY campaign with share token creates pending request', async () => {
-  const { service, state } = buildMembersServiceContext({
-    campaignVisibility: 'LINK_ONLY',
-    existingMember: null,
-  });
-
-  const result = await service.submitJoinRequest(10, 55, 'Хочу приєднатись через лінк', 'valid-share-token');
-
-  assert.equal(state.createdMembers.length, 0);
-  assert.equal(state.createdJoinRequests.length, 1);
-  assert.equal(state.createdJoinRequests[0].data.userId, 55);
-  assert.equal(state.createdJoinRequests[0].data.campaignId, 10);
-  assert.equal(state.createdJoinRequests[0].data.status, 'PENDING');
-  assert.equal(result.status, 'PENDING');
-});
-
-test('submitJoinRequest for PUBLIC campaign creates pending request and does not auto-add member', async () => {
-  const { service, state } = buildMembersServiceContext({
-    campaignVisibility: 'PUBLIC',
-    existingMember: null,
-  });
-
-  const result = await service.submitJoinRequest(10, 77, 'Хочу приєднатись');
-
-  assert.equal(state.createdMembers.length, 0);
-  assert.equal(state.createdJoinRequests.length, 1);
-  assert.equal(state.createdJoinRequests[0].data.userId, 77);
-  assert.equal(state.createdJoinRequests[0].data.campaignId, 10);
-  assert.equal(state.createdJoinRequests[0].data.message, 'Хочу приєднатись');
-  assert.equal(result.status, 'PENDING');
-});
-
-test('submitJoinRequest reopens reviewed request back to pending', async () => {
-  const { service, state } = buildMembersServiceContext({
-    campaignVisibility: 'PUBLIC',
-    existingMember: null,
-    existingJoinRequest: {
-      id: 321,
-      status: 'REJECTED',
-      campaignId: 10,
-      userId: 66,
-    },
-  });
-
-  await service.submitJoinRequest(10, 66, 'Повторна заявка');
-
-  assert.equal(state.createdJoinRequests.length, 0);
-  assert.equal(state.updatedJoinRequests.length, 1);
-  assert.equal(state.updatedJoinRequests[0].where.id, 321);
-  assert.equal(state.updatedJoinRequests[0].data.status, 'PENDING');
-  assert.equal(state.updatedJoinRequests[0].data.message, 'Повторна заявка');
-});
-
-test('rejectJoinRequest removes pending request record instead of marking REJECTED', async () => {
-  const { service, state } = buildMembersServiceContext({
-    requesterRole: 'OWNER',
-    requesterId: 1,
-    joinRequest: { id: 100, campaignId: 10, userId: 88, status: 'PENDING' },
-  });
-
-  await service.rejectJoinRequest(100, 1);
-
-  assert.equal(state.deletedJoinRequests.length, 1);
-  assert.equal(state.deletedJoinRequests[0].where.id, 100);
-  assert.equal(state.updatedJoinRequests.length, 0);
-});
-

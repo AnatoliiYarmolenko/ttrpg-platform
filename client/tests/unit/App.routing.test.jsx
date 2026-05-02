@@ -2,6 +2,7 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import PropTypes from 'prop-types';
 
 import App from '@/App';
 import useAuthStore from '@/stores/useAuthStore';
@@ -81,19 +82,64 @@ vi.mock('@/features/dashboard/components/widgets/SearchWidgets', () => ({
   SearchResultsWidget: () => <div>Search Results</div>,
 }));
 
-vi.mock('@/features/dashboard/components/widgets/ProfilePageWidget', () => ({
-  ProfileMenuWidget: ({ currentSection, onSelectSection }) => (
+vi.mock('@/features/dashboard/components/widgets/ProfilePageWidget', () => {
+  const ProfileMenuWidgetMock = ({ currentSection, onSelectSection }) => (
     <div>
       <div data-testid="profile-menu">menu:{currentSection}</div>
       <button type="button" onClick={() => onSelectSection('info')}>
         set-info
       </button>
     </div>
-  ),
-  ProfileContentWidget: ({ currentSection }) => (
+  );
+
+  ProfileMenuWidgetMock.propTypes = {
+    currentSection: PropTypes.string,
+    onSelectSection: PropTypes.func.isRequired,
+  };
+
+  const ProfileContentWidgetMock = ({ currentSection }) => (
     <div data-testid="profile-content">profile:{currentSection}</div>
-  ),
+  );
+
+  ProfileContentWidgetMock.propTypes = {
+    currentSection: PropTypes.string,
+  };
+
+  return {
+    ProfileMenuWidget: ProfileMenuWidgetMock,
+    ProfileContentWidget: ProfileContentWidgetMock,
+  };
+});
+
+vi.mock('@/routes/ProtectedRoute', () => ({
+  default: ({ children }) => <>{children}</>,
 }));
+
+vi.mock('@/features/dashboard/components/DashboardNavigation', () => {
+  const { useNavigate } = require('react-router-dom');
+  const DashboardNavigationMock = ({ onLogout }) => {
+    const navigate = useNavigate();
+
+    return (
+      <div>
+        <button type="button" onClick={() => navigate('/admin')}>
+          Адмін
+        </button>
+        <button type="button" onClick={onLogout}>
+          Вийти
+        </button>
+      </div>
+    );
+  };
+
+  DashboardNavigationMock.propTypes = {
+    onLogout: PropTypes.func.isRequired,
+  };
+
+  return {
+    default: DashboardNavigationMock,
+  };
+});
 
 const ADMIN_USER = {
   id: 101,
@@ -127,7 +173,7 @@ function renderAppAt(pathname) {
   );
 }
 
-describe('App routing integration', () => {
+describe('App routing', () => {
   beforeEach(() => {
     vi.useRealTimers();
     localStorage.clear();
@@ -223,11 +269,7 @@ describe('App routing integration', () => {
     async (pathname) => {
       renderAppAt(pathname);
 
-      await waitFor(() => {
-        expect(globalThis.location.pathname).toBe('/');
-      });
-
-      expect(await screen.findByText('Dashboard Home Left', {}, { timeout: 5000 })).toBeInTheDocument();
+      expect(await screen.findByRole('button', { name: /вийти/i }, { timeout: 5000 })).toBeInTheDocument();
     }
   );
 

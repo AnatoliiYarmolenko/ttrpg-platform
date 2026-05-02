@@ -1,0 +1,1901 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Додаток для дипломників: CI/CD, DevOps, Тестування</title>
+<style>
+:root {
+  --blue:   #1e40af;
+  --lblue:  #2563eb;
+  --ltblue: #dbeafe;
+  --header: #1e3a5f;
+  --text:   #1f2937;
+  --sub:    #6b7280;
+  --border: #e5e7eb;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--text);
+  background: #fff;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+.title-block {
+  text-align: center;
+  padding: 40px 0 32px;
+  border-bottom: 3px solid var(--blue);
+  margin-bottom: 40px;
+}
+.title-block .label {
+  font-size: 12px; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--sub); margin-bottom: 14px;
+}
+.title-block h1 {
+  font-size: 2rem; font-weight: 800; color: var(--header);
+  line-height: 1.2; margin-bottom: 10px;
+}
+.title-block .subtitle {
+  font-size: 1.05rem; color: var(--lblue); font-weight: 500; margin-bottom: 6px;
+}
+.title-block .meta { font-size: 13px; color: var(--sub); margin-top: 14px; }
+.toc {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--lblue);
+  padding: 20px 28px;
+  border-radius: 6px;
+  margin-bottom: 44px;
+}
+.toc h2 {
+  font-size: 0.85rem; color: var(--header); margin-bottom: 14px;
+  text-transform: uppercase; letter-spacing: 1.5px;
+}
+.toc ol { padding-left: 20px; column-count: 2; column-gap: 32px; }
+.toc li { margin: 5px 0; break-inside: avoid; }
+.toc a { color: var(--lblue); text-decoration: none; font-size: 13.5px; }
+.toc a:hover { text-decoration: underline; }
+h2 {
+  font-size: 1.42rem; font-weight: 800; color: var(--header);
+  margin: 52px 0 14px;
+  padding-bottom: 9px;
+  border-bottom: 2px solid var(--ltblue);
+}
+h3 { font-size: 1.1rem; font-weight: 700; color: var(--lblue); margin: 30px 0 10px; }
+h4 { font-size: 0.97rem; font-weight: 700; color: #374151; margin: 22px 0 7px; }
+p { margin: 10px 0; }
+ul, ol { padding-left: 26px; margin: 10px 0; }
+li { margin: 5px 0; }
+strong { color: #111827; }
+a { color: var(--lblue); }
+pre {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-left: 4px solid #9ca3af;
+  border-radius: 6px;
+  padding: 15px 18px;
+  font-family: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.65;
+  overflow-x: auto;
+  margin: 14px 0;
+  white-space: pre;
+}
+code {
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: 13px;
+  background: #f3f4f6;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+.note, .warning, .critical, .tip {
+  padding: 13px 16px;
+  border-radius: 5px;
+  margin: 16px 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.note    { background:#eff6ff; border:1px solid #bfdbfe; border-left:5px solid #3b82f6; }
+.warning { background:#fffbeb; border:1px solid #fde68a; border-left:5px solid #f59e0b; }
+.critical{ background:#fef2f2; border:1px solid #fecaca; border-left:5px solid #ef4444; }
+.tip     { background:#f0fdf4; border:1px solid #bbf7d0; border-left:5px solid #22c55e; }
+table { width:100%; border-collapse:collapse; margin:16px 0; font-size:14px; }
+th { background: var(--blue); color:#fff; padding:9px 12px; text-align:left; font-weight:600; font-size:13px; }
+td { padding:8px 12px; border-bottom:1px solid var(--border); vertical-align:top; }
+tr:nth-child(even) td { background:#f8fafc; }
+.sep { border:none; border-top:1px solid #e5e7eb; margin:52px 0 0; }
+@media print {
+  h2 { page-break-before: always; }
+  pre, table { page-break-inside: avoid; }
+  .toc ol { column-count: 1; }
+}
+</style>
+</head>
+<body>
+
+<div class="title-block">
+  <div class="label">Додаток до лабораторної роботи</div>
+  <h1>CI/CD, DevOps та автоматизація<br>у дипломному проекті бакалавра</h1>
+  <div class="subtitle">Практичний посібник для дипломника</div>
+  <div class="meta">Дисципліна: Системне та мережне програмування &nbsp;|&nbsp; git.ztu.edu.ua</div>
+</div>
+
+<div class="critical">
+  <strong>Для кого цей документ:</strong> цей додаток призначений для студентів-бакалаврів, які виконують дипломний проект і зобов'язані використовувати CI/CD, автоматизоване тестування та DevOps практики як частину проекту. Документ доповнює основну лабораторну роботу і відповідає на питання: <em>«як застосувати це у реальному дипломному проекті, а не тільки у навчальному завданні»</em>.
+</div>
+
+<nav class="toc">
+  <h2>Зміст</h2>
+  <ol>
+    <li><a href="#s1">Вступ — диплом vs лабораторна</a></li>
+    <li><a href="#s2">Docker для дипломника</a></li>
+    <li><a href="#s3">Адаптація pipeline під власний стек</a></li>
+    <li><a href="#s4">Гілкова стратегія</a></li>
+    <li><a href="#s5">GitHub як альтернатива та дзеркало</a></li>
+    <li><a href="#s6">Реальний деплой</a></li>
+    <li><a href="#s7">Тестування у дипломному проекті</a></li>
+    <li><a href="#s8">Автоматизація якості коду</a></li>
+    <li><a href="#s9">Моніторинг і логування</a></li>
+    <li><a href="#s10">Pipeline бейджі і README</a></li>
+    <li><a href="#s11">DevOps у пояснювальній записці та на захисті</a></li>
+  </ol>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════ 1 -->
+<hr class="sep">
+<h2 id="s1">1. Вступ — чим диплом відрізняється від лабораторної</h2>
+
+<p>У лабораторній роботі ви будували pipeline для навчального прикладу і виконували чіткі кроки з інструкції. Дипломний проект — інша ситуація: у вас реальний застосунок, власний технологічний стек, конкретні вимоги керівника і комісії, і декілька місяців роботи які потрібно організувати так, щоб код не перетворився на хаос.</p>
+
+<h3>1.1 Що від вас очікує комісія</h3>
+<p>Комісія на захисті оцінює не факт наявності CI/CD, а <strong>розуміння навіщо це потрібно</strong> і як це реалізовано у вашому конкретному проекті. Очікується що ви зможете:</p>
+<ul>
+  <li>пояснити що таке pipeline і які етапи він містить у вашому проекті</li>
+  <li>показати реальний зелений pipeline на git.ztu.edu.ua або GitHub</li>
+  <li>розповісти які тести написані і що вони перевіряють</li>
+  <li>пояснити як відбувається розгортання застосунку</li>
+  <li>відповісти на питання чому обрано саме такий підхід</li>
+</ul>
+
+<h3>1.2 Мінімально необхідний набір для диплому</h3>
+<table>
+  <tr><th>Компонент</th><th>Мінімум</th><th>Добре</th><th>Відмінно</th></tr>
+  <tr><td>Репозиторій</td><td>git.ztu.edu.ua з кодом</td><td>+ гілкова стратегія</td><td>+ дзеркало на GitHub</td></tr>
+  <tr><td>CI Pipeline</td><td>збірка і тести у pipeline</td><td>+ docker build</td><td>+ деплой у pipeline</td></tr>
+  <tr><td>Тести</td><td>кілька юніт-тестів</td><td>+ coverage report</td><td>+ інтеграційні тести</td></tr>
+  <tr><td>Деплой</td><td>імітація (echo)</td><td>+ безкоштовний хостинг</td><td>+ живий URL у README</td></tr>
+  <tr><td>Документація</td><td>README з описом</td><td>+ pipeline бейдж</td><td>+ coverage бейдж</td></tr>
+</table>
+
+<div class="tip">
+  <strong>Головне правило дипломника:</strong> краще зробити менше але зробити це добре і розуміти кожен рядок, ніж скопіювати складний pipeline і не вміти його пояснити на захисті. Комісія завжди ставить уточнювальні питання.
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ 2 -->
+<hr class="sep">
+<h2 id="s2">2. Docker для дипломника</h2>
+
+<h3>2.1 Ліцензія Docker Desktop — що треба знати</h3>
+<p>Docker Desktop (програма для Windows і macOS з графічним інтерфейсом) має кілька планів ліцензування. Для студента на <strong>особистому ноутбуці</strong> ситуація така:</p>
+
+<table>
+  <tr><th>Хто використовує</th><th>План</th><th>Ціна</th><th>Легально?</th></tr>
+  <tr><td>Студент на особистому ноутбуці</td><td>Personal</td><td>Безкоштовно</td><td>✓ Так</td></tr>
+  <tr><td>Компанія &lt; 250 осіб і &lt; $10M доходу</td><td>Personal</td><td>Безкоштовно</td><td>✓ Так</td></tr>
+  <tr><td>Університет як організація</td><td>Pro/Team потрібен</td><td>Платно</td><td>✗ Порушення</td></tr>
+  <tr><td>Корпоративна машина будь-якої компанії</td><td>Business потрібен</td><td>Платно</td><td>✗ Порушення</td></tr>
+</table>
+
+<p><strong>Висновок для вас:</strong> якщо ви виконуєте диплом на власному ноутбуці — Docker Desktop Personal Plan є безкоштовним і легальним. Встановлюйте без хвилювань.</p>
+
+<h3>2.2 Телеметрія Docker Desktop — що збирається</h3>
+<p>Docker Desktop збирає аналітику про використання. Важливо розуміти що саме:</p>
+<ul>
+  <li>версія Docker Desktop і ОС</li>
+  <li>які функції використовуються (Extensions, Dev Environments тощо)</li>
+  <li>частота запуску і тривалість сесій</li>
+  <li>загальна кількість контейнерів і images (без їх вмісту)</li>
+  <li><strong>НЕ збирається:</strong> вміст контейнерів, ваш код, змінні середовища, паролі</li>
+</ul>
+
+<p>Якщо вас турбує навіть ця телеметрія — є повноцінні альтернативи.</p>
+
+<h3>2.3 Альтернатива 1: Docker Engine у WSL2 (рекомендовано)</h3>
+<p>Це встановлення Docker напряму всередині WSL2 (Windows Subsystem for Linux) без Docker Desktop. Це <strong>не той самий продукт</strong> — Docker Engine є повністю open source, без телеметрії Desktop-клієнта, без ліцензійних обмежень для організацій.</p>
+
+<h4>Крок 1: Увімкнути WSL2 (якщо ще не увімкнено)</h4>
+<pre># Виконати у PowerShell від адміністратора
+wsl --install
+# Команда встановлює WSL2 і Ubuntu за замовчуванням
+# Після перезавантаження: відкрийте Ubuntu зі Start Menu
+
+# Перевірити що WSL2 активний:
+wsl --list --verbose
+# Очікується: Ubuntu  Running  2 (версія 2 — важливо!)</pre>
+
+<h4>Крок 2: Встановити Docker Engine всередині WSL2</h4>
+<pre># Відкрийте термінал Ubuntu (WSL2) і виконайте:
+
+# Офіційний скрипт встановлення від Docker
+# Цей скрипт автоматично визначає дистрибутив і встановлює актуальну версію
+curl -fsSL https://get.docker.com | sh
+# get.docker.com → офіційний скрипт Docker Inc.
+# Встановлює: docker-ce, docker-ce-cli, containerd.io
+
+# Додати поточного користувача до групи docker
+# щоб не писати sudo перед кожною docker командою
+sudo usermod -aG docker $USER
+
+# Застосувати зміну групи без виходу з системи
+newgrp docker
+
+# Запустити Docker daemon (сервіс)
+sudo service docker start
+# або: sudo dockerd &amp;
+
+# Перевірка
+docker run --rm hello-world
+# Очікується: "Hello from Docker!"</pre>
+
+<div class="warning">
+  <strong>WSL2 і автозапуск:</strong> Docker daemon у WSL2 не запускається автоматично при старті Windows (на відміну від Docker Desktop). Перед роботою потрібно виконати <code>sudo service docker start</code> у терміналі WSL2. Щоб автоматизувати — додайте цей рядок у <code>~/.bashrc</code> або <code>~/.profile</code>.
+</div>
+
+<pre># Автозапуск Docker при відкритті WSL2 терміналу
+# Додайте у кінець файлу ~/.bashrc:
+echo 'sudo service docker start > /dev/null 2>&amp;1' >> ~/.bashrc
+
+# Щоб sudo не питало пароль для цієї команди — додайте у sudoers:
+echo "$USER ALL=(ALL) NOPASSWD: /usr/sbin/service docker start" | sudo tee /etc/sudoers.d/docker-start</pre>
+
+<h3>2.4 Альтернатива 2: Podman</h3>
+<p>Podman — повна альтернатива Docker від Red Hat. Повністю open source (Apache 2.0), без телеметрії, без daemon (кожен контейнер — звичайний процес). Синтаксис команд майже ідентичний Docker.</p>
+
+<pre># Встановлення Podman на Ubuntu/WSL2
+sudo apt update
+sudo apt install -y podman
+
+# Podman сумісний з Docker синтаксисом — просто замінюєте слово:
+podman run --rm hello-world       # замість: docker run --rm hello-world
+podman build -t myapp .           # замість: docker build -t myapp .
+podman images                     # замість: docker images
+
+# Псевдонім для повної сумісності (якщо скрипти написані з "docker"):
+echo 'alias docker=podman' >> ~/.bashrc
+source ~/.bashrc
+# Тепер команда "docker" насправді викликає podman</pre>
+
+<div class="note">
+  <strong>Podman у GitLab CI/CD:</strong> якщо ваш Runner використовує Podman замість Docker — у <code>.gitlab-ci.yml</code> нічого міняти не потрібно, бо псевдонім <code>alias docker=podman</code> діє і для Runner-а. Якщо Runner зареєстровано з executor: shell — все працює прозоро.
+</div>
+
+<h3>2.5 Порівняння варіантів</h3>
+<table>
+  <tr><th>Варіант</th><th>Телеметрія</th><th>Ліцензія</th><th>Складність</th><th>Рекомендовано</th></tr>
+  <tr><td>Docker Desktop (Windows/Mac)</td><td>Є (мінімальна)</td><td>Free для студентів</td><td>Мінімальна</td><td>Якщо особистий ноутбук</td></tr>
+  <tr><td>Docker Engine у WSL2</td><td>Немає</td><td>Open Source</td><td>Низька</td><td>✓ Оптимально</td></tr>
+  <tr><td>Podman</td><td>Немає</td><td>Apache 2.0</td><td>Низька</td><td>✓ Альтернатива</td></tr>
+  <tr><td>Rancher Desktop</td><td>Мінімальна</td><td>Apache 2.0</td><td>Низька</td><td>Якщо потрібен GUI</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════════════ 3 -->
+<hr class="sep">
+<h2 id="s3">3. Адаптація pipeline під власний стек</h2>
+
+<p>Лабораторна робота побудована на .NET Web API + Node.js. Ваш дипломний проект, найімовірніше, використовує інший стек. У цьому розділі показано як адаптувати pipeline під найпоширеніші комбінації технологій.</p>
+
+<h3>3.1 Що залишається незмінним у будь-якому проекті</h3>
+<p>Незалежно від технологій — структура pipeline залишається тією самою. Змінюються тільки конкретні команди і Docker images:</p>
+<pre># Ця структура підходить для БУДЬ-ЯКОГО проекту
+# Міняйте тільки image: і команди всередині script:
+stages:
+  - build    # завжди: встановлення залежностей + компіляція
+  - test     # завжди: запуск тестів + лінтинг
+  - docker   # завжди: docker build (якщо є Dockerfile)
+  - deploy   # завжди: розгортання (реальне або імітація)
+
+variables:
+  # Змінні залежать від вашого стеку — дивіться розділи нижче
+  APP_NAME: "my-diploma-app"   # назва вашого застосунку
+
+cache:
+  key: "$CI_COMMIT_REF_SLUG"
+  paths: []   # заповніть відповідно до вашого стеку</pre>
+
+<h3>3.2 Стек: Python (Flask / FastAPI / Django)</h3>
+<pre># ── .gitlab-ci.yml для Python проекту ────────────────────────────────────
+stages:
+  - build
+  - test
+  - docker
+  - deploy
+
+# Кеш для pip пакетів — економить час на повторних запусках
+cache:
+  key: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - .pip-cache/   # локальний кеш pip
+
+# ── Встановлення залежностей ──────────────────────────────────────────────
+python_build:
+  stage: build
+  image: python:3.11   # офіційний Python image з Docker Hub
+                       # Версії: python:3.9, python:3.10, python:3.11, python:3.12
+  tags: [student]
+  variables:
+    PIP_CACHE_DIR: "$CI_PROJECT_DIR/.pip-cache"   # де зберігати кеш pip
+  script:
+    # Оновити pip до актуальної версії
+    - pip install --upgrade pip
+
+    # Встановити залежності з requirements.txt
+    # requirements.txt генерується командою: pip freeze > requirements.txt
+    - pip install -r requirements.txt
+
+    # Перевірити що застосунок імпортується без помилок
+    - python -c "import app"   # замініть "app" на назву вашого модуля
+  artifacts:
+    paths:
+      - .pip-cache/   # зберегти кеш для stage test
+    expire_in: 1 hour
+
+# ── Тестування ────────────────────────────────────────────────────────────
+python_test:
+  stage: test
+  image: python:3.11
+  tags: [student]
+  variables:
+    PIP_CACHE_DIR: "$CI_PROJECT_DIR/.pip-cache"
+  script:
+    - pip install -r requirements.txt
+
+    # pytest — найпопулярніший фреймворк для тестування Python
+    # --verbose → показати кожен тест окремо
+    # --tb=short → скорочений вивід помилок (short/long/no)
+    - pytest --verbose --tb=short
+
+    # Генерація coverage звіту (потрібен пакет pytest-cov у requirements.txt)
+    # --cov=. → вимірювати покриття для всіх файлів у поточній папці
+    # --cov-report=term-missing → вивести у термінал які рядки не покриті
+    # --cov-report=html → згенерувати HTML звіт у папці htmlcov/
+    - pytest --cov=. --cov-report=term-missing --cov-report=html
+  artifacts:
+    paths:
+      - htmlcov/   # HTML звіт покриття — завантажте і відкрийте у браузері
+    expire_in: 1 day
+
+# ── Лінтинг ──────────────────────────────────────────────────────────────
+python_lint:
+  stage: test
+  image: python:3.11
+  tags: [student]
+  script:
+    - pip install flake8   # інструмент статичного аналізу Python коду
+    # flake8 перевіряє: синтаксис, стиль (PEP8), потенційні помилки
+    # . → перевірити всі .py файли у поточній папці
+    # --max-line-length=120 → дозволити рядки до 120 символів (замість 79)
+    - flake8 . --max-line-length=120 --exclude=.git,__pycache__,venv
+  allow_failure: true   # лінтинг не блокує pipeline поки не всі помилки виправлено</pre>
+
+<h4>Dockerfile для Python (Flask/FastAPI)</h4>
+<pre># api/Dockerfile для Python застосунку
+FROM python:3.11-slim
+# python:3.11-slim → мінімальний Python image (~150MB замість ~900MB для повного)
+
+WORKDIR /app
+
+# Копіюємо requirements.txt ПЕРШИМ для кешування pip install
+# Якщо requirements.txt не змінився → pip install береться з кешу Docker
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+# --no-cache-dir → не зберігати кеш pip всередині image (зменшує розмір)
+
+# Копіюємо весь код
+COPY . .
+
+# Порт на якому слухає застосунок
+EXPOSE 8000
+
+# Для FastAPI (uvicorn):
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+# Для Flask:
+# CMD ["python", "app.py"]
+# або: CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:8000", "app:app"]</pre>
+
+<h3>3.3 Стек: Java (Spring Boot)</h3>
+<pre># ── .gitlab-ci.yml для Spring Boot проекту (Maven) ───────────────────────
+stages:
+  - build
+  - test
+  - docker
+  - deploy
+
+cache:
+  key: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - .m2/repository/   # локальний кеш Maven репозиторію
+
+java_build:
+  stage: build
+  # maven:3.9-eclipse-temurin-21 → Maven 3.9 + Java 21 LTS
+  # eclipse-temurin → OpenJDK від Eclipse Foundation (безкоштовний, без Oracle ліцензії)
+  image: maven:3.9-eclipse-temurin-21
+  tags: [student]
+  variables:
+    # Зберігати Maven залежності у папці проекту для кешу
+    MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+  script:
+    # mvn package → компілює, запускає тести, створює .jar файл
+    # -DskipTests → пропустити тести на цьому етапі (тести — в окремому job)
+    # -B → batch mode: без кольорового виводу і прогрес-барів (краще для CI)
+    - mvn package -DskipTests -B
+  artifacts:
+    paths:
+      - target/*.jar   # зберегти .jar файл для deploy stage
+    expire_in: 1 hour
+
+java_test:
+  stage: test
+  image: maven:3.9-eclipse-temurin-21
+  tags: [student]
+  variables:
+    MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+  script:
+    # mvn test → компілює і запускає всі тести (JUnit)
+    # Звіти тестів зберігаються у target/surefire-reports/
+    - mvn test -B
+
+    # Генерація JaCoCo coverage звіту (якщо налаштовано у pom.xml)
+    - mvn jacoco:report -B
+  artifacts:
+    paths:
+      - target/site/jacoco/   # HTML звіт покриття
+    expire_in: 1 day</pre>
+
+<h4>Dockerfile для Spring Boot</h4>
+<pre># Dockerfile для Spring Boot застосунку
+FROM eclipse-temurin:21-jre-alpine AS runtime
+# eclipse-temurin:21-jre-alpine → тільки JRE (не JDK), Alpine Linux
+# Розмір: ~180MB замість ~400MB для повного JDK image
+
+WORKDIR /app
+
+# Копіюємо .jar файл зібраний у CI
+# target/*.jar → Spring Boot uber-jar (містить всі залежності)
+COPY target/*.jar app.jar
+
+EXPOSE 8080
+
+# exec форма: не запускає shell, сигнали (SIGTERM) доходять до Java процесу
+ENTRYPOINT ["java", "-jar", "app.jar"]
+
+# Для production: додайте JVM налаштування
+# ENTRYPOINT ["java", "-Xmx512m", "-Xms256m", "-jar", "app.jar"]</pre>
+
+<h3>3.4 Стек: React / Vue / Angular (фронтенд)</h3>
+<pre># ── .gitlab-ci.yml для React/Vue/Angular проекту ─────────────────────────
+stages:
+  - build
+  - test
+  - deploy   # для фронтенду деплой = розміщення статичних файлів
+
+cache:
+  key: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - node_modules/   # npm пакети
+
+frontend_build:
+  stage: build
+  image: node:20
+  tags: [student]
+  script:
+    - npm install   # встановити залежності
+
+    # npm run build → запускає скрипт "build" з package.json
+    # React (CRA): збирає у папку build/
+    # React (Vite): збирає у папку dist/
+    # Vue (Vite): збирає у папку dist/
+    # Angular: збирає у папку dist/назва-проекту/
+    - npm run build
+  artifacts:
+    paths:
+      - build/    # React CRA
+      # - dist/   # Vite (React/Vue) або Angular
+    expire_in: 1 hour
+
+frontend_test:
+  stage: test
+  image: node:20
+  tags: [student]
+  script:
+    - npm install
+
+    # Jest (React) або Vitest (Vite/Vue) — запуск тестів
+    # --watchAll=false → не запускати у watch режимі (важливо для CI!)
+    # --coverage → генерувати звіт покриття
+    - npm test -- --watchAll=false --coverage
+
+    # Vue з Vitest:
+    # - npm run test:unit -- --coverage
+
+    # Angular:
+    # - npm run test -- --watch=false --browsers=ChromeHeadless
+  artifacts:
+    paths:
+      - coverage/   # звіт покриття Jest/Vitest
+    expire_in: 1 day
+  allow_failure: false   # тести БЛОКУЮТЬ pipeline якщо падають</pre>
+
+<h3>3.5 Стек: .NET + React (повний стек — типово для диплому)</h3>
+<pre># ── .gitlab-ci.yml для Full-Stack .NET API + React SPA ───────────────────
+stages:
+  - build
+  - test
+  - docker
+  - deploy
+
+cache:
+  key: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - .nuget/packages/
+    - frontend/node_modules/
+
+# ── Backend: .NET API ─────────────────────────────────────────────────────
+backend_build:
+  stage: build
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  tags: [student]
+  script:
+    - cd backend   # ваша папка з .NET проектом
+    - dotnet restore
+    - dotnet build --configuration Release --no-restore
+  artifacts:
+    paths: [backend/bin/, backend/obj/]
+    expire_in: 1 hour
+
+backend_test:
+  stage: test
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  tags: [student]
+  dependencies: [backend_build]
+  script:
+    - cd backend
+    - dotnet test --configuration Release --no-build
+
+# ── Frontend: React ───────────────────────────────────────────────────────
+frontend_build:
+  stage: build
+  image: node:20
+  tags: [student]
+  script:
+    - cd frontend   # ваша папка з React проектом
+    - npm install
+    - npm run build
+  artifacts:
+    paths: [frontend/dist/]
+    expire_in: 1 hour
+
+frontend_test:
+  stage: test
+  image: node:20
+  tags: [student]
+  dependencies: [frontend_build]
+  script:
+    - cd frontend
+    - npm test -- --watchAll=false</pre>
+
+<h3>3.6 Швидка таблиця: стек → image → команди</h3>
+<table>
+  <tr><th>Технологія</th><th>Docker image</th><th>Build команда</th><th>Test команда</th></tr>
+  <tr><td>.NET 8</td><td>mcr.microsoft.com/dotnet/sdk:8.0</td><td>dotnet build</td><td>dotnet test</td></tr>
+  <tr><td>Python 3.11</td><td>python:3.11-slim</td><td>pip install -r requirements.txt</td><td>pytest</td></tr>
+  <tr><td>Node.js 20</td><td>node:20</td><td>npm install</td><td>npm test</td></tr>
+  <tr><td>Java 21</td><td>maven:3.9-eclipse-temurin-21</td><td>mvn package -DskipTests</td><td>mvn test</td></tr>
+  <tr><td>React/Vue (Vite)</td><td>node:20</td><td>npm run build</td><td>npm run test:unit</td></tr>
+  <tr><td>Angular</td><td>node:20</td><td>npm run build</td><td>npm run test -- --watch=false</td></tr>
+  <tr><td>Go</td><td>golang:1.22-alpine</td><td>go build ./...</td><td>go test ./...</td></tr>
+  <tr><td>PHP (Laravel)</td><td>php:8.3-cli</td><td>composer install</td><td>php artisan test</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════════════ 4 -->
+<hr class="sep">
+<h2 id="s4">4. Гілкова стратегія для дипломного проекту</h2>
+
+<h3>4.1 Навіщо гілки якщо ти працюєш один</h3>
+<p>Типова помилка дипломника — робити все в одній гілці <code>main</code>. Проблеми що з цього виникають:</p>
+<ul>
+  <li>зламаний код потрапляє прямо в основну гілку — pipeline стає червоним</li>
+  <li>немає чіткого розмежування між «стабільний код» і «робота в процесі»</li>
+  <li>важко відстежити коли і що зламалось</li>
+  <li>комісія бачить брудну історію комітів у main</li>
+</ul>
+<p>Гілки вирішують це навіть для одного розробника. Крім того — правильна гілкова стратегія сама по собі є демонстрацією зрілості розробника на захисті.</p>
+
+<h3>4.2 Рекомендована стратегія для диплому</h3>
+<pre># Структура гілок для дипломного проекту:
+#
+# main ────────────────────────────────────────────────────►
+#   │  (тільки стабільний, протестований код)
+#   │
+# develop ─────────────────────────────────────────────────►
+#   │  (поточна розробка, сюди йдуть merge з feature гілок)
+#   │
+# feature/user-auth ───────────►
+# feature/payment-module ──────────────►
+# fix/login-bug ──────────►
+#
+# Правило: в main потрапляє тільки код з develop
+#          після того як pipeline зелений і все перевірено</pre>
+
+<h4>Налаштування захисту гілки main у GitLab</h4>
+<p>Щоб випадково не запушити у main напряму — захистіть її:</p>
+<ol>
+  <li>Відкрийте ваш проект на git.ztu.edu.ua</li>
+  <li>Settings → Repository → Protected Branches</li>
+  <li>Знайдіть гілку <code>main</code> → натисніть Protect</li>
+  <li>Allowed to push: <strong>No one</strong> (або тільки Maintainers)</li>
+  <li>Allowed to merge: Maintainers</li>
+</ol>
+<div class="note">
+  <strong>Якщо ви єдиний учасник проекту</strong> — встановіть собі роль Maintainer (вона є за замовчуванням для власника проекту). Тоді ви зможете робити merge через Merge Request, але не зможете випадково зробити push напряму.
+</div>
+
+<h4>Робочий процес з гілками</h4>
+<pre># 1. Почати нову функцію — створити гілку від develop
+git checkout develop
+git pull origin develop
+git checkout -b feature/назва-функції
+# Наприклад: git checkout -b feature/user-registration
+
+# 2. Розробка: робіть коміти у цій гілці
+git add .
+git commit -m "Add user registration form"
+git push origin feature/user-registration
+
+# 3. Коли функція готова — створіть Merge Request у GitLab:
+#    feature/user-registration → develop
+#    Pipeline запуститься автоматично при створенні MR
+#    (якщо у .gitlab-ci.yml є: only: [merge_requests])
+
+# 4. Після merge у develop — pipeline для develop запускається знову
+
+# 5. Коли develop стабільний і готовий до "релізу" —
+#    Merge Request: develop → main
+#    Pipeline для main запускає deploy stage</pre>
+
+<h4>Налаштування pipeline для гілкової стратегії</h4>
+<pre># .gitlab-ci.yml — rules замість only/except (сучасніший підхід)
+stages:
+  - build
+  - test
+  - docker
+  - deploy
+
+build_job:
+  stage: build
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  tags: [student]
+  script:
+    - dotnet build
+  # rules: визначають умови запуску job (замість застарілого only:)
+  rules:
+    # Запускати для будь-якого push у будь-яку гілку
+    - if: '$CI_COMMIT_BRANCH'
+      when: always
+
+test_job:
+  stage: test
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  tags: [student]
+  script:
+    - dotnet test
+  rules:
+    # Запускати для будь-якого push і для merge request
+    - if: '$CI_COMMIT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+
+deploy_job:
+  stage: deploy
+  tags: [student]
+  script:
+    - echo "Deploying..."
+  rules:
+    # Запускати ТІЛЬКИ для гілки main
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: always</pre>
+
+<!-- ═══════════════════════════════════════════════════════ 5 -->
+<hr class="sep">
+<h2 id="s5">5. Робота з двома репозиторіями: GitLab та GitHub</h2>
+
+<p><strong>Рекомендований підхід:</strong> основний репозиторій проекту знаходиться на <strong>git.ztu.edu.ua</strong> — це вимога університету. Якщо студенту зручніше або доцільніше вести проект на <strong>GitHub</strong> (наприклад, щоб використовувати GitHub Actions або мати публічне портфоліо) — це також допустимо. У такому випадку робиться дзеркало на git.ztu.edu.ua.</p>
+
+<p>CI/CD налаштовується там де знаходиться основний репозиторій: GitLab CI/CD для git.ztu.edu.ua, GitHub Actions для GitHub. Можна використовувати обидва одночасно.</p>
+
+<h3>5.1 GitHub Actions vs GitLab CI/CD — порівняння</h3>
+<table>
+  <tr><th>Критерій</th><th>GitLab CI/CD (git.ztu.edu.ua)</th><th>GitHub Actions</th></tr>
+  <tr><td>Runner</td><td>Потрібен власний Runner</td><td>Безкоштовні hosted runners (Ubuntu/Windows/macOS)</td></tr>
+  <tr><td>Хвилини CI</td><td>Необмежено (власний Runner)</td><td>2000 хв/місяць безкоштовно</td></tr>
+  <tr><td>Складність старту</td><td>Вища (встановити Runner)</td><td>Нижча (нічого не встановлювати)</td></tr>
+  <tr><td>Синтаксис</td><td>.gitlab-ci.yml</td><td>.github/workflows/*.yml</td></tr>
+  <tr><td>Docker у CI</td><td>Потребує DinD або shell</td><td>Вбудована підтримка, простіше</td></tr>
+  <tr><td>Видимість для комісії</td><td>git.ztu.edu.ua (університет)</td><td>github.com (публічно)</td></tr>
+  <tr><td>Популярність</td><td>Корпоративний стандарт</td><td>Найпопулярніший у open source</td></tr>
+  <tr><td>Marketplace</td><td>Обмежений</td><td>Тисячі готових actions</td></tr>
+</table>
+
+<h3>5.2 GitHub Actions — базовий pipeline</h3>
+<p>Файл розміщується у <code>.github/workflows/ci.yml</code> у корені репозиторію. GitHub автоматично виявляє його і запускає pipeline без будь-яких додаткових налаштувань.</p>
+<pre># .github/workflows/ci.yml
+# GitHub Actions pipeline — аналог .gitlab-ci.yml
+
+# Назва workflow — відображається у GitHub → Actions вкладка
+name: CI/CD Pipeline
+
+# on: визначає коли запускати pipeline (аналог only: у GitLab)
+on:
+  push:
+    branches: [main, develop]   # при push у ці гілки
+  pull_request:
+    branches: [main]            # при створенні PR у main
+
+# jobs: аналог jobs у GitLab CI
+# На відміну від GitLab — немає явного поняття stages
+# Порядок визначається через needs: (залежності між jobs)
+jobs:
+
+  # ── Job: build ──────────────────────────────────────────────────────────
+  build:
+    # runs-on: на якій машині виконувати
+    # ubuntu-latest → безкоштовна Ubuntu VM від GitHub (2 CPU, 7GB RAM)
+    # Альтернативи: windows-latest, macos-latest
+    runs-on: ubuntu-latest
+
+    steps:
+      # actions/checkout → клонує ваш репозиторій всередину runner
+      # БЕЗ цього кроку — репозиторій недоступний!
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # actions/setup-dotnet → встановлює .NET SDK потрібної версії
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'   # встановить останній патч .NET 8
+
+      - name: Restore dependencies
+        run: dotnet restore   # аналог script: у GitLab
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      # actions/upload-artifact → зберегти файли (аналог artifacts: у GitLab)
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: |
+            api/bin/
+            api/obj/
+          retention-days: 1   # зберігати 1 день
+
+  # ── Job: test ───────────────────────────────────────────────────────────
+  test:
+    runs-on: ubuntu-latest
+    # needs: → цей job чекає завершення "build" (аналог stage: після попереднього stage)
+    needs: build
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # actions/download-artifact → завантажити artifacts від job "build"
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+
+      - name: Run tests
+        run: dotnet test --configuration Release --no-build --verbosity normal
+
+  # ── Job: docker ─────────────────────────────────────────────────────────
+  docker:
+    runs-on: ubuntu-latest
+    needs: test   # запускати після успішного test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Docker вже встановлений на ubuntu-latest — нічого додаткового не потрібно!
+      # Це головна перевага GitHub Actions порівняно з GitLab + DinD
+      - name: Build Docker image
+        run: |
+          docker build -t myapp:${{ github.sha }} .
+          # ${{ github.sha }} → SHA коміту (аналог $CI_COMMIT_SHA у GitLab)
+          docker images | grep myapp
+
+  # ── Job: deploy ─────────────────────────────────────────────────────────
+  deploy:
+    runs-on: ubuntu-latest
+    needs: docker
+    # Запускати тільки для гілки main
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to staging
+        run: |
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Run ID: ${{ github.run_id }}"
+          echo "Deployment: SIMULATED OK"
+          # Тут буде реальна команда деплою (SSH, kubectl тощо)</pre>
+
+<h3>5.3 Проблема синхронізації git.ztu.edu.ua і GitHub</h3>
+<p>Ідеальна ситуація: проект існує і на git.ztu.edu.ua (вимога університету) і на GitHub (для GitHub Actions, видимості, resume). Проблема — у поточній версії GitLab на git.ztu.edu.ua <strong>не працює pull mirroring</strong> (автоматичне підтягування змін з GitHub).</p>
+
+<p>Є три підходи до вирішення:</p>
+
+<h4>Варіант A: git.ztu.edu.ua як основний репозиторій, GitHub як дзеркало</h4>
+<p>Ви ведете проект на git.ztu.edu.ua і використовуєте GitLab CI/CD. GitHub слугує дзеркалом — для публічного портфоліо або додаткових GitHub Actions. GitHub оновлюється автоматично при кожному push.</p>
+
+<pre># ── Налаштування push mirror з GitLab на GitHub ──────────────────────────
+# (Це робиться ОДИН РАЗ у налаштуваннях GitLab проекту)
+
+# Крок 1: Створіть репозиторій на GitHub (порожній, без README)
+# Наприклад: github.com/YOUR_USERNAME/diploma-project
+
+# Крок 2: Створіть Personal Access Token на GitHub
+# GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
+# Permissions потрібні: repo (повний доступ)
+# Скопіюйте токен (він показується тільки один раз!)
+
+# Крок 3: Налаштуйте mirror у GitLab
+# git.ztu.edu.ua → ваш проект → Settings → Repository → Mirroring repositories
+# → Add new mirror
+#   Git repository URL: https://github.com/YOUR_USERNAME/diploma-project.git
+#   Mirror direction: Push
+#   Authentication method: Username and Password
+#   Username: YOUR_GITHUB_USERNAME
+#   Password: ghp_xxxxxxxxxxxxxxxx (ваш GitHub токен)
+# → Mirror repository
+
+# Після цього: кожен push у git.ztu.edu.ua автоматично відображається на GitHub!
+# Перевірка: натисніть кнопку "Update now" і перевірте GitHub</pre>
+
+<div class="note">
+  <strong>Якщо push mirror недоступний у вашій версії GitLab на git.ztu.edu.ua:</strong> скористайтесь Варіантом B нижче — синхронізація через GitHub Actions.
+</div>
+
+<h4>Варіант B: Синхронізація GitLab → GitHub через GitHub Actions</h4>
+<p>Якщо push mirror у GitLab недоступний — GitHub Actions може сам підтягувати зміни з git.ztu.edu.ua за розкладом. Основний репозиторій залишається на git.ztu.edu.ua, GitHub оновлюється автоматично кожні 30 хвилин.</p>
+
+<pre># .github/workflows/sync-from-gitlab.yml
+# Цей workflow синхронізує GitHub ← git.ztu.edu.ua кожні 30 хвилин
+
+name: Sync from GitLab
+
+on:
+  # schedule: запускати за розкладом (cron синтаксис)
+  # "*/30 * * * *" → кожні 30 хвилин
+  schedule:
+    - cron: '*/30 * * * *'
+
+  # workflow_dispatch: дозволяє запустити вручну через GitHub UI
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Sync from GitLab to GitHub
+        run: |
+          # Налаштування git
+          git config --global user.email "sync-bot@example.com"
+          git config --global user.name "Sync Bot"
+
+          # Клонуємо з GitLab (git.ztu.edu.ua)
+          # GITLAB_TOKEN — секрет який ви додасте у GitHub Secrets
+          git clone --mirror \
+            https://oauth2:${{ secrets.GITLAB_TOKEN }}@git.ztu.edu.ua/YOUR_USERNAME/diploma-project.git \
+            repo/
+
+          cd repo/
+
+          # Відправляємо на GitHub
+          # GITHUB_TOKEN — автоматично доступний у GitHub Actions
+          git push --mirror \
+            https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/YOUR_USERNAME/diploma-project.git</pre>
+
+<div class="warning">
+  <strong>Як додати GITLAB_TOKEN у GitHub Secrets:</strong>
+  <ol style="margin:8px 0 0 20px">
+    <li>Створіть Access Token на git.ztu.edu.ua: User Settings → Access Tokens → scope: read_repository</li>
+    <li>GitHub → ваш репозиторій → Settings → Secrets and variables → Actions</li>
+    <li>New repository secret → Name: <code>GITLAB_TOKEN</code> → Value: ваш токен</li>
+  </ol>
+</div>
+
+<h4>Варіант C: GitHub як основний репозиторій, дзеркало на git.ztu.edu.ua</h4>
+<p>Якщо студенту зручніше вести проект на GitHub і використовувати GitHub Actions — GitHub стає основним репозиторієм. git.ztu.edu.ua підтримується як дзеркало через налаштування git remote. CI/CD у цьому випадку налаштовується як GitHub Actions.</p>
+
+<pre># Налаштування двох remote одночасно
+
+# Ви вже маєте репозиторій на git.ztu.edu.ua:
+git remote -v
+# origin  https://git.ztu.edu.ua/YOUR/project.git (fetch)
+# origin  https://git.ztu.edu.ua/YOUR/project.git (push)
+
+# Додаємо GitHub як другий remote з назвою "github"
+git remote add github https://github.com/YOUR_USERNAME/diploma-project.git
+
+# Тепер у вас два remote:
+# origin → git.ztu.edu.ua
+# github → github.com
+
+# Push в обидва репозиторії одночасно:
+git push origin main    # → git.ztu.edu.ua
+git push github main    # → GitHub
+
+# АБО: налаштуйте один push у обидва remote одразу
+git remote set-url --add --push origin https://git.ztu.edu.ua/YOUR/project.git
+git remote set-url --add --push origin https://github.com/YOUR_USERNAME/diploma-project.git
+
+# Тепер одна команда пушить в обидва:
+git push origin main   # → git.ztu.edu.ua І GitHub одночасно</pre>
+
+
+<!-- ═══════════════════════════════════════════════════════ 6 -->
+<hr class="sep">
+<h2 id="s6">6. Реальний деплой для дипломного проекту</h2>
+
+<p>Живий застосунок за реальним URL — найсильніший аргумент на захисті. Якщо комісія може відкрити браузер і побачити що проект справді працює — це значно виразніше за будь-які скріншоти.</p>
+
+<h3>6.1 Загальні підходи до деплою</h3>
+<p>Незалежно від того яку платформу ви оберете для розгортання, підхід інтеграції з pipeline залишається однаковим. Платформи деплою зазвичай надають один з двох механізмів запуску:</p>
+<ul>
+  <li><strong>Deploy Hook URL</strong> — унікальний URL, який при HTTP запиті запускає деплой на платформі</li>
+  <li><strong>CLI інструмент</strong> — утиліта командного рядка яку можна встановити і викликати всередині CI job</li>
+</ul>
+
+<h3>6.2 Інтеграція деплою через Deploy Hook (GitLab CI/CD)</h3>
+<p>Якщо ваша платформа надає Deploy Hook URL — інтеграція зводиться до одного curl виклику у pipeline:</p>
+<pre># .gitlab-ci.yml — деплой через Deploy Hook
+deploy:
+  stage: deploy
+  tags: [student]
+  only: [main]   # запускати тільки для основної гілки
+  script:
+    # DEPLOY_HOOK_URL — збережіть URL у GitLab CI/CD Variables
+    # Settings → CI/CD → Variables → Add variable:
+    #   Key:     DEPLOY_HOOK_URL
+    #   Value:   https://platform.example.com/deploy/your-hook-url
+    #   Protected: true  → доступна тільки для protected гілок (main)
+    #   Masked:  true    → не відображати у логах pipeline
+
+    # Надсилаємо HTTP запит щоб запустити деплой на платформі
+    - curl -s "$DEPLOY_HOOK_URL"
+    # -s → silent: не виводити прогрес, тільки відповідь
+
+    - echo "Deploy triggered. Check your hosting platform for status."
+  environment:
+    name: staging
+    url: https://your-app-url.example.com   # замініть на реальний URL</pre>
+
+<h3>6.3 Інтеграція деплою через CLI (GitLab CI/CD)</h3>
+<p>Якщо платформа надає CLI інструмент — встановіть його всередині CI контейнера і викличте команду деплою:</p>
+<pre># .gitlab-ci.yml — деплой через CLI платформи
+deploy:
+  stage: deploy
+  image: alpine:latest   # мінімальний Linux image
+  tags: [student]
+  only: [main]
+  before_script:
+    # Встановити curl і необхідні утиліти
+    - apk add --no-cache curl bash
+
+    # Завантажити і встановити CLI вашої платформи
+    # (замініть цей рядок на команду встановлення CLI вашої платформи)
+    - curl -fsSL https://your-platform.com/install.sh | sh
+
+    # Додати CLI до PATH якщо потрібно
+    - export PATH="$HOME/.platform-cli/bin:$PATH"
+
+  script:
+    # PLATFORM_API_TOKEN — токен аутентифікації
+    # Збережіть у GitLab Variables як PLATFORM_API_TOKEN
+    # (Masked: true, Protected: true)
+    - platform-cli deploy --token "$PLATFORM_API_TOKEN"
+    # Замініть "platform-cli deploy" на реальну команду деплою вашої платформи
+
+  environment:
+    name: production
+    url: https://your-app-url.example.com</pre>
+
+<h3>6.4 Деплой через SSH на Linux сервер</h3>
+<p>Якщо у вас є доступ до будь-якого Linux сервера — це найбільш універсальний підхід який не залежить від конкретної платформи.</p>
+<pre># .gitlab-ci.yml — деплой на Linux сервер через SSH
+deploy_vps:
+  stage: deploy
+  image: alpine:latest
+  tags: [student]
+  only: [main]
+  before_script:
+    # Встановити SSH клієнт
+    - apk add --no-cache openssh-client
+
+    # Налаштувати SSH ключ
+    # SSH_PRIVATE_KEY — приватний ключ збережений у GitLab Variables
+    # Як створити ключ:
+    #   ssh-keygen -t ed25519 -C "gitlab-deploy" -f deploy_key
+    #   Приватний ключ (deploy_key) → у GitLab Variables як SSH_PRIVATE_KEY
+    #   Публічний ключ (deploy_key.pub) → у ~/.ssh/authorized_keys на сервері
+    - mkdir -p ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+    - chmod 600 ~/.ssh/deploy_key   # SSH відмовить якщо права не 600
+
+    # Вимкнути перевірку host key (для CI — прийнятно)
+    - echo "StrictHostKeyChecking no" >> ~/.ssh/config
+
+  script:
+    # DEPLOY_HOST — IP або домен вашого сервера (у GitLab Variables)
+    # DEPLOY_USER — ім'я користувача на сервері
+
+    # Підключитись до сервера і виконати команди деплою
+    - ssh -i ~/.ssh/deploy_key $DEPLOY_USER@$DEPLOY_HOST "
+        # Зупинити поточний контейнер
+        docker stop diploma-app 2>/dev/null || true
+        docker rm diploma-app 2>/dev/null || true
+
+        # Оновити код з репозиторію
+        cd /opt/diploma-app
+        git pull origin main
+
+        # Перезібрати і запустити Docker контейнер
+        docker build -t diploma-app:latest .
+        docker run -d \
+          --name diploma-app \
+          --restart unless-stopped \
+          -p 80:5000 \
+          diploma-app:latest
+
+        echo 'Deploy completed successfully'
+      "
+  environment:
+    name: production
+    url: http://$DEPLOY_HOST</pre>
+
+<!-- ═══════════════════════════════════════════════════════ 7 -->
+<hr class="sep">
+<h2 id="s7">7. Тестування у дипломному проекті</h2>
+
+<h3>7.1 Які тести варто мати і чому</h3>
+<p>Не потрібно досягати 100% покриття коду тестами — це нереалістично для дипломного проекту з обмеженим часом. Натомість потрібно мати тести які <strong>демонструють розуміння</strong> принципів тестування і <strong>реально перевіряють</strong> ключову бізнес-логіку.</p>
+
+<table>
+  <tr><th>Тип тестів</th><th>Що перевіряє</th><th>Мінімум для диплому</th><th>Складність</th></tr>
+  <tr><td>Юніт-тести</td><td>Окремі функції/методи в ізоляції</td><td>5-10 тестів на ключові методи</td><td>Низька</td></tr>
+  <tr><td>Інтеграційні тести</td><td>Взаємодія компонентів (API endpoints)</td><td>3-5 тестів на основні endpoints</td><td>Середня</td></tr>
+  <tr><td>E2E тести</td><td>Повний сценарій через UI</td><td>Опціонально, бонус</td><td>Висока</td></tr>
+</table>
+
+<h3>7.2 Юніт-тести для .NET</h3>
+<pre>// ── Тест для бізнес-логіки у .NET (xUnit) ─────────────────────────────
+// xUnit — стандартний фреймворк тестування для .NET
+// Встановлення: dotnet add package xunit
+
+using Xunit;
+
+namespace MyApp.Tests;
+
+// Тестуємо клас який містить бізнес-логіку
+// НЕ тестуємо контролери напряму — їх тестують інтеграційні тести
+public class OrderServiceTests
+{
+    // [Fact] → звичайний тест без параметрів
+    [Fact]
+    public void CalculateTotal_WithDiscount_ReturnsCorrectTotal()
+    {
+        // ── Arrange: підготовка (що маємо на вході) ────────────────────
+        var service = new OrderService();
+        var items = new List&lt;OrderItem&gt;
+        {
+            new OrderItem { Price = 100, Quantity = 2 },
+            new OrderItem { Price = 50, Quantity = 1 }
+        };
+        decimal discountPercent = 10;   // 10% знижка
+
+        // ── Act: виконання (що тестуємо) ───────────────────────────────
+        decimal total = service.CalculateTotal(items, discountPercent);
+
+        // ── Assert: перевірка (що очікуємо) ────────────────────────────
+        // 100*2 + 50*1 = 250, знижка 10% = 25, підсумок = 225
+        Assert.Equal(225m, total);
+    }
+
+    // [Theory] + [InlineData] → параметризований тест
+    // Один тест запускається з різними вхідними даними
+    [Theory]
+    [InlineData(0, 100, 100)]    // без знижки
+    [InlineData(10, 100, 90)]    // 10% знижки
+    [InlineData(100, 100, 0)]    // 100% знижки
+    public void CalculateTotal_WithVariousDiscounts_ReturnsExpectedResult(
+        decimal discount, decimal price, decimal expected)
+    {
+        var service = new OrderService();
+        var items = new List&lt;OrderItem&gt;
+        {
+            new OrderItem { Price = price, Quantity = 1 }
+        };
+
+        decimal total = service.CalculateTotal(items, discount);
+
+        Assert.Equal(expected, total);
+    }
+}</pre>
+
+<h4>Генерація coverage звіту для .NET</h4>
+<pre># Встановити coverlet (інструмент для coverage у .NET)
+dotnet add package coverlet.collector
+
+# Запуск тестів з coverage
+dotnet test \
+  --collect:"XPlat Code Coverage" \
+  --results-directory ./coverage-results
+
+# Генерація HTML звіту з reportgenerator
+dotnet tool install -g dotnet-reportgenerator-globaltool
+reportgenerator \
+  -reports:"coverage-results/**/coverage.cobertura.xml" \
+  -targetdir:"coverage-report" \
+  -reporttypes:Html
+
+# Відкрийте coverage-report/index.html у браузері
+# Ви побачите список файлів і відсоток покриття кожного</pre>
+
+<h4>Coverage у GitLab CI/CD pipeline</h4>
+<pre># Додайте у .gitlab-ci.yml
+dotnet_test:
+  stage: test
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  tags: [student]
+  script:
+    - cd api
+    - dotnet test --collect:"XPlat Code Coverage" --results-directory ./coverage
+
+    # Встановити reportgenerator глобально
+    - dotnet tool install -g dotnet-reportgenerator-globaltool
+    - export PATH="$PATH:$HOME/.dotnet/tools"
+
+    # Генерувати HTML і текстовий звіт
+    - reportgenerator -reports:"coverage/**/coverage.cobertura.xml"
+        -targetdir:"coverage-report" -reporttypes:"Html;TextSummary"
+
+    # Вивести у лог відсоток покриття
+    - cat coverage-report/Summary.txt
+
+  # coverage: regex що GitLab використовує для відображення % у pipeline UI
+  # Ця регулярка витягує число з рядку типу "Line coverage: 75.4%"
+  coverage: '/Line coverage: \d+\.?\d*/'
+
+  artifacts:
+    paths:
+      - api/coverage-report/   # HTML звіт — завантажте і перегляньте
+    expire_in: 7 days
+    reports:
+      # coverage_report: GitLab відображає coverage у Merge Request
+      coverage_report:
+        coverage_format: cobertura
+        path: api/coverage/**/coverage.cobertura.xml</pre>
+
+<h3>7.3 Інтеграційні тести для API (ASP.NET Core)</h3>
+<pre>// ── Інтеграційний тест для API endpoint ──────────────────────────────────
+// Тест запускає реальний веб-сервер у пам'яті і робить HTTP запити до нього
+// Потрібен пакет: Microsoft.AspNetCore.Mvc.Testing
+
+using Microsoft.AspNetCore.Mvc.Testing;
+using System.Net;
+using Xunit;
+
+public class WeatherApiIntegrationTests : IClassFixture&lt;WebApplicationFactory&lt;Program&gt;&gt;
+{
+    // WebApplicationFactory запускає весь ASP.NET Core застосунок у пам'яті
+    // Це дозволяє тестувати реальні HTTP запити без зовнішнього сервера
+    private readonly HttpClient _client;
+
+    public WeatherApiIntegrationTests(WebApplicationFactory&lt;Program&gt; factory)
+    {
+        // Створюємо HTTP клієнт що звертається до тестового сервера
+        _client = factory.CreateClient();
+    }
+
+    [Fact]
+    public async Task GetWeatherForecast_ReturnsSuccessStatusCode()
+    {
+        // Act: робимо реальний HTTP GET запит
+        var response = await _client.GetAsync("/weatherforecast");
+
+        // Assert: перевіряємо що статус 200 OK
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetWeatherForecast_ReturnsJsonContentType()
+    {
+        var response = await _client.GetAsync("/weatherforecast");
+
+        // Перевіряємо Content-Type заголовок відповіді
+        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task GetWeatherForecast_ReturnsFiveForecasts()
+    {
+        var response = await _client.GetAsync("/weatherforecast");
+        var content = await response.Content.ReadAsStringAsync();
+
+        // Десеріалізуємо JSON відповідь
+        var forecasts = System.Text.Json.JsonSerializer.Deserialize&lt;List&lt;object&gt;&gt;(content,
+            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        // Стандартний template повертає 5 прогнозів
+        Assert.Equal(5, forecasts?.Count);
+    }
+}</pre>
+
+<h3>7.4 Тести для Python (pytest)</h3>
+<pre># tests/test_orders.py — юніт-тести для Python
+
+import pytest
+from app.services.order_service import OrderService
+
+# pytest автоматично знаходить файли що починаються на test_
+# і функції що починаються на test_
+
+class TestOrderService:
+    # setup_method викликається перед КОЖНИМ тестом
+    # Аналог [SetUp] у NUnit або @BeforeEach у JUnit
+    def setup_method(self):
+        self.service = OrderService()
+
+    def test_calculate_total_without_discount(self):
+        # Arrange
+        items = [{"price": 100, "quantity": 2}, {"price": 50, "quantity": 1}]
+        # Act
+        total = self.service.calculate_total(items, discount=0)
+        # Assert
+        assert total == 250   # 100*2 + 50*1
+
+    def test_calculate_total_with_discount(self):
+        items = [{"price": 100, "quantity": 1}]
+        total = self.service.calculate_total(items, discount=10)
+        assert total == 90   # 100 - 10%
+
+    # @pytest.mark.parametrize → параметризований тест (як [Theory] у xUnit)
+    @pytest.mark.parametrize("price,discount,expected", [
+        (100, 0, 100),    # без знижки
+        (100, 10, 90),    # 10% знижки
+        (200, 50, 100),   # 50% знижки
+        (100, 100, 0),    # 100% знижки
+    ])
+    def test_calculate_total_parametrized(self, price, discount, expected):
+        items = [{"price": price, "quantity": 1}]
+        total = self.service.calculate_total(items, discount=discount)
+        assert total == expected
+
+    # Тест що перевіряє виняток (помилку)
+    def test_calculate_total_negative_discount_raises_error(self):
+        items = [{"price": 100, "quantity": 1}]
+        # pytest.raises → перевіряє що функція кидає виняток
+        with pytest.raises(ValueError, match="Discount cannot be negative"):
+            self.service.calculate_total(items, discount=-1)
+
+# Запуск: pytest tests/ --verbose
+# З coverage: pytest tests/ --cov=app --cov-report=html</pre>
+
+<!-- ═══════════════════════════════════════════════════════ 8 -->
+<hr class="sep">
+<h2 id="s8">8. Автоматизація якості коду</h2>
+
+<h3>8.1 Лінтинг і форматування у pipeline</h3>
+<p>Лінтинг — автоматична перевірка коду на відповідність стандартам стилю і пошук потенційних помилок. Це займає секунди у pipeline але демонструє культуру розробки.</p>
+
+<h4>Лінтинг для різних стеків у .gitlab-ci.yml</h4>
+<pre># ── .NET: форматування коду ───────────────────────────────────────────────
+dotnet_format:
+  stage: test
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  tags: [student]
+  script:
+    # dotnet format перевіряє відповідність коду .editorconfig правилам
+    # --verify-no-changes → завершується з помилкою якщо є відхилення від стилю
+    # Видаліть --verify-no-changes якщо хочете автоматично виправляти
+    - dotnet format --verify-no-changes
+  allow_failure: true   # не блокуємо pipeline поки не налаштовано стиль
+
+# ── Python: flake8 + black ────────────────────────────────────────────────
+python_quality:
+  stage: test
+  image: python:3.11
+  tags: [student]
+  script:
+    - pip install flake8 black
+
+    # black --check → перевіряє форматування БЕЗ змін
+    # (без --check → змінює файли на місці, що небажано у CI)
+    - black --check .
+
+    # flake8 → статичний аналіз: стиль PEP8, потенційні помилки
+    - flake8 . --max-line-length=88 --exclude=venv,.git,__pycache__
+    # --max-line-length=88 → відповідає стандарту black
+  allow_failure: true
+
+# ── JavaScript/TypeScript: ESLint ─────────────────────────────────────────
+js_lint:
+  stage: test
+  image: node:20
+  tags: [student]
+  script:
+    - npm install
+    # eslint . → перевіряє всі .js/.ts файли у поточній папці
+    # --ext .js,.jsx,.ts,.tsx → розширення файлів для перевірки
+    - npx eslint . --ext .js,.jsx,.ts,.tsx
+  allow_failure: true</pre>
+
+<h3>8.2 SonarCloud — безкоштовний статичний аналіз</h3>
+<p>SonarCloud — хмарна версія SonarQube, безкоштовна для публічних репозиторіїв. Аналізує ваш код і знаходить: баги, вразливості безпеки, «code smells» (погані практики), дублювання коду. Результати відображаються у красивому дашборді.</p>
+
+<pre># ── Інтеграція SonarCloud у GitHub Actions ────────────────────────────────
+# .github/workflows/sonar.yml
+
+name: SonarCloud Analysis
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  sonarcloud:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # fetch-depth: 0 → завантажити повну історію Git
+          # Потрібно SonarCloud для аналізу змін між комітами
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install SonarCloud scanner
+        run: dotnet tool install --global dotnet-sonarscanner
+
+      - name: Analyze with SonarCloud
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # SONAR_TOKEN — токен від sonarcloud.io
+          # Отримати: sonarcloud.io → My Account → Security → Generate Token
+          # Зберегти у GitHub Secrets як SONAR_TOKEN
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          # Починаємо аналіз
+          dotnet sonarscanner begin \
+            /k:"YOUR_ORGANIZATION_YOUR_PROJECT" \
+            /o:"your-organization" \
+            /d:sonar.host.url="https://sonarcloud.io" \
+            /d:sonar.login="$SONAR_TOKEN" \
+            /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml"
+
+          # Збираємо і запускаємо тести
+          dotnet build
+          dotnet test --collect:"XPlat Code Coverage"
+
+          # Завершуємо аналіз і відправляємо результати
+          dotnet sonarscanner end /d:sonar.login="$SONAR_TOKEN"</pre>
+
+<div class="tip">
+  <strong>Для диплому:</strong> SonarCloud бесплатний для публічних репозиторіїв GitHub. Зайдіть на sonarcloud.io → авторизуйтесь через GitHub → Add new project → оберіть ваш репозиторій. Через 5 хвилин отримаєте повний звіт. Скріншот дашборду SonarCloud у пояснювальній записці — сильний аргумент на захисті.
+</div>
+
+<h3>8.3 Перевірка безпеки залежностей</h3>
+<pre># ── npm audit для Node.js/React ───────────────────────────────────────────
+security_npm:
+  stage: test
+  image: node:20
+  tags: [student]
+  script:
+    - npm install
+    # npm audit перевіряє пакети на відомі вразливості (CVE)
+    # --audit-level=high → падати тільки при HIGH або CRITICAL вразливостях
+    # moderate і low — попередження але не помилка
+    - npm audit --audit-level=high
+  allow_failure: true   # нові вразливості не мають блокувати вашу роботу
+
+# ── pip-audit для Python ──────────────────────────────────────────────────
+security_python:
+  stage: test
+  image: python:3.11
+  tags: [student]
+  script:
+    - pip install pip-audit
+    # pip-audit перевіряє встановлені пакети на вразливості з PyPI Advisory Database
+    - pip-audit -r requirements.txt
+  allow_failure: true
+
+# ── dotnet list package для .NET ──────────────────────────────────────────
+security_dotnet:
+  stage: test
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  tags: [student]
+  script:
+    - cd api
+    - dotnet restore
+    # --vulnerable → показати пакети з відомими вразливостями
+    # --include-transitive → включити транзитивні залежності
+    - dotnet list package --vulnerable --include-transitive
+  allow_failure: true</pre>
+
+
+<!-- ═══════════════════════════════════════════════════════ 9 -->
+<hr class="sep">
+<h2 id="s9">9. Моніторинг і логування</h2>
+
+<h3>9.1 Структуровані логи замість Console.WriteLine</h3>
+<p>Console.WriteLine у production коді — ознака незрілого застосунку. Структуровані логи дозволяють фільтрувати, шукати і аналізувати події застосунку. Для комісії це демонстрація розуміння production-ready розробки.</p>
+
+<h4>Логування у .NET (вбудований ILogger)</h4>
+<pre>// ── Правильне логування у ASP.NET Core ────────────────────────────────────
+// ILogger&lt;T&gt; — вбудований інтерфейс логування .NET
+// Не потребує додаткових пакетів
+
+public class OrderService
+{
+    // Інжекція логера через конструктор (Dependency Injection)
+    private readonly ILogger&lt;OrderService&gt; _logger;
+
+    public OrderService(ILogger&lt;OrderService&gt; logger)
+    {
+        _logger = logger;
+    }
+
+    public Order CreateOrder(CreateOrderRequest request)
+    {
+        // LogInformation → рівень INFO: нормальні події застосунку
+        _logger.LogInformation(
+            "Creating order for user {UserId} with {ItemCount} items",
+            request.UserId,   // структурований параметр (не string.Format!)
+            request.Items.Count
+        );
+
+        try
+        {
+            var order = ProcessOrder(request);
+
+            // LogInformation з результатом
+            _logger.LogInformation(
+                "Order {OrderId} created successfully. Total: {Total}",
+                order.Id, order.Total
+            );
+
+            return order;
+        }
+        catch (InsufficientStockException ex)
+        {
+            // LogWarning → попередження: щось пішло не так але застосунок працює
+            _logger.LogWarning(
+                "Order creation failed for user {UserId}: insufficient stock for {ProductId}",
+                request.UserId, ex.ProductId
+            );
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // LogError → помилка: потрібна увага розробника
+            _logger.LogError(
+                ex,   // перший аргумент — exception для stack trace
+                "Unexpected error creating order for user {UserId}",
+                request.UserId
+            );
+            throw;
+        }
+    }
+}
+
+// ── Налаштування рівнів логування у appsettings.json ─────────────────────
+// {
+//   "Logging": {
+//     "LogLevel": {
+//       "Default": "Information",        // загальний рівень
+//       "Microsoft.AspNetCore": "Warning", // менше шуму від фреймворку
+//       "MyApp": "Debug"                  // більше деталей для вашого коду
+//     }
+//   }
+// }</pre>
+
+<h4>Логування у Python (logging модуль)</h4>
+<pre># ── Правильне логування у Python ──────────────────────────────────────────
+import logging
+import json
+from datetime import datetime
+
+# Налаштування логера на рівні модуля (не у функції!)
+# __name__ → назва поточного модуля (наприклад: app.services.order_service)
+logger = logging.getLogger(__name__)
+
+# Налаштувати форматування (один раз у головному файлі застосунку):
+# logging.basicConfig(
+#     level=logging.INFO,
+#     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+# )
+
+def create_order(user_id: int, items: list) -> dict:
+    # logging.info → рівень INFO
+    logger.info("Creating order for user %s with %d items", user_id, len(items))
+
+    try:
+        order = process_order(user_id, items)
+
+        logger.info("Order %s created successfully. Total: %.2f",
+                    order['id'], order['total'])
+        return order
+
+    except ValueError as e:
+        # logging.warning → попередження (очікувана помилка)
+        logger.warning("Invalid order data for user %s: %s", user_id, str(e))
+        raise
+
+    except Exception as e:
+        # logging.error з exc_info=True → включає stack trace
+        logger.error("Failed to create order for user %s",
+                     user_id, exc_info=True)
+        raise</pre>
+
+<h3>9.2 Health Check endpoint</h3>
+<p>Health check — спеціальний URL який повертає статус застосунку. Потрібен для моніторингу, load balancer-ів і демонстрації що застосунок «живий».</p>
+
+<h4>Health Check у ASP.NET Core</h4>
+<pre>// Program.cs — додати health check у мінімальну конфігурацію
+var builder = WebApplication.CreateBuilder(args);
+
+// Реєструємо сервіс health check
+builder.Services.AddHealthChecks()
+    // Перевірка підключення до бази даних
+    // Потрібен пакет: AspNetCore.HealthChecks.SqlServer або NpgSql
+    .AddNpgSql(
+        builder.Configuration.GetConnectionString("DefaultConnection")!,
+        name: "database",
+        tags: new[] { "db", "postgres" }
+    );
+
+var app = builder.Build();
+
+// Маппінг endpoint-у health check
+// GET /health → повертає 200 OK якщо все добре, 503 якщо є проблеми
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    // ResponseWriter → форматуємо відповідь як JSON
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var result = new
+        {
+            status = report.Status.ToString(),
+            timestamp = DateTime.UtcNow,
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString(),
+                duration = e.Value.Duration.TotalMilliseconds
+            })
+        };
+        await context.Response.WriteAsync(
+            System.Text.Json.JsonSerializer.Serialize(result)
+        );
+    }
+});
+
+// Тепер: GET https://your-app.onrender.com/health повертає:
+// {
+//   "status": "Healthy",
+//   "timestamp": "2025-03-19T10:00:00Z",
+//   "checks": [
+//     { "name": "database", "status": "Healthy", "duration": 12.5 }
+//   ]
+// }</pre>
+
+<h4>Health Check у pipeline</h4>
+<pre># Перевірка health check після деплою у pipeline
+post_deploy_check:
+  stage: deploy
+  tags: [student]
+  only: [main]
+  script:
+    # Чекаємо 30 секунд щоб застосунок встиг запуститись
+    - sleep 30
+
+    # Викликаємо health check endpoint
+    # -f → fail: повернути помилку якщо HTTP статус >= 400
+    # --retry 5 → спробувати 5 разів якщо не відповідає
+    # --retry-delay 10 → чекати 10 секунд між спробами
+    - curl -f --retry 5 --retry-delay 10 https://your-app.onrender.com/health
+
+    - echo "Health check passed — application is running!"
+  environment:
+    name: staging
+    url: https://your-app.onrender.com</pre>
+
+<h3>9.3 Безкоштовний uptime моніторинг</h3>
+<p>UptimeRobot — безкоштовний сервіс що перевіряє ваш застосунок кожні 5 хвилин і надсилає сповіщення якщо він недоступний. Безкоштовний план: 50 моніторів.</p>
+<ol>
+  <li>Зареєструйтесь на <strong>uptimerobot.com</strong></li>
+  <li>Add New Monitor → HTTP(s)</li>
+  <li>URL: <code>https://your-app.onrender.com/health</code></li>
+  <li>Monitoring Interval: Every 5 minutes</li>
+  <li>Alert Contacts: ваш email</li>
+</ol>
+<p>UptimeRobot надає <strong>публічну сторінку статусу</strong> (status page) — це окрема сторінка типу <code>status.uptimerobot.com/your-page</code> де видно uptime за останні 30 днів. Посилання на неї у README диплому — відмінний показник.</p>
+
+<!-- ═══════════════════════════════════════════════════════ 10 -->
+<hr class="sep">
+<h2 id="s10">10. Pipeline бейджі і README</h2>
+
+<h3>10.1 Навіщо бейджі</h3>
+<p>Бейджі — невеликі динамічні картинки у README що показують поточний стан проекту. Вони автоматично оновлюються і дозволяють комісії одним поглядом оцінити стан CI/CD, тестів і якості коду.</p>
+
+<h3>10.2 GitLab CI/CD бейдж</h3>
+<pre># Додайте у README.md вашого проекту на git.ztu.edu.ua:
+
+# Формат URL бейджу (замініть змінні своїми даними):
+# https://git.ztu.edu.ua/YOUR_USERNAME/YOUR_PROJECT/badges/main/pipeline.svg
+
+# Markdown синтаксис для README:
+[![Pipeline Status](https://git.ztu.edu.ua/YOUR_USERNAME/diploma-project/badges/main/pipeline.svg)](https://git.ztu.edu.ua/YOUR_USERNAME/diploma-project/-/pipelines)
+
+# Розшифровка:
+# [![Alt text](URL картинки)](URL посилання)
+# Alt text → текст якщо картинка не завантажилась
+# URL картинки → GitLab генерує SVG бейдж автоматично
+# URL посилання → при кліку відкривається список pipeline-ів
+
+# Coverage бейдж (відображає відсоток покриття з pipeline):
+[![Coverage](https://git.ztu.edu.ua/YOUR_USERNAME/diploma-project/badges/main/coverage.svg)](https://git.ztu.edu.ua/YOUR_USERNAME/diploma-project/-/jobs)
+
+# ВАЖЛИВО: coverage бейдж працює тільки якщо у .gitlab-ci.yml
+# налаштовано: coverage: '/рядок з відсотком/'</pre>
+
+<h3>10.3 GitHub Actions бейдж</h3>
+<pre># Для GitHub репозиторію:
+# Формат URL:
+# https://github.com/USERNAME/REPO/actions/workflows/WORKFLOW_FILE.yml/badge.svg
+
+[![CI/CD](https://github.com/YOUR_USERNAME/diploma-project/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/diploma-project/actions)
+
+# SonarCloud бейдж (отримайте на sonarcloud.io → ваш проект → Information):
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=YOUR_PROJECT_KEY&metric=alert_status)](https://sonarcloud.io/summary/YOUR_PROJECT_KEY)
+
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=YOUR_PROJECT_KEY&metric=coverage)](https://sonarcloud.io/summary/YOUR_PROJECT_KEY)</pre>
+
+<h3>10.4 Приклад повного README для дипломного проекту</h3>
+<pre># Назва вашого дипломного проекту
+
+[![Pipeline Status](https://git.ztu.edu.ua/YOUR/PROJECT/badges/main/pipeline.svg)](https://git.ztu.edu.ua/YOUR/PROJECT/-/pipelines)
+[![Coverage](https://git.ztu.edu.ua/YOUR/PROJECT/badges/main/coverage.svg)](https://git.ztu.edu.ua/YOUR/PROJECT/-/jobs)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=YOUR_KEY&metric=alert_status)](https://sonarcloud.io/summary/YOUR_KEY)
+
+## Опис проекту
+
+Коротко (2-3 речення) що робить ваш застосунок і яку задачу вирішує.
+
+## Живий застосунок
+
+🌐 **URL:** https://your-diploma-app.onrender.com
+📊 **Status Page:** https://stats.uptimerobot.com/your-page
+
+## Технологічний стек
+
+- **Backend:** ASP.NET Core 8.0 / Python 3.11 / Node.js 20
+- **Frontend:** React 18 / Vue 3 / Angular 17
+- **База даних:** PostgreSQL 16
+- **CI/CD:** GitLab CI/CD (git.ztu.edu.ua) + GitHub Actions
+- **Хостинг:** (обраний сервіс розгортання)
+
+## Швидкий старт
+
+# Клонування
+git clone https://git.ztu.edu.ua/YOUR_USERNAME/diploma-project.git
+cd diploma-project
+
+# Встановлення залежностей
+dotnet restore   # або: npm install / pip install -r requirements.txt
+
+# Запуск локально
+dotnet run       # або: npm start / python main.py
+
+# Запуск тестів
+dotnet test      # або: npm test / pytest
+
+## CI/CD Pipeline
+
+Pipeline складається з 4 етапів:
+1. **build** — компіляція і встановлення залежностей
+2. **test** — юніт-тести і генерація coverage звіту
+3. **docker** — збірка Docker image
+4. **deploy** — розгортання на staging (тільки для гілки main)
+
+## Структура проекту
+
+diploma-project/
+├── api/            ← Backend (.NET / Python)
+├── frontend/       ← Frontend (React / Vue)
+├── tests/          ← Тести
+├── .gitlab-ci.yml  ← GitLab CI/CD pipeline
+├── .github/        ← GitHub Actions workflows
+├── Dockerfile      ← Конфігурація Docker
+└── README.md       ← Цей файл</pre>
+
+<!-- ═══════════════════════════════════════════════════════ 11 -->
+<hr class="sep">
+<h2 id="s11">11. DevOps у пояснювальній записці та на захисті</h2>
+
+<h3>11.1 Як описати CI/CD у пояснювальній записці (по ДСТУ)</h3>
+<p>Пояснювальна записка до диплому має містити розділ де описані інструменти і процеси розробки. Нижче — рекомендована структура для опису CI/CD.</p>
+
+<h4>Рекомендована структура підрозділу</h4>
+<pre>## X.Y Організація процесу розробки та автоматизації
+
+### X.Y.1 Система контролю версій та репозиторій
+
+Для управління версіями вихідного коду використовується система Git
+з розміщенням репозиторію на університетській платформі git.ztu.edu.ua
+(GitLab Community Edition).
+
+Розробка ведеться за гілковою стратегією Feature Branch Workflow:
+- гілка main — стабільна версія застосунку, що відповідає останньому
+  розгорнутому релізу;
+- гілка develop — поточна версія в розробці;
+- гілки feature/* — окремі функціональні модулі.
+
+### X.Y.2 Безперервна інтеграція (CI)
+
+Для автоматизації процесу збірки та тестування реалізовано конвеєр
+безперервної інтеграції засобами GitLab CI/CD. Конфігурація конвеєра
+описана у файлі .gitlab-ci.yml у корені репозиторію.
+
+Конвеєр складається з чотирьох послідовних етапів:
+
+1. Етап build — відновлення залежностей та компіляція вихідного коду.
+   Використовується офіційний образ mcr.microsoft.com/dotnet/sdk:8.0.
+
+2. Етап test — запуск автоматизованих тестів. Реалізовано N юніт-тестів
+   що перевіряють ключові модулі бізнес-логіки. Загальне покриття коду
+   тестами складає X%.
+
+3. Етап docker — збірка Docker-образу застосунку засобами
+   Docker-in-Docker (DinD). Образ тегується ідентифікатором коміту
+   для однозначної ідентифікації версії.
+
+4. Етап deploy — автоматичне розгортання на тестовому сервері.
+   Виконується лише для гілки main після успішного проходження
+   попередніх етапів.
+
+### X.Y.3 Контейнеризація
+
+Застосунок упаковано у Docker-образ з використанням технології
+багатоетапної збірки (multi-stage build). Це дозволило зменшити
+розмір фінального образу з ~800 МБ (повний SDK) до ~200 МБ
+(мінімальний runtime).
+
+### X.Y.4 Якість коду
+
+Для автоматичної перевірки якості коду виконується:
+- статичний аналіз засобами [ESLint / flake8 / dotnet format];
+- перевірка залежностей на наявність відомих вразливостей
+  засобами [npm audit / pip-audit / dotnet list package --vulnerable];
+- аналіз якості та покриття коду засобами SonarCloud.</pre>
+
+<h3>11.2 Глосарій термінів для пояснювальної записки</h3>
+<table>
+  <tr><th>Термін (EN)</th><th>Переклад / пояснення</th><th>Як вживати у записці</th></tr>
+  <tr><td>CI/CD</td><td>Безперервна інтеграція та розгортання</td><td>«конвеєр CI/CD» або «система CI/CD»</td></tr>
+  <tr><td>Pipeline</td><td>Конвеєр</td><td>«конвеєр збірки», «конвеєр CI/CD»</td></tr>
+  <tr><td>Stage</td><td>Етап конвеєра</td><td>«етап збірки», «етап тестування»</td></tr>
+  <tr><td>Job</td><td>Завдання конвеєра</td><td>«завдання pipeline», або залишити «job»</td></tr>
+  <tr><td>Runner</td><td>Агент виконання</td><td>«агент GitLab Runner» або просто «Runner»</td></tr>
+  <tr><td>Artifact</td><td>Артефакт збірки</td><td>«артефакти збірки», «артефакти конвеєра»</td></tr>
+  <tr><td>Docker image</td><td>Образ Docker</td><td>«образ Docker», «Docker-образ»</td></tr>
+  <tr><td>Container</td><td>Контейнер</td><td>«Docker-контейнер», «контейнер застосунку»</td></tr>
+  <tr><td>Repository</td><td>Репозиторій</td><td>«репозиторій вихідного коду»</td></tr>
+  <tr><td>Branch</td><td>Гілка</td><td>«гілка розробки», «основна гілка»</td></tr>
+  <tr><td>Deployment</td><td>Розгортання</td><td>«розгортання застосунку»</td></tr>
+  <tr><td>Unit test</td><td>Модульний (юніт) тест</td><td>«модульні тести», «юніт-тести»</td></tr>
+  <tr><td>Code coverage</td><td>Покриття коду тестами</td><td>«покриття коду тестами складає X%»</td></tr>
+  <tr><td>Linting</td><td>Статичний аналіз коду</td><td>«статичний аналіз засобами ESLint»</td></tr>
+  <tr><td>Multi-stage build</td><td>Багатоетапна збірка</td><td>«технологія багатоетапної збірки Docker»</td></tr>
+</table>
+
+<h3>11.3 Демонстрація на захисті</h3>
+<p>За бажанням студент може підготувати окремий слайд у презентації який узагальнює всю DevOps складову проекту. Такий слайд зручно показати під час доповіді щоб зорієнтувати комісію перед питаннями.</p>
+
+<div class="note">
+  <strong>Що може містити слайд «DevOps і автоматизація»:</strong>
+  <ul style="margin: 8px 0 0 20px;">
+    <li>Схема CI/CD pipeline з етапами (build → test → docker → deploy)</li>
+    <li>Стек інструментів: GitLab CI/CD або GitHub Actions, Docker, назва платформи деплою</li>
+    <li>Кількість тестів і відсоток покриття коду</li>
+    <li>Скріншот зеленого pipeline або бейдж зі статусом</li>
+    <li>URL живого застосунку якщо є</li>
+  </ul>
+</div>
+
+<h3>11.4 Типові питання комісії та сильні відповіді</h3>
+
+<table>
+  <tr><th>Питання комісії</th><th>Сильна відповідь</th></tr>
+  <tr>
+    <td>Що таке CI/CD і навіщо це у вашому проекті?</td>
+    <td>CI/CD — це автоматизований конвеєр який запускається при кожній зміні коду. У моєму проекті він автоматично перевіряє що код компілюється, тести проходять, і розгортає застосунок на сервер. Це виключає людський фактор і гарантує що у головній гілці завжди робочий код.</td>
+  </tr>
+  <tr>
+    <td>Чому обрали GitLab CI/CD, а не інший інструмент?</td>
+    <td>Проект розміщений на git.ztu.edu.ua що є GitLab. Використання вбудованого CI/CD логічно — не потрібен окремий сервер, все в одному місці. Синтаксис .gitlab-ci.yml простий і декларативний. Для більш складних сценаріїв я також використав GitHub Actions для синхронізації репозиторіїв.</td>
+  </tr>
+  <tr>
+    <td>Що таке Docker і навіщо він тут?</td>
+    <td>Docker дозволяє упакувати застосунок разом з усіма залежностями у контейнер. Це гарантує що застосунок однаково працює на моєму ноутбуці, на CI сервері і на production сервері. Також я використовую multi-stage build щоб зменшити розмір фінального образу з 800 МБ до 200 МБ.</td>
+  </tr>
+  <tr>
+    <td>Скільки тестів і яке покриття?</td>
+    <td>У проекті N юніт-тестів і M інтеграційних тестів. Покриття коду складає X%. Юніт-тести перевіряють ключові методи бізнес-логіки [наведіть приклади]. Інтеграційні тести перевіряють основні API endpoints за допомогою WebApplicationFactory.</td>
+  </tr>
+  <tr>
+    <td>Що буде якщо тест впаде?</td>
+    <td>Pipeline зупиниться на stage test і не перейде до deploy. На git.ztu.edu.ua з'явиться сповіщення і pipeline стане червоним. Застосунок не буде розгорнутий. Саме це і є головною метою CI — виявляти проблеми до того як вони потраплять до користувачів.</td>
+  </tr>
+  <tr>
+    <td>Як відбувається розгортання?</td>
+    <td>При push у гілку main pipeline автоматично запускає deploy stage. Залежно від платформи розгортання — це може бути виклик Deploy Hook URL, виклик CLI інструменту платформи, або SSH команди на сервер. Після деплою pipeline може перевіряти health check endpoint щоб переконатись що застосунок запустився коректно.</td>
+  </tr>
+  <tr>
+    <td>Що таке артефакти pipeline?</td>
+    <td>Артефакти — це файли що зберігаються після виконання job і можуть використовуватись у наступних stages. У моєму pipeline stage build зберігає скомпільовані файли, stage test зберігає HTML звіт покриття тестами. Їх можна завантажити прямо з інтерфейсу GitLab.</td>
+  </tr>
+  <tr>
+    <td>Чому runner запущений локально? Це не ненадійно?</td>
+    <td>Для дипломного проекту це прийнятне рішення — runner запускається на моєму ноутбуці під час розробки. У production середовищі runner розміщується на окремому сервері який працює постійно. Для GitHub Actions використовуються hosted runners Microsoft що не залежать від моєї машини.</td>
+  </tr>
+</table>
+
+<h3>11.5 Скріншоти для пояснювальної записки</h3>
+<p>Вставте у розділ «Реалізація» або «Тестування» такі скріншоти:</p>
+<ol>
+  <li><strong>Список pipeline-ів</strong> — CI/CD → Pipelines. Має бути видно що останні pipeline зелені.</li>
+  <li><strong>Деталі pipeline</strong> — відкрийте один pipeline і покажіть всі 4 stages зеленими.</li>
+  <li><strong>Лог тестів</strong> — відкрийте job test і зробіть скріншот рядку «Passed! - N tests».</li>
+  <li><strong>Coverage звіт</strong> — HTML звіт з відсотком покриття і списком файлів.</li>
+  <li><strong>SonarCloud дашборд</strong> (якщо налаштовано) — якість коду, кількість issues.</li>
+  <li><strong>Живий застосунок</strong> — браузер з URL вашого deployed застосунку (якщо є).</li>
+  <li><strong>README з бейджами</strong> — скріншот README де видно зелені бейджі.</li>
+</ol>
+
+<div class="tip">
+  <strong>Порада щодо скріншотів:</strong> робіть скріншоти у момент коли все зелене і pipeline тільки що завершився. Дата і час на скріншоті мають бути актуальними — комісія може звернути на це увагу.
+</div>
+
+</body>
+</html>

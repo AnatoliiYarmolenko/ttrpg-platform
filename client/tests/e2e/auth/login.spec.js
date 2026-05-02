@@ -15,7 +15,6 @@ async function captureStep(page, testInfo, stepName) {
 }
 
 test.beforeEach(async ({ page }) => {
-  // Mock CSRF token endpoint
   await page.route('**/api/auth/csrf-token', async (route) => {
     await route.fulfill({
       status: 200,
@@ -27,7 +26,6 @@ test.beforeEach(async ({ page }) => {
     });
   });
 
-  // Mock login endpoint
   await page.route('**/api/auth/login', async (route) => {
     await route.fulfill({
       status: 200,
@@ -39,7 +37,6 @@ test.beforeEach(async ({ page }) => {
     });
   });
 
-  // Mock profile endpoint for dashboard
   await page.route('**/api/profile/me', async (route) => {
     await route.fulfill({
       status: 200,
