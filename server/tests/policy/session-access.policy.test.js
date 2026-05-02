@@ -218,6 +218,23 @@ test('participant can open LINK_ONLY session without share token', () => {
   assert.equal(capabilities.joinMode, 'REQUEST');
 });
 
+test('pending participant cannot open LINK_ONLY session without share token', () => {
+  const capabilities = getSessionViewerCapabilities({
+    visibility: 'LINK_ONLY',
+    isCampaignSession: false,
+    isCampaignMember: false,
+    isParticipant: false,
+    isOwner: false,
+    isConfirmedGm: false,
+    userId: 54,
+    hasValidShareToken: false,
+  });
+
+  assert.equal(capabilities.canDiscover, false);
+  assert.equal(capabilities.canOpen, false);
+  assert.equal(capabilities.requiresShareTokenForOutsider, true);
+});
+
 test('handles null userId with share token', () => {
   const capabilities = getSessionViewerCapabilities({
     visibility: 'LINK_ONLY',

@@ -91,6 +91,7 @@ function createSessionQueryService({ prisma, AppError, ERROR_CODES }) {
 
     session.viewer = {
       isParticipant: accessContext.isParticipant,
+      isPendingParticipant: accessContext.isPendingParticipant,
       isCampaignMember: accessContext.isCampaignMember,
       isSessionOwner: accessContext.isOwner,
       isCampaignOwner: Boolean(userId && session.campaign?.ownerId === userId),

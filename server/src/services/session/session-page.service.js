@@ -120,7 +120,8 @@ function createSessionPageService({ sessionQueryService }) {
 
   const resolveSessionPageAccess = ({ session, viewer, userId, participants, myParticipant }) => {
     const isOwner = Boolean(viewer.isSessionOwner || (userId && session.ownerId === userId));
-    const isParticipant = Boolean(viewer.isParticipant || myParticipant);
+    const isParticipant = Boolean(viewer.isParticipant);
+    const isPendingParticipant = Boolean(viewer.isPendingParticipant);
     const isCampaignMember = Boolean(viewer.isCampaignMember);
     const hasSessionMembership = Boolean(isOwner || isParticipant);
     const isCampaignFinished = session?.campaign?.status === 'FINISHED';
@@ -185,6 +186,7 @@ function createSessionPageService({ sessionQueryService }) {
     return {
       isOwner,
       isParticipant,
+      isPendingParticipant,
       isCampaignMember,
       hasSessionMembership,
       isCampaignFinished,
@@ -310,6 +312,7 @@ function createSessionPageService({ sessionQueryService }) {
         role: viewer.role || (viewerState.isOwner ? 'OWNER' : null),
         isSessionOwner: viewerState.isOwner,
         isParticipant: viewerState.isParticipant,
+        isPendingParticipant: viewerState.isPendingParticipant,
         isCampaignMember: viewerState.isCampaignMember,
         isCampaignOwner: Boolean(viewer.isCampaignOwner),
         participationStatus: viewer.participationStatus || myParticipant?.status || null,
