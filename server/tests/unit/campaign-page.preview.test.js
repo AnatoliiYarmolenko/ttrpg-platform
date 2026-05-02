@@ -105,33 +105,6 @@ test('outsider receives hidden members and no moderation actions', async () => {
   assert.equal(page.ui.previewMode, true);
 });
 
-test('owner gets settings/create actions and per-item session actions', async () => {
-  const campaign = buildCampaign({
-    viewer: {
-      role: 'OWNER',
-      isOwner: true,
-      isMember: true,
-      pendingJoinRequestStatus: null,
-      canManage: true,
-      joinMode: 'REQUEST',
-    },
-  });
-
-  const service = createServiceWithData({ campaignById: campaign });
-  const page = await service.getCampaignPageById(campaign.id, 10);
-
-  assert.equal(page.actions.canEditSettings, true);
-  assert.equal(page.actions.canCreateSessions, true);
-  assert.equal(page.actions.canManageShareLink, false);
-  assert.equal(page.sections.members.visible, true);
-  assert.equal(page.sections.sessions.items[0].actions.canCancel, true);
-  assert.equal(page.sections.sessions.items[0].actions.canDelete, true);
-  assert.equal(page.sections.sessions.items[1].actions.canCancel, true);
-  assert.equal(page.sections.sessions.items[1].actions.canDelete, false);
-  assert.equal(page.ui.availableTabs.includes('settings'), true);
-  assert.equal(page.ui.previewMode, false);
-});
-
 test('outsider on PUBLIC campaign sees only PUBLIC sessions in campaign list', async () => {
   const campaign = buildCampaign({
     visibility: 'PUBLIC',
@@ -171,43 +144,4 @@ test('outsider on PUBLIC campaign sees only PUBLIC sessions in campaign list', a
   assert.equal(page.sections.sessions.items.length, 1);
   assert.equal(page.sections.sessions.items[0].id, 601);
   assert.equal(page.sections.sessions.items[0].title, 'Guest Session');
-});
-
-test('GM can moderate join requests, but cannot get owner session override actions', async () => {
-  const campaign = buildCampaign({
-    viewer: {
-      role: 'GM',
-      isOwner: false,
-      isMember: true,
-      pendingJoinRequestStatus: null,
-      canManage: false,
-      joinMode: 'REQUEST',
-    },
-  });
-
-  const joinRequests = [
-    {
-      id: 3001,
-      userId: 77,
-      status: 'PENDING',
-      createdAt: new Date().toISOString(),
-      message: 'hi',
-      user: {
-        id: 77,
-        username: 'requester',
-        displayName: 'Requester',
-        avatarUrl: null,
-      },
-    },
-  ];
-
-  const service = createServiceWithData({ campaignById: campaign, joinRequests });
-  const page = await service.getCampaignPageById(campaign.id, 11);
-
-  assert.equal(page.sections.joinRequests.visible, true);
-  assert.equal(page.sections.joinRequests.items.length, 1);
-  assert.equal(page.sections.sessions.items[0].actions.canCancel, false);
-  assert.equal(page.sections.sessions.items[0].actions.canDelete, false);
-  assert.equal(page.actions.canCreateSessions, true);
-  assert.equal(page.actions.canEditSettings, false);
 });

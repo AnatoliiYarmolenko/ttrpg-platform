@@ -61,8 +61,11 @@ async function isUserDeleted(userId) {
 
       return Boolean(user?.isDeleted);
     } catch (dbErr) {
-      logger.error({ err: dbErr, userId }, '[DeletedUsers] DB fallback failed');
-      throw createError.serverUnavailable();
+      // Якщо DB також недоступна (наприклад, під час startup),
+      // безпечно припускаємо що користувач НЕ видалений (fail-open)
+      // замість кидання 503 помилки
+      logger.error({ err: dbErr, userId }, '[DeletedUsers] DB fallback failed, assuming user is NOT deleted');
+      return false;
     }
   }
 }

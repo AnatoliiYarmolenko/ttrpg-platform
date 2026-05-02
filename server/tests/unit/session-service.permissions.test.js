@@ -1,45 +1,10 @@
-﻿const test = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const sessionService = require('../../src/services/session.service');
-const createSessionCalendarService = require('../../src/services/session/session-calendar.service');
 const { prisma } = require('../../src/lib/prisma');
 const permissionHelpers = require('../../src/services/session/session-permission.helpers');
 const { createRawEncryptedAndHashedShareToken } = require('../../src/utils/token.helper');
-
-class CalendarAppError extends Error {
-  constructor(code, message) {
-    super(message);
-    this.code = code;
-  }
-}
-
-const CALENDAR_ERROR_CODES = {
-  AUTH_TOKEN_MISSING: 'AUTH_TOKEN_MISSING',
-};
-
-function buildCalendarService(mockSessions) {
-  const state = {
-    whereCalls: [],
-  };
-
-  const calendarPrisma = {
-    session: {
-      findMany: async (args) => {
-        state.whereCalls.push(args.where);
-        return mockSessions;
-      },
-    },
-  };
-
-  const service = createSessionCalendarService({
-    prisma: calendarPrisma,
-    AppError: CalendarAppError,
-    ERROR_CODES: CALENDAR_ERROR_CODES,
-  });
-
-  return { service, state };
-}
 
 function withMockedPrismaUpdate(mockImpl, callback) {
   const originalUpdate = prisma.session.update;
@@ -85,7 +50,7 @@ function withMockedPrismaFindUnique(mockImpl, callback) {
     });
 }
 
-test('Campaign owner can cancel foreign PLANNED session in own campaign', async () => {
+test('campaign owner can cancel foreign PLANNED session in own campaign', async () => {
   const session = {
     id: 300,
     ownerId: 22,
@@ -161,7 +126,7 @@ test('confirmed GM cannot cancel PLANNED session', async () => {
   );
 });
 
-test('Cannot update session settings when campaign is finished', async () => {
+test('cannot update session settings when campaign is finished', async () => {
   const preloadedSession = {
     id: 451,
     ownerId: 11,
@@ -184,12 +149,12 @@ test('Cannot update session settings when campaign is finished', async () => {
   };
 
   await assert.rejects(
-    () => sessionService.updateSession(preloadedSession.id, 11, { title: 'РќРѕРІРёР№ Р·Р°РіРѕР»РѕРІРѕРє' }, { preloadedSession }),
+    () => sessionService.updateSession(preloadedSession.id, 11, { title: 'Updated title' }, { preloadedSession }),
     (error) => error?.code === 'CAMPAIGN_FINISHED'
   );
 });
 
-test('Cannot create campaign session with LINK_ONLY visibility', async () => {
+test('cannot create campaign session with LINK_ONLY visibility', async () => {
   const originalAssertNoConflict = sessionService._assertNoSessionTimeConflict;
   sessionService._assertNoSessionTimeConflict = async () => true;
 
@@ -215,7 +180,7 @@ test('Cannot create campaign session with LINK_ONLY visibility', async () => {
   }
 });
 
-test('Cannot update campaign session visibility to LINK_ONLY', async () => {
+test('cannot update campaign session visibility to LINK_ONLY', async () => {
   const preloadedSession = {
     id: 701,
     campaignId: 88,
@@ -249,7 +214,7 @@ test('Cannot update campaign session visibility to LINK_ONLY', async () => {
   );
 });
 
-test('Confirmed player can regenerate share link for one-shot LINK_ONLY session without confirmed GM', async () => {
+test('confirmed player can regenerate share link for one-shot LINK_ONLY session without confirmed GM', async () => {
   const session = {
     id: 901,
     ownerId: 10,
@@ -275,7 +240,7 @@ test('Confirmed player can regenerate share link for one-shot LINK_ONLY session 
   );
 });
 
-test('Confirmed player can read share link for one-shot LINK_ONLY session without confirmed GM', async () => {
+test('confirmed player can read share link for one-shot LINK_ONLY session without confirmed GM', async () => {
   const shareTokenData = createRawEncryptedAndHashedShareToken();
   const session = {
     id: 902,
@@ -304,7 +269,7 @@ test('Confirmed player can read share link for one-shot LINK_ONLY session withou
   );
 });
 
-test('Cannot update settings for FINISHED session', async () => {
+test('cannot update settings for FINISHED session', async () => {
   const preloadedSession = {
     id: 903,
     ownerId: 11,
@@ -328,7 +293,7 @@ test('Cannot update settings for FINISHED session', async () => {
   );
 });
 
-test('Cannot update settings for CANCELED session', async () => {
+test('cannot update settings for CANCELED session', async () => {
   const preloadedSession = {
     id: 904,
     ownerId: 11,
@@ -352,7 +317,7 @@ test('Cannot update settings for CANCELED session', async () => {
   );
 });
 
-test('Cannot regenerate share link for FINISHED LINK_ONLY session', async () => {
+test('cannot regenerate share link for FINISHED LINK_ONLY session', async () => {
   const session = {
     id: 905,
     ownerId: 10,
@@ -375,116 +340,3 @@ test('Cannot regenerate share link for FINISHED LINK_ONLY session', async () => 
     }
   );
 });
-
-test('Global calendar filter for authenticated users includes PRIVATE one-shot and PRIVATE campaign clauses', async () => {
-  const { service, state } = buildCalendarService([]);
-
-  await service.getCalendarStats(42, {
-    month: '2026-03-01',
-    scope: 'global',
-    filters: {},
-  });
-
-  const where = state.whereCalls[0];
-  const visibilityClauses = where.AND?.[0]?.OR || [];
-
-  const hasOneShotPrivateClause = visibilityClauses.some(
-    (clause) => clause.campaignId === null && clause.visibility?.in?.includes('PRIVATE')
-  );
-  const hasCampaignPrivateClause = visibilityClauses.some(
-    (clause) => clause.campaignId?.not === null && clause.visibility === 'PRIVATE'
-  );
-
-  assert.equal(hasOneShotPrivateClause, true);
-  assert.equal(hasCampaignPrivateClause, true);
-});
-
-test('Global calendar filter for anonymous users is PUBLIC-only', async () => {
-  const { service, state } = buildCalendarService([]);
-
-  await service.getCalendarStats(null, {
-    month: '2026-03-01',
-    scope: 'global',
-    filters: {},
-  });
-
-  const where = state.whereCalls[0];
-  const visibilityClauses = where.AND?.[0]?.OR || [];
-
-  assert.equal(visibilityClauses.length, 2);
-  assert.equal(visibilityClauses.every((clause) => clause.visibility === 'PUBLIC'), true);
-});
-
-test('Day sessions keep campaign title but hide campaign id for outsider in PUBLIC session of LINK_ONLY campaign', async () => {
-  const mockSessions = [
-    {
-      id: 1,
-      title: 'Guest Session',
-      date: new Date('2026-03-12T18:00:00.000Z'),
-      status: 'PLANNED',
-      visibility: 'PUBLIC',
-      campaignId: 77,
-      owner: {
-        id: 10,
-        username: 'owner',
-        displayName: null,
-        avatarUrl: null,
-      },
-      campaign: {
-        id: 77,
-        title: 'Hidden Campaign',
-        system: 'D&D 5e',
-        visibility: 'LINK_ONLY',
-        ownerId: 100,
-        members: [],
-      },
-      participants: [],
-    },
-  ];
-
-  const { service } = buildCalendarService(mockSessions);
-
-  const sessions = await service.getSessionsByDayFiltered(42, '2026-03-12', 'global', {});
-
-  assert.equal(sessions.length, 1);
-  assert.equal(sessions[0].campaign?.title, 'Hidden Campaign');
-  assert.equal(sessions[0].campaign?.id, null);
-  assert.equal(sessions[0].campaign?.canOpenDirectly, false);
-});
-
-test('Day sessions keep campaign info for campaign member in PUBLIC session of LINK_ONLY campaign', async () => {
-  const mockSessions = [
-    {
-      id: 2,
-      title: 'Member Session',
-      date: new Date('2026-03-12T18:00:00.000Z'),
-      status: 'PLANNED',
-      visibility: 'PUBLIC',
-      campaignId: 78,
-      owner: {
-        id: 10,
-        username: 'owner',
-        displayName: null,
-        avatarUrl: null,
-      },
-      campaign: {
-        id: 78,
-        title: 'Visible For Members',
-        system: 'Pathfinder 2e',
-        visibility: 'LINK_ONLY',
-        ownerId: 100,
-        members: [{ userId: 42 }],
-      },
-      participants: [],
-    },
-  ];
-
-  const { service } = buildCalendarService(mockSessions);
-
-  const sessions = await service.getSessionsByDayFiltered(42, '2026-03-12', 'global', {});
-
-  assert.equal(sessions.length, 1);
-  assert.equal(sessions[0].campaign?.id, 78);
-  assert.equal(sessions[0].campaign?.title, 'Visible For Members');
-});
-

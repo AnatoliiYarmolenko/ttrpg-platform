@@ -144,7 +144,7 @@ function canOpenCampaign(context = {}) {
 
 function campaignRequiresShareTokenForOutsider(context = {}) {
   const rule = getCampaignRule(context.visibility);
-  return Boolean(rule && rule.outsiderNeedsShareToken);
+  return Boolean(rule?.outsiderNeedsShareToken);
 }
 
 function getCampaignJoinMode(context = {}) {
@@ -157,6 +157,7 @@ function canManageCampaign(context = {}) {
 }
 
 function canDiscoverSession(context = {}) {
+  if (!context) return false;
   const rule = getSessionRule({
     visibility: context.visibility,
     isCampaignSession: Boolean(context.isCampaignSession),
@@ -169,6 +170,7 @@ function canDiscoverSession(context = {}) {
 }
 
 function canOpenSession(context = {}) {
+  if (!context) return false;
   const rule = getSessionRule({
     visibility: context.visibility,
     isCampaignSession: Boolean(context.isCampaignSession),
@@ -186,15 +188,17 @@ function canOpenSession(context = {}) {
 }
 
 function sessionRequiresShareTokenForOutsider(context = {}) {
+  if (!context) return false;
   const rule = getSessionRule({
     visibility: context.visibility,
     isCampaignSession: Boolean(context.isCampaignSession),
   });
 
-  return Boolean(rule && rule.outsiderNeedsShareToken);
+  return Boolean(rule?.outsiderNeedsShareToken);
 }
 
 function getSessionJoinMode(context = {}) {
+  if (!context) return JOIN_MODES.NOT_APPLICABLE;
   const rule = getSessionRule({
     visibility: context.visibility,
     isCampaignSession: Boolean(context.isCampaignSession),
@@ -204,10 +208,12 @@ function getSessionJoinMode(context = {}) {
 }
 
 function canManageSession(context = {}) {
+  if (!context) return false;
   return Boolean(context.isOwner || context.isConfirmedGm);
 }
 
 function canManageSessionParticipants(context = {}) {
+  if (!context) return false;
   return Boolean(context.isOwner || context.isConfirmedGm);
 }
 

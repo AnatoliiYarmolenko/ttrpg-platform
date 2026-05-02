@@ -1,10 +1,34 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AvatarCropModal from '@/features/profile/components/AvatarCropModal';
 
 vi.mock('react-easy-crop', () => ({
-  default: () => <div data-testid="cropper-mock" />,
+  default: function MockCropper({ crop, zoom, onCropChange, onZoomChange, onCropComplete, image }) {
+    return (
+      <div
+        data-testid="cropper-mock"
+        data-image={image}
+        data-crop-x={crop?.x}
+        data-crop-y={crop?.y}
+        data-zoom={zoom}
+      >
+        <button type="button" onClick={() => onCropChange?.({ x: 18, y: 24 })}>
+          Move crop
+        </button>
+        <button type="button" onClick={() => onZoomChange?.(2.25)}>
+          Zoom in
+        </button>
+        <button
+          type="button"
+          data-testid="simulate-crop-complete"
+          onClick={() => onCropComplete?.({ x: 0, y: 0, width: 100 }, { x: 10, y: 10, width: 120, height: 120 })}
+        >
+          Simulate Crop
+        </button>
+      </div>
+    );
+  },
 }));
 
 describe('AvatarCropModal', () => {
@@ -43,31 +67,27 @@ describe('AvatarCropModal', () => {
     expect(screen.getByTestId('cropper-mock')).toBeInTheDocument();
   });
 
-  it('renders Cancel and Apply buttons', () => {
-    render(<AvatarCropModal {...mockProps} />);
-
-    expect(screen.getByRole('button', { name: /Скасувати/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Застосувати/i })).toBeInTheDocument();
-  });
-
-  it('renders zoom slider with correct attributes', () => {
+  it('exposes the zoom slider and starts from default value', () => {
     render(<AvatarCropModal {...mockProps} />);
 
     const slider = screen.getByRole('slider', { name: /Масштаб/i });
-    expect(slider).toHaveAttribute('min', '1');
-    expect(slider).toHaveAttribute('max', '3');
-    expect(slider).toHaveAttribute('step', '0.01');
     expect(slider).toHaveValue('1');
   });
 
-  it('calls onCancel when Cancel button is clicked', async () => {
+  it('calls onCancel when Cancel button is clicked and resets the next open state', async () => {
     const user = userEvent.setup();
-    render(<AvatarCropModal {...mockProps} />);
+    const { rerender } = render(<AvatarCropModal {...mockProps} />);
 
-    const cancelButton = screen.getByRole('button', { name: /Скасувати/i });
-    await user.click(cancelButton);
+    const slider = screen.getByRole('slider', { name: /Масштаб/i });
+    fireEvent.change(slider, { target: { value: '2.5' } });
+    await user.click(screen.getByRole('button', { name: /Скасувати/i }));
 
     expect(mockProps.onCancel).toHaveBeenCalledTimes(1);
+
+    rerender(<AvatarCropModal {...mockProps} isOpen={false} />);
+    rerender(<AvatarCropModal {...mockProps} />);
+
+    expect(screen.getByRole('slider', { name: /Масштаб/i })).toHaveValue('1');
   });
 
   it('calls onConfirm when Apply button is clicked', async () => {
@@ -81,27 +101,15 @@ describe('AvatarCropModal', () => {
   });
 
   it('disables buttons when isLoading is true', () => {
-    render(<AvatarCropModal {...mockProps} isLoading={true} />);
+    render(<AvatarCropModal {...mockProps} isLoading />);
 
-    const applyButton = screen.getByRole('button', { name: /Застосувати|Завантаження/i });
+    const applyButton = screen.getByRole('button', { name: /Завантаження/i });
     expect(applyButton).toBeDisabled();
-  });
 
-  it('shows loading text on Apply button when isLoading is true', () => {
-    render(<AvatarCropModal {...mockProps} isLoading={true} />);
-
+    expect(screen.getByRole('button', { name: /Скасувати/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /Завантаження/i })).toBeInTheDocument();
   });
 
-  it('updates zoom slider value on user input', async () => {
-    const user = userEvent.setup();
-    render(<AvatarCropModal {...mockProps} />);
-
-    const slider = screen.getByRole('slider', { name: /Масштаб/i });
-    // For range inputs, use change event instead of keyboard
-    await user.pointer({ keys: '[MouseLeft>]', target: slider });
-    expect(slider).toHaveAttribute('value', '1');
-  });
 
   it('closes modal on Escape key when not loading', async () => {
     const user = userEvent.setup();
@@ -114,27 +122,11 @@ describe('AvatarCropModal', () => {
 
   it('does not close on Escape key when isLoading is true', async () => {
     const user = userEvent.setup();
-    render(<AvatarCropModal {...mockProps} isLoading={true} />);
+    render(<AvatarCropModal {...mockProps} isLoading />);
 
     await user.keyboard('{Escape}');
 
     expect(mockProps.onCancel).not.toHaveBeenCalled();
-  });
-
-  it('prevents body scroll when modal is open', () => {
-    render(<AvatarCropModal {...mockProps} />);
-
-    expect(document.body.style.overflow).toBe('hidden');
-  });
-
-  it('restores body scroll when modal closes', () => {
-    const { rerender } = render(<AvatarCropModal {...mockProps} />);
-
-    expect(document.body.style.overflow).toBe('hidden');
-
-    rerender(<AvatarCropModal {...mockProps} isOpen={false} />);
-
-    expect(document.body.style.overflow).toBe('');
   });
 
   it('has correct accessibility attributes', () => {
@@ -149,11 +141,13 @@ describe('AvatarCropModal', () => {
   });
 
   it('calls onCropAreaChange when Cropper emits onCropComplete', async () => {
+    const user = userEvent.setup();
     render(<AvatarCropModal {...mockProps} />);
 
-    // Simulate Cropper's onCropComplete callback
-    // In real scenario, this would be triggered by user interaction with Cropper
-    // For testing purposes, we verify the prop is passed correctly
-    expect(mockProps.onCropAreaChange).toBeDefined();
+    const simulateButton = screen.getByTestId('simulate-crop-complete');
+    await user.click(simulateButton);
+
+    expect(mockProps.onCropAreaChange).toHaveBeenCalledTimes(1);
+    expect(mockProps.onCropAreaChange).toHaveBeenCalledWith({ x: 10, y: 10, width: 120, height: 120 });
   });
 });

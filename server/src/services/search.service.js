@@ -281,14 +281,14 @@ function hasAvailablePlayerSlots(session) {
   return countConfirmedPlayers(session) < session.maxPlayers;
 }
 
-async function findSessionsWithAvailableSlots({ baseQuery, offset, limit }) {
+async function findSessionsWithAvailableSlots({ prismaClient, baseQuery, limit }) {
   const chunkSize = Math.max(MIN_SLOT_SCAN_CHUNK, Math.min(MAX_SLOT_SCAN_CHUNK, limit * 4));
   const pagedSessions = [];
   let scannedOffset = 0;
   let filteredTotal = 0;
 
   while (true) {
-    const sessionsChunk = await prisma.session.findMany({
+    const sessionsChunk = await prismaClient.session.findMany({
       ...baseQuery,
       skip: scannedOffset,
       take: chunkSize,
@@ -323,14 +323,14 @@ async function findSessionsWithAvailableSlots({ baseQuery, offset, limit }) {
   };
 }
 
-async function findPagedSessions({ baseQuery, where, offset, limit }) {
+async function findPagedSessions({ prismaClient, baseQuery, where, offset, limit }) {
   const [pagedSessions, countedTotal] = await Promise.all([
-    prisma.session.findMany({
+    prismaClient.session.findMany({
       ...baseQuery,
       take: limit,
       skip: offset,
     }),
-    prisma.session.count({ where }),
+    prismaClient.session.count({ where }),
   ]);
 
   return {
@@ -365,6 +365,10 @@ function formatSessionSearchResult(session, userId = null) {
 }
 
 class SearchService {
+  constructor(prismaClient = prisma) {
+    this.prisma = prismaClient;
+  }
+
   async searchCampaigns({
     userId = null,
     query,
@@ -385,7 +389,7 @@ class SearchService {
     const orderBy = resolveCampaignOrderBy(sortBy);
 
     const [campaigns, total] = await Promise.all([
-      prisma.campaign.findMany({
+      this.prisma.campaign.findMany({
         where,
         include: {
           owner: {
@@ -399,7 +403,7 @@ class SearchService {
         take: limit,
         skip: offset,
       }),
-      prisma.campaign.count({ where }),
+      this.prisma.campaign.count({ where }),
     ]);
 
     return {
@@ -443,8 +447,8 @@ class SearchService {
     const baseQuery = buildSessionSearchQuery(where, orderBy, userId);
 
     const { sessions, total } = hasAvailableSlots === true
-      ? await findSessionsWithAvailableSlots({ baseQuery, offset, limit })
-      : await findPagedSessions({ baseQuery, where, offset, limit });
+      ? await findSessionsWithAvailableSlots({ prismaClient: this.prisma, baseQuery, offset, limit })
+      : await findPagedSessions({ prismaClient: this.prisma, baseQuery, where, offset, limit });
 
     const formattedSessions = sessions.map((session) => formatSessionSearchResult(session, userId));
 
@@ -458,4 +462,24 @@ class SearchService {
   }
 }
 
-module.exports = new SearchService();
+const searchServiceInstance = new SearchService();
+
+module.exports = searchServiceInstance;
+module.exports.SearchService = SearchService;
+
+module.exports.appendAndClause = appendAndClause;
+module.exports.buildOwnerUserFilter = buildOwnerUserFilter;
+module.exports.resolveRangeStart = resolveRangeStart;
+module.exports.resolveRangeEnd = resolveRangeEnd;
+module.exports.applySessionOwnerFilter = applySessionOwnerFilter;
+module.exports.applySessionParticipationFilter = applySessionParticipationFilter;
+module.exports.applySessionDateRange = applySessionDateRange;
+module.exports.applySessionPriceRange = applySessionPriceRange;
+module.exports.buildCampaignSearchWhere = buildCampaignSearchWhere;
+module.exports.buildSessionSearchWhere = buildSessionSearchWhere;
+module.exports.resolveCampaignOrderBy = resolveCampaignOrderBy;
+module.exports.resolveSessionOrderBy = resolveSessionOrderBy;
+module.exports.formatCampaignSearchResult = formatCampaignSearchResult;
+module.exports.formatSessionSearchResult = formatSessionSearchResult;
+module.exports.countConfirmedPlayers = countConfirmedPlayers;
+module.exports.hasAvailablePlayerSlots = hasAvailablePlayerSlots;

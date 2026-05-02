@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { promisify } = require('util');
+const { promisify } = require('node:util');
 const { jwtSecret } = require('../config/config');
 const { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } = require('../constants/errors');
 const { isUserDeleted } = require('../store/deleted-users');

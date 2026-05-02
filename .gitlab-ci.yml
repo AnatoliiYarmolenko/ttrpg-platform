@@ -18,6 +18,7 @@ cache:
     - .npm/
 
 # --- ЕТАП BUILD ---
+
 build_server:
   stage: build
   tags: [student]
@@ -38,6 +39,13 @@ build_client:
     - npm run build --workspace=client
 
 # --- ЕТАП TEST ---
+check_docker_runner:
+  stage: test
+  tags: [student]
+  script:
+    - docker --version
+    - docker compose version
+
 lint_client:
   stage: test
   tags: [student]
@@ -80,13 +88,27 @@ coverage_server:
   tags: [student]
   dependencies: []
   variables:
-    JWT_SECRET: "dummy_secret"
-    DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
+    # 1. Справжні підключення для тестового прогону
+    DATABASE_URL: "postgresql://testuser:testpass@localhost:5433/ttrpg_test?schema=public"
+    REDIS_URL: "redis://localhost:6380"
+    
+    # 2. Фейкові значення-заглушки для парсингу docker-compose.yml
+    COOKIE_SECRET: "dummy_cookie"
+    JWT_SECRET: "dummy_jwt"
+    SHARE_TOKEN_SECRET: "dummy_share"
+    POSTGRES_USER: "dummy_user"
+    POSTGRES_PASSWORD: "dummy_pass"
+    POSTGRES_DB: "dummy_db"
   script:
     - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline
+    - docker compose --profile test up -d db_test redis_test
+    - Start-Sleep -Seconds 10
     - cd server
     - npx prisma generate
+    - npx prisma db push --accept-data-loss
     - npm run test:coverage --workspace=server
+  after_script:
+    - docker compose --profile test down -v
   coverage: '/Lines\s*:\s*([0-9.]+)%/'
   artifacts:
     paths:

@@ -126,3 +126,62 @@ test('authenticateToken returns 503 when deleted-user status check is unavailabl
   assert.equal(res.statusCode, 503);
   assert.equal(res.body?.code, 'SERVER_UNAVAILABLE');
 });
+
+test('authenticateToken allows access when token is valid and user is not deleted (happy path)', async () => {
+  const { authenticateToken } = loadAuthMiddlewareWithMocks({
+    jwtVerifyMock: (token, secret, callback) => callback(null, { id: 42, username: 'user' }),
+    isUserDeletedMock: async () => false,
+  });
+
+  const req = {
+    cookies: {
+      token: 'valid-token',
+    },
+    headers: {},
+  };
+  const res = createMockResponse();
+
+  let nextCalled = false;
+
+  await new Promise((resolve) => {
+    authenticateToken(req, res, () => {
+      nextCalled = true;
+      resolve();
+    });
+  });
+
+  assert.equal(nextCalled, true);
+  assert.equal(req.user.id, 42);
+  assert.equal(req.user.username, 'user');
+});
+
+test('authenticateToken denies access when user is deleted', async () => {
+  const { authenticateToken } = loadAuthMiddlewareWithMocks({
+    jwtVerifyMock: (token, secret, callback) => callback(null, { id: 42, username: 'user' }),
+    isUserDeletedMock: async () => true,
+  });
+
+  const req = {
+    cookies: {
+      token: 'valid-token',
+    },
+    headers: {},
+  };
+  const res = createMockResponse();
+
+  let nextCalled = false;
+
+  await new Promise((resolve) => {
+    authenticateToken(req, res, () => {
+      nextCalled = true;
+      resolve();
+    });
+
+    setImmediate(resolve);
+  });
+
+  assert.equal(nextCalled, false);
+  assert.equal(res.statusCode, 401);
+  assert.equal(res.body?.code, 'AUTH_TOKEN_INVALID');
+  assert.equal(res.body?.canRefresh, false);
+});
