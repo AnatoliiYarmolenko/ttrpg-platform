@@ -4,7 +4,6 @@ stages:
   - sonar
 
 variables:
-  # На Windows runner довгі шляхи в .npm/_cacache можуть ламати cleanup перед job.
   GIT_CLEAN_FLAGS: "-ffdx -e .npm/"
   GIT_CONFIG_COUNT: "1"
   GIT_CONFIG_KEY_0: "core.longpaths"
@@ -39,13 +38,6 @@ build_client:
     - npm run build --workspace=client
 
 # --- ЕТАП TEST ---
-check_docker_runner:
-  stage: test
-  tags: [student]
-  script:
-    - docker --version
-    - docker compose version
-
 lint_client:
   stage: test
   tags: [student]

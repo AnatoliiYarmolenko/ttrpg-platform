@@ -62,12 +62,14 @@ async function waitForDatabaseReady(options = {}) {
 async function runMigrations() {
   try {
     logger.info('Виконуємо міграції Prisma');
-    const rootDir = path.resolve(__dirname, '../..');
-    const prismaDir = path.join(rootDir, 'server');
-    // With workspaces, prisma binary is in root node_modules
-    const prismaBin = path.join(rootDir, 'node_modules', '.bin', 'prisma');
-    const nodePath = process.execPath;
-    execSync(nodePath, [prismaBin, 'migrate', 'deploy'], { stdio: 'inherit', cwd: prismaDir, env: { ...process.env } });
+    const prismaDir = path.resolve(__dirname, '../..');
+    // Use npx to run prisma migrate deploy
+    execSync('npx prisma migrate deploy', { 
+      stdio: 'inherit', 
+      cwd: prismaDir, 
+      env: { ...process.env },
+      shell: '/bin/ash'
+    });
     logger.info('Міграції виконано успішно');
     return true;
   } catch (error) {

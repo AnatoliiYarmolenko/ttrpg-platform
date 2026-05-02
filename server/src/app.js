@@ -19,6 +19,7 @@ const clientLogsRoutes = require('./routes/client-logs.routes');
 
 // Middlewares
 const { errorHandler } = require('./middlewares/error.middleware');
+const { addCorrelationId } = require('./middlewares/correlation.middleware');
 
 // Startup modules
 const { createCorsMiddleware, setupStaticFiles, httpLogger } = require('./startup');
@@ -70,6 +71,9 @@ function createApp() {
 
   // Структуроване логування HTTP запитів (reqId, statusCode, responseTime)
   app.use(httpLogger);
+
+  // Correlation ID для зв'язку клієнтських та серверних логів
+  app.use(addCorrelationId);
 
   // Базові security headers.
   // CORP вимикаємо, щоб не ламати завантаження аватарів з окремого фронтенд origin.

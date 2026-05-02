@@ -21,9 +21,10 @@ services:
 
   adminer:
     image: adminer
+    container_name: ttrpg_adminer
     restart: always
-    profiles:
-      - debug
+    environment:
+      ADMINER_DEFAULT_SERVER: db
     ports:
       - "${ADMINER_PORT:-8080}:8080"
 
@@ -116,6 +117,11 @@ services:
     volumes:
       # Зберігаємо завантажені файли (аватари) між перезапусками
       - uploads_data:/app/server/uploads
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
 
   # 3. Сервіс Фронтенду
   client:

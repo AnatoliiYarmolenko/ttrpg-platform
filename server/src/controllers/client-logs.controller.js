@@ -1,8 +1,10 @@
 const { logger } = require('../lib/logger');
+const { getCorrelationId } = require('../lib/correlation');
 
 const ALLOWED_LEVELS = new Set(['warn', 'error']);
-const MAX_MESSAGE_LENGTH = 1000;
-const MAX_META_STRING_LENGTH = 1000;
+const MAX_MESSAGE_LENGTH = 5000;
+const MAX_META_STRING_LENGTH = 5000;
+const MAX_STACK_LENGTH = 10000;
 const MAX_META_KEYS = 20;
 const MAX_META_ARRAY_LENGTH = 10;
 const MAX_META_DEPTH = 4;
@@ -96,6 +98,8 @@ async function ingestClientLog(req, res, next) {
     const level = normalizeLevel(req.body?.level);
     const message = normalizeMessage(req.body?.message);
     const meta = normalizeMeta(req.body?.meta);
+    const correlationId = req.body?.correlationId || getCorrelationId();
+    const sessionId = req.body?.sessionId;
 
     if (!message) {
       return res.status(400).json({ error: 'message is required' });
@@ -106,6 +110,8 @@ async function ingestClientLog(req, res, next) {
       userId: req.user?.id,
       userAgent: req.get('user-agent'),
       path: typeof req.body?.path === 'string' ? clipString(req.body.path, 300) : undefined,
+      correlationId,
+      sessionId,
       meta,
     };
 

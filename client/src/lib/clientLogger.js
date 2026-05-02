@@ -1,6 +1,10 @@
+import { getLatestCorrelationId } from './correlationStore';
+import { getSessionId } from './sessionId';
+
 const isDev = import.meta.env.DEV;
 const LOG_ENDPOINT_PATH = '/client-logs';
-const MAX_STRING_LENGTH = 500;
+const MAX_STRING_LENGTH = 2000;
+const MAX_STACK_LENGTH = 10000;
 const MAX_ARRAY_LENGTH = 10;
 const MAX_OBJECT_KEYS = 20;
 const MAX_DEPTH = 4;
@@ -96,7 +100,9 @@ function serializeValue(value, depth = 0, seen = new WeakSet()) {
     return {
       name: value.name,
       message: clipString(value.message || value.name || 'Error'),
-      stack: clipString(value.stack),
+      stack: value.stack && value.stack.length > MAX_STACK_LENGTH
+        ? `${value.stack.slice(0, MAX_STACK_LENGTH)}...`
+        : value.stack,
     };
   }
 
@@ -196,12 +202,16 @@ const sendToBackend = (level, args) => {
 
   const { message, meta } = toMessageAndMeta(args);
   const csrfToken = getCsrfToken();
+  const correlationId = getLatestCorrelationId();
+  const sessionId = getSessionId();
 
   const payload = {
     level,
     message,
     meta,
     path: window.location?.pathname,
+    correlationId,
+    sessionId,
   };
 
   fetch(`${getApiBaseUrl()}${LOG_ENDPOINT_PATH}`, {
