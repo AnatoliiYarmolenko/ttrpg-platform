@@ -45,8 +45,15 @@ function createSessionPageService({ sessionQueryService }) {
     (participant) => participant.role === 'GM' && participant.status === 'CONFIRMED'
   );
 
-  const canUseJoinFlow = ({ session, userId, viewer, hasSessionMembership, isCampaignMember }) => {
-    if (!session || !userId || hasSessionMembership) {
+  const canUseJoinFlow = ({
+    session,
+    userId,
+    viewer,
+    hasSessionMembership,
+    isCampaignMember,
+    isPendingParticipant,
+  }) => {
+    if (!session || !userId || hasSessionMembership || isPendingParticipant) {
       return false;
     }
 
@@ -57,8 +64,8 @@ function createSessionPageService({ sessionQueryService }) {
     return viewer.joinMode === 'OPEN' || viewer.joinMode === 'REQUEST';
   };
 
-  const canJoinSession = ({ session, userId, hasSessionMembership, canUseJoin }) => {
-    if (!session || !userId || hasSessionMembership) return false;
+  const canJoinSession = ({ session, userId, hasSessionMembership, canUseJoin, isPendingParticipant }) => {
+    if (!session || !userId || hasSessionMembership || isPendingParticipant) return false;
     if (session.status !== 'PLANNED') return false;
     if (session.campaign?.status === 'FINISHED') return false;
 
@@ -74,8 +81,8 @@ function createSessionPageService({ sessionQueryService }) {
     return canUseJoin;
   };
 
-  const canApplyAsGm = ({ session, userId, hasSessionMembership, canUseJoin }) => {
-    if (!session || !userId || hasSessionMembership) return false;
+  const canApplyAsGm = ({ session, userId, hasSessionMembership, canUseJoin, isPendingParticipant }) => {
+    if (!session || !userId || hasSessionMembership || isPendingParticipant) return false;
     if (session.status !== 'PLANNED') return false;
     if (session.campaign?.status === 'FINISHED') return false;
 
@@ -120,7 +127,8 @@ function createSessionPageService({ sessionQueryService }) {
 
   const resolveSessionPageAccess = ({ session, viewer, userId, participants, myParticipant }) => {
     const isOwner = Boolean(viewer.isSessionOwner || (userId && session.ownerId === userId));
-    const isParticipant = Boolean(viewer.isParticipant || myParticipant);
+    const isParticipant = Boolean(viewer.isParticipant);
+    const isPendingParticipant = Boolean(viewer.isPendingParticipant);
     const isCampaignMember = Boolean(viewer.isCampaignMember);
     const hasSessionMembership = Boolean(isOwner || isParticipant);
     const isCampaignFinished = session?.campaign?.status === 'FINISHED';
@@ -148,6 +156,7 @@ function createSessionPageService({ sessionQueryService }) {
       viewer,
       hasSessionMembership,
       isCampaignMember,
+      isPendingParticipant,
     });
     const canStart = Boolean(isConfirmedGm && session.status === 'PLANNED');
     const canFinish = Boolean(isConfirmedGm && ['PLANNED', 'ACTIVE'].includes(session.status));
@@ -185,6 +194,7 @@ function createSessionPageService({ sessionQueryService }) {
     return {
       isOwner,
       isParticipant,
+      isPendingParticipant,
       isCampaignMember,
       hasSessionMembership,
       isCampaignFinished,
@@ -211,14 +221,16 @@ function createSessionPageService({ sessionQueryService }) {
       userId: viewerState.userId,
       hasSessionMembership: viewerState.hasSessionMembership,
       canUseJoin: viewerState.canUseJoin,
+      isPendingParticipant: viewerState.isPendingParticipant,
     }),
     canApplyAsGm: canApplyAsGm({
       session,
       userId: viewerState.userId,
       hasSessionMembership: viewerState.hasSessionMembership,
       canUseJoin: viewerState.canUseJoin,
+      isPendingParticipant: viewerState.isPendingParticipant,
     }),
-    canLeave: Boolean(viewerState.isParticipant && !viewerState.isOwner),
+    canLeave: Boolean((viewerState.isParticipant || viewerState.isPendingParticipant) && !viewerState.isOwner),
     canStart: viewerState.canStart,
     canFinish: viewerState.canFinish,
     canCancel: viewerState.canCancel,
@@ -294,7 +306,7 @@ function createSessionPageService({ sessionQueryService }) {
         id: session.id,
         title: session.title,
         description: session.description,
-        date: session.date,
+        startAt: session.date,
         duration: session.duration,
         status: session.status,
         visibility: session.visibility,
@@ -310,9 +322,11 @@ function createSessionPageService({ sessionQueryService }) {
         role: viewer.role || (viewerState.isOwner ? 'OWNER' : null),
         isSessionOwner: viewerState.isOwner,
         isParticipant: viewerState.isParticipant,
+        isPendingParticipant: viewerState.isPendingParticipant,
         isCampaignMember: viewerState.isCampaignMember,
         isCampaignOwner: Boolean(viewer.isCampaignOwner),
         participationStatus: viewer.participationStatus || myParticipant?.status || null,
+        pendingJoinRequestStatus: viewer.participationStatus === 'PENDING' ? 'PENDING' : null,
       },
       actions,
       sections,

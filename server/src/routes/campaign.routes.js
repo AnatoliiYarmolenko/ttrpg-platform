@@ -119,6 +119,12 @@ router.post(
   (req, res, next) => campaignController.submitJoinRequest(req, res, next)
 );
 
+router.post(
+  '/:campaignId/requests/cancel',
+  [authenticateToken, verifyCSRFToken, ...validateCampaignId],
+  (req, res, next) => campaignController.cancelJoinRequest(req, res, next)
+);
+
 router.get(
   '/:campaignId/requests',
   [authenticateToken, ...validateCampaignId],

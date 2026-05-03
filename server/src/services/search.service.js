@@ -257,11 +257,11 @@ function buildSessionSearchQuery(where, orderBy, userId = null) {
         select: buildNestedCampaignSelectForViewer(userId),
       },
       participants: {
-        where: {
-          role: 'PLAYER',
-          status: 'CONFIRMED',
+        include: {
+          user: {
+            select: { id: true },
+          },
         },
-        select: { id: true, role: true, status: true },
       },
       _count: {
         select: { participants: true },
@@ -281,7 +281,7 @@ function hasAvailablePlayerSlots(session) {
   return countConfirmedPlayers(session) < session.maxPlayers;
 }
 
-async function findSessionsWithAvailableSlots({ prismaClient, baseQuery, limit }) {
+async function findSessionsWithAvailableSlots({ prismaClient, baseQuery, offset, limit }) {
   const chunkSize = Math.max(MIN_SLOT_SCAN_CHUNK, Math.min(MAX_SLOT_SCAN_CHUNK, limit * 4));
   const pagedSessions = [];
   let scannedOffset = 0;
@@ -342,12 +342,15 @@ async function findPagedSessions({ prismaClient, baseQuery, where, offset, limit
 function formatSessionSearchResult(session, userId = null) {
   const confirmedPlayers = countConfirmedPlayers(session);
   const campaign = sanitizeNestedCampaignForSession(session, userId);
+  const myParticipation = userId
+    ? session.participants?.find((p) => p.userId === userId) || null
+    : null;
 
   return {
     id: session.id,
     title: session.title,
     description: session.description,
-    date: session.date,
+    startAt: session.date,
     duration: session.duration,
     status: session.status,
     price: session.price,
@@ -361,6 +364,8 @@ function formatSessionSearchResult(session, userId = null) {
     system: session.system || campaign?.system || null,
     isOneShot: !session.campaignId,
     createdAt: session.createdAt,
+    myRole: myParticipation?.role || null,
+    myStatus: myParticipation?.status || null,
   };
 }
 

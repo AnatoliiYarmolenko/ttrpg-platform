@@ -187,16 +187,40 @@ class CampaignService {
     if (role === 'owner') {
       whereCondition.ownerId = userId;
     } else if (role === 'member') {
-      whereCondition.members = {
-        some: {
-          userId,
-          role: { not: 'OWNER' },
+      whereCondition.OR = [
+        {
+          members: {
+            some: {
+              userId,
+              role: { not: 'OWNER' },
+            },
+          },
         },
-      };
+        {
+          joinRequests: {
+            some: {
+              userId,
+              status: 'PENDING',
+            },
+          },
+        },
+      ];
     } else {
-      whereCondition.members = {
-        some: { userId },
-      };
+      whereCondition.OR = [
+        {
+          members: {
+            some: { userId },
+          },
+        },
+        {
+          joinRequests: {
+            some: {
+              userId,
+              status: 'PENDING',
+            },
+          },
+        },
+      ];
     }
 
     const campaigns = await prisma.campaign.findMany({
@@ -211,6 +235,14 @@ class CampaignService {
               select: { id: true, username: true, displayName: true, avatarUrl: true },
             },
           },
+        },
+        joinRequests: {
+          where: {
+            userId,
+            status: 'PENDING',
+          },
+          select: { id: true, status: true },
+          take: 1,
         },
         sessions: {
           select: { id: true, title: true, date: true, status: true },
@@ -229,15 +261,25 @@ class CampaignService {
 
     return campaigns.map((campaign) => {
       let myRole = null;
+      let myStatus = null;
+
       if (campaign.ownerId === userId) {
         myRole = 'OWNER';
+        myStatus = 'CONFIRMED';
       } else {
         const myMembership = campaign.members?.find((member) => member.userId === userId);
-        myRole = myMembership?.role || null;
+        if (myMembership) {
+          myRole = myMembership.role;
+          myStatus = 'CONFIRMED';
+        } else if (campaign.joinRequests?.length > 0) {
+          myStatus = 'PENDING';
+        }
       }
+
       return {
         ...campaign,
         myRole,
+        myStatus,
         sessionsCount: campaign._count?.sessions ?? campaign.sessions?.length ?? 0,
         membersCount: campaign._count?.members ?? campaign.members?.length ?? 0,
       };
@@ -296,23 +338,14 @@ class CampaignService {
       throw new AppError(ERROR_CODES.CAMPAIGN_NOT_FOUND, 'Кампанія не знайдена');
     }
 
-    const accessContext = buildCampaignAccessContext({
-      campaign,
-      userId,
-      hasValidShareToken: this._hasValidCampaignAccessToken(campaign, shareToken),
-    });
-    const viewerCapabilities = getCampaignViewerCapabilities(accessContext);
+    let myJoinRequest = null;
+    const isOwner = Boolean(userId && campaign.ownerId === userId);
+    const isCampaignMember = Boolean(
+      userId && campaign.members.some((member) => member.userId === userId)
+    );
 
-    if (!viewerCapabilities.canOpen) {
-      throw new AppError(
-        ERROR_CODES.SECURITY_ACCESS_DENIED,
-        'У вас немає доступу до цієї кампанії'
-      );
-    }
-
-    let pendingJoinRequestStatus = null;
-    if (userId && !accessContext.isOwner && !accessContext.isCampaignMember) {
-      const myJoinRequest = await prisma.joinRequest.findUnique({
+    if (userId && !isOwner && !isCampaignMember) {
+      myJoinRequest = await prisma.joinRequest.findUnique({
         where: {
           userId_campaignId: {
             userId,
@@ -321,10 +354,25 @@ class CampaignService {
         },
         select: { status: true },
       });
+    }
 
-      if (myJoinRequest?.status === 'PENDING') {
-        pendingJoinRequestStatus = 'PENDING';
-      }
+    const pendingJoinRequestStatus = myJoinRequest?.status === 'PENDING'
+      ? 'PENDING'
+      : null;
+
+    const accessContext = buildCampaignAccessContext({
+      campaign,
+      userId,
+      hasValidShareToken: this._hasValidCampaignAccessToken(campaign, shareToken),
+      isPendingJoinRequester: pendingJoinRequestStatus === 'PENDING',
+    });
+    const viewerCapabilities = getCampaignViewerCapabilities(accessContext);
+
+    if (!viewerCapabilities.canOpen) {
+      throw new AppError(
+        ERROR_CODES.SECURITY_ACCESS_DENIED,
+        'У вас немає доступу до цієї кампанії'
+      );
     }
 
     campaign.viewer = {
@@ -587,6 +635,10 @@ class CampaignService {
 
   async submitJoinRequest(campaignId, userId, message = null, shareToken = null) {
     return this.membersService.submitJoinRequest(campaignId, userId, message, shareToken);
+  }
+
+  async cancelJoinRequest(campaignId, userId) {
+    return this.membersService.cancelJoinRequest(campaignId, userId);
   }
 
   async getJoinRequests(campaignId, userId) {

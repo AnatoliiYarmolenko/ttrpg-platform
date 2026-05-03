@@ -356,7 +356,7 @@ export default function AdminPage() {
                     {statusLabels[s.status] || s.status}
                   </span>
                 </td>
-                <td className="py-2 px-3 text-gray-500">{formatDate(s.date)}</td>
+                <td className="py-2 px-3 text-gray-500">{formatDate(s.startAt)}</td>
                 <td className="py-2 px-3 text-gray-500">{s._count?.participants ?? 0}/{s.maxPlayers}</td>
                 <td className="py-2 px-3">
                   <Button

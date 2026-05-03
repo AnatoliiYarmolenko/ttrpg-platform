@@ -437,6 +437,32 @@ function createCampaignMembersService({
       return upsertJoinRequest(campaignIdInt, userId, message);
     },
 
+    async cancelJoinRequest(campaignId, userId) {
+      const campaignIdInt = Number.parseInt(campaignId, 10);
+
+      const joinRequest = await prisma.joinRequest.findUnique({
+        where: {
+          userId_campaignId: {
+            userId,
+            campaignId: campaignIdInt,
+          },
+        },
+        select: { id: true, status: true },
+      });
+
+      if (!joinRequest) {
+        throw new AppError(ERROR_CODES.JOIN_REQUEST_NOT_FOUND);
+      }
+
+      if (joinRequest.status !== 'PENDING') {
+        throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Заявка вже оброблена');
+      }
+
+      await prisma.joinRequest.delete({
+        where: { id: joinRequest.id },
+      });
+    },
+
     async getJoinRequests(campaignId, userId) {
       const campaign = await getCampaignById(campaignId, userId);
 

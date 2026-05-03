@@ -16,22 +16,34 @@ import Timer from '@/components/ui/icons/Timer';
 
 /** Картка сесії — використовується і для one-shot і для сесій кампанії */
 function SessionCard({ session, navigate, formatDuration }) {
+  const isPending = session.myStatus === 'PENDING';
+
   return (
     <button
       onClick={() => navigate(`/session/${session.id}`)}
       className="w-full text-left p-4 border-2 border-brand-light/30 rounded-xl hover:border-brand-dark/40 hover:shadow-md transition-all"
     >
-      <div className="flex items-start justify-between mb-1">
-        <h4 className="font-bold text-brand-dark truncate">{session.title}</h4>
-        <StatusBadge status={session.status} size="sm" />
+      <div className="flex items-start justify-between mb-1 gap-2">
+        <h4 className="font-bold text-brand-dark truncate flex-1">{session.title}</h4>
+        <div className="flex items-center gap-1 shrink-0">
+          {isPending && (
+            <span className="px-1.5 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 rounded border border-yellow-200">
+              Заявка
+            </span>
+          )}
+          <StatusBadge status={session.status} size="sm" />
+        </div>
       </div>
       <div className="flex items-center gap-3 text-sm text-brand-medium mt-1 flex-wrap">
-        {session.myRole && <RoleBadge role={session.myRole} />}
+        {session.myRole && !isPending && <RoleBadge role={session.myRole} />}
+        {isPending && (
+          <span className="text-yellow-700 text-xs">Очікує підтвердження</span>
+        )}
         <span className="flex items-center gap-1">
-          <Data className="w-4 h-4" /> <DateTimeDisplay value={session.date} format="short" />
+          <Data className="w-4 h-4" /> <DateTimeDisplay value={session.startAt} format="short" />
         </span>
         <span className="flex items-center gap-1">
-          <Timer className="w-4 h-4" /> <DateTimeDisplay value={session.date} format="time" />
+          <Timer className="w-4 h-4" /> <DateTimeDisplay value={session.startAt} format="time" />
         </span>
         {session.duration && (
           <span className="flex items-center gap-1">
@@ -52,7 +64,8 @@ SessionCard.propTypes = {
     title: PropTypes.string.isRequired,
     status: PropTypes.string,
     myRole: PropTypes.string,
-    date: PropTypes.oneOfType([PropTypes.string, PropTypes.instanceOf(Date)]),
+    myStatus: PropTypes.string,
+    startAt: PropTypes.oneOfType([PropTypes.string, PropTypes.instanceOf(Date)]),
     duration: PropTypes.number,
     currentPlayers: PropTypes.number,
     maxPlayers: PropTypes.number,

@@ -278,6 +278,7 @@ export default function useSessionPageController() {
   const canReadParticipants = Boolean(participantsSection.visible);
   const canJoin = Boolean(actions.canJoin);
   const canApplyAsGm = Boolean(actions.canApplyAsGm);
+  const canLeave = Boolean(actions.canLeave);
   const {
     showCampaignInfo,
     canNavigateToCampaignDirectly,
@@ -368,9 +369,10 @@ export default function useSessionPageController() {
 
   const handleJoin = useCallback((payload = {}) => mutations.joinSession(payload), [mutations]);
 
-  const handleLeave = useCallback(async () => {
+  const handleLeave = useCallback(async (options = {}) => {
+    const { redirect = true } = options;
     const result = await mutations.leaveSession();
-    return navigateOnSuccess(result, navigate);
+    return redirect ? navigateOnSuccess(result, navigate) : result;
   }, [mutations, navigate]);
 
   const handleStatusChange = useCallback((newStatus) => {
@@ -439,6 +441,7 @@ export default function useSessionPageController() {
     routeShareToken,
     user,
     currentSession,
+    viewer,
     isLoading,
     error,
     shouldRedirectToLogin,
@@ -465,6 +468,7 @@ export default function useSessionPageController() {
     participantsSection,
     canJoin,
     canApplyAsGm,
+    canLeave,
     showCampaignInfo,
     canNavigateToCampaignDirectly,
     campaignNavigationTarget,

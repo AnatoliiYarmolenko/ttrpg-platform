@@ -20,7 +20,7 @@ const baseSession = {
   id: 55,
   title: 'The Sunless Citadel',
   description: 'Наступна пригода.',
-  date: '2026-04-25T18:00:00.000Z',
+  startAt: '2026-04-25T18:00:00.000Z',
   duration: 180,
   status: 'PLANNED',
   visibility: 'PRIVATE',

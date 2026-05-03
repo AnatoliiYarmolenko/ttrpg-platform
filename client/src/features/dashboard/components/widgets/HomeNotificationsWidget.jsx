@@ -47,7 +47,7 @@ export default function HomeNotificationsWidget() {
     <DashboardCard title="Сповіщення">
       <div className="flex flex-col gap-3 h-full">
         <p className="text-sm text-brand-medium italic">
-          — Гей, я повсюди шукав тебе! Ось, просили передати прямо вруки! Ну все, бувай.
+          — Гей, я всюди шукав тебе! Ось, просили передати прямо вруки! Ну все, бувай.
         </p>
 
         <ul className="space-y-2">

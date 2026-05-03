@@ -9,11 +9,11 @@ import {
   DateTimeDisplay,
   BackButton,
   StatusBadge,
+  VisibilityBadge,
 } from "@/components/shared";
 import Data from "@/components/ui/icons/Data";
 import Timer from "@/components/ui/icons/Timer";
 import GroupPeople from "@/components/ui/icons/GroupPeople";
-import { VisibilityBadge } from '@/components/shared';
 
 function getEntityType(session) {
   return session?.campaign ? 'campaignSession' : 'oneShot';
@@ -152,17 +152,22 @@ SessionJoinModal.propTypes = {
 
 export default function SessionPagePreviewWidget({
   session,
+  viewer = {},
   showCampaignInfo = true,
   canNavigateToCampaignDirectly = false,
   campaignNavigationTarget = null,
   onJoin,
+  onLeave,
   canJoin = false,
   canApplyAsGm = false,
+  canLeave = false,
 }) {
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinError, setJoinError] = useState(null);
   const [isJoining, setIsJoining] = useState(false);
   const [isApplyingGm, setIsApplyingGm] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   if (!session) return null;
 
@@ -178,6 +183,7 @@ export default function SessionPagePreviewWidget({
     ? session.hasConfirmedGm
     : Boolean(confirmedGm);
   const canRequestJoin = canJoin || canApplyAsGm;
+  const isPendingRequest = viewer?.pendingJoinRequestStatus === 'PENDING';
   const canRenderCampaign = Boolean(showCampaignInfo && session?.campaign?.title);
   const campaignLink = campaignNavigationTarget || (session?.campaign?.id ? `/campaign/${session.campaign.id}` : null);
   const shouldRenderCampaignLink = Boolean(canRenderCampaign && campaignLink && canNavigateToCampaignDirectly);
@@ -215,6 +221,69 @@ export default function SessionPagePreviewWidget({
     }
   };
 
+  const handleCancelRequest = async () => {
+    if (!onLeave) {
+      return false;
+    }
+
+    setIsLeaving(true);
+    setJoinError(null);
+    try {
+      const result = await onLeave({ redirect: false });
+      if (!result?.success) {
+        setJoinError(result?.error || result?.message || 'Не вдалося відкликати заявку');
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      setJoinError(
+        error?.response?.data?.error
+        || error?.message
+        || 'Не вдалося відкликати заявку'
+      );
+      return false;
+    } finally {
+      setIsLeaving(false);
+    }
+  };
+
+  const closeCancelModal = () => {
+    setShowCancelModal(false);
+  };
+
+  let sessionActionContent;
+  if (isPendingRequest) {
+    sessionActionContent = (
+      <div className="flex flex-col gap-3">
+        {canLeave && (
+          <Button
+            onClick={() => setShowCancelModal(true)}
+            variant="danger"
+            fullWidth
+            isLoading={isLeaving}
+            loadingText="Відкликання..."
+            className="w-full min-h-[43px]"
+          >
+            Відкликати заявку
+          </Button>
+        )}
+      </div>
+    );
+  } else if (canRequestJoin) {
+    sessionActionContent = (
+      <Button onClick={() => setShowJoinModal(true)} variant="primary" fullWidth className="w-full min-h-[43px]">
+        Приєднатись до сесії
+      </Button>
+    );
+  } else {
+    sessionActionContent = (
+      <div className="text-sm text-brand-medium text-center p-3 bg-brand-light/10 rounded-lg">
+        {getUnavailableJoinMessage(session)}
+      </div>
+    );
+  }
+
   return (
     <DashboardCard
       title="Деталі сесії"
@@ -226,9 +295,16 @@ export default function SessionPagePreviewWidget({
             <h3 className="text-xl font-bold text-brand-dark leading-tight truncate flex-1 min-w-0">
               {session.title}
             </h3>
-            {['FINISHED', 'CANCELED'].includes(session.status)
-              ? <StatusBadge status={session.status} />
-              : <SessionTimeBadge session={session} />}
+            <div className="flex items-center gap-2 shrink-0">
+              {viewer.pendingJoinRequestStatus === 'PENDING' && (
+                <span className="px-1.5 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 rounded border border-yellow-200">
+                  Заявка на розгляді
+                </span>
+              )}
+              {['FINISHED', 'CANCELED'].includes(session.status)
+                ? <StatusBadge status={session.status} />
+                : <SessionTimeBadge session={session} />}
+            </div>
           </div>
 
           <div className="flex items-center justify-between gap-3">
@@ -252,7 +328,7 @@ export default function SessionPagePreviewWidget({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 p-4 bg-brand-light/10 rounded-xl">
           <div className="flex items-center gap-2 text-brand-medium text-sm">
             <Data className="w-4 h-4 shrink-0" />
-            <DateTimeDisplay value={session.date} format="long" />
+            <DateTimeDisplay value={session.startAt} format="long" />
           </div>
           <div className="flex items-center gap-2 text-brand-medium text-sm">
             <span className="font-medium">Система:</span>
@@ -261,7 +337,7 @@ export default function SessionPagePreviewWidget({
 
           <div className="flex items-center gap-2 text-brand-medium text-sm">
             <Timer className="w-4 h-4 shrink-0" />
-            <time>{session.date ? new Date(session.date).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' }) : '--:--'}</time>
+            <time>{session.startAt ? new Date(session.startAt).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' }) : '--:--'}</time>
           </div>
           <div className="flex items-center gap-2 text-brand-medium text-sm">
             <span className="font-medium">Доступність:</span>
@@ -299,15 +375,7 @@ export default function SessionPagePreviewWidget({
         )}
 
         <div className="mt-auto">
-          {canRequestJoin ? (
-            <Button onClick={() => setShowJoinModal(true)} variant="primary" fullWidth className="w-full min-h-[43px]">
-              Приєднатись до сесії
-            </Button>
-          ) : (
-            <div className="text-sm text-brand-medium text-center p-3 bg-brand-light/10 rounded-lg">
-              {getUnavailableJoinMessage(session)}
-            </div>
-          )}
+          {sessionActionContent}
         </div>
       </div>
 
@@ -322,6 +390,48 @@ export default function SessionPagePreviewWidget({
           handleApplyAsGm={handleApplyAsGm}
           closeModal={closeJoinModal}
         />
+      )}
+
+      {showCancelModal && (
+        <BaseModal
+          isOpen={showCancelModal}
+          onClose={closeCancelModal}
+          closeWhileLoading={false}
+          isLoading={isLeaving}
+          panelClassName="max-w-md"
+        >
+          <div className="rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="mb-2 text-lg font-bold text-brand-dark">Відкликати заявку?</h3>
+            <p className="mb-6 text-brand-medium">
+              Ваша заявка на участь буде видалена. Ви зможете подати її знову пізніше.
+            </p>
+            <div className="flex flex-row flex-wrap justify-center gap-3">
+              <Button
+                onClick={closeCancelModal}
+                variant="outline"
+                fullWidth={false}
+                className="min-w-[170px]"
+              >
+                Скасувати
+              </Button>
+              <Button
+                onClick={async () => {
+                  const isSuccess = await handleCancelRequest();
+                  if (isSuccess) {
+                    closeCancelModal();
+                  }
+                }}
+                isLoading={isLeaving}
+                loadingText="Відкликання..."
+                variant="danger"
+                fullWidth={false}
+                className="min-w-[170px]"
+              >
+                Відкликати
+              </Button>
+            </div>
+          </div>
+        </BaseModal>
       )}
     </DashboardCard>
   );
@@ -358,11 +468,18 @@ SessionPagePreviewWidget.propTypes = {
         }),
       })
     ),
+    participantsSummaryCount: PropTypes.number,
+    hasConfirmedGm: PropTypes.bool,
+  }),
+  viewer: PropTypes.shape({
+    pendingJoinRequestStatus: PropTypes.string,
   }),
   onJoin: PropTypes.func,
+  onLeave: PropTypes.func,
   showCampaignInfo: PropTypes.bool,
   canNavigateToCampaignDirectly: PropTypes.bool,
   campaignNavigationTarget: PropTypes.string,
   canJoin: PropTypes.bool,
   canApplyAsGm: PropTypes.bool,
+  canLeave: PropTypes.bool,
 };

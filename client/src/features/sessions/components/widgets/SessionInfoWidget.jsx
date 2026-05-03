@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import { Link } from 'react-router-dom';
 import DashboardCard from '@/components/ui/DashboardCard';
 import Button from '@/components/ui/Button';
@@ -61,6 +62,7 @@ export default function SessionInfoWidget({
   canStartSession = false,
   canFinishSession = false,
   canCancelSession = false,
+  canLeave = false,
   onLeave,
   onStatusChange,
   onMarkAsFinished,
@@ -102,7 +104,7 @@ export default function SessionInfoWidget({
 
   if (!session) return null;
 
-  const startState = getSessionStartState(session?.date, session?.duration);
+  const startState = getSessionStartState(session?.startAt, session?.duration);
 
   const handleLeave = () => {
     openConfirm({
@@ -124,7 +126,7 @@ export default function SessionInfoWidget({
     const isStartAction = newStatus === 'ACTIVE';
     const message = isStartAction && startState.warningMessage
       ? `${startState.warningMessage} Підтвердити запуск сесії?`
-      : `Ви впевнені, що хочете ${statusLabels[newStatus] || 'змінити статус'} сесії?`;
+      : `Ви впевнені, що хочете ${statusLabels[newStatus] || 'змінити статус'} сесію?`;
 
     openConfirm({
       title: 'Змінити статус?',
@@ -133,6 +135,7 @@ export default function SessionInfoWidget({
       confirmText: statusLabels[newStatus]
         ? `${statusLabels[newStatus].charAt(0).toUpperCase()}${statusLabels[newStatus].slice(1)}`
         : 'Змінити',
+      cancelText: 'Відмінити',
       onConfirm: () => onStatusChange?.(newStatus),
     });
   };
@@ -191,7 +194,7 @@ export default function SessionInfoWidget({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 p-4 bg-brand-light/10 rounded-xl">
           <div className="flex items-center gap-2 text-brand-medium text-sm">
             <Data className="w-4 h-4 shrink-0" />
-            <DateTimeDisplay value={session.date} format="long" fallback={formatStartAt(session.date)} />
+            <DateTimeDisplay value={session.startAt} format="long" fallback={formatStartAt(session.startAt)} />
           </div>
           <div className="flex items-center gap-2 text-brand-medium text-sm">
             <span className="font-medium">Система:</span>
@@ -200,7 +203,7 @@ export default function SessionInfoWidget({
 
           <div className="flex items-center gap-2 text-brand-medium text-sm">
             <Timer className="w-4 h-4 shrink-0" />
-            <time>{formatTimeOnly(session.date)}</time>
+            <time>{formatTimeOnly(session.startAt)}</time>
           </div>
           <div className="flex items-center gap-2 text-brand-medium text-sm">
             <span className="font-medium">Доступність:</span>
@@ -232,7 +235,7 @@ export default function SessionInfoWidget({
 
         <div className="border-t border-brand-light/20 pt-4 mt-auto">
           <div className="grid grid-flow-col auto-cols-fr gap-3 w-full">
-            {session.status === 'PLANNED' && myRole && myRole !== 'OWNER' && !isSessionOwner && onLeave && (
+            {session.status === 'PLANNED' && canLeave && myRole && myRole !== 'OWNER' && !isSessionOwner && onLeave && (
               <Button
                 onClick={handleLeave}
                 variant="danger"
@@ -298,3 +301,22 @@ export default function SessionInfoWidget({
     </DashboardCard>
   );
 }
+
+
+SessionInfoWidget.propTypes = {
+  session: PropTypes.object,
+  myRole: PropTypes.string,
+  currentUserId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  canManage: PropTypes.bool,
+  canStartSession: PropTypes.bool,
+  canFinishSession: PropTypes.bool,
+  canCancelSession: PropTypes.bool,
+  canLeave: PropTypes.bool,
+  onLeave: PropTypes.func,
+  onStatusChange: PropTypes.func,
+  onMarkAsFinished: PropTypes.func,
+  showCampaignInfo: PropTypes.bool,
+  canNavigateToCampaignDirectly: PropTypes.bool,
+  campaignNavigationTarget: PropTypes.string,
+  isLoading: PropTypes.bool,
+};

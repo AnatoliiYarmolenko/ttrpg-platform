@@ -8,7 +8,17 @@ function resolveSessionParticipation(session, userId) {
     return null;
   }
 
-  return session.participants.find((participant) => participant.userId === userId) || null;
+  const participant = session.participants.find((p) => p.userId === userId) || null;
+  return participant?.status === 'CONFIRMED' ? participant : null;
+}
+
+function resolvePendingParticipation(session, userId) {
+  if (!session || !userId || !Array.isArray(session.participants)) {
+    return null;
+  }
+
+  const participant = session.participants.find((p) => p.userId === userId) || null;
+  return participant?.status === 'PENDING' ? participant : null;
 }
 
 function resolveCampaignMembership(session, userId) {
@@ -28,18 +38,20 @@ function buildSessionAccessContext({
   isConfirmedGm = null,
 } = {}) {
   const participation = resolveSessionParticipation(session, userId);
+  const pendingParticipation = resolvePendingParticipation(session, userId);
   const campaignMembership = resolveCampaignMembership(session, userId);
   const isOwner = Boolean(userId && session?.ownerId === userId);
   const isParticipant = Boolean(participation);
+  const isPendingParticipant = Boolean(pendingParticipation);
   const resolvedCampaignMembership = isCampaignMember === null
     ? Boolean(campaignMembership || (userId && session?.campaign?.ownerId === userId))
     : Boolean(isCampaignMember);
 
   const resolvedConfirmedGm = isConfirmedGm === null
-    ? Boolean(
-      participation?.role === 'GM' && participation?.status === 'CONFIRMED'
-    )
+    ? Boolean(participation?.role === 'GM')
     : Boolean(isConfirmedGm);
+
+  const resolvedParticipation = participation || pendingParticipation;
 
   const context = {
     resourceType: RESOURCE_TYPES.SESSION,
@@ -51,11 +63,12 @@ function buildSessionAccessContext({
     hasValidCampaignShareToken: Boolean(hasValidCampaignShareToken),
     isOwner,
     isParticipant,
+    isPendingParticipant,
     isCampaignMember: resolvedCampaignMembership,
     isCampaignSession: Boolean(session?.campaignId),
     isConfirmedGm: resolvedConfirmedGm,
-    role: participation?.role || null,
-    participationStatus: participation?.status || null,
+    role: resolvedParticipation?.role || null,
+    participationStatus: resolvedParticipation?.status || null,
   };
 
   return {
@@ -68,4 +81,5 @@ module.exports = {
   buildSessionAccessContext,
   resolveCampaignMembership,
   resolveSessionParticipation,
+  resolvePendingParticipation,
 };

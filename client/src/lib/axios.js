@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { setCorrelationId } from './correlationStore';
 
 // Shared axios instance configuration.
 const api = axios.create({
@@ -232,8 +233,20 @@ const handleResponseError = async (error) => {
 };
 
 api.interceptors.response.use(
-  (response) => response,
-  handleResponseError
+  (response) => {
+    const correlationId = response.headers['x-correlation-id'];
+    if (correlationId) {
+      setCorrelationId(correlationId);
+    }
+    return response;
+  },
+  (error) => {
+    const correlationId = error.response?.headers['x-correlation-id'];
+    if (correlationId) {
+      setCorrelationId(correlationId);
+    }
+    return handleResponseError(error);
+  }
 );
 
 export default api;

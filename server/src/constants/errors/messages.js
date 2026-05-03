@@ -44,7 +44,7 @@ const ERROR_MESSAGES = {
   [ERROR_CODES.SESSION_JOIN_STATUS_FORBIDDEN]: 'Неможливо приєднатися до сесії з поточним статусом',
   [ERROR_CODES.SESSION_JOIN_CAMPAIGN_FINISHED]: 'Неможливо приєднатися до сесії у завершеній кампанії',
   [ERROR_CODES.SESSION_JOIN_ALREADY_STARTED]: 'Неможливо приєднатися до сесії, яка вже розпочалася',
-  [ERROR_CODES.SESSION_JOIN_ALREADY_PARTICIPANT]: 'Користувач уже є учасником цієї сесії',
+  [ERROR_CODES.SESSION_JOIN_ALREADY_PARTICIPANT]: 'Ви вже є учасником цієї сесії, або подали заявку на участь',
   [ERROR_CODES.SESSION_JOIN_NO_FREE_PLAYER_SLOTS]: 'Немає вільних місць для гравців',
   [ERROR_CODES.SESSION_JOIN_PRIVATE_CAMPAIGN_MEMBERS_ONLY]: 'Лише учасники кампанії можуть приєднатися до приватної сесії кампанії як гравці',
   [ERROR_CODES.SESSION_PARTICIPANT_STATUS_INVALID]: 'Невірний статус учасника',
@@ -93,7 +93,7 @@ const ERROR_MESSAGES = {
   [ERROR_CODES.ADMIN_RESOURCE_NOT_FOUND]: 'Ресурс не знайдено',
 
   [ERROR_CODES.SECURITY_CSRF_INVALID]: 'Невалідний CSRF токен',
-  [ERROR_CODES.SECURITY_CORS_BLOCKED]: 'Доступ заборонено (CORS)',
+  [ERROR_CODES.SECURITY_CORS_BLOCKED]: 'Доступ заборонено',
   [ERROR_CODES.SECURITY_ACCESS_DENIED]: 'Недостатньо доступу',
 
   [ERROR_CODES.SERVER_ERROR]: 'Помилка сервера. Спробуйте пізніше.',

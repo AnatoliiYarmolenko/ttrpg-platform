@@ -69,17 +69,26 @@ export default function MyCampaignsWidget() {
               {campaigns.map((campaign) => {
                 const role = getUserRole(campaign);
 
+                const isPending = campaign.myStatus === 'PENDING';
+
                 return (
                   <button
                     key={campaign.id}
                     onClick={() => handleCampaignClick(campaign.id)}
                     className="w-full text-left p-4 border-2 border-brand-light/30 rounded-xl hover:border-brand-dark/30 hover:shadow-md transition-all"
                   >
-                    <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-start justify-between mb-2 gap-2">
                       <div className="flex items-center gap-2 flex-1 min-w-0">
                         <h4 className="font-bold text-brand-dark truncate">{campaign.title}</h4>
                       </div>
-                      {role && <RoleBadge role={role} />}
+                      <div className="flex items-center gap-1 shrink-0">
+                        {isPending && (
+                          <span className="px-1.5 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 rounded border border-yellow-200">
+                            Заявка
+                          </span>
+                        )}
+                        {role && !isPending && <RoleBadge role={role} />}
+                      </div>
                     </div>
 
                     {/* Опис */}
@@ -87,6 +96,11 @@ export default function MyCampaignsWidget() {
                       <p className="text-sm text-brand-medium mb-2 line-clamp-2">
                         {campaign.description}
                       </p>
+                    )}
+
+                    {/* Статус заявки */}
+                    {isPending && (
+                      <p className="text-sm text-yellow-700 mb-2">Очікує підтвердження</p>
                     )}
 
                     {/* Статистика */}

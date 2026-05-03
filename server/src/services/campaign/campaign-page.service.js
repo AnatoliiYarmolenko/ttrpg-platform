@@ -60,7 +60,7 @@ function createCampaignPageService({ getCampaignById, getCampaignByShareToken, g
       id: session.id,
       title: session.title,
       description: session.description || null,
-      date: session.date,
+      startAt: session.date,
       status: session.status,
       visibility: session.visibility,
       system: session.system || null,
@@ -121,6 +121,11 @@ function createCampaignPageService({ getCampaignById, getCampaignByShareToken, g
         && !viewer.pendingJoinRequestStatus
         && !isFinished
         && viewer.joinMode === 'REQUEST'
+      ),
+      canCancelJoinRequest: Boolean(
+        userId
+        && !isMember
+        && viewer.pendingJoinRequestStatus
       ),
       canLeave: Boolean(isMember && !isOwner && !isFinished),
       canEditSettings: Boolean(viewer.canManage),

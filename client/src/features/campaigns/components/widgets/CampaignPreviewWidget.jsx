@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import DashboardCard from '@/components/ui/DashboardCard';
 import Button from '@/components/ui/Button';
 import {
@@ -24,12 +25,16 @@ import GroupPeople from '@/components/ui/icons/GroupPeople';
 export default function CampaignPreviewWidget({
   campaign,
   onJoinRequest,
+  onCancelJoinRequest,
   canJoin = false,
+  canCancelJoinRequest = false,
   pendingRequestStatus = null,
 }) {
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinError, setJoinError] = useState(null);
   const [isJoining, setIsJoining] = useState(false);
+  const [isCanceling, setIsCanceling] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   const handleJoinRequest = async () => {
     setIsJoining(true);
@@ -41,6 +46,37 @@ export default function CampaignPreviewWidget({
       setJoinError(result?.error || 'Помилка при подачі заявки');
     }
     setIsJoining(false);
+  };
+
+  const handleCancelRequest = async () => {
+    if (!onCancelJoinRequest) {
+      return false;
+    }
+
+    setIsCanceling(true);
+    setJoinError(null);
+    try {
+      const result = await onCancelJoinRequest();
+      if (!result?.success) {
+        setJoinError(result?.error || 'Не вдалося відкликати заявку');
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      setJoinError(
+        error?.response?.data?.error
+        || error?.message
+        || 'Не вдалося відкликати заявку'
+      );
+      return false;
+    } finally {
+      setIsCanceling(false);
+    }
+  };
+
+  const closeCancelModal = () => {
+    setShowCancelModal(false);
   };
 
   if (!campaign) return null;
@@ -58,6 +94,11 @@ export default function CampaignPreviewWidget({
               {campaign.title}
             </h2>
             <div className="flex flex-col items-end gap-2">
+              {pendingRequestStatus === 'PENDING' && (
+                <span className="px-1.5 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 rounded border border-yellow-200">
+                  Заявка на розгляді
+                </span>
+              )}
               <VisibilityBadge visibility={campaign.visibility} entityType="campaign" />
               <StatusBadge status={campaign.status || 'ACTIVE'} size="sm" />
             </div>
@@ -119,11 +160,17 @@ export default function CampaignPreviewWidget({
             </div>
           )}
 
-          {/* Статус вже поданої заявки */}
-          {pendingRequestStatus && (
-            <div className="text-sm text-brand-medium text-center p-3 bg-brand-accent/10 rounded-lg border border-brand-accent/30">
-              Ваша заявка вже подана і очікує на розгляд
-            </div>
+          {pendingRequestStatus && canCancelJoinRequest && (
+            <Button
+              onClick={() => setShowCancelModal(true)}
+              variant="danger"
+              fullWidth={true}
+              isLoading={isCanceling}
+              loadingText="Відкликання..."
+              className="w-full"
+            >
+              Відкликати заявку
+            </Button>
           )}
 
           {/* Кнопка подачі заявки */}
@@ -193,6 +240,76 @@ export default function CampaignPreviewWidget({
           </div>
         </BaseModal>
       )}
+
+      {showCancelModal && (
+        <BaseModal
+          isOpen={showCancelModal}
+          onClose={closeCancelModal}
+          closeWhileLoading={false}
+          isLoading={isCanceling}
+          panelClassName="max-w-md"
+        >
+          <div className="rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="mb-2 text-lg font-bold text-brand-dark">Відкликати заявку?</h3>
+            <p className="mb-6 text-brand-medium">
+              Ваша заявка на вступ буде видалена. Ви зможете подати її знову пізніше.
+            </p>
+            <div className="flex flex-row flex-wrap justify-center gap-3">
+              <Button
+                onClick={closeCancelModal}
+                variant="outline"
+                fullWidth={false}
+                className="min-w-[170px]"
+              >
+                Скасувати
+              </Button>
+              <Button
+                onClick={async () => {
+                  const isSuccess = await handleCancelRequest();
+                  if (isSuccess) {
+                    closeCancelModal();
+                  }
+                }}
+                isLoading={isCanceling}
+                loadingText="Відкликання..."
+                variant="danger"
+                fullWidth={false}
+                className="min-w-[170px]"
+              >
+                Відкликати
+              </Button>
+            </div>
+          </div>
+        </BaseModal>
+      )}
     </DashboardCard>
   );
 }
+
+CampaignPreviewWidget.propTypes = {
+  campaign: PropTypes.shape({
+    title: PropTypes.string,
+    visibility: PropTypes.string,
+    status: PropTypes.string,
+    membersCount: PropTypes.number,
+    members: PropTypes.array,
+    sessionsCount: PropTypes.number,
+    sessions: PropTypes.array,
+    _count: PropTypes.shape({
+      members: PropTypes.number,
+      sessions: PropTypes.number,
+    }),
+    system: PropTypes.string,
+    owner: PropTypes.shape({
+      displayName: PropTypes.string,
+      username: PropTypes.string,
+    }),
+    createdAt: PropTypes.oneOfType([PropTypes.string, PropTypes.instanceOf(Date)]),
+    description: PropTypes.string,
+  }),
+  onJoinRequest: PropTypes.func,
+  onCancelJoinRequest: PropTypes.func,
+  canJoin: PropTypes.bool,
+  canCancelJoinRequest: PropTypes.bool,
+  pendingRequestStatus: PropTypes.string,
+};

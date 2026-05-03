@@ -184,7 +184,8 @@ test('guest participant in LINK_ONLY campaign session sees campaign title withou
     viewer: {
       role: 'PLAYER',
       isSessionOwner: false,
-      isParticipant: true,
+      isParticipant: false,
+      isPendingParticipant: true,
       isCampaignMember: false,
       isCampaignOwner: false,
       participationStatus: 'PENDING',
@@ -201,4 +202,7 @@ test('guest participant in LINK_ONLY campaign session sees campaign title withou
   assert.equal(page.sections.campaign.linkable, false);
   assert.equal(page.sections.campaign.data?.id, 904);
   assert.equal(page.entity.campaign?.id, 904);
+  // PENDING participants should not see other participants
+  assert.equal(page.sections.participants.visible, false);
+  assert.equal(page.sections.participants.items.length, 0);
 });

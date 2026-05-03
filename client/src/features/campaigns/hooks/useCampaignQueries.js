@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/stores/useToastStore';
 import {
   getCampaignPageById,
+  getCampaignPageByShareToken,
   updateCampaign,
   transferCampaignOwnership,
   cancelCampaignSession,
@@ -11,6 +12,7 @@ import {
   regenerateShareLink,
   getCampaignShareLink,
   submitJoinRequest,
+  cancelJoinRequest,
   approveJoinRequest,
   rejectJoinRequest,
 } from '../api/campaignApi';
@@ -52,11 +54,14 @@ export const useCampaignPageQuery = ({
   shareToken = null,
 } = {}) => {
   const isValidId = Number.isInteger(campaignId) && campaignId > 0;
+  const hasShareToken = typeof shareToken === 'string' && shareToken.trim().length > 0;
 
   return useQuery({
     queryKey: campaignPageQueryKeys.detail({ campaignId, shareToken }),
     queryFn: async () => {
-      const res = await getCampaignPageById(campaignId);
+      const res = hasShareToken
+        ? await getCampaignPageByShareToken(shareToken)
+        : await getCampaignPageById(campaignId);
 
       if (!res.success) {
         throw new Error(res.error || 'Failed to fetch campaign');
@@ -64,7 +69,7 @@ export const useCampaignPageQuery = ({
 
       return res.data;
     },
-    enabled: isValidId,
+    enabled: isValidId || hasShareToken,
   });
 };
 
@@ -135,6 +140,11 @@ export const useCampaignMutations = (campaignId, options = {}) => {
     ...handleMutation('Заявку на вступ надіслано', [invalidateCampaignPageQuery, invalidateCampaignDetail]),
   });
 
+  const cancelJoinRequestMutation = useMutation({
+    mutationFn: () => cancelJoinRequest(campaignId),
+    ...handleMutation('Заявку відкликано', [invalidateCampaignPageQuery, invalidateCampaignDetail]),
+  });
+
   const approveRequestMutation = useMutation({
     mutationFn: ({ requestId, role = 'PLAYER' }) => approveJoinRequest(requestId, role),
     ...handleMutation('Заявку підтверджено', [invalidateCampaignPageQuery, invalidateCampaignDetail, invalidateCampaignsList]),
@@ -170,6 +180,7 @@ export const useCampaignMutations = (campaignId, options = {}) => {
     transferOwnership: transferOwnershipMutation.mutateAsync,
     regenerateShareLink: regenerateShareLinkMutation.mutateAsync,
     submitJoinRequest: submitJoinRequestMutation.mutateAsync,
+    cancelJoinRequest: cancelJoinRequestMutation.mutateAsync,
     approveRequest: approveRequestMutation.mutateAsync,
     rejectRequest: rejectRequestMutation.mutateAsync,
     removeMember: removeMemberMutation.mutateAsync,

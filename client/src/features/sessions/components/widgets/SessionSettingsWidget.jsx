@@ -24,7 +24,7 @@ function buildFormData(session) {
   return {
     title: session?.title || '',
     description: session?.description || '',
-    date: formatDateTimeLocalValue(session?.date),
+    date: formatDateTimeLocalValue(session?.startAt),
     duration: session?.duration || '',
     maxPlayers: session?.maxPlayers || '',
     system: session?.system || session?.campaign?.system || '',

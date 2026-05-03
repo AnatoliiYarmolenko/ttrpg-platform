@@ -32,11 +32,14 @@ const sessionParticipantsController = {
       const { id: sessionId } = req.params;
       const userId = req.user.id;
 
-      await sessionService.leaveSession(sessionId, userId);
+      const participant = await sessionService.leaveSession(sessionId, userId);
+      const message = participant?.status === 'PENDING'
+        ? 'Заявку відкликано!'
+        : 'Ви вийшли з сесії!';
 
       res.json({
         success: true,
-        message: 'Ви вийшли з сесії!',
+        message,
       });
     } catch (error) {
       next(error);

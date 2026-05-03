@@ -21,8 +21,8 @@ const parseSessionTime = (sessionDate) => {
 
 const sortByClosestDate = (a, b) => {
   const now = Date.now();
-  const aTime = parseSessionTime(a.date);
-  const bTime = parseSessionTime(b.date);
+  const aTime = parseSessionTime(a.startAt);
+  const bTime = parseSessionTime(b.startAt);
   const aDiff = Math.abs(aTime - now);
   const bDiff = Math.abs(bTime - now);
 

@@ -101,3 +101,5 @@ docs/plans/
 docs/legacy/
 
 .postman/
+.codex/
+.agents/

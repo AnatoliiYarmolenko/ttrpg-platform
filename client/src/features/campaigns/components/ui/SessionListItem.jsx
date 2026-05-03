@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import { StatusBadge, DateTimeDisplay } from '@/components/shared';
 import Data from '@/components/ui/icons/Data';
@@ -66,29 +67,22 @@ export default function SessionListItem({
     navigate(sessionTarget);
   };
 
-  const handleKeyDown = (event) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      handleOpenSession();
-    }
-  };
-
   return (
     <div
-      onClick={handleOpenSession}
-      onKeyDown={handleKeyDown}
-      role="button"
-      tabIndex={0}
-      aria-label={`Відкрити сесію ${session.title}`}
-      className="w-full text-left p-4 border-2 border-brand-light/30 rounded-xl hover:border-brand-dark/30 hover:bg-brand-light/5 transition-all group block cursor-pointer"
+      className="w-full p-4 border-2 border-brand-light/30 rounded-xl hover:border-brand-dark/30 hover:bg-brand-light/5 transition-all group block"
     >
       <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
+        <button
+          type="button"
+          onClick={handleOpenSession}
+          aria-label={`Відкрити сесію ${session.title}`}
+          className="flex items-center gap-2 flex-1 min-w-0 text-left"
+        >
           <h4 className="font-bold text-brand-dark truncate group-hover:text-brand-medium">
             {typeof index === 'number' ? `Сесія #${index + 1} — ` : ''}
             {session.title}
           </h4>
-        </div>
+        </button>
         <div className="flex items-center gap-2">
           {hasModerationActions && (
             <>
@@ -122,35 +116,66 @@ export default function SessionListItem({
         </div>
       </div>
 
-      <div className="flex items-center gap-4 text-sm text-brand-medium flex-wrap">
-        <div className="flex items-center gap-1">
-          <Data className="w-4 h-4" />
-          <DateTimeDisplay value={session.date} format="long" />
-        </div>
-        <div className="flex items-center gap-1">
-          <Timer className="w-4 h-4" />
-          <DateTimeDisplay value={session.date} format="time" />
-        </div>
-        {session.duration && (
+      <button
+        type="button"
+        onClick={handleOpenSession}
+        aria-label={`Відкрити сесію ${session.title}`}
+        className="w-full text-left"
+      >
+        <div className="flex items-center gap-4 text-sm text-brand-medium flex-wrap">
+          <div className="flex items-center gap-1">
+            <Data className="w-4 h-4" />
+            <DateTimeDisplay value={session.startAt} format="long" />
+          </div>
           <div className="flex items-center gap-1">
             <Timer className="w-4 h-4" />
-            <span>{formatDuration(session.duration)}</span>
+            <DateTimeDisplay value={session.startAt} format="time" />
           </div>
-        )}
-        <div className="flex items-center gap-1">
-          <GroupPeople className="w-4 h-4" />
-          <span>
-            {participantCount}
-            {session.maxPlayers ? `/${session.maxPlayers}` : ''} гравців
-          </span>
+          {session.duration && (
+            <div className="flex items-center gap-1">
+              <Timer className="w-4 h-4" />
+              <span>{formatDuration(session.duration)}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-1">
+            <GroupPeople className="w-4 h-4" />
+            <span>
+              {participantCount}
+              {session.maxPlayers ? `/${session.maxPlayers}` : ''} гравців
+            </span>
+          </div>
         </div>
-      </div>
 
-      {session.description && (
-        <p className="text-xs text-brand-medium/70 mt-2 line-clamp-2">
-          {session.description}
-        </p>
-      )}
+        {session.description && (
+          <p className="text-xs text-brand-medium/70 mt-2 line-clamp-2">
+            {session.description}
+          </p>
+        )}
+      </button>
     </div>
   );
 }
+
+SessionListItem.propTypes = {
+  session: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    title: PropTypes.string.isRequired,
+    status: PropTypes.string,
+    date: PropTypes.oneOfType([PropTypes.string, PropTypes.instanceOf(Date)]),
+    duration: PropTypes.number,
+    maxPlayers: PropTypes.number,
+    description: PropTypes.string,
+    participantsSummaryCount: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    participantsCount: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    currentPlayers: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    participants: PropTypes.array,
+    actions: PropTypes.shape({
+      canCancel: PropTypes.bool,
+      canDelete: PropTypes.bool,
+    }),
+  }).isRequired,
+  index: PropTypes.number,
+  campaignShareToken: PropTypes.string,
+  onCancelAction: PropTypes.func,
+  onDeleteAction: PropTypes.func,
+};

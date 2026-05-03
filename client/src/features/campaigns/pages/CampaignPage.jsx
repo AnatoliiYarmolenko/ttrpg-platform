@@ -42,9 +42,11 @@ export default function CampaignPage() {
     canManageShareLink,
     isCampaignFinished,
     canJoin,
+    canCancelJoinRequest,
     pendingRequestStatus,
     currentShareLink,
     handleJoinRequest,
+    handleCancelJoinRequest,
     handleLeave,
     handleRefreshCampaign,
     handleRegenerateShareLink,
@@ -87,7 +89,9 @@ export default function CampaignPage() {
           <CampaignPreviewWidget
             campaign={currentCampaign}
             onJoinRequest={handleJoinRequest}
+            onCancelJoinRequest={handleCancelJoinRequest}
             canJoin={canJoin}
+            canCancelJoinRequest={canCancelJoinRequest}
             pendingRequestStatus={pendingRequestStatus}
             isLoading={isLoading}
           />

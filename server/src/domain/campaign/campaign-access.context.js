@@ -22,6 +22,7 @@ function buildCampaignAccessContext({
   userId = null,
   hasValidShareToken = false,
   role = null,
+  isPendingJoinRequester = false,
 } = {}) {
   const resolvedRole = role || resolveCampaignMembershipRole(campaign, userId);
   const isOwner = Boolean(userId && campaign?.ownerId === userId);
@@ -38,6 +39,7 @@ function buildCampaignAccessContext({
     isOwner,
     isMember,
     isCampaignMember,
+    isPendingJoinRequester: Boolean(isPendingJoinRequester),
     role: resolvedRole,
   };
 
