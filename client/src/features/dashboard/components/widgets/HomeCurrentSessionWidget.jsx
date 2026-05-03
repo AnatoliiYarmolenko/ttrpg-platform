@@ -61,11 +61,11 @@ export default function HomeCurrentSessionWidget() {
 
   // Автоматично оновити запит, якщо запланована сесія вже почалась (за часом)
   useEffect(() => {
-    if (!session?.startAt || session.status !== 'PLANNED') {
+    if (!(session?.startAt || session?.date) || session.status !== 'PLANNED') {
       return;
     }
 
-    const startMs = new Date(session.startAt).getTime();
+    const startMs = new Date(session.startAt || session.date).getTime();
     if (Number.isNaN(startMs) || Date.now() < startMs) {
       return;
     }
@@ -179,7 +179,7 @@ export default function HomeCurrentSessionWidget() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 p-4 bg-brand-light/10 rounded-xl">
         <div className="flex items-center gap-2 text-brand-medium text-sm">
           <Data className="w-4 h-4 shrink-0" />
-          <DateTimeDisplay value={session.startAt} format="long" fallback={formatStartAt(session.startAt)} />
+          <DateTimeDisplay value={session.startAt || session.date} format="long" fallback={formatStartAt(session.startAt || session.date)} />
         </div>
         <div className="flex items-center gap-2 text-brand-medium text-sm">
           <span className="font-medium">Система:</span>
@@ -188,7 +188,7 @@ export default function HomeCurrentSessionWidget() {
 
         <div className="flex items-center gap-2 text-brand-medium text-sm">
           <Timer className="w-4 h-4 shrink-0" />
-          <time>{session.startAt ? new Date(session.startAt).toLocaleTimeString(UI_LOCALE, { hour: '2-digit', minute: '2-digit' }) : '--:--'}</time>
+          <time>{(session?.startAt || session?.date) ? new Date(session.startAt || session.date).toLocaleTimeString(UI_LOCALE, { hour: '2-digit', minute: '2-digit' }) : '--:--'}</time>
         </div>
         <div className="flex items-center gap-2 text-brand-medium text-sm">
           <span className="font-medium">Доступність:</span>

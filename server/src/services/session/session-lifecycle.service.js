@@ -347,6 +347,8 @@ function attachPublicShareToken(updatedSession, shareTokenState) {
     updatedSession.shareToken = shareTokenState.shareTokenData.rawToken;
   }
 
+  updatedSession.startAt = updatedSession.date;
+
   delete updatedSession.shareTokenHash;
   delete updatedSession.shareTokenEncrypted;
   delete updatedSession.shareTokenCreatedAt;
@@ -496,7 +498,7 @@ function createSessionLifecycleService({
         throw new AppError(errorCode);
       }
 
-      return prisma.session.update({
+      const updated = await prisma.session.update({
         where: { id: sessionQueryService.parsePositiveInt(sessionId, 'Session ID') },
         data: {
           status: 'CANCELED',
@@ -510,6 +512,8 @@ function createSessionLifecycleService({
           },
         },
       });
+
+      return { ...updated, startAt: updated.date };
     },
 
     async markSessionAsFinished(sessionId, userId, options = {}) {

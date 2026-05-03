@@ -49,6 +49,8 @@ function createSessionQueryService({ prisma, AppError, ERROR_CODES }) {
       throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Сесія не знайдена');
     }
 
+    session.startAt = session.date;
+
     let isCampaignMember = false;
     if (session.campaignId && userId) {
       const campaignMembership = await prisma.campaignMember.findUnique({

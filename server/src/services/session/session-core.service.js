@@ -218,9 +218,7 @@ function createSessionCoreService({
         session.shareToken = shareTokenData.rawToken;
       }
 
-      delete session.shareTokenHash;
-      delete session.shareTokenEncrypted;
-      delete session.shareTokenCreatedAt;
+      session.startAt = session.date;
 
       return session;
     },

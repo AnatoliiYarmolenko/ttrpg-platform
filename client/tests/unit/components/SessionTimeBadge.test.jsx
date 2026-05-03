@@ -25,7 +25,7 @@ describe('SessionTimeBadge', () => {
   const createPlannedSession = (offsetMs, overrides = {}) =>
     createSession({
       status: 'PLANNED',
-      date: new Date(fixedNowMs + offsetMs).toISOString(),
+      startAt: new Date(fixedNowMs + offsetMs).toISOString(),
       ...overrides,
     });
 
@@ -45,10 +45,10 @@ describe('SessionTimeBadge', () => {
 
   it.each([
     ['missing session', null],
-    ['finished session', createSession({ status: 'FINISHED', date: new Date(fixedNowMs).toISOString() })],
-    ['canceled session', createSession({ status: 'CANCELED', date: new Date(fixedNowMs).toISOString() })],
-    ['invalid status', createSession({ status: 'UNKNOWN', date: new Date(fixedNowMs).toISOString() })],
-    ['invalid date', createPlannedSession(60 * 60 * 1000, { date: 'invalid-date' })],
+    ['finished session', createSession({ status: 'FINISHED', startAt: new Date(fixedNowMs).toISOString() })],
+    ['canceled session', createSession({ status: 'CANCELED', startAt: new Date(fixedNowMs).toISOString() })],
+    ['invalid status', createSession({ status: 'UNKNOWN', startAt: new Date(fixedNowMs).toISOString() })],
+    ['invalid date', createPlannedSession(60 * 60 * 1000, { startAt: 'invalid-date' })],
   ])('returns nothing for %s', (_, session) => {
     expectNoBadge(session);
   });

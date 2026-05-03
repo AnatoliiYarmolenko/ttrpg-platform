@@ -333,7 +333,7 @@ class AdminService {
     ]);
 
     return {
-      sessions,
+      sessions: sessions.map(s => ({ ...s, startAt: s.date })),
       pagination: {
         page,
         limit,
@@ -398,7 +398,7 @@ class AdminService {
       throw new AppError(ERROR_CODES.ADMIN_RESOURCE_NOT_FOUND, 'Сесію не знайдено');
     }
 
-    return session;
+    return { ...session, startAt: session.date };
   }
 
   /**
