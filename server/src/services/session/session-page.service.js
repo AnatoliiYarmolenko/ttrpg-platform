@@ -316,6 +316,7 @@ function createSessionPageService({ sessionQueryService }) {
         isCampaignMember: viewerState.isCampaignMember,
         isCampaignOwner: Boolean(viewer.isCampaignOwner),
         participationStatus: viewer.participationStatus || myParticipant?.status || null,
+        pendingJoinRequestStatus: viewer.participationStatus === 'PENDING' ? 'PENDING' : null,
       },
       actions,
       sections,

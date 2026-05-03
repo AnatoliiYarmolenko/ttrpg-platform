@@ -74,6 +74,7 @@ export default function SessionPage() {
     handleViewProfile,
     handleBackFromProfile,
     navigate,
+    viewer,
   } = useSessionPageController();
 
   if (shouldRedirectToLogin) {
@@ -162,6 +163,7 @@ export default function SessionPage() {
     leftPanel: (
       <SessionPagePreviewWidget
         session={currentSession}
+        viewer={viewer}
         showCampaignInfo={showCampaignInfo}
         canNavigateToCampaignDirectly={canNavigateToCampaignDirectly}
         campaignNavigationTarget={campaignNavigationTarget}

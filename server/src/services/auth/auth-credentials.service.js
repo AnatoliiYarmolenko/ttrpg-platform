@@ -38,7 +38,7 @@ function createAuthCredentialsService({
           email: normalizedEmail,
           password: hashedPassword,
           wallet: {
-            create: { balance: 0.0 },
+            create: { balance: 0 },
           },
         },
         select: {

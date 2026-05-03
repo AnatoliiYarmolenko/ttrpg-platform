@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import DashboardCard from '@/components/ui/DashboardCard';
 import Button from '@/components/ui/Button';
 import {
@@ -58,6 +59,11 @@ export default function CampaignPreviewWidget({
               {campaign.title}
             </h2>
             <div className="flex flex-col items-end gap-2">
+              {pendingRequestStatus === 'PENDING' && (
+                <span className="px-1.5 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 rounded border border-yellow-200">
+                  Заявка на розгляді
+                </span>
+              )}
               <VisibilityBadge visibility={campaign.visibility} entityType="campaign" />
               <StatusBadge status={campaign.status || 'ACTIVE'} size="sm" />
             </div>
@@ -196,3 +202,29 @@ export default function CampaignPreviewWidget({
     </DashboardCard>
   );
 }
+
+CampaignPreviewWidget.propTypes = {
+  campaign: PropTypes.shape({
+    title: PropTypes.string,
+    visibility: PropTypes.string,
+    status: PropTypes.string,
+    membersCount: PropTypes.number,
+    members: PropTypes.array,
+    sessionsCount: PropTypes.number,
+    sessions: PropTypes.array,
+    _count: PropTypes.shape({
+      members: PropTypes.number,
+      sessions: PropTypes.number,
+    }),
+    system: PropTypes.string,
+    owner: PropTypes.shape({
+      displayName: PropTypes.string,
+      username: PropTypes.string,
+    }),
+    createdAt: PropTypes.oneOfType([PropTypes.string, PropTypes.instanceOf(Date)]),
+    description: PropTypes.string,
+  }),
+  onJoinRequest: PropTypes.func,
+  canJoin: PropTypes.bool,
+  pendingRequestStatus: PropTypes.string,
+};

@@ -98,6 +98,7 @@ function createSessionQueryService({ prisma, AppError, ERROR_CODES }) {
       hasValidCampaignShareToken: accessContext.hasValidCampaignShareToken,
       role: accessContext.role,
       participationStatus: accessContext.participationStatus,
+      pendingJoinRequestStatus: accessContext.participationStatus === 'PENDING' ? 'PENDING' : null,
       ...viewerCapabilities,
     };
 
@@ -139,7 +140,7 @@ function createSessionQueryService({ prisma, AppError, ERROR_CODES }) {
   const resolveSessionContext = async (sessionId, userId, preloadedSession = null) => {
     const sessionIdInt = parsePositiveInt(sessionId, 'ID сесії');
 
-    if (preloadedSession && preloadedSession.id === sessionIdInt) {
+    if (preloadedSession?.id === sessionIdInt) {
       return preloadedSession;
     }
 

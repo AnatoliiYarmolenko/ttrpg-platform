@@ -9,11 +9,11 @@ import {
   DateTimeDisplay,
   BackButton,
   StatusBadge,
+  VisibilityBadge,
 } from "@/components/shared";
 import Data from "@/components/ui/icons/Data";
 import Timer from "@/components/ui/icons/Timer";
 import GroupPeople from "@/components/ui/icons/GroupPeople";
-import { VisibilityBadge } from '@/components/shared';
 
 function getEntityType(session) {
   return session?.campaign ? 'campaignSession' : 'oneShot';
@@ -152,6 +152,7 @@ SessionJoinModal.propTypes = {
 
 export default function SessionPagePreviewWidget({
   session,
+  viewer = {},
   showCampaignInfo = true,
   canNavigateToCampaignDirectly = false,
   campaignNavigationTarget = null,
@@ -226,9 +227,16 @@ export default function SessionPagePreviewWidget({
             <h3 className="text-xl font-bold text-brand-dark leading-tight truncate flex-1 min-w-0">
               {session.title}
             </h3>
-            {['FINISHED', 'CANCELED'].includes(session.status)
-              ? <StatusBadge status={session.status} />
-              : <SessionTimeBadge session={session} />}
+            <div className="flex items-center gap-2 shrink-0">
+              {viewer.pendingJoinRequestStatus === 'PENDING' && (
+                <span className="px-1.5 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 rounded border border-yellow-200">
+                  Заявка на розгляді
+                </span>
+              )}
+              {['FINISHED', 'CANCELED'].includes(session.status)
+                ? <StatusBadge status={session.status} />
+                : <SessionTimeBadge session={session} />}
+            </div>
           </div>
 
           <div className="flex items-center justify-between gap-3">
@@ -358,6 +366,11 @@ SessionPagePreviewWidget.propTypes = {
         }),
       })
     ),
+    participantsSummaryCount: PropTypes.number,
+    hasConfirmedGm: PropTypes.bool,
+  }),
+  viewer: PropTypes.shape({
+    pendingJoinRequestStatus: PropTypes.string,
   }),
   onJoin: PropTypes.func,
   showCampaignInfo: PropTypes.bool,

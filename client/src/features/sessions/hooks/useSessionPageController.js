@@ -439,6 +439,7 @@ export default function useSessionPageController() {
     routeShareToken,
     user,
     currentSession,
+    viewer,
     isLoading,
     error,
     shouldRedirectToLogin,

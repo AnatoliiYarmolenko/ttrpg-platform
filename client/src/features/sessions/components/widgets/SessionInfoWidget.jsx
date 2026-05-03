@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import { Link } from 'react-router-dom';
 import DashboardCard from '@/components/ui/DashboardCard';
 import Button from '@/components/ui/Button';
@@ -124,7 +125,7 @@ export default function SessionInfoWidget({
     const isStartAction = newStatus === 'ACTIVE';
     const message = isStartAction && startState.warningMessage
       ? `${startState.warningMessage} Підтвердити запуск сесії?`
-      : `Ви впевнені, що хочете ${statusLabels[newStatus] || 'змінити статус'} сесії?`;
+      : `Ви впевнені, що хочете ${statusLabels[newStatus] || 'змінити статус'} сесію?`;
 
     openConfirm({
       title: 'Змінити статус?',
@@ -133,6 +134,7 @@ export default function SessionInfoWidget({
       confirmText: statusLabels[newStatus]
         ? `${statusLabels[newStatus].charAt(0).toUpperCase()}${statusLabels[newStatus].slice(1)}`
         : 'Змінити',
+      cancelText: 'Відмінити',
       onConfirm: () => onStatusChange?.(newStatus),
     });
   };
@@ -298,3 +300,21 @@ export default function SessionInfoWidget({
     </DashboardCard>
   );
 }
+
+
+SessionInfoWidget.propTypes = {
+  session: PropTypes.object,
+  myRole: PropTypes.string,
+  currentUserId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  canManage: PropTypes.bool,
+  canStartSession: PropTypes.bool,
+  canFinishSession: PropTypes.bool,
+  canCancelSession: PropTypes.bool,
+  onLeave: PropTypes.func,
+  onStatusChange: PropTypes.func,
+  onMarkAsFinished: PropTypes.func,
+  showCampaignInfo: PropTypes.bool,
+  canNavigateToCampaignDirectly: PropTypes.bool,
+  campaignNavigationTarget: PropTypes.string,
+  isLoading: PropTypes.bool,
+};

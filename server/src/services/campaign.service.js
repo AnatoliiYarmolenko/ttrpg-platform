@@ -187,16 +187,40 @@ class CampaignService {
     if (role === 'owner') {
       whereCondition.ownerId = userId;
     } else if (role === 'member') {
-      whereCondition.members = {
-        some: {
-          userId,
-          role: { not: 'OWNER' },
+      whereCondition.OR = [
+        {
+          members: {
+            some: {
+              userId,
+              role: { not: 'OWNER' },
+            },
+          },
         },
-      };
+        {
+          joinRequests: {
+            some: {
+              userId,
+              status: 'PENDING',
+            },
+          },
+        },
+      ];
     } else {
-      whereCondition.members = {
-        some: { userId },
-      };
+      whereCondition.OR = [
+        {
+          members: {
+            some: { userId },
+          },
+        },
+        {
+          joinRequests: {
+            some: {
+              userId,
+              status: 'PENDING',
+            },
+          },
+        },
+      ];
     }
 
     const campaigns = await prisma.campaign.findMany({
@@ -211,6 +235,14 @@ class CampaignService {
               select: { id: true, username: true, displayName: true, avatarUrl: true },
             },
           },
+        },
+        joinRequests: {
+          where: {
+            userId,
+            status: 'PENDING',
+          },
+          select: { id: true, status: true },
+          take: 1,
         },
         sessions: {
           select: { id: true, title: true, date: true, status: true },
@@ -229,15 +261,25 @@ class CampaignService {
 
     return campaigns.map((campaign) => {
       let myRole = null;
+      let myStatus = null;
+
       if (campaign.ownerId === userId) {
         myRole = 'OWNER';
+        myStatus = 'CONFIRMED';
       } else {
         const myMembership = campaign.members?.find((member) => member.userId === userId);
-        myRole = myMembership?.role || null;
+        if (myMembership) {
+          myRole = myMembership.role;
+          myStatus = 'CONFIRMED';
+        } else if (campaign.joinRequests?.length > 0) {
+          myStatus = 'PENDING';
+        }
       }
+
       return {
         ...campaign,
         myRole,
+        myStatus,
         sessionsCount: campaign._count?.sessions ?? campaign.sessions?.length ?? 0,
         membersCount: campaign._count?.members ?? campaign.members?.length ?? 0,
       };

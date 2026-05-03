@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import { StatusBadge, RoleBadge, DateTimeDisplay } from '@/components/shared';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
@@ -30,6 +31,7 @@ export default function SessionCard({
 }) {
   const navigate = useNavigate();
   const campaignTitle = session?.campaign?.title || session?.campaignTitle || null;
+  const isPending = session.myStatus === 'PENDING';
   // Форматування тривалості
   const formatDuration = (minutes) => {
     const hours = Math.floor(minutes / 60);
@@ -59,7 +61,12 @@ export default function SessionCard({
             {session.title}
           </h4>
           <div className="flex items-center gap-2">
-            {session.myRole && (
+            {isPending && (
+              <span className="px-1.5 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 rounded border border-yellow-200">
+                Заявка
+              </span>
+            )}
+            {session.myRole && !isPending && (
               <RoleBadge role={session.myRole} />
             )}
             <StatusBadge status={session.status} size="sm" />
@@ -146,3 +153,10 @@ export default function SessionCard({
     </div>
   );
 }
+
+SessionCard.propTypes = {
+  session: PropTypes.object.isRequired,
+  isExpanded: PropTypes.bool.isRequired,
+  onToggle: PropTypes.func.isRequired,
+  showDate: PropTypes.bool,
+};

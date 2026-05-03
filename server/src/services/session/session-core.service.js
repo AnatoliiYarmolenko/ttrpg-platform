@@ -531,7 +531,15 @@ function createSessionCoreService({
         take: limit,
       });
 
-      return sessions;
+      return sessions.map((session) => {
+        const myParticipation = session.participants.find((participant) => participant.userId === userId);
+        return {
+          ...session,
+          myRole: myParticipation?.role || null,
+          myStatus: myParticipation?.status || null,
+          currentPlayers: session.participants.filter((participant) => participant.role === 'PLAYER').length,
+        };
+      });
     },
   };
 }
