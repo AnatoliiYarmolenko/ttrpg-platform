@@ -301,6 +301,8 @@ function createSessionParticipantsService({
           userId_sessionId: { userId, sessionId: parseId(sessionId) },
         },
       });
+
+      return participant;
     },
 
     async getSessionParticipants(sessionId, userId = null) {

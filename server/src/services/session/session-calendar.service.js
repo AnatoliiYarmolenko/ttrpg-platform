@@ -294,6 +294,7 @@ function createSessionCalendarService({ prisma, AppError, ERROR_CODES }) {
 
         return {
           ...session,
+          startAt: session.date,
           campaign: sanitizedCampaign,
           myRole: myParticipation?.role || null,
           myStatus: myParticipation?.status || null,

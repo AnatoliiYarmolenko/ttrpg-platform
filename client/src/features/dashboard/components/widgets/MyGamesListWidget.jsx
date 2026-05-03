@@ -40,10 +40,10 @@ function SessionCard({ session, navigate, formatDuration }) {
           <span className="text-yellow-700 text-xs">Очікує підтвердження</span>
         )}
         <span className="flex items-center gap-1">
-          <Data className="w-4 h-4" /> <DateTimeDisplay value={session.date} format="short" />
+          <Data className="w-4 h-4" /> <DateTimeDisplay value={session.startAt} format="short" />
         </span>
         <span className="flex items-center gap-1">
-          <Timer className="w-4 h-4" /> <DateTimeDisplay value={session.date} format="time" />
+          <Timer className="w-4 h-4" /> <DateTimeDisplay value={session.startAt} format="time" />
         </span>
         {session.duration && (
           <span className="flex items-center gap-1">
@@ -65,7 +65,7 @@ SessionCard.propTypes = {
     status: PropTypes.string,
     myRole: PropTypes.string,
     myStatus: PropTypes.string,
-    date: PropTypes.oneOfType([PropTypes.string, PropTypes.instanceOf(Date)]),
+    startAt: PropTypes.oneOfType([PropTypes.string, PropTypes.instanceOf(Date)]),
     duration: PropTypes.number,
     currentPlayers: PropTypes.number,
     maxPlayers: PropTypes.number,

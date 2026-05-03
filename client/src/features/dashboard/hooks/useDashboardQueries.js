@@ -21,7 +21,7 @@ const hydrateHomeSessionFromDetails = (session, details) => {
     ...session,
     title: session?.title ?? details?.title ?? null,
     description: session?.description ?? details?.description ?? details?.campaign?.description ?? null,
-    startAt: session?.startAt ?? details?.date ?? null,
+    startAt: session?.startAt ?? details?.startAt ?? null,
     status: session?.status ?? details?.status ?? null,
     visibility: session?.visibility ?? details?.visibility ?? null,
     system: session?.system ?? details?.system ?? details?.campaign?.system ?? null,

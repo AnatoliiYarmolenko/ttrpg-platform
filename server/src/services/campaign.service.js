@@ -338,23 +338,14 @@ class CampaignService {
       throw new AppError(ERROR_CODES.CAMPAIGN_NOT_FOUND, 'Кампанія не знайдена');
     }
 
-    const accessContext = buildCampaignAccessContext({
-      campaign,
-      userId,
-      hasValidShareToken: this._hasValidCampaignAccessToken(campaign, shareToken),
-    });
-    const viewerCapabilities = getCampaignViewerCapabilities(accessContext);
+    let myJoinRequest = null;
+    const isOwner = Boolean(userId && campaign.ownerId === userId);
+    const isCampaignMember = Boolean(
+      userId && campaign.members.some((member) => member.userId === userId)
+    );
 
-    if (!viewerCapabilities.canOpen) {
-      throw new AppError(
-        ERROR_CODES.SECURITY_ACCESS_DENIED,
-        'У вас немає доступу до цієї кампанії'
-      );
-    }
-
-    let pendingJoinRequestStatus = null;
-    if (userId && !accessContext.isOwner && !accessContext.isCampaignMember) {
-      const myJoinRequest = await prisma.joinRequest.findUnique({
+    if (userId && !isOwner && !isCampaignMember) {
+      myJoinRequest = await prisma.joinRequest.findUnique({
         where: {
           userId_campaignId: {
             userId,
@@ -363,10 +354,25 @@ class CampaignService {
         },
         select: { status: true },
       });
+    }
 
-      if (myJoinRequest?.status === 'PENDING') {
-        pendingJoinRequestStatus = 'PENDING';
-      }
+    const pendingJoinRequestStatus = myJoinRequest?.status === 'PENDING'
+      ? 'PENDING'
+      : null;
+
+    const accessContext = buildCampaignAccessContext({
+      campaign,
+      userId,
+      hasValidShareToken: this._hasValidCampaignAccessToken(campaign, shareToken),
+      isPendingJoinRequester: pendingJoinRequestStatus === 'PENDING',
+    });
+    const viewerCapabilities = getCampaignViewerCapabilities(accessContext);
+
+    if (!viewerCapabilities.canOpen) {
+      throw new AppError(
+        ERROR_CODES.SECURITY_ACCESS_DENIED,
+        'У вас немає доступу до цієї кампанії'
+      );
     }
 
     campaign.viewer = {
@@ -629,6 +635,10 @@ class CampaignService {
 
   async submitJoinRequest(campaignId, userId, message = null, shareToken = null) {
     return this.membersService.submitJoinRequest(campaignId, userId, message, shareToken);
+  }
+
+  async cancelJoinRequest(campaignId, userId) {
+    return this.membersService.cancelJoinRequest(campaignId, userId);
   }
 
   async getJoinRequests(campaignId, userId) {

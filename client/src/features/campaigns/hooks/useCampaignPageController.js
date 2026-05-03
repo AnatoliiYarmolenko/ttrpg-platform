@@ -217,6 +217,7 @@ export default function useCampaignPageController() {
   const canRemovePlayers = Boolean((isOwner || isGM) && !isCampaignFinished);
   const canCreateCampaignSessions = Boolean(actions.canCreateSessions);
   const canManageShareLink = Boolean(actions.canManageShareLink);
+  const canCancelJoinRequest = Boolean(actions.canCancelJoinRequest);
   const isPreviewMode = Boolean(ui.previewMode);
 
   const { data: shareLinkData } = useCampaignShareLinkQuery(
@@ -248,6 +249,12 @@ export default function useCampaignPageController() {
     },
     [mutations]
   );
+
+  const handleCancelJoinRequest = useCallback(async () => {
+    const result = await mutations.cancelJoinRequest();
+    if (result?.success) return { success: true };
+    return { success: false, error: result?.error || 'Не вдалося відкликати заявку' };
+  }, [mutations]);
 
   const handleLeave = useCallback(async () => {
     if (isCampaignFinished) {
@@ -370,9 +377,11 @@ export default function useCampaignPageController() {
     isCampaignFinished,
     amMember,
     canJoin,
+    canCancelJoinRequest,
     pendingRequestStatus,
     currentShareLink,
     handleJoinRequest,
+    handleCancelJoinRequest,
     handleLeave,
     handleRefreshCampaign,
     handleRegenerateShareLink,

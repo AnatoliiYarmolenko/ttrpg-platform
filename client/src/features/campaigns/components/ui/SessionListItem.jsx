@@ -125,11 +125,11 @@ export default function SessionListItem({
         <div className="flex items-center gap-4 text-sm text-brand-medium flex-wrap">
           <div className="flex items-center gap-1">
             <Data className="w-4 h-4" />
-            <DateTimeDisplay value={session.date} format="long" />
+            <DateTimeDisplay value={session.startAt} format="long" />
           </div>
           <div className="flex items-center gap-1">
             <Timer className="w-4 h-4" />
-            <DateTimeDisplay value={session.date} format="time" />
+            <DateTimeDisplay value={session.startAt} format="time" />
           </div>
           {session.duration && (
             <div className="flex items-center gap-1">

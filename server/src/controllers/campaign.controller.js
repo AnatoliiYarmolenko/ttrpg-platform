@@ -291,6 +291,22 @@ class CampaignController {
     }
   }
 
+  async cancelJoinRequest(req, res, next) {
+    try {
+      const { campaignId } = req.params;
+      const userId = req.user.id;
+
+      await campaignService.cancelJoinRequest(campaignId, userId);
+
+      res.json({
+        success: true,
+        message: 'Заявку відкликано!',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getJoinRequests(req, res, next) {
     try {
       const { campaignId } = req.params;

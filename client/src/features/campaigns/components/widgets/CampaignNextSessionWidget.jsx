@@ -120,7 +120,7 @@ export default function CampaignNextSessionWidget({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 p-4 bg-brand-light/10 rounded-xl">
           <div className="flex items-center gap-2 text-brand-medium text-sm">
             <Data className="w-4 h-4 shrink-0" />
-            <DateTimeDisplay value={session.date} format="long" fallback="Дата не вказана" />
+            <DateTimeDisplay value={session.startAt} format="long" fallback="Дата не вказана" />
           </div>
 
           <div className="flex items-center gap-2 text-brand-medium text-sm">
@@ -130,7 +130,7 @@ export default function CampaignNextSessionWidget({
 
           <div className="flex items-center gap-2 text-brand-medium text-sm">
             <Timer className="w-4 h-4 shrink-0" />
-            <time>{session.date ? new Date(session.date).toLocaleTimeString(UI_LOCALE, { hour: '2-digit', minute: '2-digit' }) : '--:--'}</time>
+            <time>{session.startAt ? new Date(session.startAt).toLocaleTimeString(UI_LOCALE, { hour: '2-digit', minute: '2-digit' }) : '--:--'}</time>
           </div>
 
           <div className="flex items-center gap-2 text-brand-medium text-sm">

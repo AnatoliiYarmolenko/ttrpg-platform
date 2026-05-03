@@ -285,6 +285,7 @@ function createSessionCoreService({
         const myParticipation = session.participants.find((participant) => participant.userId === userId);
         return {
           ...session,
+          startAt: session.date,
           myRole: myParticipation?.role || null,
           myStatus: myParticipation?.status || null,
           currentPlayers: session.participants.filter((participant) => participant.role === 'PLAYER').length,
@@ -487,7 +488,7 @@ function createSessionCoreService({
         orderBy: { date: 'asc' },
       });
 
-      return sessions;
+      return sessions.map((session) => ({ ...session, startAt: session.date }));
     },
 
     async getCampaignSessions(campaignId, userId, options = {}) {
@@ -535,6 +536,7 @@ function createSessionCoreService({
         const myParticipation = session.participants.find((participant) => participant.userId === userId);
         return {
           ...session,
+          startAt: session.date,
           myRole: myParticipation?.role || null,
           myStatus: myParticipation?.status || null,
           currentPlayers: session.participants.filter((participant) => participant.role === 'PLAYER').length,

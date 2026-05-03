@@ -59,6 +59,7 @@ export default function SessionPage() {
     participantsSection,
     canJoin,
     canApplyAsGm,
+    canLeave,
     showCampaignInfo,
     canNavigateToCampaignDirectly,
     campaignNavigationTarget,
@@ -115,6 +116,7 @@ export default function SessionPage() {
     canFinishSession,
     canCancelSession,
     onLeave: handleLeave,
+    canLeave,
     onStatusChange: handleStatusChange,
     onMarkAsFinished: handleMarkAsFinished,
     showCampaignInfo,
@@ -168,8 +170,10 @@ export default function SessionPage() {
         canNavigateToCampaignDirectly={canNavigateToCampaignDirectly}
         campaignNavigationTarget={campaignNavigationTarget}
         onJoin={handleJoin}
+        onLeave={handleLeave}
         canJoin={canJoin}
         canApplyAsGm={canApplyAsGm}
+        canLeave={canLeave}
       />
     ),
     rightPanel: tabPanels.rightPanel,

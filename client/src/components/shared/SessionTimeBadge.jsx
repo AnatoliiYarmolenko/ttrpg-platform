@@ -23,7 +23,7 @@ const formatDelayedDuration = (lateMs) => {
 };
 
 const getSessionStartMs = (session) => {
-  const dateStr = session?.startAt || session?.date;
+  const dateStr = session?.startAt;
   if (!dateStr) return null;
 
   const parsedMs = new Date(dateStr).getTime();
@@ -99,7 +99,7 @@ export default function SessionTimeBadge({ session, className = '' }) {
     }
 
     // PLANNED status
-    const dateStr = session.startAt || session.date;
+    const dateStr = session.startAt;
     if (!dateStr) return null;
 
     const startDate = new Date(dateStr);

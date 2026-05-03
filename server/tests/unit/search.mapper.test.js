@@ -159,7 +159,7 @@ test('formatSessionSearchResult maps basic fields correctly', () => {
   assert.equal(result.id, 1);
   assert.equal(result.title, 'Test Session');
   assert.equal(result.description, 'A test session');
-  assert.ok(result.date instanceof Date);
+  assert.ok(result.startAt instanceof Date);
   assert.equal(result.duration, 180);
   assert.equal(result.status, 'PLANNED');
   assert.equal(result.price, 10);

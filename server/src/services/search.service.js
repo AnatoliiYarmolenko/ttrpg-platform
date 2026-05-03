@@ -350,7 +350,7 @@ function formatSessionSearchResult(session, userId = null) {
     id: session.id,
     title: session.title,
     description: session.description,
-    date: session.date,
+    startAt: session.date,
     duration: session.duration,
     status: session.status,
     price: session.price,

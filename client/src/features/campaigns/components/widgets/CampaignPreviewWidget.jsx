@@ -25,12 +25,16 @@ import GroupPeople from '@/components/ui/icons/GroupPeople';
 export default function CampaignPreviewWidget({
   campaign,
   onJoinRequest,
+  onCancelJoinRequest,
   canJoin = false,
+  canCancelJoinRequest = false,
   pendingRequestStatus = null,
 }) {
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinError, setJoinError] = useState(null);
   const [isJoining, setIsJoining] = useState(false);
+  const [isCanceling, setIsCanceling] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   const handleJoinRequest = async () => {
     setIsJoining(true);
@@ -42,6 +46,37 @@ export default function CampaignPreviewWidget({
       setJoinError(result?.error || 'Помилка при подачі заявки');
     }
     setIsJoining(false);
+  };
+
+  const handleCancelRequest = async () => {
+    if (!onCancelJoinRequest) {
+      return false;
+    }
+
+    setIsCanceling(true);
+    setJoinError(null);
+    try {
+      const result = await onCancelJoinRequest();
+      if (!result?.success) {
+        setJoinError(result?.error || 'Не вдалося відкликати заявку');
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      setJoinError(
+        error?.response?.data?.error
+        || error?.message
+        || 'Не вдалося відкликати заявку'
+      );
+      return false;
+    } finally {
+      setIsCanceling(false);
+    }
+  };
+
+  const closeCancelModal = () => {
+    setShowCancelModal(false);
   };
 
   if (!campaign) return null;
@@ -125,11 +160,17 @@ export default function CampaignPreviewWidget({
             </div>
           )}
 
-          {/* Статус вже поданої заявки */}
-          {pendingRequestStatus && (
-            <div className="text-sm text-brand-medium text-center p-3 bg-brand-accent/10 rounded-lg border border-brand-accent/30">
-              Ваша заявка вже подана і очікує на розгляд
-            </div>
+          {pendingRequestStatus && canCancelJoinRequest && (
+            <Button
+              onClick={() => setShowCancelModal(true)}
+              variant="danger"
+              fullWidth={true}
+              isLoading={isCanceling}
+              loadingText="Відкликання..."
+              className="w-full"
+            >
+              Відкликати заявку
+            </Button>
           )}
 
           {/* Кнопка подачі заявки */}
@@ -199,6 +240,48 @@ export default function CampaignPreviewWidget({
           </div>
         </BaseModal>
       )}
+
+      {showCancelModal && (
+        <BaseModal
+          isOpen={showCancelModal}
+          onClose={closeCancelModal}
+          closeWhileLoading={false}
+          isLoading={isCanceling}
+          panelClassName="max-w-md"
+        >
+          <div className="rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="mb-2 text-lg font-bold text-brand-dark">Відкликати заявку?</h3>
+            <p className="mb-6 text-brand-medium">
+              Ваша заявка на вступ буде видалена. Ви зможете подати її знову пізніше.
+            </p>
+            <div className="flex flex-row flex-wrap justify-center gap-3">
+              <Button
+                onClick={closeCancelModal}
+                variant="outline"
+                fullWidth={false}
+                className="min-w-[170px]"
+              >
+                Скасувати
+              </Button>
+              <Button
+                onClick={async () => {
+                  const isSuccess = await handleCancelRequest();
+                  if (isSuccess) {
+                    closeCancelModal();
+                  }
+                }}
+                isLoading={isCanceling}
+                loadingText="Відкликання..."
+                variant="danger"
+                fullWidth={false}
+                className="min-w-[170px]"
+              >
+                Відкликати
+              </Button>
+            </div>
+          </div>
+        </BaseModal>
+      )}
     </DashboardCard>
   );
 }
@@ -225,6 +308,8 @@ CampaignPreviewWidget.propTypes = {
     description: PropTypes.string,
   }),
   onJoinRequest: PropTypes.func,
+  onCancelJoinRequest: PropTypes.func,
   canJoin: PropTypes.bool,
+  canCancelJoinRequest: PropTypes.bool,
   pendingRequestStatus: PropTypes.string,
 };

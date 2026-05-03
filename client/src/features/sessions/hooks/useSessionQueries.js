@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/stores/useToastStore';
 import {
   getSessionPageById,
+  getSessionPageByShareToken,
   getSessionParticipants,
   updateSession,
   deleteSession,
@@ -53,11 +54,14 @@ export const useSessionPageQuery = ({
   campaignShareToken = null,
 } = {}) => {
   const isValidId = Number.isInteger(sessionId) && sessionId > 0;
+  const hasShareToken = typeof shareToken === 'string' && shareToken.trim().length > 0;
 
   return useQuery({
     queryKey: sessionPageQueryKeys.detail({ sessionId, shareToken, campaignShareToken }),
     queryFn: async () => {
-      const res = await getSessionPageById(sessionId, { campaignShareToken });
+      const res = hasShareToken
+        ? await getSessionPageByShareToken(shareToken)
+        : await getSessionPageById(sessionId, { campaignShareToken });
 
       if (!res.success) {
         throw new Error(res.error || 'Failed to fetch session');
@@ -65,7 +69,7 @@ export const useSessionPageQuery = ({
 
       return res.data;
     },
-    enabled: isValidId,
+    enabled: isValidId || hasShareToken,
   });
 };
 
@@ -173,7 +177,25 @@ export const useSessionMutations = (sessionId, options = {}) => {
 
   const leaveSessionMutation = useMutation({
     mutationFn: () => leaveSession(sessionId),
-    ...handleMutation('Ви покинули сесію', [invalidateSessionPageQuery, invalidateSession, invalidateParticipants]),
+    onSuccess: (res) => {
+      if (res?.success === false) {
+        toast.error(res.error || res.message || 'Сталася помилка');
+        return;
+      }
+
+      toast.success(res?.message || 'Ви покинули сесію');
+      invalidateSessionPageQuery();
+      invalidateSession();
+      invalidateParticipants();
+    },
+    onError: (err) => {
+      const apiError = err?.response?.data;
+      const validationMessage = Array.isArray(apiError?.details) && apiError.details.length > 0
+        ? apiError.details[0]?.message
+        : null;
+
+      toast.error(validationMessage || apiError?.error || err?.message || 'Сталася помилка');
+    },
   });
 
   const updateParticipantStatusMutation = useMutation({

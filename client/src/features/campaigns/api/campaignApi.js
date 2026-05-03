@@ -86,6 +86,11 @@ export const submitJoinRequest = async (campaignId, message = '', shareToken = n
   return response.data;
 };
 
+export const cancelJoinRequest = async (campaignId) => {
+  const response = await api.post(`/campaigns/${campaignId}/requests/cancel`, {});
+  return response.data;
+};
+
 export const getJoinRequests = async (campaignId) => {
   const response = await api.get(`/campaigns/${campaignId}/requests`);
   return response.data;

@@ -77,11 +77,11 @@ export default function SessionCard({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-brand-medium">
           {showDate && (
             <span className="flex items-center gap-1 whitespace-nowrap">
-              <Data className="w-4 h-4" /> <DateTimeDisplay value={session.date} format="date" />
+              <Data className="w-4 h-4" /> <DateTimeDisplay value={session.startAt} format="date" />
             </span>
           )}
           <span className="flex items-center gap-1 whitespace-nowrap">
-            <Data className="w-4 h-4" /> <DateTimeDisplay value={session.date} format="time" />
+            <Data className="w-4 h-4" /> <DateTimeDisplay value={session.startAt} format="time" />
           </span>
           <span className="flex items-center gap-1 whitespace-nowrap">
             <Timer className="w-4 h-4" /> {formatDuration(session.duration)}
