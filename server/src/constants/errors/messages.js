@@ -80,6 +80,7 @@ const ERROR_MESSAGES = {
   [ERROR_CODES.CAMPAIGN_SHARE_LINK_LINK_ONLY_REQUIRED]: 'Посилання доступне лише для кампаній із видимістю LINK_ONLY',
   [ERROR_CODES.CAMPAIGN_SHARE_LINK_UNAVAILABLE]: 'Посилання доступу наразі недоступне',
   [ERROR_CODES.JOIN_REQUEST_NOT_FOUND]: 'Заявку не знайдено',
+  [ERROR_CODES.NOTIFICATION_NOT_FOUND]: 'Сповіщення не знайдено',
 
   [ERROR_CODES.FILE_INVALID_FORMAT]: 'Недопустимий формат файлу',
   [ERROR_CODES.FILE_TOO_LARGE]: 'Файл занадто великий',
