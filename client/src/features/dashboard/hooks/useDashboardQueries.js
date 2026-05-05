@@ -51,6 +51,7 @@ const hydrateHomeSessionFromDetails = (session, details) => {
 
 export const useMyCampaignsQuery = (role = 'all') => {
   const userId = useAuthStore((state) => state.user?.id ?? null);
+  const isSessionValidated = useAuthStore((state) => state.isSessionValidated);
 
   return useQuery({
     queryKey: ['dashboard', 'campaigns', userId, role],
@@ -61,12 +62,13 @@ export const useMyCampaignsQuery = (role = 'all') => {
       }
       return response.data || [];
     },
-    enabled: !!userId,
+    enabled: !!userId && isSessionValidated,
   });
 };
 
 export const useMySessionsQuery = (params = {}) => {
   const userId = useAuthStore((state) => state.user?.id ?? null);
+  const isSessionValidated = useAuthStore((state) => state.isSessionValidated);
 
   return useQuery({
     queryKey: ['dashboard', 'games', userId, params],
@@ -77,13 +79,14 @@ export const useMySessionsQuery = (params = {}) => {
       }
       return response.data || [];
     },
-    enabled: !!userId,
+    enabled: !!userId && isSessionValidated,
   });
 };
 
 export const useNextRelevantSessionQuery = (enabled = true) => {
   const userId = useAuthStore((state) => state.user?.id ?? null);
-  const isEnabled = enabled && Boolean(userId);
+  const isSessionValidated = useAuthStore((state) => state.isSessionValidated);
+  const isEnabled = enabled && Boolean(userId) && isSessionValidated;
 
   return useQuery({
     queryKey: ['dashboard', 'home', 'next-relevant-session', userId],

@@ -208,6 +208,7 @@ test('resolveSessionOrderBy returns newest sort', () => {
 
 test('buildCampaignSearchWhere includes discovery filter with userId', () => {
   const where = buildCampaignSearchWhere({ userId: 42 });
+  assert.equal(where.status, 'ACTIVE');
   assert.ok(where.AND);
 });
 

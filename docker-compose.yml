@@ -27,7 +27,16 @@ services:
       ADMINER_DEFAULT_SERVER: db
     ports:
       - "${ADMINER_PORT:-8080}:8080"
-
+  
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: ttrpg_dozzle
+    restart: always
+    ports:
+      - "8088:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+  
   redis:
     image: redis:7-alpine
     container_name: ttrpg_redis

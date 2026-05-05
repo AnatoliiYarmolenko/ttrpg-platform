@@ -124,6 +124,8 @@ function applySessionPriceRange(where, minPrice, maxPrice) {
 function buildCampaignSearchWhere({ userId, query, system, ownerUsername, onlyMyParticipation }) {
   const where = {};
 
+  where.status = 'ACTIVE';
+
   applyCampaignDiscoveryFilter(where, userId);
 
   if (query?.trim()) {
