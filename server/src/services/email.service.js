@@ -3,9 +3,15 @@ const { createTransporter, verifyTransporter } = require('./email/email-transpor
 const { renderEmailTemplate } = require('./email/email-template-renderer');
 
 class EmailService {
+  transporter = null;
+
   constructor() {
-    this.transporter = null;
     this.initializeTransporter();
+  }
+
+  isTransientTransportError(error) {
+    const message = typeof error?.message === 'string' ? error.message.toLowerCase() : '';
+    return message.includes('connection closed');
   }
 
   initializeTransporter() {
@@ -41,6 +47,28 @@ class EmailService {
       logger.info({ to, messageId: info.messageId }, successMessage);
       return { success: true, message: 'Email успішно надіслано' };
     } catch (error) {
+      if (this.isTransientTransportError(error)) {
+        logger.warn({ err: error, to }, 'Email Service: Відновлення SMTP-з\'єднання після transient помилки');
+        this.initializeTransporter();
+
+        if (this.transporter) {
+          try {
+            const retryInfo = await this.transporter.sendMail({
+              from: `"TTRPG Platform" <${process.env.EMAIL_FROM || 'noreply@ttrpg.local'}>`,
+              to,
+              subject,
+              html,
+            });
+
+            logger.info({ to, messageId: retryInfo.messageId }, successMessage);
+            return { success: true, message: 'Email успішно надіслано' };
+          } catch (retryError) {
+            logger.error({ err: retryError, to }, 'Помилка повторного надсилання email');
+            return { success: false, message: 'Помилка при надсиланні email' };
+          }
+        }
+      }
+
       logger.error({ err: error, to }, 'Помилка надсилання email');
       return { success: false, message: 'Помилка при надсиланні email' };
     }

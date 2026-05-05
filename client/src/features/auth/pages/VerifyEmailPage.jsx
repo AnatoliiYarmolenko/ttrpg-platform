@@ -1,84 +1,95 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
-import { useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { verifyEmail } from "../api/authApi"; 
 import AuthLayout from "../components/AuthLayout";
 import { toast } from "@/stores/useToastStore";
 import useAuthStore from "@/stores/useAuthStore";
 
-function useQuery() {
+function useQueryParam() {
   return new URLSearchParams(useLocation().search);
 }
 
 export default function VerifyEmailPage() {
-  const query = useQuery();
+  const query = useQueryParam();
   const navigate = useNavigate();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const token = query.get("token");
-  const [status, setStatus] = useState(token ? "loading" : "error");
-  const [message, setMessage] = useState(token ? "" : "Токен підтвердження не вказано.");
   
   const destination = isAuthenticated ? "/" : "/login";
   const linkText = isAuthenticated ? "Перейти на головну" : "Перейти до входу";
-  
-  const verifyCalled = useRef(false);
 
-  const verifyMutation = useMutation({
-    mutationFn: (token) => verifyEmail(token),
+  const { data, error, isLoading, isSuccess, isError } = useQuery({
+    queryKey: ["verify-email", token],
+    queryFn: () => verifyEmail(token),
+    enabled: !!token,
+    retry: false,
+    staleTime: Infinity, // Запобігаємо повторним запитам
   });
-  const { mutate: verifyEmailMutation } = verifyMutation;
 
   useEffect(() => {
-    if (!token) return;
+    if (isSuccess) {
+      const successMessage = data?.message || "Email успішно підтверджено! Тепер ви можете увійти.";
+      toast.success(successMessage);
+      const timer = setTimeout(() => navigate(destination), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [isSuccess, data, navigate, destination]);
 
-    if (verifyCalled.current) return;
-    verifyCalled.current = true;
+  useEffect(() => {
+    if (isError) {
+      const errorMessage = error?.response?.data?.error || error?.response?.data?.message || "Помилка під час підтвердження email.";
+      toast.error(errorMessage);
+    }
+  }, [isError, error]);
 
-    verifyEmailMutation(token, {
-      onSuccess: (data) => {
-        setStatus("success");
-        const successMessage = data.message || "Email успішно підтверджено! Тепер ви можете увійти.";
-        setMessage(successMessage);
-        toast.success(successMessage);
-        setTimeout(() => navigate(destination), 4000);
-      },
-      onError: (err) => {
-        setStatus("error");
-        const errorMessage = err.response?.data?.error || err.response?.data?.message || "Помилка під час підтвердження email.";
-        setMessage(errorMessage);
-        toast.error(errorMessage);
-      }
-    });
-  }, [token, navigate, verifyEmailMutation, destination]);
-  
+  if (!token) {
+    return (
+      <AuthLayout title="Підтвердження email">
+        <div className="py-4 text-center">
+          <p className="font-medium text-red-600">Токен підтвердження не вказано.</p>
+          <div className="mt-6">
+            <Link to="/login" className="text-brand-dark hover:text-brand-accent font-semibold transition-colors">
+              Перейти до входу
+            </Link>
+          </div>
+        </div>
+      </AuthLayout>
+    );
+  }
+
   return (
     <AuthLayout title="Підтвердження email">
-      
       <div className="py-4 text-center">
-        {status === "loading" && (
-            <div className="text-brand-medium animate-pulse font-medium">
-               Перевіряємо ваш токен...
-            </div>
+        {isLoading && (
+          <div className="text-brand-medium animate-pulse font-medium">
+            Перевіряємо ваш токен...
+          </div>
         )}
 
-        {status !== "loading" && (
-          <p className={`font-medium ${status === "success" ? "text-brand-medium" : "text-red-600"}`}>
-            {message}
+        {isSuccess && (
+          <p className="font-medium text-brand-medium">
+            {data?.message || "Email успішно підтверджено!"}
           </p>
         )}
 
-        {status !== "loading" && (
+        {isError && (
+          <p className="font-medium text-red-600">
+            {error?.response?.data?.error || error?.response?.data?.message || "Помилка під час підтвердження email."}
+          </p>
+        )}
+
+        {(isSuccess || isError) && (
           <div className="mt-6">
             <Link 
-                to={destination}
-                className="text-brand-dark hover:text-brand-accent font-semibold transition-colors border-b-2 border-transparent hover:border-brand-accent"
+              to={destination}
+              className="text-brand-dark hover:text-brand-accent font-semibold transition-colors"
             >
               {linkText}
             </Link>
           </div>
         )}
       </div>
-
     </AuthLayout>
   );
 }
