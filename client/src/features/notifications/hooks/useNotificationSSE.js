@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import useNotificationStore from '@/stores/useNotificationStore';
 
 const MAX_RECONNECT_ATTEMPTS = 10;
@@ -13,22 +13,15 @@ const MAX_RECONNECT_DELAY = 30000;
  */
 export default function useNotificationSSE(enabled = true) {
   const eventSourceRef = useRef(null);
-  const reconnectAttemptsRef = useRef(0);
   const reconnectTimeoutRef = useRef(null);
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
+  const connectRef = useRef(null);
 
   const {
     setConnectionState,
     addLiveNotification,
     connectionState,
   } = useNotificationStore();
-
-  const getReconnectDelay = useCallback(() => {
-    const delay = Math.min(
-      INITIAL_RECONNECT_DELAY * Math.pow(2, reconnectAttemptsRef.current),
-      MAX_RECONNECT_DELAY
-    );
-    return delay;
-  }, []);
 
   const connect = useCallback(() => {
     if (!enabled || eventSourceRef.current) return;
@@ -44,7 +37,7 @@ export default function useNotificationSSE(enabled = true) {
     es.onopen = () => {
       console.log('[SSE] Connected');
       setConnectionState('connected');
-      reconnectAttemptsRef.current = 0;
+      setReconnectAttempts(0);
     };
 
     es.onmessage = (event) => {
@@ -83,21 +76,27 @@ export default function useNotificationSSE(enabled = true) {
       eventSourceRef.current = null;
 
       // Attempt reconnect with backoff
-      if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
-        const delay = getReconnectDelay();
-        reconnectAttemptsRef.current += 1;
+      setReconnectAttempts((prevAttempts) => {
+        const newAttempts = prevAttempts + 1;
+        if (newAttempts < MAX_RECONNECT_ATTEMPTS) {
+          const delay = Math.min(
+            INITIAL_RECONNECT_DELAY * Math.pow(2, newAttempts - 1),
+            MAX_RECONNECT_DELAY
+          );
 
-        console.log(`[SSE] Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current})`);
+          console.log(`[SSE] Reconnecting in ${delay}ms (attempt ${newAttempts})`);
 
-        reconnectTimeoutRef.current = setTimeout(() => {
-          connect();
-        }, delay);
-      } else {
-        console.error('[SSE] Max reconnect attempts reached');
-        setConnectionState('error', 'Max reconnect attempts reached');
-      }
+          reconnectTimeoutRef.current = setTimeout(() => {
+            connectRef.current?.();
+          }, delay);
+        } else {
+          console.error('[SSE] Max reconnect attempts reached');
+          setConnectionState('error', 'Max reconnect attempts reached');
+        }
+        return newAttempts;
+      });
     };
-  }, [enabled, setConnectionState, addLiveNotification, getReconnectDelay]);
+  }, [enabled, setConnectionState, addLiveNotification]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -110,21 +109,34 @@ export default function useNotificationSSE(enabled = true) {
       eventSourceRef.current = null;
     }
 
-    reconnectAttemptsRef.current = 0;
+    setReconnectAttempts(0);
     setConnectionState('disconnected');
   }, [setConnectionState]);
 
   useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
+
+  useEffect(() => {
     if (enabled) {
       connect();
-    } else {
-      disconnect();
     }
 
     return () => {
-      disconnect();
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+
+      setReconnectAttempts(0);
+      setConnectionState('disconnected');
     };
-  }, [enabled, connect, disconnect]);
+  }, [enabled, connect, setConnectionState]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -143,7 +155,7 @@ export default function useNotificationSSE(enabled = true) {
     isConnected: connectionState === 'connected',
     isConnecting: connectionState === 'connecting',
     hasError: connectionState === 'error',
-    reconnectAttempts: reconnectAttemptsRef.current,
+    reconnectAttempts,
     connect,
     disconnect,
   };

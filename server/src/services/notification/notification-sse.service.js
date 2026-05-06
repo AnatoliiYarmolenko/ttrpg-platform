@@ -129,6 +129,10 @@ class NotificationSSEService {
       this.sendHeartbeat();
     }, 30000); // 30 seconds
 
+    if (typeof this.heartbeatInterval.unref === 'function') {
+      this.heartbeatInterval.unref();
+    }
+
     console.log('[SSE] Heartbeat started (30s interval)');
   }
 

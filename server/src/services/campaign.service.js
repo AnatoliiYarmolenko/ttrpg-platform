@@ -12,6 +12,7 @@ const { getCampaignViewerCapabilities } = require('../domain/campaign/campaign.p
 const permissionHelpers = require('./campaign/campaign-permission.helpers');
 const createCampaignMembersService = require('./campaign/campaign-members.service');
 const createCampaignPageService = require('./campaign/campaign-page.service');
+const notificationService = require('./notification.service');
 
 class CampaignService {
   constructor() {
@@ -21,6 +22,7 @@ class CampaignService {
       ERROR_CODES,
       getCampaignById: this.getCampaignById.bind(this),
       permissionHelpers,
+      notificationService,
     });
     this.pageService = createCampaignPageService({
       getCampaignById: this.getCampaignById.bind(this),

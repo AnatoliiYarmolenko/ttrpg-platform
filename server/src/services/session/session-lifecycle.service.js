@@ -1,3 +1,9 @@
+const {
+  NotificationCategory,
+  NotificationSeverity,
+  NotificationType,
+} = require('../../constants/notification.constants');
+
 const SESSION_SETTINGS_FIELDS = [
   'title',
   'description',
@@ -18,6 +24,29 @@ const ALLOWED_STATUS_TRANSITIONS = {
 
 function hasOwnField(data, field) {
   return Object.hasOwn(data, field);
+}
+
+function getSessionTitle(session) {
+  return session?.title || 'Нова сесія';
+}
+
+function buildScheduleSignature(session) {
+  const dateValue = session?.date ? new Date(session.date).toISOString() : 'no-date';
+  const durationValue = session?.duration ?? 'no-duration';
+
+  return `${dateValue}:${durationValue}`;
+}
+
+async function createNotificationSafely(notificationService, payload) {
+  if (!notificationService?.createNotification) {
+    return;
+  }
+
+  try {
+    await notificationService.createNotification(payload);
+  } catch {
+    // Notification delivery is best-effort.
+  }
 }
 
 function buildSessionUpdateMeta(session, normalizedUpdateData) {
@@ -109,7 +138,7 @@ async function assertOwnerTimeConflict({
   );
 }
 
-async function collectConflictingParticipantIds({
+async function collectConflictingParticipants({
   prisma,
   AppError,
   ERROR_CODES,
@@ -121,7 +150,7 @@ async function collectConflictingParticipantIds({
   const confirmedParticipants = session.participants.filter(
     (participant) => participant.status === 'CONFIRMED' && participant.userId !== session.ownerId
   );
-  const conflictingParticipantIds = [];
+  const conflictingParticipants = [];
 
   for (const participant of confirmedParticipants) {
     try {
@@ -140,11 +169,14 @@ async function collectConflictingParticipantIds({
         throw conflictError;
       }
 
-      conflictingParticipantIds.push(participant.id);
+      conflictingParticipants.push({
+        id: participant.id,
+        userId: participant.userId,
+      });
     }
   }
 
-  return conflictingParticipantIds;
+  return conflictingParticipants;
 }
 
 async function resolveTimingConflicts({
@@ -171,7 +203,7 @@ async function resolveTimingConflicts({
     targetDuration: timing.targetDuration,
   });
 
-  return collectConflictingParticipantIds({
+  return collectConflictingParticipants({
     prisma,
     AppError,
     ERROR_CODES,
@@ -179,6 +211,121 @@ async function resolveTimingConflicts({
     session,
     targetDate: timing.targetDate,
     targetDuration: timing.targetDuration,
+  });
+}
+
+async function notifySessionRescheduled({
+  notificationService,
+  session,
+  updatedSession,
+}) {
+  const scheduleSignature = buildScheduleSignature(updatedSession);
+
+  await createNotificationSafely(notificationService, {
+    eventKey: `session_rescheduled:${session.id}:${scheduleSignature}`,
+    type: NotificationType.SESSION_RESCHEDULED,
+    severity: NotificationSeverity.INFO,
+    category: NotificationCategory.SESSION,
+    title: 'Сесію перенесено',
+    body: `Сесію "${getSessionTitle(session)}" перенесено. Перевірте новий час.`,
+    link: `/session/${session.id}`,
+    audience: 'session_confirmed_participants',
+    context: { sessionId: session.id },
+    dedupeKey: `session:${session.id}:rescheduled:${scheduleSignature}`,
+    dedupeWindowMs: 15 * 60 * 1000,
+    metadata: {
+      sessionId: session.id,
+      sessionTitle: session.title,
+      date: updatedSession.date,
+      duration: updatedSession.duration,
+    },
+  });
+}
+
+async function notifyConflictingParticipants({
+  notificationService,
+  session,
+  updatedSession,
+  conflictingParticipants,
+}) {
+  if (!conflictingParticipants.length) {
+    return;
+  }
+
+  const scheduleSignature = buildScheduleSignature(updatedSession);
+  const sessionTitle = getSessionTitle(session);
+
+  await Promise.all(conflictingParticipants.map((participant) => createNotificationSafely(notificationService, {
+    eventKey: `session_conflict_review:${session.id}:${participant.userId}:${scheduleSignature}`,
+    type: NotificationType.SESSION_CONFLICT_REVIEW_REQUIRED,
+    severity: NotificationSeverity.WARNING,
+    category: NotificationCategory.SESSION,
+    title: 'Потрібно переглянути участь у сесії',
+    body: `Після перенесення сесії "${sessionTitle}" ваша участь потребує підтвердження.`,
+    link: `/session/${session.id}`,
+    recipientIds: [participant.userId],
+    dedupeKey: `session:${session.id}:conflict_review:${participant.userId}:${scheduleSignature}`,
+    dedupeWindowMs: 15 * 60 * 1000,
+    metadata: {
+      sessionId: session.id,
+      sessionTitle: session.title,
+      participantId: participant.id,
+      userId: participant.userId,
+    },
+  })));
+}
+
+async function notifyOwnerConflictSummary({
+  notificationService,
+  session,
+  updatedSession,
+  conflictingParticipants,
+}) {
+  if (!conflictingParticipants.length) {
+    return;
+  }
+
+  const scheduleSignature = buildScheduleSignature(updatedSession);
+
+  await createNotificationSafely(notificationService, {
+    eventKey: `session_owner_conflict_summary:${session.id}:${scheduleSignature}`,
+    type: NotificationType.SESSION_OWNER_CONFLICT_SUMMARY,
+    severity: NotificationSeverity.WARNING,
+    category: NotificationCategory.SESSION,
+    title: 'Після перенесення є конфлікти',
+    body: `Після перенесення сесії "${getSessionTitle(session)}" ${conflictingParticipants.length} учасників переведено у PENDING.`,
+    link: `/session/${session.id}`,
+    audience: 'session_managers',
+    context: { sessionId: session.id },
+    dedupeKey: `session:${session.id}:owner_conflict_summary:${scheduleSignature}`,
+    dedupeWindowMs: 15 * 60 * 1000,
+    metadata: {
+      sessionId: session.id,
+      sessionTitle: session.title,
+      conflictingCount: conflictingParticipants.length,
+    },
+  });
+}
+
+async function notifySessionCancelled({
+  notificationService,
+  session,
+}) {
+  await createNotificationSafely(notificationService, {
+    eventKey: `session_cancelled:${session.id}`,
+    type: NotificationType.SESSION_CANCELLED,
+    severity: NotificationSeverity.WARNING,
+    category: NotificationCategory.SESSION,
+    title: 'Сесію скасовано',
+    body: `Сесію "${getSessionTitle(session)}" скасовано.`,
+    link: `/session/${session.id}`,
+    audience: ['session_confirmed_participants', 'session_pending_participants'],
+    context: { sessionId: session.id },
+    metadata: {
+      sessionId: session.id,
+      sessionTitle: session.title,
+      status: 'CANCELED',
+    },
   });
 }
 
@@ -364,6 +511,7 @@ function createSessionLifecycleService({
   datetimeHelpers,
   sessionQueryService,
   createRawEncryptedAndHashedShareToken,
+  notificationService = null,
 }) {
   return {
     async updateSession(sessionId, requesterId, updateData, options = {}) {
@@ -388,7 +536,7 @@ function createSessionLifecycleService({
         ERROR_CODES,
       });
 
-      const conflictingParticipantIds = await resolveTimingConflicts({
+      const conflictingParticipants = await resolveTimingConflicts({
         prisma,
         AppError,
         ERROR_CODES,
@@ -418,10 +566,10 @@ function createSessionLifecycleService({
       const sessionIdInt = sessionQueryService.parsePositiveInt(sessionId, 'Session ID');
 
       const updated = await prisma.$transaction(async (tx) => {
-        if (conflictingParticipantIds.length > 0) {
+        if (conflictingParticipants.length > 0) {
           await tx.sessionParticipant.updateMany({
             where: {
-              id: { in: conflictingParticipantIds },
+              id: { in: conflictingParticipants.map((participant) => participant.id) },
             },
             data: { status: 'PENDING' },
           });
@@ -450,6 +598,33 @@ function createSessionLifecycleService({
           },
         });
       });
+
+      if (normalizedUpdateData.status === 'CANCELED') {
+        await notifySessionCancelled({
+          notificationService,
+          session,
+        });
+      } else if (hasOwnField(normalizedUpdateData, 'date') || hasOwnField(normalizedUpdateData, 'duration')) {
+        await notifySessionRescheduled({
+          notificationService,
+          session,
+          updatedSession: updated,
+        });
+
+        await notifyConflictingParticipants({
+          notificationService,
+          session,
+          updatedSession: updated,
+          conflictingParticipants,
+        });
+
+        await notifyOwnerConflictSummary({
+          notificationService,
+          session,
+          updatedSession: updated,
+          conflictingParticipants,
+        });
+      }
 
       return attachPublicShareToken(updated, shareTokenState);
     },
@@ -511,6 +686,11 @@ function createSessionLifecycleService({
             },
           },
         },
+      });
+
+      await notifySessionCancelled({
+        notificationService,
+        session: updated,
       });
 
       return { ...updated, startAt: updated.date };

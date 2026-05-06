@@ -15,6 +15,7 @@ const createSessionCalendarService = require('./session/session-calendar.service
 const createSessionLifecycleService = require('./session/session-lifecycle.service');
 const createSessionParticipantsService = require('./session/session-participants.service');
 const createSessionPageService = require('./session/session-page.service');
+const notificationService = require('./notification.service');
 
 class SessionService {
   constructor() {
@@ -42,10 +43,12 @@ class SessionService {
       ...this.sessionDeps,
       sessionQueryService: this.queryService,
       createRawEncryptedAndHashedShareToken,
+      notificationService,
     });
     this.participantsService = createSessionParticipantsService({
       ...this.sessionDeps,
       sessionQueryService: this.queryService,
+      notificationService,
       assertNoSessionTimeConflict: (userId, targetStart, targetDuration, options = {}) => {
         return this._assertNoSessionTimeConflict(userId, targetStart, targetDuration, options);
       },
