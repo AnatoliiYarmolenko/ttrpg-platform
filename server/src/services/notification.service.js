@@ -1,8 +1,14 @@
-const { prisma } = require('../lib/prisma');
+const { prisma: defaultPrisma } = require('../lib/prisma');
 const { AppError, ERROR_CODES } = require('../constants/errors');
-const notificationRecipientResolver = require('./notification/notification-recipient-resolver');
+const defaultNotificationRecipientResolver = require('./notification/notification-recipient-resolver');
+const defaultSseService = require('./notification/notification-sse.service');
 
 class NotificationService {
+  constructor(deps = {}) {
+    this.prisma = deps.prisma || defaultPrisma;
+    this.recipientResolver = deps.recipientResolver || defaultNotificationRecipientResolver;
+    this.sseService = deps.sseService || defaultSseService;
+  }
   /**
    * Create a notification with recipients
    * @param {Object} input - Notification input
@@ -39,15 +45,18 @@ class NotificationService {
     }
 
     // Create notification and recipients in a transaction
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const existingNotification = await this._findExistingNotificationForDedupe(tx, {
         dedupeKey,
         dedupeWindowMs,
       });
 
       if (existingNotification) {
-        await this._attachRecipients(tx, existingNotification.id, resolvedRecipientIds);
-        return existingNotification;
+        const attachedRecipientIds = await this._attachRecipients(tx, existingNotification.id, resolvedRecipientIds);
+        return {
+          notification: existingNotification,
+          attachedRecipientIds,
+        };
       }
 
       const notification = await tx.notification.create({
@@ -67,12 +76,18 @@ class NotificationService {
         },
       });
 
-      await this._attachRecipients(tx, notification.id, resolvedRecipientIds);
+      const attachedRecipientIds = await this._attachRecipients(tx, notification.id, resolvedRecipientIds);
 
-      return notification;
+      return {
+        notification,
+        attachedRecipientIds,
+      };
     });
 
-    return result;
+    // Push to connected users via SSE (outside transaction)
+    this.pushToConnectedUsers(result.notification, result.attachedRecipientIds);
+
+    return result.notification;
   }
 
   async resolveRecipientIds(input = {}) {
@@ -86,7 +101,7 @@ class NotificationService {
       audiences = [audience];
     }
     for (const audienceKey of audiences) {
-      const audienceRecipientIds = await notificationRecipientResolver.resolve(audienceKey, context);
+      const audienceRecipientIds = await this.recipientResolver.resolve(audienceKey, context);
       audienceRecipientIds.forEach((userId) => {
         if (userId) {
           resolvedIds.add(userId);
@@ -119,17 +134,34 @@ class NotificationService {
   async _attachRecipients(tx, notificationId, recipientIds) {
     const uniqueRecipientIds = [...new Set((recipientIds || []).filter(Boolean))];
     if (uniqueRecipientIds.length === 0) {
-      return;
+      return [];
+    }
+
+    const existingRecipients = await tx.notificationRecipient.findMany({
+      where: {
+        notificationId,
+        userId: { in: uniqueRecipientIds },
+      },
+      select: { userId: true },
+    });
+
+    const existingRecipientIds = new Set(existingRecipients.map((recipient) => recipient.userId));
+    const newRecipientIds = uniqueRecipientIds.filter((userId) => !existingRecipientIds.has(userId));
+
+    if (newRecipientIds.length === 0) {
+      return [];
     }
 
     await tx.notificationRecipient.createMany({
-      data: uniqueRecipientIds.map((userId) => ({
+      data: newRecipientIds.map((userId) => ({
         notificationId,
         userId,
-        status: 'UNREAD',
+        status: 'ACTIVE',
       })),
       skipDuplicates: true,
     });
+
+    return newRecipientIds;
   }
 
   /**
@@ -147,7 +179,7 @@ class NotificationService {
     }
 
     const [recipients, total] = await Promise.all([
-      prisma.notificationRecipient.findMany({
+      this.prisma.notificationRecipient.findMany({
         where,
         include: {
           notification: true,
@@ -156,7 +188,7 @@ class NotificationService {
         take: limit,
         skip: offset,
       }),
-      prisma.notificationRecipient.count({ where }),
+      this.prisma.notificationRecipient.count({ where }),
     ]);
 
     const notifications = recipients.map((r) => ({
@@ -193,10 +225,10 @@ class NotificationService {
    * @returns {Promise<number>} Unread count
    */
   async getUnreadCount(userId) {
-    return prisma.notificationRecipient.count({
+    return this.prisma.notificationRecipient.count({
       where: {
         userId,
-        status: 'UNREAD',
+        status: 'ACTIVE',
       },
     });
   }
@@ -208,70 +240,7 @@ class NotificationService {
    * @returns {Promise<Object>} Updated recipient
    */
   async markAsRead(userId, notificationId) {
-    const recipient = await prisma.notificationRecipient.findFirst({
-      where: {
-        userId,
-        notificationId,
-      },
-    });
-
-    if (!recipient) {
-      throw new AppError(ERROR_CODES.NOTIFICATION_NOT_FOUND);
-    }
-
-    if (recipient.status === 'READ' || recipient.status === 'ARCHIVED') {
-      return recipient;
-    }
-
-    return prisma.notificationRecipient.update({
-      where: { id: recipient.id },
-      data: {
-        status: 'READ',
-        readAt: new Date(),
-      },
-    });
-  }
-
-  /**
-   * Mark multiple notifications as read
-   * @param {number} userId - User ID
-   * @param {number[]} notificationIds - Notification IDs
-   * @returns {Promise<number>} Count of updated recipients
-   */
-  async markManyAsRead(userId, notificationIds) {
-    const recipients = await prisma.notificationRecipient.findMany({
-      where: {
-        userId,
-        notificationId: { in: notificationIds },
-        status: 'UNREAD',
-      },
-    });
-
-    if (recipients.length === 0) {
-      return 0;
-    }
-
-    const result = await prisma.notificationRecipient.updateMany({
-      where: {
-        id: { in: recipients.map((r) => r.id) },
-      },
-      data: {
-        status: 'READ',
-        readAt: new Date(),
-      },
-    });
-
-    return result.count;
-  }
-
-  /**
-   * Archive a notification for a user
-   * @param {number} userId - User ID
-   * @param {number} notificationId - Notification ID
-   * @returns {Promise<Object>} Updated recipient
-   */
-  async archiveNotification(userId, notificationId) {
-    const recipient = await prisma.notificationRecipient.findFirst({
+    const recipient = await this.prisma.notificationRecipient.findFirst({
       where: {
         userId,
         notificationId,
@@ -286,14 +255,118 @@ class NotificationService {
       return recipient;
     }
 
-    return prisma.notificationRecipient.update({
+    const now = new Date();
+
+    return this.prisma.notificationRecipient.update({
       where: { id: recipient.id },
       data: {
         status: 'ARCHIVED',
-        archivedAt: new Date(),
+        readAt: recipient.readAt || now,
+        archivedAt: recipient.archivedAt || now,
       },
     });
   }
+
+  /**
+   * Mark multiple notifications as read
+   * @param {number} userId - User ID
+   * @param {number[]} notificationIds - Notification IDs
+   * @returns {Promise<number>} Count of updated recipients
+   */
+  async markManyAsRead(userId, notificationIds) {
+    const recipients = await this.prisma.notificationRecipient.findMany({
+      where: {
+        userId,
+        notificationId: { in: notificationIds },
+        status: 'ACTIVE',
+      },
+    });
+
+    if (recipients.length === 0) {
+      return 0;
+    }
+
+    const result = await this.prisma.notificationRecipient.updateMany({
+      where: {
+        id: { in: recipients.map((r) => r.id) },
+      },
+      data: {
+        status: 'ARCHIVED',
+        readAt: new Date(),
+        archivedAt: new Date(),
+      },
+    });
+
+    return result.count;
+  }
+
+  /**
+   * Archive a notification for a user
+   * @param {number} userId - User ID
+   * @param {number} notificationId - Notification ID
+   * @returns {Promise<Object>} Updated recipient
+   */
+  async archiveNotification(userId, notificationId) {
+    const recipient = await this.prisma.notificationRecipient.findFirst({
+      where: {
+        userId,
+        notificationId,
+      },
+    });
+
+    if (!recipient) {
+      throw new AppError(ERROR_CODES.NOTIFICATION_NOT_FOUND);
+    }
+
+    if (recipient.status === 'ARCHIVED') {
+      return recipient;
+    }
+
+    const now = new Date();
+
+    return this.prisma.notificationRecipient.update({
+      where: { id: recipient.id },
+      data: {
+        status: 'ARCHIVED',
+        readAt: recipient.readAt || now,
+        archivedAt: recipient.archivedAt || now,
+      },
+    });
+  }
+
+  /**
+   * Push notification to connected users via SSE
+   * @param {Object} notification - Created notification
+   * @param {number[]} recipientIds - Array of recipient user IDs
+   */
+  pushToConnectedUsers(notification, recipientIds) {
+    if (!notification || !recipientIds || recipientIds.length === 0) {
+      return;
+    }
+
+    const payload = {
+      id: notification.id,
+      eventKey: notification.eventKey,
+      type: notification.type,
+      severity: notification.severity,
+      category: notification.category,
+      title: notification.title,
+      body: notification.body,
+      link: notification.link,
+      metadata: notification.metadata,
+      createdAt: notification.createdAt,
+      status: 'ACTIVE',
+    };
+
+    // Push to all connected recipients
+    this.sseService.pushToUsers(recipientIds, payload);
+  }
+}
+
+function createNotificationService(deps = {}) {
+  return new NotificationService(deps);
 }
 
 module.exports = new NotificationService();
+module.exports.NotificationService = NotificationService;
+module.exports.createNotificationService = createNotificationService;

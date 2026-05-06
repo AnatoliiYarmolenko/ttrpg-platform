@@ -50,6 +50,8 @@ export const useUnreadCountQuery = (enabled = true) => {
   });
 };
 
+export const useNotificationCountQuery = useUnreadCountQuery;
+
 export const useNotificationMutations = () => {
   const queryClient = useQueryClient();
 
@@ -67,9 +69,10 @@ export const useNotificationMutations = () => {
     mutationFn: markAsRead,
     onSuccess: () => {
       invalidateUnreadCount();
+      invalidateNotifications();
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to mark notification as read');
+      toast.error(error.message || 'Failed to archive notification');
     },
   });
 
@@ -78,16 +81,17 @@ export const useNotificationMutations = () => {
     onSuccess: (res) => {
       invalidateUnreadCount();
       invalidateNotifications();
-      toast.success(`${res.data?.count || 'Notifications'} marked as read`);
+      toast.success(`${res.data?.count || 'Notifications'} archived`);
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to mark notifications as read');
+      toast.error(error.message || 'Failed to archive notifications');
     },
   });
 
   const archiveMutation = useMutation({
     mutationFn: archiveNotification,
     onSuccess: () => {
+      invalidateUnreadCount();
       invalidateNotifications();
       toast.success('Notification archived');
     },

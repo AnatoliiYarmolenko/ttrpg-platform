@@ -1,4 +1,5 @@
 const notificationService = require('../services/notification.service');
+const sseService = require('../services/notification/notification-sse.service');
 
 class NotificationController {
   /**
@@ -26,7 +27,7 @@ class NotificationController {
   }
 
   /**
-   * Get unread notifications count
+   * Get active notifications count
    * GET /api/notifications/unread-count
    */
   async getUnreadCount(req, res, next) {
@@ -44,7 +45,7 @@ class NotificationController {
   }
 
   /**
-   * Mark notification as read
+   * Consume notification and move it to archive
    * POST /api/notifications/:id/read
    */
   async markAsRead(req, res, next) {
@@ -56,7 +57,7 @@ class NotificationController {
 
       res.json({
         success: true,
-        message: 'Notification marked as read',
+        message: 'Notification archived',
       });
     } catch (error) {
       next(error);
@@ -64,7 +65,7 @@ class NotificationController {
   }
 
   /**
-   * Mark multiple notifications as read
+   * Consume multiple notifications and move them to archive
    * POST /api/notifications/read-bulk
    */
   async markManyAsRead(req, res, next) {
@@ -79,7 +80,7 @@ class NotificationController {
 
       res.json({
         success: true,
-        message: `${count} notifications marked as read`,
+        message: `${count} notifications archived`,
         data: { count },
       });
     } catch (error) {
@@ -102,6 +103,31 @@ class NotificationController {
         success: true,
         message: 'Notification archived',
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * SSE stream for live notifications
+   * GET /api/notifications/stream
+   */
+  async stream(req, res, next) {
+    try {
+      const userId = req.user.id;
+
+      // Set SSE headers
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      });
+
+      // Register connection
+      sseService.registerConnection(userId, res);
+
+      // Send initial keep-alive comment
+      res.write(':ok\n\n');
     } catch (error) {
       next(error);
     }

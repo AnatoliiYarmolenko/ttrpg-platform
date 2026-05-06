@@ -13,8 +13,7 @@ const NotificationSeverity = Object.freeze({
 });
 
 const RecipientStatus = Object.freeze({
-  UNREAD: 'UNREAD',
-  READ: 'READ',
+  ACTIVE: 'ACTIVE',
   ARCHIVED: 'ARCHIVED',
 });
 

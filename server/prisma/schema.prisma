@@ -249,8 +249,7 @@ enum NotificationSeverity {
 }
 
 enum RecipientStatus {
-  UNREAD
-  READ
+  ACTIVE
   ARCHIVED
 }
 
@@ -301,7 +300,7 @@ model NotificationRecipient {
   id                Int                @id @default(autoincrement())
   notificationId    Int
   userId            Int
-  status            RecipientStatus    @default(UNREAD)
+  status            RecipientStatus    @default(ACTIVE)
   readAt            DateTime?
   archivedAt        DateTime?
   channelsDelivered Json?

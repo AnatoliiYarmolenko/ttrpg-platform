@@ -2,8 +2,8 @@ const Joi = require('joi');
 const { validateParams, validateQuery, validateBody } = require('../middlewares/validation.middleware');
 
 const getNotificationsQuerySchema = Joi.object({
-  status: Joi.string().trim().valid('UNREAD', 'READ', 'ARCHIVED').optional().messages({
-    'any.only': 'status повинен бути UNREAD, READ або ARCHIVED',
+  status: Joi.string().trim().valid('ACTIVE', 'ARCHIVED').optional().messages({
+    'any.only': 'status повинен бути ACTIVE або ARCHIVED',
   }),
   limit: Joi.number().integer().min(1).max(100).optional().messages({
     'number.base': 'limit повинен бути числом',

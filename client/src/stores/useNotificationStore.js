@@ -8,9 +8,6 @@ const useNotificationStore = create((set) => ({
   // Live notifications (received via SSE/WebSocket)
   liveNotifications: [],
 
-  // Optimistic unread count
-  optimisticUnreadCount: null,
-
   // Actions
   setConnectionState: (state, error = null) => {
     set({
@@ -29,38 +26,12 @@ const useNotificationStore = create((set) => ({
     set({ liveNotifications: [] });
   },
 
-  setOptimisticUnreadCount: (count) => {
-    set({ optimisticUnreadCount: count });
-  },
-
-  clearOptimisticUnreadCount: () => {
-    set({ optimisticUnreadCount: null });
-  },
-
-  // Optimistic update helpers
-  incrementUnread: () => {
-    set((state) => {
-      const current = state.optimisticUnreadCount;
-      if (current === null) return state;
-      return { optimisticUnreadCount: current + 1 };
-    });
-  },
-
-  decrementUnread: (amount = 1) => {
-    set((state) => {
-      const current = state.optimisticUnreadCount;
-      if (current === null) return state;
-      return { optimisticUnreadCount: Math.max(0, current - amount) };
-    });
-  },
-
   // Reset state
   reset: () => {
     set({
       connectionState: 'disconnected',
       connectionError: null,
       liveNotifications: [],
-      optimisticUnreadCount: null,
     });
   },
 }));

@@ -46,4 +46,11 @@ router.post(
   (req, res, next) => notificationController.archiveNotification(req, res, next)
 );
 
+// SSE stream for live notifications (no CSRF needed for GET)
+router.get(
+  '/stream',
+  [authenticateToken],
+  (req, res, next) => notificationController.stream(req, res, next)
+);
+
 module.exports = router;
