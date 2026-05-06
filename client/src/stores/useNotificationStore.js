@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-const useNotificationStore = create((set, get) => ({
+const useNotificationStore = create((set) => ({
   // Connection state
   connectionState: 'disconnected', // 'disconnected' | 'connecting' | 'connected' | 'error'
   connectionError: null,
