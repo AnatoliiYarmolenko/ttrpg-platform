@@ -21,7 +21,7 @@ export default function NotificationList({
   onLoadMore,
   onMarkAsRead,
   onArchive,
-  filter = 'all',
+  filter = 'ACTIVE',
 }) {
   if (isLoading && notifications.length === 0) {
     return (
@@ -87,5 +87,5 @@ NotificationList.defaultProps = {
   onLoadMore: undefined,
   onMarkAsRead: undefined,
   onArchive: undefined,
-  filter: 'all',
+  filter: 'ACTIVE',
 };

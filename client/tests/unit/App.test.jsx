@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import App from '@/App';
 import { useCsrfInit } from '@/hooks/useCsrfInit';
@@ -31,7 +32,18 @@ describe('App', () => {
       error: null,
     });
 
-    render(<App />);
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
+    );
 
     expect(screen.getByTestId('full-page-loader')).toBeInTheDocument();
     expect(screen.getByText('Завантаження ініціативи...')).toBeInTheDocument();
@@ -43,7 +55,18 @@ describe('App', () => {
       error: null,
     });
 
-    render(<App />);
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
+    );
 
     expect(screen.getByTestId('app-routes')).toBeInTheDocument();
     expect(screen.getByTestId('toast-viewport')).toBeInTheDocument();

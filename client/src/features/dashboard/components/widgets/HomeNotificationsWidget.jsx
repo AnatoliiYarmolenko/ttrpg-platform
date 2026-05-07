@@ -9,18 +9,18 @@ import NotificationList from '@/features/notifications/components/NotificationLi
 import NotificationBadge from '@/features/notifications/components/NotificationBadge';
 import {
   useNotificationsQuery,
+  useNotificationCountQuery,
   useNotificationMutations,
 } from '@/features/notifications/hooks/useNotificationQueries';
 
 const FILTER_OPTIONS = [
-  { key: 'all', label: 'Всі' },
-  { key: 'UNREAD', label: 'Непрочитані' },
+  { key: 'ACTIVE', label: 'Активні' },
   { key: 'ARCHIVED', label: 'Архів' },
 ];
 
 export default function HomeNotificationsWidget() {
   const queryClient = useQueryClient();
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState('ACTIVE');
   const [limit, setLimit] = useState(10);
 
   const selectedDate = useDashboardStore((state) => state.selectedDate);
@@ -28,10 +28,15 @@ export default function HomeNotificationsWidget() {
   const setRightPanelMode = useDashboardStore((state) => state.setRightPanelMode);
 
   const { data, isLoading } = useNotificationsQuery({
-    status: filter === 'all' ? undefined : filter,
+    status: filter,
     limit,
     offset: 0,
   });
+  const { data: activeCount = 0 } = useNotificationCountQuery();
+
+  // Extract notifications data early (needed for effects and render)
+  const notifications = data?.notifications || [];
+  const pagination = data?.pagination;
 
   const { markAsReadMutation, archiveMutation } = useNotificationMutations();
 
@@ -45,17 +50,19 @@ export default function HomeNotificationsWidget() {
     handleBackToNotifications();
   };
 
-  const handleMarkAsRead = (id) => {
-    markAsReadMutation.mutate(id);
+  const handleMarkAsRead = async (id) => {
+    await markAsReadMutation.mutateAsync(id);
   };
 
-  const handleArchive = (id) => {
-    archiveMutation.mutate(id);
+  const handleArchive = async (id) => {
+    await archiveMutation.mutateAsync(id);
   };
 
   const handleLoadMore = () => {
     setLimit((prev) => prev + 10);
   };
+
+
 
   if (rightPanelMode === PANEL_MODES.CREATE) {
     return (
@@ -72,16 +79,12 @@ export default function HomeNotificationsWidget() {
     );
   }
 
-  const notifications = data?.notifications || [];
-  const pagination = data?.pagination;
-  const unreadCount = notifications.filter((n) => n.status === 'UNREAD').length;
-
   return (
     <DashboardCard
       title={
         <div className="flex items-center gap-2">
           Сповіщення
-          <NotificationBadge count={unreadCount} size="sm" />
+          <NotificationBadge count={activeCount} size="sm" />
         </div>
       }
     >

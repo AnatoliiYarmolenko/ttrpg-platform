@@ -1,18 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
+import {
+  AlertTriangle,
+  BadgeCheck,
+  Info,
+  Shield,
+  ShieldAlert,
+  XCircle,
+} from 'lucide-react';
 import PropTypes from 'prop-types';
 
 const SEVERITY_CONFIG = {
-  INFO: { class: 'bg-blue-50 border-blue-200 text-blue-700', label: 'Інфо' },
-  SUCCESS: { class: 'bg-green-50 border-green-200 text-green-700', label: 'Успіх' },
-  WARNING: { class: 'bg-amber-50 border-amber-200 text-amber-700', label: 'Увага' },
-  ERROR: { class: 'bg-red-50 border-red-200 text-red-700', label: 'Помилка' },
-  CRITICAL: { class: 'bg-red-100 border-red-300 text-red-800', label: 'Критично' },
-  SECURITY: { class: 'bg-purple-50 border-purple-200 text-purple-700', label: 'Безпека' },
+  INFO: { class: 'bg-blue-50 border-blue-200 text-blue-700', label: 'Інфо', icon: Info },
+  SUCCESS: { class: 'bg-green-50 border-green-200 text-green-700', label: 'Успіх', icon: BadgeCheck },
+  WARNING: { class: 'bg-amber-50 border-amber-200 text-amber-700', label: 'Увага', icon: AlertTriangle },
+  ERROR: { class: 'bg-red-50 border-red-200 text-red-700', label: 'Помилка', icon: XCircle },
+  CRITICAL: { class: 'bg-red-100 border-red-300 text-red-800', label: 'Критично', icon: ShieldAlert },
+  SECURITY: { class: 'bg-purple-50 border-purple-200 text-purple-700', label: 'Безпека', icon: Shield },
 };
 
 const STATUS_STYLES = {
-  UNREAD: 'border-l-4 border-l-brand-accent bg-white',
-  READ: 'border-l-4 border-l-transparent bg-brand-light/5',
+  ACTIVE: 'border-l-4 border-l-brand-accent bg-white',
   ARCHIVED: 'border-l-4 border-l-transparent bg-gray-50 opacity-75',
 };
 
@@ -23,21 +30,34 @@ const STATUS_STYLES = {
  * @param {Function} onMarkAsRead - колбек для позначення як прочитане
  * @param {Function} onArchive - колбек для архівації
  */
-export default function NotificationListItem({ notification, onMarkAsRead, onArchive }) {
+export default function NotificationListItem({ notification, onMarkAsRead }) {
   const { id, title, body, severity, status, link, createdAt } = notification;
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const config = SEVERITY_CONFIG[severity] || SEVERITY_CONFIG.INFO;
-  const statusStyle = STATUS_STYLES[status] || STATUS_STYLES.READ;
+  const SeverityIcon = config.icon;
+  const statusStyle = STATUS_STYLES[status] || STATUS_STYLES.ACTIVE;
 
-  const isUnread = status === 'UNREAD';
+  const isActive = status === 'ACTIVE';
   const isArchived = status === 'ARCHIVED';
 
-  const handleClick = () => {
-    if (isUnread && onMarkAsRead) {
-      onMarkAsRead(id);
+  const handleClick = async () => {
+    if (isProcessing) {
+      return;
     }
-    if (link) {
-      globalThis.location.href = link;
+
+    setIsProcessing(true);
+
+    try {
+      if (isActive && onMarkAsRead) {
+        await onMarkAsRead(id);
+      }
+
+      if (link) {
+        globalThis.location.assign(link);
+      }
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -47,16 +67,6 @@ export default function NotificationListItem({ notification, onMarkAsRead, onArc
       e.preventDefault();
       handleClick();
     }
-  };
-
-  const handleMarkAsRead = (e) => {
-    e.stopPropagation();
-    if (onMarkAsRead) onMarkAsRead(id);
-  };
-
-  const handleArchive = (e) => {
-    e.stopPropagation();
-    if (onArchive) onArchive(id);
   };
 
   const formatTime = (dateString) => {
@@ -88,16 +98,20 @@ export default function NotificationListItem({ notification, onMarkAsRead, onArc
       onClick={handleClick}
       onKeyDown={handleKeyDown}
     >
-      <div className="flex gap-3">
+      <div className="flex items-center gap-3">
         {/* Severity indicator */}
-        <div className={`flex-shrink-0 px-2 py-1 rounded-full text-xs font-medium ${config.class}`}>
-          {config.label}
+        <div
+          className={`flex-shrink-0 w-10 h-10 rounded-full border flex items-center justify-center ${config.class}`}
+          aria-label={config.label}
+          title={config.label}
+        >
+          <SeverityIcon size={20} aria-hidden="true" />
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <h4 className={`text-sm font-semibold text-brand-dark leading-tight ${isUnread ? '' : 'font-medium'}`}>
+            <h4 className={`text-sm font-semibold text-brand-dark leading-tight ${isActive ? '' : 'font-medium'}`}>
               {title}
             </h4>
             <span className="text-xs text-brand-medium flex-shrink-0">
@@ -108,33 +122,6 @@ export default function NotificationListItem({ notification, onMarkAsRead, onArc
           <p className="text-sm text-brand-medium mt-1 line-clamp-2">
             {body}
           </p>
-
-          {/* Actions */}
-          <div className="flex items-center gap-2 mt-3">
-            {isUnread && (
-              <button
-                onClick={handleMarkAsRead}
-                className="px-2 py-1 text-xs font-medium rounded-lg bg-brand-light/20 text-brand-dark hover:bg-brand-light/30 transition-colors"
-              >
-                Прочитано
-              </button>
-            )}
-
-            {!isArchived && (
-              <button
-                onClick={handleArchive}
-                className="px-2 py-1 text-xs font-medium rounded-lg text-brand-medium hover:bg-brand-light/10 transition-colors"
-              >
-                Архів
-              </button>
-            )}
-
-            {link && (
-              <span className="text-xs text-brand-accent ml-auto">
-                Перейти →
-              </span>
-            )}
-          </div>
         </div>
       </div>
     </div>
@@ -152,5 +139,4 @@ NotificationListItem.propTypes = {
     createdAt: PropTypes.string,
   }).isRequired,
   onMarkAsRead: PropTypes.func,
-  onArchive: PropTypes.func,
 };

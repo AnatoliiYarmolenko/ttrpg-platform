@@ -4,6 +4,7 @@ import AppRoutes from "./routes/AppRoutes";
 import { useCsrfInit } from "./hooks/useCsrfInit"; 
 import ToastViewport from "./components/ui/toast/ToastViewport";
 import useAuthStore from "./stores/useAuthStore";
+import GlobalNotificationProvider from "./features/notifications/components/GlobalNotificationProvider";
 
 function AuthExpiredRedirectListener() {
   const navigate = useNavigate();
@@ -34,6 +35,7 @@ function App() {
   return (
     <BrowserRouter>
       <AuthExpiredRedirectListener />
+      <GlobalNotificationProvider />
       <AppRoutes />
       <ToastViewport />
     </BrowserRouter>
