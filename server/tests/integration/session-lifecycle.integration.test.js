@@ -225,13 +225,10 @@ test('session with campaign follows campaign status constraints', async () => {
   });
 });
 
-test('GM can change session status', async () => {
+test('session status can be updated at database level', async () => {
   await withTestDatabase(async (tx) => {
     const gm = await createTestUser(tx);
-    const player = await createTestUser(tx);
     const session = await createTestSession(tx, gm.id);
-
-    await addSessionParticipant(tx, player.id, session.id, 'PLAYER', 'CONFIRMED');
 
     assert.equal(session.status, 'PLANNED');
 
@@ -244,89 +241,6 @@ test('GM can change session status', async () => {
   });
 });
 
-test('PLAYER cannot change session status from PLANNED to ACTIVE', async () => {
-  await withTestDatabase(async (tx) => {
-    const gm = await createTestUser(tx);
-    const player = await createTestUser(tx);
-    const session = await createTestSession(tx, gm.id);
-
-    await addSessionParticipant(tx, player.id, session.id, 'PLAYER', 'CONFIRMED');
-
-    assert.equal(session.status, 'PLANNED');
-
-    const sessionBefore = await tx.session.findUnique({
-      where: { id: session.id },
-      include: { participants: true },
-    });
-
-    const playerParticipant = sessionBefore.participants.find(p => p.userId === player.id);
-    assert.equal(playerParticipant.role, 'PLAYER');
-
-    const activeSession = await tx.session.update({
-      where: { id: session.id },
-      data: { status: 'ACTIVE' },
-    });
-
-    assert.equal(activeSession.status, 'ACTIVE');
-  });
-});
-
-test('session settings cannot be updated after FINISHED', async () => {
-  await withTestDatabase(async (tx) => {
-    const gm = await createTestUser(tx);
-    const session = await createTestSession(tx, gm.id);
-
-    await tx.session.update({
-      where: { id: session.id },
-      data: { status: 'ACTIVE' },
-    });
-
-    await tx.session.update({
-      where: { id: session.id },
-      data: { status: 'FINISHED' },
-    });
-
-    const finishedSession = await tx.session.findUnique({
-      where: { id: session.id },
-      select: { status: true, title: true },
-    });
-
-    assert.equal(finishedSession.status, 'FINISHED');
-
-    const updatedSession = await tx.session.update({
-      where: { id: session.id },
-      data: { title: 'Updated Title' },
-    });
-
-    assert.equal(updatedSession.title, 'Updated Title');
-  });
-});
-
-test('session settings cannot be updated after CANCELED', async () => {
-  await withTestDatabase(async (tx) => {
-    const gm = await createTestUser(tx);
-    const session = await createTestSession(tx, gm.id);
-
-    await tx.session.update({
-      where: { id: session.id },
-      data: { status: 'CANCELED' },
-    });
-
-    const canceledSession = await tx.session.findUnique({
-      where: { id: session.id },
-      select: { status: true, title: true },
-    });
-
-    assert.equal(canceledSession.status, 'CANCELED');
-
-    const updatedSession = await tx.session.update({
-      where: { id: session.id },
-      data: { title: 'Updated Title' },
-    });
-
-    assert.equal(updatedSession.title, 'Updated Title');
-  });
-});
 
 test('multiple sessions in campaign can have different statuses', async () => {
   await withTestDatabase(async (tx) => {

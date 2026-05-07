@@ -15,11 +15,13 @@ const createSessionCalendarService = require('./session/session-calendar.service
 const createSessionLifecycleService = require('./session/session-lifecycle.service');
 const createSessionParticipantsService = require('./session/session-participants.service');
 const createSessionPageService = require('./session/session-page.service');
+const notificationService = require('./notification.service');
 
 class SessionService {
-  constructor() {
+  constructor(customPrisma = null) {
+    const prismaInstance = customPrisma || prisma;
     this.sessionDeps = {
-      prisma,
+      prisma: prismaInstance,
       AppError,
       ERROR_CODES,
       datetimeHelpers,
@@ -42,10 +44,12 @@ class SessionService {
       ...this.sessionDeps,
       sessionQueryService: this.queryService,
       createRawEncryptedAndHashedShareToken,
+      notificationService,
     });
     this.participantsService = createSessionParticipantsService({
       ...this.sessionDeps,
       sessionQueryService: this.queryService,
+      notificationService,
       assertNoSessionTimeConflict: (userId, targetStart, targetDuration, options = {}) => {
         return this._assertNoSessionTimeConflict(userId, targetStart, targetDuration, options);
       },
@@ -162,7 +166,7 @@ class SessionService {
 
   async _assertNoSessionTimeConflict(userId, targetStart, targetDuration, options = {}) {
     return datetimeHelpers._assertNoSessionTimeConflict(
-      { prisma, AppError, ERROR_CODES },
+      { prisma: this.sessionDeps.prisma, AppError, ERROR_CODES },
       userId,
       targetStart,
       targetDuration,
@@ -348,7 +352,7 @@ class SessionService {
     const { rawToken, tokenHash, tokenEncrypted } = createRawEncryptedAndHashedShareToken();
     const sessionIdInt = this._parsePositiveInt(sessionId, 'ID сесії');
 
-    await prisma.session.update({
+    await this.sessionDeps.prisma.session.update({
       where: { id: sessionIdInt },
       data: {
         shareTokenHash: tokenHash,
@@ -377,7 +381,7 @@ class SessionService {
       throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED);
     }
 
-    const stored = await prisma.session.findUnique({
+    const stored = await this.sessionDeps.prisma.session.findUnique({
       where: { id: this._parsePositiveInt(sessionId, 'ID сесії') },
       select: { shareTokenEncrypted: true },
     });
@@ -399,3 +403,4 @@ class SessionService {
 }
 
 module.exports = new SessionService();
+module.exports.SessionService = SessionService;

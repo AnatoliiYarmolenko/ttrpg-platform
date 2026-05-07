@@ -29,6 +29,8 @@ model User {
   isDeleted               Boolean                  @default(false)
   passwordResetToken      String?                  @unique
   passwordResetExpiry     DateTime?
+  telegramChatId          String?
+  telegramLinkedAt        DateTime?
   wallet                  Wallet?
   stats                   UserStats?
   campaignsOwned          Campaign[]               @relation("OwnerCampaigns")
@@ -42,6 +44,8 @@ model User {
   refreshTokens           RefreshToken[]
   emailVerificationTokens EmailVerificationToken[]
   emailChangeTokens       EmailChangeToken[]
+  notifications           NotificationRecipient[]
+  notificationPreference  NotificationPreference?
 }
 
 model Wallet {
@@ -235,6 +239,27 @@ enum SessionStatus {
   CANCELED
 }
 
+enum NotificationSeverity {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+  CRITICAL
+  SECURITY
+}
+
+enum RecipientStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum OutboxStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+}
+
 model RefreshToken {
   id        Int      @id @default(autoincrement())
   token     String   @unique
@@ -243,4 +268,95 @@ model RefreshToken {
   revoked   Boolean  @default(false)
   createdAt DateTime @default(now())
   expiresAt DateTime
+}
+
+model Notification {
+  id                Int                     @id @default(autoincrement())
+  eventKey          String
+  type              String
+  severity          NotificationSeverity
+  category          String
+  title             String
+  body              String
+  link              String?
+  metadata          Json?
+  dedupeKey         String?
+  aggregationKey    String?
+  expiresAt         DateTime?
+  source            String?
+  createdAt         DateTime                @default(now())
+
+  recipients        NotificationRecipient[]
+  outboxEvents      OutboxEvent[]
+
+  @@index([createdAt])
+  @@index([eventKey])
+  @@index([type])
+  @@index([dedupeKey])
+  @@index([aggregationKey])
+}
+
+model NotificationRecipient {
+  id                Int                @id @default(autoincrement())
+  notificationId    Int
+  userId            Int
+  status            RecipientStatus    @default(ACTIVE)
+  readAt            DateTime?
+  archivedAt        DateTime?
+  channelsDelivered Json?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, userId])
+  @@index([userId, status])
+  @@index([userId, createdAt])
+}
+
+model NotificationPreference {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @unique
+  enabledChannels Json
+  mutedCategories Json?
+  mutedSeverities Json?
+  quietHoursStart Int?
+  quietHoursEnd   Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model OutboxEvent {
+  id             Int          @id @default(autoincrement())
+  notificationId Int?
+  type           String
+  payload        Json
+  status         OutboxStatus @default(PENDING)
+  attempts       Int          @default(0)
+  maxAttempts    Int          @default(3)
+  nextRunAt      DateTime     @default(now())
+  lastError      String?
+  processedAt    DateTime?
+  createdAt      DateTime     @default(now())
+
+  notification Notification?  @relation(fields: [notificationId], references: [id], onDelete: SetNull)
+  deliveries     DeliveryAttempt[]
+
+  @@index([status, nextRunAt])
+}
+
+model DeliveryAttempt {
+  id          Int      @id @default(autoincrement())
+  outboxId    Int
+  channel     String
+  status      String
+  error       String?
+  attemptedAt DateTime @default(now())
+
+  outbox OutboxEvent @relation(fields: [outboxId], references: [id], onDelete: Cascade)
+
+  @@index([outboxId, channel])
 }

@@ -6,12 +6,36 @@ import CampaignCommunicationChatWidget from '../widgets/CampaignCommunicationCha
 import CampaignNextSessionWidget from '../widgets/CampaignNextSessionWidget';
 import CampaignSessionsWidget from '../widgets/CampaignSessionsWidget';
 import CampaignSettingsWidget from '../widgets/CampaignSettingsWidget';
-import Button from '@/components/ui/Button';
+import TopBarTabButton from '@/components/ui/TopBarTabButton';
 
 /**
  * CampaignTabRenderer — відповідає за рендеринг лівої та правої панелі
  * сторінки кампанії залежно від поточного табу.
  */
+const COMMUNICATION_TAB_OPTIONS = [
+  { key: CAMPAIGN_COMMUNICATION_MODES.CHAT, label: 'Чат' },
+  { key: CAMPAIGN_COMMUNICATION_MODES.MEMBERS, label: 'Учасники' },
+];
+
+function CommunicationModeSwitch({ activeMode, onChange }) {
+  return (
+    <fieldset className="max-w-full overflow-x-auto" aria-label="Режим комунікації">
+      <legend className="sr-only">Режим комунікації</legend>
+      <div className="flex items-center gap-2 min-w-max">
+        {COMMUNICATION_TAB_OPTIONS.map((tab) => (
+          <TopBarTabButton
+            key={tab.key}
+            label={tab.label}
+            isActive={activeMode === tab.key}
+            onClick={() => onChange(tab.key)}
+            className="py-2 px-4 text-sm"
+          />
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 export default function CampaignTabRenderer({
   activeTab,
   campaignCommunicationMode,
@@ -39,29 +63,31 @@ export default function CampaignTabRenderer({
       };
 
     case CAMPAIGN_TABS.DETAILS:
-    default:
+    default: {
+      const isChatMode = campaignCommunicationMode === CAMPAIGN_COMMUNICATION_MODES.CHAT;
       return {
         leftPanel: viewingUserId ? profilePreviewNode : <CampaignInfoWidget {...infoProps} />,
-        rightPanel: campaignCommunicationMode === CAMPAIGN_COMMUNICATION_MODES.CHAT ? (
+        rightPanel: isChatMode ? (
           <CampaignCommunicationChatWidget
-            onToggleMode={() => setCampaignCommunicationMode(CAMPAIGN_COMMUNICATION_MODES.MEMBERS)}
+            actions={(
+              <CommunicationModeSwitch
+                activeMode={campaignCommunicationMode}
+                onChange={setCampaignCommunicationMode}
+              />
+            )}
           />
         ) : (
           <CampaignMembersWidget
             {...membersProps}
             actions={(
-              <Button
-                onClick={() => setCampaignCommunicationMode(CAMPAIGN_COMMUNICATION_MODES.CHAT)}
-                variant="primary"
-                size="md"
-                fullWidth={false}
-                className="h-8 min-w-[140px]"
-              >
-                Повідомлення
-              </Button>
+              <CommunicationModeSwitch
+                activeMode={campaignCommunicationMode}
+                onChange={setCampaignCommunicationMode}
+              />
             )}
           />
         ),
       };
+    }
   }
 }

@@ -70,8 +70,8 @@ class AdminController {
     try {
       const { page = 1, limit = 20, search = '' } = req.query;
       const result = await adminService.getUsers({
-        page: parseInt(page),
-        limit: Math.min(parseInt(limit) || 20, 100),
+        page: Number.parseInt(page),
+        limit: Math.min(Number.parseInt(limit) || 20, 100),
         search: search.trim(),
       });
       res.json({ success: true, data: result });
@@ -103,8 +103,8 @@ class AdminController {
     try {
       const { page = 1, limit = 20, search = '', visibility = '' } = req.query;
       const result = await adminService.getCampaigns({
-        page: parseInt(page),
-        limit: Math.min(parseInt(limit) || 20, 100),
+        page: Number.parseInt(page),
+        limit: Math.min(Number.parseInt(limit) || 20, 100),
         search: search.trim(),
         visibility,
       });
@@ -150,8 +150,8 @@ class AdminController {
     try {
       const { page = 1, limit = 20, search = '', status = '' } = req.query;
       const result = await adminService.getSessions({
-        page: parseInt(page),
-        limit: Math.min(parseInt(limit) || 20, 100),
+        page: Number.parseInt(page),
+        limit: Math.min(Number.parseInt(limit) || 20, 100),
         search: search.trim(),
         status,
       });

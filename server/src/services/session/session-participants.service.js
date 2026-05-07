@@ -159,6 +159,7 @@ async function confirmGmParticipant({
   prisma,
   participantId,
   sessionId,
+  notificationService,
 }) {
   const participantIdInt = parseId(participantId);
   const sessionIdInt = parseId(sessionId);
@@ -183,17 +184,68 @@ async function confirmGmParticipant({
     }),
   ]);
 
+  // MVP-20: Notify user about confirmation
+  if (notificationService && updatedParticipant) {
+    const session = await prisma.session.findUnique({
+      where: { id: sessionIdInt },
+      select: { id: true, title: true },
+    });
+    if (session) {
+      notificationService.createNotification({
+        eventKey: `session_confirmed:${updatedParticipant.userId}:${sessionIdInt}`,
+        type: 'SESSION_PARTICIPATION_CONFIRMED',
+        severity: 'SUCCESS',
+        category: 'session',
+        title: 'Ви підтверджені на сесію',
+        body: `Вас додано до сесії "${session.title || 'Нова сесія'}"`,
+        link: `/session/${sessionIdInt}`,
+        recipientIds: [updatedParticipant.userId],
+        metadata: {
+          sessionId: sessionIdInt,
+          participantId: updatedParticipant.id,
+          role: updatedParticipant.role,
+        },
+      }).catch(() => {
+        // Silently fail
+      });
+    }
+  }
+
   return updatedParticipant;
 }
 
-async function updateParticipantStatusRecord({ prisma, participantId, status }) {
-  return prisma.sessionParticipant.update({
+async function updateParticipantStatusRecord({ prisma, participantId, status, notificationService }) {
+  const participant = await prisma.sessionParticipant.update({
     where: { id: parseId(participantId) },
     data: { status },
     include: {
+      session: { select: { id: true, title: true } },
       user: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
     },
   });
+
+  // MVP-20: Notify user when confirmed
+  if (notificationService && status === 'CONFIRMED' && participant.session) {
+    notificationService.createNotification({
+      eventKey: `session_confirmed:${participant.userId}:${participant.sessionId}`,
+      type: 'SESSION_PARTICIPATION_CONFIRMED',
+      severity: 'SUCCESS',
+      category: 'session',
+      title: 'Ви підтверджені на сесію',
+      body: `Вас додано до сесії "${participant.session.title || 'Нова сесія'}"`,
+      link: `/session/${participant.sessionId}`,
+      recipientIds: [participant.userId],
+      metadata: {
+        sessionId: participant.sessionId,
+        participantId: participant.id,
+        role: participant.role,
+      },
+    }).catch(() => {
+      // Silently fail
+    });
+  }
+
+  return participant;
 }
 
 function createSessionParticipantsService({
@@ -206,6 +258,7 @@ function createSessionParticipantsService({
   datetimeHelpers,
   assertNoSessionTimeConflict,
   permissionHelpers,
+  notificationService,
 }) {
   const resolveGetSessionById = sessionQueryService?.getSessionById || getSessionById;
   const resolveSessionContextFn = sessionQueryService?.resolveSessionContext || resolveSessionContext;
@@ -225,6 +278,72 @@ function createSessionParticipantsService({
     || typeof assertNoSessionTimeConflictFn !== 'function'
   ) {
     throw new TypeError('Сервіс учасників сесії вимагає залежності сервісу запитів сесії');
+  }
+
+  // MVP-19: Send summary notification to session managers about new join requests
+  async function notifyManagersAboutJoinRequest(session, participant) {
+    if (!notificationService) return;
+
+    const pendingCount = session.participants.filter(
+      (p) => p.status === 'PENDING'
+    ).length;
+
+    // Get managers (owner + confirmed GM)
+    const managers = [];
+    if (session.ownerId) managers.push(session.ownerId);
+    const confirmedGm = permissionHelpers._getConfirmedGm(session);
+    if (confirmedGm && confirmedGm.userId !== session.ownerId) {
+      managers.push(confirmedGm.userId);
+    }
+
+    if (managers.length === 0) return;
+
+    const roleLabel = participant.role === 'GM' ? 'гравець-майстер' : 'гравець';
+    const userName = participant.user?.displayName || participant.user?.username || 'Новий учасник';
+
+    notificationService.createNotification({
+      eventKey: `session_join_requests:${session.id}`,
+      type: 'SESSION_JOIN_REQUESTS_UPDATED',
+      severity: 'INFO',
+      category: 'session',
+      title: `Запит на приєднання до сесії "${session.title || 'Нова сесія'}"`,
+      body: `${userName} хоче приєднатися як ${roleLabel}. Очікує підтвердження: ${pendingCount}`,
+      link: `/session/${session.id}`,
+      recipientIds: managers,
+      dedupeKey: `session:${session.id}:join_requests`,
+      dedupeWindowMs: 5 * 60 * 1000, // 5 minutes
+      metadata: {
+        sessionId: session.id,
+        pendingCount,
+        requesterId: participant.userId,
+        role: participant.role,
+      },
+    }).catch(() => {
+      // Silently fail
+    });
+  }
+
+  // MVP-20: Send confirmation notification to user
+  async function notifyUserAboutConfirmation(participant, session) {
+    if (!notificationService) return;
+
+    notificationService.createNotification({
+      eventKey: `session_confirmed:${participant.userId}:${session.id}`,
+      type: 'SESSION_PARTICIPATION_CONFIRMED',
+      severity: 'SUCCESS',
+      category: 'session',
+      title: 'Ви підтверджені на сесію',
+      body: `Вас додано до сесії "${session.title || 'Нова сесія'}"`,
+      link: `/session/${session.id}`,
+      recipientIds: [participant.userId],
+      metadata: {
+        sessionId: session.id,
+        participantId: participant.id,
+        role: participant.role,
+      },
+    }).catch(() => {
+      // Silently fail
+    });
   }
 
   return {
@@ -250,7 +369,7 @@ function createSessionParticipantsService({
       assertGmCanJoin({ normalizedRole, session, permissionHelpers, AppError, ERROR_CODES });
       assertCampaignPlayerAccess({ normalizedRole, session, AppError, ERROR_CODES });
 
-      return prisma.sessionParticipant.create({
+      const participant = await prisma.sessionParticipant.create({
         data: {
           userId,
           sessionId: parseId(sessionId),
@@ -262,6 +381,16 @@ function createSessionParticipantsService({
           user: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
         },
       });
+
+      // MVP-19: Notify managers about new join request (if status is PENDING)
+      if (participant.status === 'PENDING') {
+        notifyManagersAboutJoinRequest(session, participant);
+      } else {
+        // Auto-confirmed: notify user
+        notifyUserAboutConfirmation(participant, session);
+      }
+
+      return participant;
     },
 
     async leaveSession(sessionId, userId) {

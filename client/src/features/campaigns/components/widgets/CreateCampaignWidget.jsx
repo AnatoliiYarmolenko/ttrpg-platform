@@ -8,6 +8,10 @@ import { GAME_SYSTEMS } from '@/constants/gameSystems';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createCampaign } from '@/features/campaigns/api/campaignApi';
 import { toast } from '@/stores/useToastStore';
+import {
+  invalidateCampaignCollectionQueries,
+  invalidateCalendarQuery,
+} from '@/lib/queryInvalidation';
 
 const VISIBILITY_OPTIONS = [
   { value: 'PUBLIC', label: 'За заявкою' },
@@ -38,11 +42,12 @@ export default function CreateCampaignWidget({ onSuccess, onCancel }) {
   const queryClient = useQueryClient();
   const createMutation = useMutation({
     mutationFn: (data) => createCampaign(data),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('Кампанію успішно створено');
-      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard', 'campaigns'] });
-      queryClient.invalidateQueries({ queryKey: ['calendar'] });
+      await Promise.allSettled([
+        invalidateCampaignCollectionQueries(queryClient),
+        invalidateCalendarQuery(queryClient),
+      ]);
     },
     onError: (err) => {
       toast.error(err?.response?.data?.error || err?.message || 'Помилка при створенні кампанії');

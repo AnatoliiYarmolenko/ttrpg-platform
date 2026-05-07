@@ -1,3 +1,5 @@
+const notificationService = require('../notification.service');
+
 function createAuthCredentialsService({
   prisma,
   bcrypt,
@@ -125,6 +127,20 @@ function createAuthCredentialsService({
 
       await prisma.refreshToken.create({
         data: { token: refreshTokenHash, userId: user.id, expiresAt },
+      });
+
+      // Create welcome notification (fire and forget)
+      notificationService.createNotification({
+        eventKey: 'welcome_login',
+        type: 'WELCOME_LOGIN',
+        severity: 'INFO',
+        category: 'system',
+        title: `Вітаємо, ${user.username}!`,
+        body: 'Раді бачити вас на платформі.',
+        recipientIds: [user.id],
+        metadata: { isWelcome: true },
+      }).catch(() => {
+        // Silently fail - don't block login if notification fails
       });
 
       return {

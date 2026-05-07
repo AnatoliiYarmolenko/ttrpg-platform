@@ -1,7 +1,7 @@
 ﻿const { prisma } = require('../lib/prisma');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
+const crypto = require('node:crypto');
 const { jwtSecret } = require('../config/config');
 const emailService = require('./email.service');
 const { checkRefreshRateLimit } = require('./rate-limit.service');

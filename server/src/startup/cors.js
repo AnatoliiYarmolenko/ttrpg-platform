@@ -58,10 +58,11 @@ function createCorsMiddleware() {
     credentials: true, // Дозволяємо відправку cookies
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: [
-      'Content-Type', 
-      'Authorization', 
-      'X-CSRF-Token', 
+      'Content-Type',
+      'Authorization',
+      'X-CSRF-Token',
       'X-XSRF-Token',
+      'X-Session-Id',
       'Cache-Control',
       'Pragma',
       'Expires'

@@ -16,6 +16,7 @@ const campaignRoutes = require('./routes/campaign.routes');
 const sessionRoutes = require('./routes/session.routes');
 const searchRoutes = require('./routes/search.routes');
 const clientLogsRoutes = require('./routes/client-logs.routes');
+const notificationRoutes = require('./routes/notification.routes');
 
 // Middlewares
 const { errorHandler } = require('./middlewares/error.middleware');
@@ -62,6 +63,7 @@ function createApp() {
     app.use(`${prefix}/sessions`, sessionRoutes);
     app.use(`${prefix}/search`, searchRoutes);
     app.use(`${prefix}/client-logs`, clientLogsRoutes);
+    app.use(`${prefix}/notifications`, notificationRoutes);
   };
 
   // ========== MIDDLEWARE ==========
@@ -69,11 +71,11 @@ function createApp() {
   // Налаштування CORS для роботи з cookies
   app.use(createCorsMiddleware());
 
-  // Структуроване логування HTTP запитів (reqId, statusCode, responseTime)
-  app.use(httpLogger);
-
   // Correlation ID для зв'язку клієнтських та серверних логів
   app.use(addCorrelationId);
+
+  // Структуроване логування HTTP запитів (reqId, statusCode, responseTime)
+  app.use(httpLogger);
 
   // Базові security headers.
   // CORP вимикаємо, щоб не ламати завантаження аватарів з окремого фронтенд origin.

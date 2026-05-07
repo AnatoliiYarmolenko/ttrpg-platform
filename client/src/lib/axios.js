@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { setCorrelationId } from './correlationStore';
+import { getSessionId } from './sessionId';
 
 // Shared axios instance configuration.
 const api = axios.create({
@@ -84,15 +85,15 @@ const isLoginRoute = (originalRequest) => (
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const clearExpiredAuthState = () => {
-  if (typeof window === 'undefined') {
+  if (globalThis.window === undefined) {
     return;
   }
 
-  if (window.localStorage) {
-    window.localStorage.removeItem('ttrpg_app_user');
+  if (globalThis.window.localStorage) {
+    globalThis.window.localStorage.removeItem('ttrpg_app_user');
   }
 
-  window.dispatchEvent(
+  globalThis.window.dispatchEvent(
     new CustomEvent('app:auth-expired', { detail: { redirectTo: '/login' } })
   );
 };
@@ -102,6 +103,11 @@ api.interceptors.request.use(
     const csrfToken = getCSRFToken();
     if (csrfToken) {
       config.headers['X-CSRF-Token'] = csrfToken;
+    }
+
+    const sessionId = getSessionId();
+    if (sessionId) {
+      config.headers['X-Session-Id'] = sessionId;
     }
 
     if (config.url?.startsWith('/profile') || config.url?.startsWith('/auth/')) {
@@ -187,13 +193,13 @@ const handleRefreshFailure = async (refreshError, originalRequest) => {
 
   processQueue(refreshError, null);
 
-  const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
-  if (
-    shouldClearAuthOnRefreshFailure(refreshError)
-    && currentPath !== '/login'
-    && !isLoginRoute(originalRequest)
-  ) {
-    clearExpiredAuthState();
+  const currentPath = typeof globalThis === 'undefined' ? '' : globalThis.location.pathname;
+  if (shouldClearAuthOnRefreshFailure(refreshError)) {
+    if (currentPath === '/login' || isLoginRoute(originalRequest)) {
+      // don't clear auth when already on or originating from login
+    } else {
+      clearExpiredAuthState();
+    }
   }
 
   throw refreshError;

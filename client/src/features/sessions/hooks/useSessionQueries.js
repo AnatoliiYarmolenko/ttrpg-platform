@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/stores/useToastStore';
+import { invalidateSessionCollectionQueries } from '@/lib/queryInvalidation';
 import {
   getSessionPageById,
   getSessionPageByShareToken,
@@ -117,14 +118,14 @@ export const useSessionMutations = (sessionId, options = {}) => {
   const invalidateShareLink = () => queryClient.invalidateQueries({ queryKey: ['session', sessionId, 'share-link'] });
 
   const handleMutation = (successMessage, invalidateFns = []) => ({
-    onSuccess: (res) => {
+    onSuccess: async (res) => {
       if (res?.success === false) {
         toast.error(res.error || res.message || 'Сталася помилка');
       } else {
         if (successMessage) {
           toast.success(successMessage);
         }
-        invalidateFns.forEach((fn) => fn());
+        await Promise.allSettled(invalidateFns.map((fn) => fn()));
       }
     },
     onError: (err) => {
@@ -137,24 +138,58 @@ export const useSessionMutations = (sessionId, options = {}) => {
     },
   });
 
+  const updateSessionHandlers = handleMutation('Сесію успішно оновлено', [
+    invalidateSessionPageQuery,
+    invalidateSession,
+    invalidateParticipants,
+    invalidateShareLink,
+    () => invalidateSessionCollectionQueries(queryClient),
+  ]);
+
   const updateSessionMutation = useMutation({
     mutationFn: (data) => updateSession(sessionId, data),
-    ...handleMutation('Сесію успішно оновлено', [invalidateSessionPageQuery, invalidateSession, invalidateParticipants, invalidateShareLink]),
+    onSuccess: async (res) => {
+      await updateSessionHandlers.onSuccess(res);
+      if (res?.success !== false && res?.data?.campaignId) {
+        await queryClient.invalidateQueries({ 
+          queryKey: ['campaign-page', res.data.campaignId] 
+        });
+      }
+    },
+    onError: updateSessionHandlers.onError, // якщо є
   });
 
   const deleteSessionMutation = useMutation({
     mutationFn: () => deleteSession(sessionId),
-    ...handleMutation('Сесію видалено', [invalidateSessionPageQuery, invalidateSession, invalidateParticipants]),
+    ...handleMutation('Сесію видалено', [
+      invalidateSessionPageQuery,
+      invalidateSession,
+      invalidateParticipants,
+      () => invalidateSessionCollectionQueries(queryClient),
+      () => queryClient.invalidateQueries({ queryKey: ['campaign-page'] }),
+    ]),
   });
 
   const cancelSessionMutation = useMutation({
     mutationFn: () => cancelSession(sessionId),
-    ...handleMutation('Сесію скасовано', [invalidateSessionPageQuery, invalidateSession, invalidateParticipants]),
+    ...handleMutation('Сесію скасовано', [
+      invalidateSessionPageQuery,
+      invalidateSession,
+      invalidateParticipants,
+      () => invalidateSessionCollectionQueries(queryClient),
+      () => queryClient.invalidateQueries({ queryKey: ['campaign-page'] }),
+    ]),
   });
 
   const finishSessionMutation = useMutation({
     mutationFn: () => markSessionAsFinished(sessionId),
-    ...handleMutation('Сесію завершено', [invalidateSessionPageQuery, invalidateSession, invalidateParticipants]),
+    ...handleMutation('Сесію завершено', [
+      invalidateSessionPageQuery,
+      invalidateSession,
+      invalidateParticipants,
+      () => invalidateSessionCollectionQueries(queryClient),
+      () => queryClient.invalidateQueries({ queryKey: ['campaign-page'] }),
+    ]),
   });
 
   const regenerateShareLinkMutation = useMutation({
@@ -164,29 +199,45 @@ export const useSessionMutations = (sessionId, options = {}) => {
 
   const updateStatusMutation = useMutation({
     mutationFn: (status) => updateSession(sessionId, { status }),
-    ...handleMutation('Статус сесії оновлено', [invalidateSessionPageQuery, invalidateSession, invalidateParticipants]),
+    ...handleMutation('Статус сесії оновлено', [
+      invalidateSessionPageQuery,
+      invalidateSession,
+      invalidateParticipants,
+      () => invalidateSessionCollectionQueries(queryClient),
+      () => queryClient.invalidateQueries({ queryKey: ['campaign-page'] }),
+    ]),
   });
-
+  
   const joinSessionMutation = useMutation({
     mutationFn: (payload) => joinSession(sessionId, {
       ...payload,
       ...(shareToken ? { shareToken } : {}),
     }),
-    ...handleMutation('Ви успішно приєдналися до сесії', [invalidateSessionPageQuery, invalidateSession, invalidateParticipants]),
+    ...handleMutation('Ви успішно приєдналися до сесії', [
+      invalidateSessionPageQuery,
+      invalidateSession,
+      invalidateParticipants,
+      () => invalidateSessionCollectionQueries(queryClient),
+      () => queryClient.invalidateQueries({ queryKey: ['campaign-page'] }),
+    ]),
   });
 
   const leaveSessionMutation = useMutation({
     mutationFn: () => leaveSession(sessionId),
-    onSuccess: (res) => {
+    onSuccess: async (res) => {
       if (res?.success === false) {
         toast.error(res.error || res.message || 'Сталася помилка');
         return;
       }
 
       toast.success(res?.message || 'Ви покинули сесію');
-      invalidateSessionPageQuery();
-      invalidateSession();
-      invalidateParticipants();
+      await Promise.allSettled([
+        invalidateSessionPageQuery(),
+        invalidateSession(),
+        invalidateParticipants(),
+        invalidateSessionCollectionQueries(queryClient),
+        queryClient.invalidateQueries({ queryKey: ['campaign-page'] }),
+      ]);
     },
     onError: (err) => {
       const apiError = err?.response?.data;
@@ -200,12 +251,24 @@ export const useSessionMutations = (sessionId, options = {}) => {
 
   const updateParticipantStatusMutation = useMutation({
     mutationFn: ({ participantId, status }) => updateParticipantStatus(sessionId, participantId, status),
-    ...handleMutation('Статус учасника оновлено', [invalidateParticipants, invalidateSessionPageQuery, invalidateSession]),
+    ...handleMutation('Статус учасника оновлено', [
+      invalidateParticipants,
+      invalidateSessionPageQuery,
+      invalidateSession,
+      () => invalidateSessionCollectionQueries(queryClient),
+      () => queryClient.invalidateQueries({ queryKey: ['campaign-page'] }),
+    ]),
   });
 
   const removeParticipantMutation = useMutation({
     mutationFn: (participantId) => removeParticipant(sessionId, participantId),
-    ...handleMutation('Учасника видалено', [invalidateParticipants, invalidateSessionPageQuery, invalidateSession]),
+    ...handleMutation('Учасника видалено', [
+      invalidateParticipants,
+      invalidateSessionPageQuery,
+      invalidateSession,
+      () => invalidateSessionCollectionQueries(queryClient),
+      () => queryClient.invalidateQueries({ queryKey: ['campaign-page'] }),
+    ]),
   });
 
   return {

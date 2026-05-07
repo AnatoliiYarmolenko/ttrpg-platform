@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const sessionService = require('../../src/services/session.service');
 const { prisma } = require('../../src/lib/prisma');
 const permissionHelpers = require('../../src/services/session/session-permission.helpers');
+const notificationService = require('../../src/services/notification.service');
 const { createRawEncryptedAndHashedShareToken } = require('../../src/utils/token.helper');
 
 function withMockedPrismaUpdate(mockImpl, callback) {
@@ -50,6 +51,17 @@ function withMockedPrismaFindUnique(mockImpl, callback) {
     });
 }
 
+function withMockedNotificationCreate(mockImpl, callback) {
+  const originalCreateNotification = notificationService.createNotification;
+  notificationService.createNotification = mockImpl;
+
+  return Promise.resolve()
+    .then(callback)
+    .finally(() => {
+      notificationService.createNotification = originalCreateNotification;
+    });
+}
+
 test('campaign owner can cancel foreign PLANNED session in own campaign', async () => {
   const session = {
     id: 300,
@@ -61,19 +73,21 @@ test('campaign owner can cancel foreign PLANNED session in own campaign', async 
 
   let updateCallCount = 0;
 
-  await withMockedPrismaUpdate(async () => {
-    updateCallCount += 1;
-    return {
-      id: session.id,
-      status: 'CANCELED',
-      owner: { id: session.ownerId, username: 'gm_foreign' },
-      participants: [],
-    };
-  }, async () => {
-    const result = await sessionService.cancelSession(session.id, 11, { preloadedSession: session });
+  await withMockedNotificationCreate(async () => null, async () => {
+    await withMockedPrismaUpdate(async () => {
+      updateCallCount += 1;
+      return {
+        id: session.id,
+        status: 'CANCELED',
+        owner: { id: session.ownerId, username: 'gm_foreign' },
+        participants: [],
+      };
+    }, async () => {
+      const result = await sessionService.cancelSession(session.id, 11, { preloadedSession: session });
 
-    assert.equal(result.status, 'CANCELED');
-    assert.equal(updateCallCount, 1);
+      assert.equal(result.status, 'CANCELED');
+      assert.equal(updateCallCount, 1);
+    });
   });
 });
 
@@ -88,20 +102,22 @@ test('confirmed GM can cancel ACTIVE session', async () => {
     ],
   };
 
-  await withMockedCanChangeSessionStatus(
-    (targetSession, userId) => targetSession.id === 301 && userId === 33,
-    async () => {
-      await withMockedPrismaUpdate(async () => ({
-        id: session.id,
-        status: 'CANCELED',
-        owner: { id: session.ownerId, username: 'gm_foreign' },
-        participants: [],
-      }), async () => {
-        const result = await sessionService.cancelSession(session.id, 33, { preloadedSession: session });
-        assert.equal(result.status, 'CANCELED');
-      });
-    }
-  );
+  await withMockedNotificationCreate(async () => null, async () => {
+    await withMockedCanChangeSessionStatus(
+      (targetSession, userId) => targetSession.id === 301 && userId === 33,
+      async () => {
+        await withMockedPrismaUpdate(async () => ({
+          id: session.id,
+          status: 'CANCELED',
+          owner: { id: session.ownerId, username: 'gm_foreign' },
+          participants: [],
+        }), async () => {
+          const result = await sessionService.cancelSession(session.id, 33, { preloadedSession: session });
+          assert.equal(result.status, 'CANCELED');
+        });
+      }
+    );
+  });
 });
 
 test('confirmed GM cannot cancel PLANNED session', async () => {
@@ -115,15 +131,17 @@ test('confirmed GM cannot cancel PLANNED session', async () => {
     ],
   };
 
-  await withMockedCanChangeSessionStatus(
-    (targetSession, userId) => targetSession.id === 302 && userId === 33,
-    async () => {
-      await assert.rejects(
-        () => sessionService.cancelSession(session.id, 33, { preloadedSession: session }),
-        (error) => error?.code === 'SESSION_OWNER_ONLY'
-      );
-    }
-  );
+  await withMockedNotificationCreate(async () => null, async () => {
+    await withMockedCanChangeSessionStatus(
+      (targetSession, userId) => targetSession.id === 302 && userId === 33,
+      async () => {
+        await assert.rejects(
+          () => sessionService.cancelSession(session.id, 33, { preloadedSession: session }),
+          (error) => error?.code === 'SESSION_OWNER_ONLY'
+        );
+      }
+    );
+  });
 });
 
 test('cannot update session settings when campaign is finished', async () => {
@@ -336,6 +354,30 @@ test('cannot regenerate share link for FINISHED LINK_ONLY session', async () => 
       await assert.rejects(
         () => sessionService.regenerateShareToken(session.id, 10),
         (error) => error?.code === 'SECURITY_ACCESS_DENIED'
+      );
+    }
+  );
+});
+
+test('PLAYER cannot change session status from PLANNED to ACTIVE', async () => {
+  const session = {
+    id: 1001,
+    ownerId: 22,
+    status: 'PLANNED',
+    date: new Date(Date.now() + 86_400_000).toISOString(),
+    duration: 180,
+    campaign: { ownerId: 99 },
+    participants: [
+      { id: 1, userId: 33, role: 'PLAYER', status: 'CONFIRMED' },
+    ],
+  };
+
+  await withMockedSessionById(
+    async () => session,
+    async () => {
+      await assert.rejects(
+        () => sessionService.updateSession(session.id, 33, { status: 'ACTIVE' }, { preloadedSession: session }),
+        (error) => error?.code === 'SESSION_GM_ONLY'
       );
     }
   );
