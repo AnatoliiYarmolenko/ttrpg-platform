@@ -13,6 +13,7 @@ import DashboardCard from "@/components/ui/DashboardCard";
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/shared/EmptyState";
 import { VisibilityBadge } from "@/components/shared";
+import { invalidateSessionCollectionQueries } from "@/lib/queryInvalidation";
 import SessionCard from "../ui/SessionCard";
 import Dice20 from "@/components/ui/icons/Dice20";
 import GroupPeople from "@/components/ui/icons/GroupPeople";
@@ -255,10 +256,13 @@ export function SearchResultsWidget() {
   const queryClient = useQueryClient();
   const joinMutation = useMutation({
     mutationFn: (id) => joinSession(id, {}),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sessions"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard", "games"] });
-      queryClient.invalidateQueries({ queryKey: ["calendar"] });
+    onSuccess: async (_result, sessionId) => {
+      await Promise.allSettled([
+        invalidateSessionCollectionQueries(queryClient),
+        queryClient.invalidateQueries({ queryKey: ["session-page", sessionId] }),
+        queryClient.invalidateQueries({ queryKey: ["session", sessionId] }),
+        queryClient.invalidateQueries({ queryKey: ["campaign-page"] }),
+      ]);
     },
   });
 

@@ -71,11 +71,11 @@ function createApp() {
   // Налаштування CORS для роботи з cookies
   app.use(createCorsMiddleware());
 
-  // Структуроване логування HTTP запитів (reqId, statusCode, responseTime)
-  app.use(httpLogger);
-
   // Correlation ID для зв'язку клієнтських та серверних логів
   app.use(addCorrelationId);
+
+  // Структуроване логування HTTP запитів (reqId, statusCode, responseTime)
+  app.use(httpLogger);
 
   // Базові security headers.
   // CORP вимикаємо, щоб не ламати завантаження аватарів з окремого фронтенд origin.

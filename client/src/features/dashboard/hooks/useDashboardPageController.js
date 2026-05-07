@@ -16,6 +16,7 @@ import {
   setOrDeleteParam,
   updateSearchParams,
 } from '@/utils/urlState';
+import { queryClient } from '@/lib/queryClient';
 
 /**
  * useDashboardPageController — основна логіка DashboardPage.
@@ -160,6 +161,7 @@ export default function useDashboardPageController() {
   const handleProfileUpdate = useCallback(
     (updatedData) => {
       updateUser(updatedData);
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
     [updateUser]
   );

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createSession } from '@/features/sessions/api/sessionApi';
 import { GAME_SYSTEMS } from '@/constants/gameSystems';
@@ -6,6 +7,10 @@ import Dropdown from '@/components/ui/Dropdown';
 import Button from '@/components/ui/Button';
 import { toast } from '@/stores/useToastStore';
 import { getDateTimeLocalIssue, toIsoDateTimeLocalValue } from '@/utils/dateTimeLocal';
+import {
+  invalidateCampaignCollectionQueries,
+  invalidateSessionCollectionQueries,
+} from '@/lib/queryInvalidation';
 
 const DATE_ERROR_MESSAGES = {
   empty: 'Дата сесії обовʼязкова',
@@ -28,14 +33,25 @@ export default function CreateSessionForm({
 
   const createMutation = useMutation({
     mutationFn: (data) => createSession(data),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('Сесію успішно створено');
-      queryClient.invalidateQueries({ queryKey: ['sessions'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard', 'games'] });
-      queryClient.invalidateQueries({ queryKey: ['calendar'] });
+      const tasks = [
+        invalidateSessionCollectionQueries(queryClient),
+      ];
+
       if (campaignId) {
-        queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] });
+        tasks.push(
+          invalidateCampaignCollectionQueries(queryClient, {
+            includeGames: true,
+            includeHome: true,
+            includeSearchSessions: true,
+          }),
+          queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] }),
+          queryClient.invalidateQueries({ queryKey: ['campaign-page', campaignId] })
+        );
       }
+
+      await Promise.allSettled(tasks);
     },
     onError: (err) => {
       toast.error(err?.response?.data?.error || err?.message || 'Помилка при створенні сесії');
@@ -423,3 +439,11 @@ export default function CreateSessionForm({
     </form>
   );
 }
+
+CreateSessionForm.propTypes = {
+  initialDate: PropTypes.string,
+  campaignId: PropTypes.string,
+  requireGmRole: PropTypes.bool,
+  onSuccess: PropTypes.func,
+  onCancel: PropTypes.func,
+};

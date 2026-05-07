@@ -1,6 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/stores/useToastStore';
 import {
+  invalidateCampaignCollectionQueries,
+  invalidateSessionCollectionQueries,
+} from '@/lib/queryInvalidation';
+import {
   getCampaignPageById,
   getCampaignPageByShareToken,
   updateCampaign,
@@ -96,18 +100,20 @@ export const useCampaignMutations = (campaignId, options = {}) => {
 
   const invalidateCampaignPageQuery = () => invalidateCampaignPage(queryClient, { campaignId, shareToken });
   const invalidateCampaignDetail = () => queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] });
-  const invalidateCampaignsList = () => queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+  const invalidateCampaignCollections = (options = {}) =>
+    invalidateCampaignCollectionQueries(queryClient, options);
+  const invalidateSessionPages = () => queryClient.invalidateQueries({ queryKey: ['session-page'] });
   const invalidateCampaignShareLink = () => queryClient.invalidateQueries({ queryKey: ['campaign', campaignId, 'share-link'] });
 
   const handleMutation = (successMessage, invalidateFns = []) => ({
-    onSuccess: (res) => {
+    onSuccess: async (res) => {
       if (res?.success === false) {
         toast.error(res.error || res.message || 'Сталася помилка');
       } else {
         if (successMessage) {
           toast.success(successMessage);
         }
-        invalidateFns.forEach((fn) => fn());
+        await Promise.allSettled(invalidateFns.map((fn) => fn()));
       }
     },
     onError: (err) => {
@@ -122,12 +128,26 @@ export const useCampaignMutations = (campaignId, options = {}) => {
 
   const updateCampaignMutation = useMutation({
     mutationFn: (data) => updateCampaign(campaignId, data),
-    ...handleMutation('Кампанію оновлено', [invalidateCampaignPageQuery, invalidateCampaignDetail, invalidateCampaignsList]),
+    ...handleMutation('Кампанію оновлено', [
+      invalidateCampaignPageQuery,
+      invalidateCampaignDetail,
+      invalidateSessionPages,
+      () => invalidateCampaignCollections({
+        includeGames: true,
+        includeHome: true,
+        includeSearchSessions: true,
+      }),
+    ]),
   });
 
   const transferOwnershipMutation = useMutation({
     mutationFn: (newOwnerId) => transferCampaignOwnership(campaignId, newOwnerId),
-    ...handleMutation('Власника кампанії змінено', [invalidateCampaignPageQuery, invalidateCampaignDetail, invalidateCampaignsList]),
+    ...handleMutation('Власника кампанії змінено', [
+      invalidateCampaignPageQuery,
+      invalidateCampaignDetail,
+      invalidateSessionPages,
+      () => invalidateCampaignCollections(),
+    ]),
   });
 
   const regenerateShareLinkMutation = useMutation({
@@ -147,7 +167,16 @@ export const useCampaignMutations = (campaignId, options = {}) => {
 
   const approveRequestMutation = useMutation({
     mutationFn: ({ requestId, role = 'PLAYER' }) => approveJoinRequest(requestId, role),
-    ...handleMutation('Заявку підтверджено', [invalidateCampaignPageQuery, invalidateCampaignDetail, invalidateCampaignsList]),
+    ...handleMutation('Заявку підтверджено', [
+      invalidateCampaignPageQuery,
+      invalidateCampaignDetail,
+      invalidateSessionPages,
+      () => invalidateCampaignCollections({
+        includeGames: true,
+        includeHome: true,
+        includeSearchSessions: true,
+      }),
+    ]),
   });
 
   const rejectRequestMutation = useMutation({
@@ -157,22 +186,57 @@ export const useCampaignMutations = (campaignId, options = {}) => {
 
   const removeMemberMutation = useMutation({
     mutationFn: (memberId) => removeMemberFromCampaign(campaignId, memberId),
-    ...handleMutation('Учасника видалено', [invalidateCampaignPageQuery, invalidateCampaignDetail, invalidateCampaignsList]),
+    ...handleMutation('Учасника видалено', [
+      invalidateCampaignPageQuery,
+      invalidateCampaignDetail,
+      invalidateSessionPages,
+      () => invalidateCampaignCollections({
+        includeGames: true,
+        includeHome: true,
+        includeSearchSessions: true,
+      }),
+      () => invalidateSessionCollectionQueries(queryClient),
+    ]),
   });
 
   const changeMemberRoleMutation = useMutation({
     mutationFn: ({ memberId, role }) => updateMemberRole(campaignId, memberId, role),
-    ...handleMutation('Роль учасника оновлено', [invalidateCampaignPageQuery, invalidateCampaignDetail]),
+    ...handleMutation('Роль учасника оновлено', [
+      invalidateCampaignPageQuery,
+      invalidateCampaignDetail,
+      invalidateSessionPages,
+      () => invalidateCampaignCollections(),
+    ]),
   });
 
   const cancelSessionMutation = useMutation({
     mutationFn: (sessionId) => cancelCampaignSession(sessionId),
-    ...handleMutation('Сесію скасовано', [invalidateCampaignPageQuery, invalidateCampaignDetail]),
+    ...handleMutation('Сесію скасовано', [
+      invalidateCampaignPageQuery,
+      invalidateCampaignDetail,
+      invalidateSessionPages,
+      () => invalidateCampaignCollections({
+        includeGames: true,
+        includeHome: true,
+        includeSearchSessions: true,
+      }),
+      () => invalidateSessionCollectionQueries(queryClient),
+    ]),
   });
 
   const deleteSessionMutation = useMutation({
     mutationFn: (sessionId) => deleteCampaignSession(sessionId),
-    ...handleMutation('Сесію видалено', [invalidateCampaignPageQuery, invalidateCampaignDetail]),
+    ...handleMutation('Сесію видалено', [
+      invalidateCampaignPageQuery,
+      invalidateCampaignDetail,
+      invalidateSessionPages,
+      () => invalidateCampaignCollections({
+        includeGames: true,
+        includeHome: true,
+        includeSearchSessions: true,
+      }),
+      () => invalidateSessionCollectionQueries(queryClient),
+    ]),
   });
 
   return {
