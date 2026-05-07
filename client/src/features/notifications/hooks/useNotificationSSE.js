@@ -40,7 +40,7 @@ const SESSION_MANAGER_EVENTS = new Set([
   'SESSION_OWNER_CONFLICT_SUMMARY',
 ]);
 
-const normalizeEventCode = (notification) => {
+export const normalizeEventCode = (notification) => {
   const raw = notification?.type || notification?.eventType || notification?.eventKey || '';
   if (typeof raw !== 'string' || raw.length === 0) {
     return '';

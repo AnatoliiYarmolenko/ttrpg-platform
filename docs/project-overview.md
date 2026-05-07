@@ -1,6 +1,6 @@
 # TTRPG Platform: Project Overview
 
-> Останнє оновлення: 2026-04-26
+> Останнє оновлення: 2026-05-07
 
 ## 1. Що Це За Проєкт
 
@@ -34,6 +34,8 @@
 - `ChatMessage` — повідомлення в чаті сесії.
 - `RefreshToken`, `EmailVerificationToken`, `EmailChangeToken` — безпекові токени.
 - `Wallet`, `Transaction`, `UserStats` — фінансово-статистичний контур.
+- `Notification`, `NotificationRecipient`, `NotificationPreference` — система сповіщень.
+- `OutboxEvent`, `DeliveryAttempt` — інфраструктура доставки сповіщень (телеграм-ready).
 
 ---
 
@@ -468,6 +470,24 @@ Pivot-таблиця між `User` і `Session`:
 - кількість зіграних сесій;
 - кількість годин.
 
+#### `Notification`, `NotificationRecipient`, `NotificationPreference`
+
+Центральна система сповіщень:
+
+- `Notification` — шаблон повідомлення з `type`, `severity`, `title`, `body`, `link`, `metadata`;
+- `NotificationRecipient` — зв'язок notification → user зі статусами `ACTIVE`/`ARCHIVED`;
+- `NotificationPreference` — налаштування каналів доставки, mute категорій, тихі години;
+- підтримка агрегації (`aggregationKey`) та дедуплікації (`dedupeKey`);
+- payload проєктується channel-agnostic для майбутньої доставки в Telegram.
+
+#### `OutboxEvent`, `DeliveryAttempt`
+
+Інфраструктура для зовнішніх каналів доставки:
+
+- `OutboxEvent` — черга подій для асинхронної доставки;
+- `DeliveryAttempt` — лог спроб доставки по каналах;
+- статуси: `PENDING`, `PROCESSING`, `DONE`, `FAILED`.
+
 #### Токен-моделі
 
 - `RefreshToken`
@@ -502,6 +522,12 @@ Pivot-таблиця між `User` і `Session`:
 #### Join Requests
 
 - `JoinRequestStatus`: `PENDING`, `APPROVED`, `REJECTED`
+
+#### Notifications
+
+- `NotificationSeverity`: `INFO`, `SUCCESS`, `WARNING`, `ERROR`, `CRITICAL`, `SECURITY`
+- `RecipientStatus`: `ACTIVE`, `ARCHIVED`
+- `OutboxStatus`: `PENDING`, `PROCESSING`, `DONE`, `FAILED`
 
 ### 8.3. Ключові Зв’язки
 
@@ -569,6 +595,7 @@ Feature-first організація UI та логіки:
 - `profile/` — профілі, avatar upload + crop flow;
 - `security/` — password/email/account security flows;
 - `admin/` — адмінка;
+- `notifications/` — inbox, SSE-з'єднання, API сповіщень;
 - `search/` — фільтри і пошук.
 
 #### `components/`
@@ -643,6 +670,7 @@ server/src/
 - `security.routes.js`
 - `admin.routes.js`
 - `client-logs.routes.js`
+- `notification.routes.js` — inbox API та SSE-стрім `/api/notifications/stream`
 
 #### `controllers/`
 
@@ -692,6 +720,9 @@ server/src/
 - `token-cleanup.service.js`
 - `session-cleanup.service.js`
 - `email.service.js`
+- `notification.service.js` — створення, читання, архівування сповіщень
+- `notification/notification-sse.service.js` — real-time push через SSE
+- `notification/notification-recipient-resolver.js` — resolver аудиторій (`session_managers`, `campaign_members` тощо)
 
 #### `domain/`
 
@@ -766,6 +797,16 @@ Joi-схеми для route-level validation.
 
 - сервер реєструє обидва префікси: `/api/v1` та legacy `/api`;
 - це зроблено через єдину функцію реєстрації route-group, тож набір endpoint-ів однаковий для обох префіксів.
+
+#### Real-time: Server-Sent Events (SSE)
+
+Система сповіщень використовує SSE для live-доставки:
+
+- `GET /api/notifications/stream` — авторизований SSE-ендпоінт;
+- `notification-sse.service.js` — менеджер з'єднань per-user;
+- heartbeat/keep-alive підтримує з'єднання;
+- `persist-first` принцип: спочатку запис у БД, потім push клієнтам;
+- високопріоритетні події (`CRITICAL`, `SECURITY`) дублюються toast-ами в UI.
 
 На клієнті типовий flow:
 
@@ -901,7 +942,10 @@ docker compose logs --tail=120 server
 - blacklist deleted users;
 - rate limiting;
 - fail-closed поведінка для security-critical сценаріїв при недоступності Redis;
-- session recovery та auth-expired handling на клієнті.
+- session recovery та auth-expired handling на клієнті;
+- `SECURITY_PASSWORD_CHANGED`, `SECURITY_EMAIL_CHANGED` — сповіщення про зміну облікових даних;
+- `SESSION_CANCELLED`, `SESSION_RESCHEDULED`, `SESSION_CONFLICT_REVIEW_REQUIRED` — session-сповіщення;
+- `CAMPAIGN_MEMBER_REMOVED`, `CAMPAIGN_PARTICIPATION_CONFIRMED` — campaign-сповіщення.
 
 ---
 
@@ -915,6 +959,16 @@ docker compose logs --tail=120 server
 - `SessionVisibility` має `PRIVATE`, і саме там найбільше бізнес-логіки доступу.
 - `MEMBERS_ONLY` для private campaign session означає: сесію можуть відкривати і join-итись лише члени кампанії.
 - outsider у public campaign session може бути `guest`.
+
+### 13.2. Правила Сповіщень
+
+- агреговані manager-facing події не спамлять поіменно;
+- actor не отримує дубль своєї дії (anti-self-spam);
+- `CRITICAL` і `SECURITY` severity показуються через toast;
+- reminder дедуплюються по `userId + sessionId + leadTime`;
+- reschedule/conflict події collapse-яться у вікні 5-10 хвилин;
+- при втраті доступу до сутності deep-link веде на fallback (`/`);
+- payload сповіщень channel-agnostic для майбутньої Telegram-доставки.
 - share-link логіка є окремим read/write контуром і на клієнті, і на сервері.
 
 ---
@@ -925,6 +979,9 @@ docker compose logs --tail=120 server
 
 - `docs/legacy/architecture-roadmap.md`
 - `docs/plans/practical-architecture-strategy.md`
+- `docs/notification_event_map.md` — повна карта notification templates, severity, отримувачів
+- `docs/notification-implementation-backlog.md` — детальний беклог NOTIF-001...NOTIF-xxx
+- `docs/notification_mvp_backlog.md` — scope MVP сповіщень
 
 Пов’язані технічні точки в коді:
 
@@ -932,20 +989,25 @@ docker compose logs --tail=120 server
 - `server/src/domain/access/access-rules.js`
 - `server/src/domain/campaign/campaign.policy.js`
 - `server/src/domain/session/session.policy.js`
+- `server/src/services/notification.service.js`
+- `server/src/services/notification/notification-sse.service.js`
 - `client/src/features/campaigns/hooks/useCampaignPageController.js`
 - `client/src/features/sessions/hooks/useSessionPageController.js`
 - `client/src/features/dashboard/hooks/useCalendarQueries.js`
+- `client/src/features/notifications/hooks/useNotificationQueries.js`
+- `client/src/features/notifications/hooks/useNotificationSSE.js`
 
 ---
 
 ## 15. Коротке Резюме
 
-`TTRPG Platform` — це рольово-орієнтована система з двома головними доменами: кампанії та сесії. Її складність не в CRUD як такому, а в правильній моделі доступу:
+`TTRPG Platform` — це рольово-орієнтована система з трьома головними доменами: кампанії, сесії та сповіщення. Її складність не в CRUD як такому, а в правильній моделі доступу та комунікації:
 
 - хто бачить ресурс;
 - хто може в нього вступити;
 - хто керує статусами;
-- де закінчується membership кампанії і починається participation у сесії.
+- де закінчується membership кампанії і починається participation у сесії;
+- як користувач отримує інформацію про зміни (in-app notifications, real-time SSE).
 
 Архітектурно проєкт уже рухається в правильний бік:
 
@@ -955,4 +1017,4 @@ docker compose logs --tail=120 server
 - Prisma як центральна модель даних;
 - React Query + Zustand як поєднання серверного і клієнтського стану.
 
-Для подальшого розвитку критичними залишаються саме консистентність доступів, join-flow та синхронізація UI з доменною моделлю сервера.
+Для подальшого розвитку критичними залишаються: консистентність доступів, join-flow, синхронізація UI з доменною моделлю сервера, а також завершення MVP сповіщень і підготовка до Telegram-інтеграції.
