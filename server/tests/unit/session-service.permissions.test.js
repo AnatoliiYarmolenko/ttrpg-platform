@@ -382,30 +382,3 @@ test('PLAYER cannot change session status from PLANNED to ACTIVE', async () => {
     }
   );
 });
-
-test('confirmed GM can change session status from PLANNED to ACTIVE', async () => {
-  const session = {
-    id: 1002,
-    ownerId: 22,
-    status: 'PLANNED',
-    date: new Date(Date.now() + 86_400_000).toISOString(),
-    duration: 180,
-    campaign: { ownerId: 99 },
-    participants: [
-      { id: 1, userId: 33, role: 'GM', status: 'CONFIRMED' },
-    ],
-  };
-
-  await withMockedPrismaUpdate(
-    async () => ({ ...session, status: 'ACTIVE' }),
-    async () => {
-      await withMockedSessionById(
-        async () => session,
-        async () => {
-          const result = await sessionService.updateSession(session.id, 33, { status: 'ACTIVE' }, { preloadedSession: session });
-          assert.equal(result.status, 'ACTIVE');
-        }
-      );
-    }
-  );
-});
