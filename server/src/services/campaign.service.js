@@ -157,6 +157,9 @@ class CampaignService {
             role: 'OWNER',
           },
         },
+        chat: {
+          create: {},
+        },
       },
       include: {
         owner: {
