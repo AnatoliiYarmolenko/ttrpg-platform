@@ -23,11 +23,22 @@ const ALLOWED_STATUS_TRANSITIONS = {
 };
 
 function hasOwnField(data, field) {
-  return Object.hasOwn(data, field);
+  return Object.hasOwn(data, field) && data[field] !== undefined;
 }
 
 function getSessionTitle(session) {
   return session?.title || 'Нова сесія';
+}
+
+function formatSessionTime(session) {
+  if (!session?.date) return 'невідомий час';
+  const date = new Date(session.date);
+  return date.toLocaleString('uk-UA', {
+    day: 'numeric',
+    month: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 function buildScheduleSignature(session) {
@@ -218,24 +229,26 @@ async function notifySessionRescheduled({
   notificationService,
   session,
   updatedSession,
+  requesterId,
 }) {
   const scheduleSignature = buildScheduleSignature(updatedSession);
+  const sessionTitle = getSessionTitle(updatedSession);
 
   await createNotificationSafely(notificationService, {
-    eventKey: `session_rescheduled:${session.id}:${scheduleSignature}`,
+    eventKey: `session_rescheduled:${updatedSession.id}:${scheduleSignature}`,
     type: NotificationType.SESSION_RESCHEDULED,
     severity: NotificationSeverity.INFO,
     category: NotificationCategory.SESSION,
     title: 'Сесію перенесено',
-    body: `Сесію "${getSessionTitle(session)}" перенесено. Перевірте новий час.`,
-    link: `/session/${session.id}`,
-    audience: 'session_confirmed_participants',
-    context: { sessionId: session.id },
-    dedupeKey: `session:${session.id}:rescheduled:${scheduleSignature}`,
+    body: `Сесію "${sessionTitle}" перенесено. Перевірте новий час.`,
+    link: `/session/${updatedSession.id}`,
+    audience: ['session_confirmed_participants', 'session_pending_participants', 'session_owner'],
+    context: { sessionId: updatedSession.id, excludeUserId: requesterId },
+    dedupeKey: `session:${updatedSession.id}:rescheduled:${scheduleSignature}`,
     dedupeWindowMs: 15 * 60 * 1000,
     metadata: {
-      sessionId: session.id,
-      sessionTitle: session.title,
+      sessionId: updatedSession.id,
+      sessionTitle: updatedSession.title,
       date: updatedSession.date,
       duration: updatedSession.duration,
     },
@@ -253,74 +266,48 @@ async function notifyConflictingParticipants({
   }
 
   const scheduleSignature = buildScheduleSignature(updatedSession);
-  const sessionTitle = getSessionTitle(session);
+  const newTime = formatSessionTime(updatedSession);
 
   await Promise.all(conflictingParticipants.map((participant) => createNotificationSafely(notificationService, {
-    eventKey: `session_conflict_review:${session.id}:${participant.userId}:${scheduleSignature}`,
-    type: NotificationType.SESSION_CONFLICT_REVIEW_REQUIRED,
+    eventKey: `session_time_conflict:${session.id}:${participant.userId}:${scheduleSignature}`,
+    type: NotificationType.SESSION_TIME_CONFLICT,
     severity: NotificationSeverity.WARNING,
     category: NotificationCategory.SESSION,
-    title: 'Потрібно переглянути участь у сесії',
-    body: `Після перенесення сесії "${sessionTitle}" ваша участь потребує підтвердження.`,
+    title: 'Конфлікт часу',
+    body: `Перенесено на ${newTime}. У вас вже є сесія на цей час.`,
     link: `/session/${session.id}`,
     recipientIds: [participant.userId],
-    dedupeKey: `session:${session.id}:conflict_review:${participant.userId}:${scheduleSignature}`,
+    dedupeKey: `session:${session.id}:time_conflict:${participant.userId}:${scheduleSignature}`,
     dedupeWindowMs: 15 * 60 * 1000,
     metadata: {
       sessionId: session.id,
       sessionTitle: session.title,
+      newDate: updatedSession.date,
       participantId: participant.id,
       userId: participant.userId,
     },
   })));
 }
 
-async function notifyOwnerConflictSummary({
-  notificationService,
-  session,
-  updatedSession,
-  conflictingParticipants,
-}) {
-  if (!conflictingParticipants.length) {
-    return;
-  }
 
-  const scheduleSignature = buildScheduleSignature(updatedSession);
-
-  await createNotificationSafely(notificationService, {
-    eventKey: `session_owner_conflict_summary:${session.id}:${scheduleSignature}`,
-    type: NotificationType.SESSION_OWNER_CONFLICT_SUMMARY,
-    severity: NotificationSeverity.WARNING,
-    category: NotificationCategory.SESSION,
-    title: 'Після перенесення є конфлікти',
-    body: `Після перенесення сесії "${getSessionTitle(session)}" ${conflictingParticipants.length} учасників переведено у PENDING.`,
-    link: `/session/${session.id}`,
-    audience: 'session_managers',
-    context: { sessionId: session.id },
-    dedupeKey: `session:${session.id}:owner_conflict_summary:${scheduleSignature}`,
-    dedupeWindowMs: 15 * 60 * 1000,
-    metadata: {
-      sessionId: session.id,
-      sessionTitle: session.title,
-      conflictingCount: conflictingParticipants.length,
-    },
-  });
-}
 
 async function notifySessionCancelled({
   notificationService,
   session,
+  requesterId,
 }) {
+  const sessionTitle = getSessionTitle(session);
+
   await createNotificationSafely(notificationService, {
     eventKey: `session_cancelled:${session.id}`,
     type: NotificationType.SESSION_CANCELLED,
-    severity: NotificationSeverity.WARNING,
+    severity: NotificationSeverity.ERROR,
     category: NotificationCategory.SESSION,
     title: 'Сесію скасовано',
-    body: `Сесію "${getSessionTitle(session)}" скасовано.`,
+    body: `Сесію "${sessionTitle}" скасовано.`,
     link: `/session/${session.id}`,
     audience: ['session_confirmed_participants', 'session_pending_participants'],
-    context: { sessionId: session.id },
+    context: { sessionId: session.id, excludeUserId: requesterId },
     metadata: {
       sessionId: session.id,
       sessionTitle: session.title,
@@ -566,14 +553,8 @@ function createSessionLifecycleService({
       const sessionIdInt = sessionQueryService.parsePositiveInt(sessionId, 'Session ID');
 
       const updated = await prisma.$transaction(async (tx) => {
-        if (conflictingParticipants.length > 0) {
-          await tx.sessionParticipant.updateMany({
-            where: {
-              id: { in: conflictingParticipants.map((participant) => participant.id) },
-            },
-            data: { status: 'PENDING' },
-          });
-        }
+        // Note: We no longer reset conflicting participants to PENDING
+        // Users are notified and decide themselves whether to stay or leave
 
         return tx.session.update({
           where: { id: sessionIdInt },
@@ -599,26 +580,30 @@ function createSessionLifecycleService({
         });
       });
 
+      // Check if date or duration actually changed (not just present in update data)
+      const dateChanged = hasOwnField(normalizedUpdateData, 'date')
+        && new Date(normalizedUpdateData.date).getTime() !== new Date(session.date).getTime();
+      const durationChanged = hasOwnField(normalizedUpdateData, 'duration')
+        && normalizedUpdateData.duration !== session.duration;
+      const scheduleChanged = dateChanged || durationChanged;
+
       if (normalizedUpdateData.status === 'CANCELED') {
         await notifySessionCancelled({
           notificationService,
           session,
+          requesterId,
         });
-      } else if (hasOwnField(normalizedUpdateData, 'date') || hasOwnField(normalizedUpdateData, 'duration')) {
+      } else if (normalizedUpdateData.status !== 'FINISHED' && scheduleChanged) {
         await notifySessionRescheduled({
           notificationService,
           session,
           updatedSession: updated,
+          requesterId,
         });
 
+        // Notify only conflicting participants about the time conflict
+        // They decide themselves whether to stay or leave
         await notifyConflictingParticipants({
-          notificationService,
-          session,
-          updatedSession: updated,
-          conflictingParticipants,
-        });
-
-        await notifyOwnerConflictSummary({
           notificationService,
           session,
           updatedSession: updated,
@@ -691,6 +676,7 @@ function createSessionLifecycleService({
       await notifySessionCancelled({
         notificationService,
         session: updated,
+        requesterId: userId,
       });
 
       return { ...updated, startAt: updated.date };

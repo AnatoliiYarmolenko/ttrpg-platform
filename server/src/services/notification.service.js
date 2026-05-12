@@ -109,6 +109,15 @@ class NotificationService {
       });
     }
 
+    // Exclude actor if specified (anti-spam rule)
+    if (context.excludeUserId) {
+      const excludedId = Number.parseInt(context.excludeUserId, 10);
+      resolvedIds.delete(context.excludeUserId);
+      if (Number.isInteger(excludedId)) {
+        resolvedIds.delete(excludedId);
+      }
+    }
+
     return [...resolvedIds];
   }
 
@@ -205,7 +214,7 @@ class NotificationService {
       status: r.status,
       readAt: r.readAt,
       archivedAt: r.archivedAt,
-      createdAt: r.notification.createdAt,
+      createdAt: r.createdAt,
     }));
 
     return {
@@ -354,7 +363,7 @@ class NotificationService {
       body: notification.body,
       link: notification.link,
       metadata: notification.metadata,
-      createdAt: notification.createdAt,
+      createdAt: new Date().toISOString(),
       status: 'ACTIVE',
     };
 

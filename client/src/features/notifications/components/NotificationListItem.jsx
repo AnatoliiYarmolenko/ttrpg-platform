@@ -8,6 +8,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import PropTypes from 'prop-types';
+import { useNavigate } from 'react-router-dom';
 
 const SEVERITY_CONFIG = {
   INFO: { class: 'bg-blue-50 border-blue-200 text-blue-700', label: 'Інфо', icon: Info },
@@ -33,6 +34,7 @@ const STATUS_STYLES = {
 export default function NotificationListItem({ notification, onMarkAsRead }) {
   const { id, title, body, severity, status, link, createdAt } = notification;
   const [isProcessing, setIsProcessing] = useState(false);
+  const navigate = useNavigate();
 
   const config = SEVERITY_CONFIG[severity] || SEVERITY_CONFIG.INFO;
   const SeverityIcon = config.icon;
@@ -54,7 +56,7 @@ export default function NotificationListItem({ notification, onMarkAsRead }) {
       }
 
       if (link) {
-        globalThis.location.assign(link);
+        navigate(link);
       }
     } finally {
       setIsProcessing(false);
