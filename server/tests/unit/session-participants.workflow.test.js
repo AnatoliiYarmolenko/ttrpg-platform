@@ -41,6 +41,15 @@ function buildModerationContext(options = {}) {
   );
 
   const prisma = {
+    session: {
+      findUnique: async ({ where }) => {
+        if (where?.id !== session.id) {
+          return null;
+        }
+
+        return { id: session.id, title: session.title ?? null };
+      },
+    },
     sessionParticipant: {
       findUnique: async ({ where }) => {
         const participant = participantsById.get(where.id);

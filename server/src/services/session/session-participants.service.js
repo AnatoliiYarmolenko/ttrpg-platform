@@ -140,14 +140,41 @@ async function declinePendingParticipant({
   participantId,
   AppError,
   ERROR_CODES,
+  notificationService,
 }) {
   if (participant.status !== 'PENDING') {
     throw new AppError(ERROR_CODES.SESSION_PARTICIPANT_DECLINE_PENDING_ONLY);
   }
 
+  // NOTIF-024: Get session info before deleting participant
+  const session = await prisma.session.findUnique({
+    where: { id: participant.sessionId },
+    select: { id: true, title: true },
+  });
+
   await prisma.sessionParticipant.delete({
     where: { id: parseId(participantId) },
   });
+
+  // NOTIF-024: Notify user about declined participation
+  if (notificationService && session) {
+    notificationService.createNotification({
+      eventKey: `session_declined:${participant.userId}:${session.id}`,
+      type: 'SESSION_PARTICIPATION_DECLINED',
+      severity: 'ERROR',
+      category: 'session',
+      title: 'Заявку відхилено',
+      body: `Вашу заявку на сесію "${session.title || 'Нова сесія'}" відхилено.`,
+      link: session ? `/session/${session.id}` : '/',
+      recipientIds: [participant.userId],
+      metadata: {
+        sessionId: session.id,
+        userId: participant.userId,
+      },
+    }).catch(() => {
+      // Silently fail
+    });
+  }
 
   return {
     ...participant,
@@ -196,8 +223,8 @@ async function confirmGmParticipant({
         type: 'SESSION_PARTICIPATION_CONFIRMED',
         severity: 'SUCCESS',
         category: 'session',
-        title: 'Ви підтверджені на сесію',
-        body: `Вас додано до сесії "${session.title || 'Нова сесія'}"`,
+        title: 'Ви додані до сесії',
+        body: `Вас додано до сесії "${session.title || 'Нова сесія'}".`,
         link: `/session/${sessionIdInt}`,
         recipientIds: [updatedParticipant.userId],
         metadata: {
@@ -231,8 +258,8 @@ async function updateParticipantStatusRecord({ prisma, participantId, status, no
       type: 'SESSION_PARTICIPATION_CONFIRMED',
       severity: 'SUCCESS',
       category: 'session',
-      title: 'Ви підтверджені на сесію',
-      body: `Вас додано до сесії "${participant.session.title || 'Нова сесія'}"`,
+      title: 'Ви додані до сесії',
+      body: `Вас додано до сесії "${participant.session.title || 'Нова сесія'}".`,
       link: `/session/${participant.sessionId}`,
       recipientIds: [participant.userId],
       metadata: {
@@ -280,42 +307,69 @@ function createSessionParticipantsService({
     throw new TypeError('Сервіс учасників сесії вимагає залежності сервісу запитів сесії');
   }
 
+
+
   // MVP-19: Send summary notification to session managers about new join requests
   async function notifyManagersAboutJoinRequest(session, participant) {
     if (!notificationService) return;
 
-    const pendingCount = session.participants.filter(
+    // Count existing pending + the new participant if they're pending
+    // (new participant is not yet in session.participants list)
+    const existingPending = session.participants.filter(
       (p) => p.status === 'PENDING'
     ).length;
-
-    // Get managers (owner + confirmed GM)
-    const managers = [];
-    if (session.ownerId) managers.push(session.ownerId);
-    const confirmedGm = permissionHelpers._getConfirmedGm(session);
-    if (confirmedGm && confirmedGm.userId !== session.ownerId) {
-      managers.push(confirmedGm.userId);
-    }
-
-    if (managers.length === 0) return;
+    const pendingCount = participant.status === 'PENDING' ? existingPending + 1 : existingPending;
 
     const roleLabel = participant.role === 'GM' ? 'гравець-майстер' : 'гравець';
     const userName = participant.user?.displayName || participant.user?.username || 'Новий учасник';
+
+    const sessionTitle = session.title || 'Нова сесія';
 
     notificationService.createNotification({
       eventKey: `session_join_requests:${session.id}`,
       type: 'SESSION_JOIN_REQUESTS_UPDATED',
       severity: 'INFO',
       category: 'session',
-      title: `Запит на приєднання до сесії "${session.title || 'Нова сесія'}"`,
-      body: `${userName} хоче приєднатися як ${roleLabel}. Очікує підтвердження: ${pendingCount}`,
+      title: `До сесії "${sessionTitle}" подано нові заявки`,
+      body: `Очікує підтвердження: ${pendingCount}`,
       link: `/session/${session.id}`,
-      recipientIds: managers,
+      audience: ['session_managers'],
+      context: { sessionId: session.id },
       dedupeKey: `session:${session.id}:join_requests`,
-      dedupeWindowMs: 5 * 60 * 1000, // 5 minutes
+      dedupeWindowMs: 10 * 60 * 1000, // 10 minutes
       metadata: {
         sessionId: session.id,
         pendingCount,
         requesterId: participant.userId,
+        role: participant.role,
+      },
+    }).catch(() => {
+      // Silently fail
+    });
+  }
+
+  // Notify managers about auto-confirmed participant (PUBLIC sessions)
+  async function notifyManagersAboutConfirmedJoin(session, participant) {
+    if (!notificationService) return;
+
+    const userName = participant.user?.displayName || participant.user?.username || 'Новий учасник';
+    const roleLabel = participant.role === 'GM' ? 'гравець-майстер' : 'гравець';
+    const sessionTitle = session.title || 'Нова сесія';
+
+    notificationService.createNotification({
+      eventKey: `session_confirmed_join:${session.id}:${participant.userId}`,
+      type: 'SESSION_PARTICIPANT_JOINED',
+      severity: 'INFO',
+      category: 'session',
+      title: `До сесії "${sessionTitle}" приєднався новий учасник`,
+      body: `${userName} (${roleLabel}) приєднався до сесії.`,
+      link: `/session/${session.id}`,
+      audience: ['session_managers'],
+      context: { sessionId: session.id },
+      metadata: {
+        sessionId: session.id,
+        participantId: participant.id,
+        userId: participant.userId,
         role: participant.role,
       },
     }).catch(() => {
@@ -332,8 +386,8 @@ function createSessionParticipantsService({
       type: 'SESSION_PARTICIPATION_CONFIRMED',
       severity: 'SUCCESS',
       category: 'session',
-      title: 'Ви підтверджені на сесію',
-      body: `Вас додано до сесії "${session.title || 'Нова сесія'}"`,
+      title: 'Ви додані до сесії',
+      body: `Вас додано до сесії "${session.title || 'Нова сесія'}".`,
       link: `/session/${session.id}`,
       recipientIds: [participant.userId],
       metadata: {
@@ -383,11 +437,11 @@ function createSessionParticipantsService({
       });
 
       // MVP-19: Notify managers about new join request (if status is PENDING)
+      // For auto-confirmed: notify managers about new confirmed participant
       if (participant.status === 'PENDING') {
         notifyManagersAboutJoinRequest(session, participant);
-      } else {
-        // Auto-confirmed: notify user
-        notifyUserAboutConfirmation(participant, session);
+      } else if (participant.status === 'CONFIRMED') {
+        notifyManagersAboutConfirmedJoin(session, participant);
       }
 
       return participant;
@@ -461,6 +515,7 @@ function createSessionParticipantsService({
           participantId,
           AppError,
           ERROR_CODES,
+          notificationService,
         });
       }
 
@@ -480,7 +535,7 @@ function createSessionParticipantsService({
         throw new AppError(ERROR_CODES.SESSION_PARTICIPANTS_MANAGE_OWNER_OR_CONFIRMED_GM_ONLY);
       }
 
-      return updateParticipantStatusRecord({ prisma, participantId, status });
+      return updateParticipantStatusRecord({ prisma, participantId, status, notificationService });
     },
 
     async removeParticipant(sessionId, participantId, requesterId, options = {}) {

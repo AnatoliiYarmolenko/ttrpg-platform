@@ -97,7 +97,7 @@ function createLifecycleService(overrides = {}) {
         resolveSessionContext: mock.fn(async () => overrides.session || {
           id: 101,
           title: 'Test Session',
-          date: new Date('2026-05-08T10:00:00.000Z'),
+          date: new Date('2027-01-01T10:00:00.000Z'),
           duration: 180,
           status: 'PLANNED',
           ownerId: 1,
@@ -126,21 +126,23 @@ test('updateSession sends reschedule and conflict notifications on date changes'
   const { service, prisma, notificationService } = createLifecycleService();
 
   const result = await service.updateSession(101, 1, {
-    date: new Date('2026-05-12T10:00:00.000Z'),
+    date: new Date('2027-01-02T10:00:00.000Z'),
   });
 
   assert.equal(result.id, 101);
-  assert.equal(notificationService.createNotification.mock.callCount(), 3);
+  assert.equal(notificationService.createNotification.mock.callCount(), 2);
 
   const payloads = notificationService.createNotification.mock.calls.map((call) => call.arguments[0]);
   assert.deepStrictEqual(payloads.map((payload) => payload.type), [
     'SESSION_RESCHEDULED',
-    'SESSION_CONFLICT_REVIEW_REQUIRED',
-    'SESSION_OWNER_CONFLICT_SUMMARY',
+    'SESSION_TIME_CONFLICT',
   ]);
-  assert.equal(payloads[0].audience, 'session_confirmed_participants');
+  assert.deepStrictEqual(payloads[0].audience, [
+    'session_confirmed_participants',
+    'session_pending_participants',
+    'session_owner',
+  ]);
   assert.deepStrictEqual(payloads[1].recipientIds, [3]);
-  assert.equal(payloads[2].audience, 'session_managers');
 
   assert.equal(prisma.$transaction.mock.callCount(), 1);
 });

@@ -11,33 +11,38 @@ const INITIAL_RECONNECT_DELAY = 1000;
 const MAX_RECONNECT_DELAY = 30000;
 
 const CAMPAIGN_MEMBERSHIP_EVENTS = new Set([
+  'CAMPAIGN_PARTICIPATION_CONFIRMED',
+  'CAMPAIGN_PARTICIPATION_DECLINED',
+  'CAMPAIGN_MEMBER_REMOVED',
+  // Legacy aliases kept for backward compatibility with older payloads
   'CAMPAIGN_CONFIRMED',
   'CAMPAIGN_DECLINED',
   'CAMPAIGN_REMOVED',
-  // Legacy aliases kept for backward compatibility with older payloads
   'CAMPAIGN_JOINED',
   'JOIN_REQUEST_APPROVED',
 ]);
 
 const CAMPAIGN_JOIN_REQUEST_EVENTS = new Set([
+  'CAMPAIGN_JOIN_REQUESTS_UPDATED',
   'CAMPAIGN_JOIN_REQUESTS',
 ]);
 
 const SESSION_PARTICIPATION_EVENTS = new Set([
-  'SESSION_CONFIRMED',
-  'SESSION_CONFLICT_REVIEW',
+  'SESSION_PARTICIPATION_CONFIRMED',
+  'SESSION_PARTICIPATION_DECLINED',
+  'SESSION_PARTICIPANT_JOINED',
+  'SESSION_TIME_CONFLICT',
   'SESSION_CANCELLED',
   'SESSION_RESCHEDULED',
   // Legacy alias kept for backward compatibility with older payloads
+  'SESSION_CONFIRMED',
+  'SESSION_CONFLICT_REVIEW',
   'SESSION_PARTICIPANT_ADDED',
 ]);
 
 const SESSION_JOIN_REQUEST_EVENTS = new Set([
+  'SESSION_JOIN_REQUESTS_UPDATED',
   'SESSION_JOIN_REQUESTS',
-]);
-
-const SESSION_MANAGER_EVENTS = new Set([
-  'SESSION_OWNER_CONFLICT_SUMMARY',
 ]);
 
 export const normalizeEventCode = (notification) => {
@@ -55,11 +60,7 @@ const getNotificationSessionId = (notification) => {
     return metadataSessionId;
   }
 
-  const eventKey = typeof notification?.eventKey === 'string' ? notification.eventKey : '';
-  const parts = eventKey.split(':');
-  const parsedSessionId = Number(parts[2]);
-
-  return Number.isInteger(parsedSessionId) && parsedSessionId > 0 ? parsedSessionId : null;
+  return null;
 };
 
 const getNotificationCampaignId = (notification) => {
@@ -68,11 +69,7 @@ const getNotificationCampaignId = (notification) => {
     return metadataCampaignId;
   }
 
-  const eventKey = typeof notification?.eventKey === 'string' ? notification.eventKey : '';
-  const parts = eventKey.split(':');
-  const parsedCampaignId = Number(parts[1]);
-
-  return Number.isInteger(parsedCampaignId) && parsedCampaignId > 0 ? parsedCampaignId : null;
+  return null;
 };
 
 const invalidateQueriesByNotification = (notification) => {
@@ -94,7 +91,7 @@ const invalidateQueriesByNotification = (notification) => {
       queryClient.invalidateQueries({ queryKey: ['campaign-page'] });
     }
 
-    return;
+    
   }
 
   if (CAMPAIGN_JOIN_REQUEST_EVENTS.has(eventCode)) {
@@ -105,8 +102,6 @@ const invalidateQueriesByNotification = (notification) => {
     } else {
       queryClient.invalidateQueries({ queryKey: ['campaign-page'] });
     }
-
-    return;
   }
 
   if (SESSION_JOIN_REQUEST_EVENTS.has(eventCode)) {
@@ -118,25 +113,9 @@ const invalidateQueriesByNotification = (notification) => {
     } else {
       queryClient.invalidateQueries({ queryKey: ['session-page'] });
     }
-
-    return;
   }
 
   if (SESSION_PARTICIPATION_EVENTS.has(eventCode)) {
-    const sessionId = getNotificationSessionId(notification);
-
-    invalidateSessionCollectionQueries(queryClient);
-    queryClient.invalidateQueries({ queryKey: ['campaign-page'] });
-
-    if (sessionId) {
-      queryClient.invalidateQueries({ queryKey: ['session-page', sessionId] });
-      queryClient.invalidateQueries({ queryKey: ['session', sessionId] });
-    }
-
-    return;
-  }
-
-  if (SESSION_MANAGER_EVENTS.has(eventCode)) {
     const sessionId = getNotificationSessionId(notification);
 
     invalidateSessionCollectionQueries(queryClient);

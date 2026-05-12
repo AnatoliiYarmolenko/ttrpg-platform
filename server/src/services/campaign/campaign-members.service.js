@@ -40,18 +40,19 @@ function createCampaignMembersService({
     });
 
     const userName = user?.displayName || user?.username || 'Новий гравець';
+    const campaignTitle = campaign.title || 'Нова кампанія';
 
     notificationService.createNotification({
       eventKey: `campaign_join_requests:${campaign.id}`,
       type: 'CAMPAIGN_JOIN_REQUESTS_UPDATED',
       severity: 'INFO',
       category: 'campaign',
-      title: `Запит на приєднання до кампанії "${campaign.title || 'Нова кампанія'}"`,
-      body: `${userName} хоче приєднатися. Очікує підтвердження: ${pendingCount}`,
+      title: `До кампанії "${campaignTitle}" подано нові заявки`,
+      body: `Очікує підтвердження: ${pendingCount}`,
       link: `/campaign/${campaign.id}`,
       recipientIds: managers,
       dedupeKey: `campaign:${campaign.id}:join_requests`,
-      dedupeWindowMs: 5 * 60 * 1000, // 5 minutes
+      dedupeWindowMs: 10 * 60 * 1000, // 10 minutes
       metadata: {
         campaignId: campaign.id,
         pendingCount,
@@ -72,7 +73,7 @@ function createCampaignMembersService({
       severity: 'SUCCESS',
       category: 'campaign',
       title: 'Ви додані до кампанії',
-      body: `Вас додано до кампанії "${campaign.title || 'Нова кампанія'}"`,
+      body: `Вас додано до кампанії "${campaign.title || 'Нова кампанія'}".`,
       link: `/campaign/${campaign.id}`,
       recipientIds: [userId],
       metadata: {
@@ -93,7 +94,9 @@ function createCampaignMembersService({
       select: { id: true, title: true },
     });
 
-    if (!campaign) return;
+    // Campaign may be deleted or user lost access - use fallback link
+    const link = campaign ? `/campaign/${campaignId}` : '/';
+    const campaignTitle = campaign?.title || 'Нова кампанія';
 
     notificationService.createNotification({
       eventKey: `campaign_declined:${userId}:${campaignId}`,
@@ -101,8 +104,8 @@ function createCampaignMembersService({
       severity: 'ERROR',
       category: 'campaign',
       title: 'Заявку відхилено',
-      body: `Вашу заявку на кампанію "${campaign.title || 'Нова кампанія'}" відхилено`,
-      link: `/campaign/${campaignId}`,
+      body: `Вашу заявку на кампанію "${campaignTitle}" відхилено.`,
+      link,
       recipientIds: [userId],
       metadata: {
         campaignId,
@@ -122,7 +125,9 @@ function createCampaignMembersService({
       select: { id: true, title: true },
     });
 
-    if (!campaign) return;
+    // User was removed - they don't have access to campaign page anymore
+    const link = '/';
+    const campaignTitle = campaign?.title || 'Нова кампанія';
 
     notificationService.createNotification({
       eventKey: `campaign_removed:${userId}:${campaignId}`,
@@ -130,8 +135,8 @@ function createCampaignMembersService({
       severity: 'WARNING',
       category: 'campaign',
       title: 'Вас видалено з кампанії',
-      body: `Вас видалено з кампанії "${campaign.title || 'Нова кампанія'}"`,
-      link: `/campaign/${campaignId}`,
+      body: `Вас видалено з кампанії "${campaignTitle}".`,
+      link,
       recipientIds: [userId],
       metadata: {
         campaignId,

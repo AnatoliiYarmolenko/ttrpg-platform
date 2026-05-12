@@ -117,72 +117,74 @@
 
 ## Session notifications
 
-| Unified type | Source events | Отримувачі | Severity | Політика | Link | Статус |
-|---|---|---|---|---|---|---|
-| `SESSION_JOIN_REQUESTS_UPDATED` | `session.join-request.created`, `session.join-request.withdrawn` | `session_managers` | `INFO` | Агрегувати по `sessionId` вікном 10 хв; title без імен: “До цієї сесії подано нові заявки” | `/session/:id` | ✅ MVP |
-| `SESSION_PARTICIPATION_CONFIRMED` | `session.participant.confirmed`, `session.participant.auto-confirmed` | `target_user` | `SUCCESS` | Миттєво; не слати, якщо actor already sees same success and статус був `CONFIRMED` одразу | `/session/:id` | ✅ MVP |
-| `SESSION_PARTICIPATION_DECLINED` | `session.participant.declined` | `target_user` | `ERROR` | Миттєво; одна нотифікація на один state change | `/session/:id` або `/` | ❌ NOTIF-024 |
-| `SESSION_PARTICIPANT_LEFT` | `session.participant.left` | `session_managers` | `INFO` | Агрегувати по `sessionId` вікном 15 хв; без імен у title | `/session/:id` | 🔄 Future |
-| `SESSION_PARTICIPANT_REMOVED` | `session.participant.removed` | `target_user` | `WARNING` | Миттєво; важливо для користувача, бо він втрачає участь | `/session/:id` якщо доступ ще є, інакше `/` | 🔄 Future |
-| `SESSION_GM_REQUEST_PENDING` | `session.gm-request.created` | `session_owner` | `INFO` | Миттєво або агрегувати по `sessionId` 10 хв, якщо заявок кілька | `/session/:id` | 🔄 Future |
-| `SESSION_GM_CONFIRMED` | `session.gm.confirmed` | `target_user` | `SUCCESS` | Миттєво; також можна додатково показати `INFO` owner-у тільки якщо він не actor | `/session/:id` | 🔄 Future |
-| `SESSION_GM_REMOVED` | `session.gm.removed`, `session.gm.kicked` | `target_user` | `WARNING` | Миттєво; без дубля для owner, якщо owner сам це зробив | `/session/:id` або `/` | 🔄 Future |
-| `SESSION_UPDATED` | `session.updated.general` | `session_confirmed_participants`, `session_owner` | `INFO` | Collapse повторних update у 5 хв; не слати actor-у; використовувати generic title “Параметри сесії оновлено” | `/session/:id` | ❌ NOTIF-025 |
-| `SESSION_RESCHEDULED` | `session.rescheduled` | `session_confirmed_participants`, `session_pending_participants`, `session_owner` | `WARNING` | Collapse по `sessionId` у 10 хв; body містить старий і новий час | `/session/:id` | ✅ MVP |
-| `SESSION_CANCELLED` | `session.canceled`, `session.deleted` | `session_confirmed_participants`, `session_pending_participants`, `session_owner` | `ERROR` | Єдиний template для cancel/delete; actor-у не дублювати | `/session/:id` якщо ще доступна сторінка, інакше `/campaign/:campaignId` або `/` | ✅ MVP |
-| `SESSION_FINISHED` | `session.finished`, `session.auto-finished` | `session_confirmed_participants` | `INFO` | Опційно; за замовчуванням low-priority, без toast; **out of scope для Phase 1-3** | `/session/:id` | 🔄 Future |
-| `SESSION_CONFLICT_REVIEW_REQUIRED` | `session.rescheduled.conflict-detected`, `session.participation.reset-to-pending` | `target_user` | `WARNING` | Миттєво; одна нотифікація на користувача та сесію; пояснює, що потрібне повторне підтвердження | `/session/:id` | ✅ MVP |
-| `SESSION_OWNER_CONFLICT_SUMMARY` | `session.rescheduled.conflict-detected` | `session_managers` | `WARNING` | Одна summary-нотифікація на операцію; кількість конфліктних учасників у body; для campaign-session отримувач включає `campaign owner override` | `/session/:id` | ✅ MVP |
-| `SESSION_REMINDER` | `session.reminder.24h`, `session.reminder.1h`, `session.reminder.15m` | `session_confirmed_participants`, опційно `session_owner` | `INFO` для 24h, `WARNING` для 1h/15m | Дедуп по `sessionId + leadTime + userId`; не слати pending users | `/session/:id` | 🔄 Phase 4 |
-| `SESSION_AUTO_CANCEL_WARNING` | `session.warning.auto-cancel-soon`, `session.warning.no-confirmed-gm`, `session.warning.stale-planned` | `session_owner`, опційно `session_managers` | `WARNING` | Не частіше 1 разу на тип warning за 24 год; тільки якщо користувач може вплинути на ситуацію | `/session/:id` | 🔄 Phase 4 |
-| `SESSION_AUTO_CANCELLED` | `session.auto-canceled` | `session_confirmed_participants`, `session_pending_participants`, `session_owner` | `ERROR` | Миттєво; окремий template від ручного cancel лише якщо важлива причина | `/session/:id` якщо доступно, інакше `/` | 🔄 Future |
-| `SESSION_CAPACITY_REACHED` | `session.capacity.reached` | `session_owner` | `INFO` | Опційно; одна нотифікація при першому досягненні ліміту, без повторів | `/session/:id` | 🔄 Future |
-| `SESSION_CAPACITY_AVAILABLE_AGAIN` | `session.capacity.available-again` | `session_owner` | `INFO` | Опційно; слати тільки якщо до цього була подія `CAPACITY_REACHED` | `/session/:id` | 🔄 Future |
+| Unified type | Source events | Отримувачі | Severity | Політика | Link | Статус | Опис |
+|---|---|---|---|---|---|---|---|
+| `SESSION_JOIN_REQUESTS_UPDATED` | `session.join-request.created`, `session.join-request.withdrawn` | `session_managers` | `INFO` | Агрегувати по `sessionId` вікном 10 хв; title: "До сесії \"Назва\" подано нові заявки" | `/session/:id` | ✅ MVP | **Менеджерам сесії:** хтось хоче приєднатися до вашої сесії — потрібно підтвердити заявку |
+| `SESSION_PARTICIPANT_JOINED` | `session.participant.confirmed` (auto-confirm) | `session_managers` | `INFO` | Миттєво; title: "До сесії \"Назва\" приєднався новий учасник" | `/session/:id` | ✅ MVP | **Менеджерам сесії:** учасник автоматично приєднався до публічної сесії |
+| `SESSION_PARTICIPATION_CONFIRMED` | `session.participant.confirmed`, `session.participant.auto-confirmed` | `target_user` | `SUCCESS` | Миттєво; не слати, якщо actor already sees same success and статус був `CONFIRMED` одразу | `/session/:id` | ✅ MVP | **Учаснику:** вас підтвердили на сесію — ви можете брати участь |
+| `SESSION_PARTICIPATION_DECLINED` | `session.participant.declined` | `target_user` | `ERROR` | Миттєво; одна нотифікація на один state change | `/session/:id` або `/` | ❌ NOTIF-024 | **Учаснику:** вашу заявку на сесію відхилили — ви не можете брати участь |
+| `SESSION_PARTICIPANT_LEFT` | `session.participant.left` | `session_managers` | `INFO` | Агрегувати по `sessionId` вікном 15 хв; без імен у title | `/session/:id` | 🔄 Future | **Менеджерам:** хтось з учасників самовільно покинув сесію |
+| `SESSION_PARTICIPANT_REMOVED` | `session.participant.removed` | `target_user` | `WARNING` | Миттєво; важливо для користувача, бо він втрачає участь | `/session/:id` якщо доступ ще є, інакше `/` | 🔄 Future | **Учаснику:** вас видалили з сесії організатором — ви більше не берете участь |
+| `SESSION_GM_REQUEST_PENDING` | `session.gm-request.created` | `session_owner` | `INFO` | Миттєво або агрегувати по `sessionId` 10 хв, якщо заявок кілька | `/session/:id` | 🔄 Future | **Власнику сесії:** хтось хоче стати GM (ігровим майстром) — потрібно схвалити |
+| `SESSION_GM_CONFIRMED` | `session.gm.confirmed` | `target_user` | `SUCCESS` | Миттєво; також можна додатково показати `INFO` owner-у тільки якщо він не actor | `/session/:id` | 🔄 Future | **GM:** вас підтвердили як ігрового майстра сесії |
+| `SESSION_GM_REMOVED` | `session.gm.removed`, `session.gm.kicked` | `target_user` | `WARNING` | Миттєво; без дубля для owner, якщо owner сам це зробив | `/session/:id` або `/` | 🔄 Future | **GM:** вас зняли з ролі ігрового майстра сесії |
+| `SESSION_UPDATED` | `session.updated.general` | `session_confirmed_participants`, `session_owner` | `INFO` | Collapse повторних update у 5 хв; не слати actor-у; використовувати generic title "Параметри сесії оновлено" | `/session/:id` | ❌ NOTIF-025 | **Учасникам:** змінились параметри сесії (не час) — перевірте деталі |
+| `SESSION_RESCHEDULED` | `session.rescheduled` | `session_confirmed_participants`, `session_pending_participants`, `session_owner` | `WARNING` | Collapse по `sessionId` у 10 хв; body містить старий і новий час | `/session/:id` | ✅ MVP | **Учасникам:** сесію перенесли на інший час — перевірте новий розклад |
+| `SESSION_CANCELLED` | `session.canceled`, `session.deleted` | `session_confirmed_participants`, `session_pending_participants`, `session_owner` | `ERROR` | Єдиний template для cancel/delete; actor-у не дублювати | `/session/:id` якщо ще доступна сторінка, інакше `/campaign/:campaignId` або `/` | ✅ MVP | **Учасникам:** сесію скасовано — вона більше не відбудеться |
+| `SESSION_FINISHED` | `session.finished`, `session.auto-finished` | `session_confirmed_participants` | `INFO` | Опційно; за замовчуванням low-priority, без toast; **out of scope для Phase 1-3** | `/session/:id` | 🔄 Future | **Учасникам:** сесію завершено — подяка за участь або підведення підсумків |
+| `SESSION_TIME_CONFLICT` | `session.rescheduled.conflict-detected` | `target_user` (тільки конфліктні) | `WARNING` | Миттєво; короткий body: "Перенесено на [час]. У вас вже є сесія на цей час." | `/session/:id` | ✅ MVP | **Конфліктному учаснику:** сесію перенесли на ваш зайнятий час |
+| `~SESSION_CONFLICT_REVIEW_REQUIRED~` | ~`session.rescheduled.conflict-detected`~ | — | — | ~Deprecated: замінено на `SESSION_TIME_CONFLICT`~ | — | ❌ Removed | ~Скид в PENDING більше не виконується~ |
+| `~SESSION_OWNER_CONFLICT_SUMMARY~` | ~`session.rescheduled.conflict-detected`~ | — | — | ~Deprecated: менеджери більше не отримують цю нотифікацію~ | — | ❌ Removed | ~Користувачі самі вирішують чи лишатися~ |
+| `SESSION_REMINDER` | `session.reminder.24h`, `session.reminder.1h`, `session.reminder.15m` | `session_confirmed_participants`, опційно `session_owner` | `INFO` для 24h, `WARNING` для 1h/15m | Дедуп по `sessionId + leadTime + userId`; не слати pending users | `/session/:id` | 🔄 Phase 4 | **Учасникам:** нагадування — сесія скоро почнеться |
+| `SESSION_AUTO_CANCEL_WARNING` | `session.warning.auto-cancel-soon`, `session.warning.no-confirmed-gm`, `session.warning.stale-planned` | `session_owner`, опційно `session_managers` | `WARNING` | Не частіше 1 разу на тип warning за 24 год; тільки якщо користувач може вплинути на ситуацію | `/session/:id` | 🔄 Phase 4 | **Організаторам:** сесія може бути автоматично скасована — перевірте умови |
+| `SESSION_AUTO_CANCELLED` | `session.auto-canceled` | `session_confirmed_participants`, `session_pending_participants`, `session_owner` | `ERROR` | Миттєво; окремий template від ручного cancel лише якщо важлива причина | `/session/:id` якщо доступно, інакше `/` | 🔄 Future | **Учасникам:** сесію автоматично скасовано системою — деталі в описі |
+| `SESSION_CAPACITY_REACHED` | `session.capacity.reached` | `session_owner` | `INFO` | Опційно; одна нотифікація при першому досягненні ліміту, без повторів | `/session/:id` | 🔄 Future | **Організатору:** сесія заповнилась — досягнуто максимальну кількість учасників |
+| `SESSION_CAPACITY_AVAILABLE_AGAIN` | `session.capacity.available-again` | `session_owner` | `INFO` | Опційно; слати тільки якщо до цього була подія `CAPACITY_REACHED` | `/session/:id` | 🔄 Future | **Організатору:** з'явилось місце в сесії — хтось відмовився і тепер є слот |
 
 ---
 
 ## Campaign notifications
 
-| Unified type | Source events | Отримувачі | Severity | Політика | Link | Статус |
-|---|---|---|---|---|---|---|
-| `CAMPAIGN_INVITATION_PENDING` | `campaign.invitation.created` | `target_user` | `INFO` | Future-ready; окремий template лише якщо в продукті з'явиться справжній invite-flow. У поточному коді його функціональним MVP-еквівалентом є `CAMPAIGN_PARTICIPATION_CONFIRMED` через direct add | `/campaign/:id` | 🔄 Future |
-| `CAMPAIGN_JOIN_REQUESTS_UPDATED` | `campaign.join-request.created`, `campaign.join-request.withdrawn` | `campaign_managers` | `INFO` | Агрегувати по `campaignId` вікном 10 хв; title без імен | `/campaign/:id` | ✅ MVP |
-| `CAMPAIGN_PARTICIPATION_CONFIRMED` | `campaign.join-request.approved`, `campaign.member.added` | `target_user` | `SUCCESS` | Уніфікувати approval та direct add в одне повідомлення: “Вас додано до кампанії” | `/campaign/:id` | ✅ MVP |
-| `CAMPAIGN_PARTICIPATION_DECLINED` | `campaign.join-request.rejected` | `target_user` | `ERROR` | Миттєво; якщо кампанія більше недоступна, вести на `/` | `/campaign/:id` або `/` | ✅ MVP |
-| `CAMPAIGN_MEMBER_REMOVED` | `campaign.member.removed` | `target_user` | `WARNING` | Миттєво; actor-у не дублювати, якщо це self-leave | `/` | ✅ MVP |
-| `CAMPAIGN_MEMBER_LEFT` | `campaign.member.left` | `campaign_managers` | `INFO` | Агрегувати по `campaignId` вікном 15 хв | `/campaign/:id` | 🔄 Future |
-| `CAMPAIGN_ROLE_UPDATED` | `campaign.member.role.updated` | `target_user` | `INFO` | Миттєво; body містить нову роль | `/campaign/:id` | ❌ NOTIF-034 |
-| `CAMPAIGN_OWNERSHIP_TRANSFERRED` | `campaign.ownership.transferred` | `target_user` для нового власника, опційно попередній власник | `SUCCESS` для нового власника, `INFO` для попереднього | Не дублювати, якщо це було явно підтверджено в UI actor-ом; для нового власника лишити обов'язково | `/campaign/:id` | 🔄 Future |
-| `CAMPAIGN_STATUS_CHANGED` | `campaign.status.changed` | `campaign_members` | `INFO` або `WARNING` | Слати тільки на суттєві зміни, наприклад `ACTIVE -> FINISHED`; без спаму на дрібні edit-и | `/campaign/:id` | 🔄 Future |
-| `CAMPAIGN_SESSION_PUBLISHED` | `campaign.session.created` | `campaign_members` | `INFO` | Опційно; краще як low-priority event, не слати якщо є окремий widget/list update | `/session/:id` | 🔄 Future |
-| `CAMPAIGN_SESSION_UPDATED` | `campaign.session.updated`, `campaign.session.rescheduled` | `campaign_members`, яких стосується сесія | `INFO` або `WARNING` | Краще покладатися на session-level templates; campaign-level дубль не робити за замовчуванням | `/session/:id` | 🔄 Future |
-| `CAMPAIGN_SESSION_CANCELLED` | `campaign.session.canceled` | `campaign_members`, яких стосується сесія | `ERROR` | Також краще не дублювати зверху campaign-level, якщо вже є `SESSION_CANCELLED` | `/session/:id` або `/campaign/:id` | 🔄 Future |
+| Unified type | Source events | Отримувачі | Severity | Політика | Link | Статус | Опис |
+|---|---|---|---|---|---|---|---|
+| `CAMPAIGN_INVITATION_PENDING` | `campaign.invitation.created` | `target_user` | `INFO` | Future-ready; окремий template лише якщо в продукті з'явиться справжній invite-flow. У поточному коді його функціональним MVP-еквівалентом є `CAMPAIGN_PARTICIPATION_CONFIRMED` через direct add | `/campaign/:id` | 🔄 Future | **Запрошеному:** вас запросили приєднатися до кампанії — прийміть або відхиліть запрошення |
+| `CAMPAIGN_JOIN_REQUESTS_UPDATED` | `campaign.join-request.created`, `campaign.join-request.withdrawn` | `campaign_managers` | `INFO` | Агрегувати по `campaignId` вікном 10 хв; title: "До кампанії \"Назва\" подано нові заявки" | `/campaign/:id` | ✅ MVP | **Менеджерам кампанії:** хтось хоче приєднатися до кампанії — потрібно схвалити заявку |
+| `CAMPAIGN_PARTICIPATION_CONFIRMED` | `campaign.join-request.approved`, `campaign.member.added` | `target_user` | `SUCCESS` | Уніфікувати approval та direct add в одне повідомлення: "Вас додано до кампанії" | `/campaign/:id` | ✅ MVP | **Учаснику:** вас додано до кампанії — ви тепер частина групи |
+| `CAMPAIGN_PARTICIPATION_DECLINED` | `campaign.join-request.rejected` | `target_user` | `ERROR` | Миттєво; якщо кампанія більше недоступна, вести на `/` | `/campaign/:id` або `/` | ✅ MVP | **Учаснику:** вашу заявку на кампанію відхилили — ви не можете приєднатися |
+| `CAMPAIGN_MEMBER_REMOVED` | `campaign.member.removed` | `target_user` | `WARNING` | Миттєво; actor-у не дублювати, якщо це self-leave | `/` | ✅ MVP | **Учаснику:** вас видалили з кампанії організатором — ви більше не маєте доступу |
+| `CAMPAIGN_MEMBER_LEFT` | `campaign.member.left` | `campaign_managers` | `INFO` | Агрегувати по `campaignId` вікном 15 хв | `/campaign/:id` | 🔄 Future | **Менеджерам:** учасник самовільно покинув кампанію |
+| `CAMPAIGN_ROLE_UPDATED` | `campaign.member.role.updated` | `target_user` | `INFO` | Миттєво; body містить нову роль | `/campaign/:id` | ❌ NOTIF-034 | **Учаснику:** вашу роль в кампанії змінено — перевірте нові права |
+| `CAMPAIGN_OWNERSHIP_TRANSFERRED` | `campaign.ownership.transferred` | `target_user` для нового власника, опційно попередній власник | `SUCCESS` для нового власника, `INFO` для попереднього | Не дублювати, якщо це було явно підтверджено в UI actor-ом; для нового власника лишити обов'язково | `/campaign/:id` | 🔄 Future | **Новому власнику:** вам передали право власності на кампанію — ви тепер головний організатор |
+| `CAMPAIGN_STATUS_CHANGED` | `campaign.status.changed` | `campaign_members` | `INFO` або `WARNING` | Слати тільки на суттєві зміни, наприклад `ACTIVE -> FINISHED`; без спаму на дрібні edit-и | `/campaign/:id` | 🔄 Future | **Учасникам:** статус кампанії змінився — наприклад, кампанію завершено |
+| `CAMPAIGN_SESSION_PUBLISHED` | `campaign.session.created` | `campaign_members` | `INFO` | Опційно; краще як low-priority event, не слати якщо є окремий widget/list update | `/session/:id` | 🔄 Future | **Учасникам:** в кампанії створено нову сесію — можете приєднатися |
+| `CAMPAIGN_SESSION_UPDATED` | `campaign.session.updated`, `campaign.session.rescheduled` | `campaign_members`, яких стосується сесія | `INFO` або `WARNING` | Краще покладатися на session-level templates; campaign-level дубль не робити за замовчуванням | `/session/:id` | 🔄 Future | **Учасникам:** змінилась сесія в кампанії — перевірте деталі |
+| `CAMPAIGN_SESSION_CANCELLED` | `campaign.session.canceled` | `campaign_members`, яких стосується сесія | `ERROR` | Також краще не дублювати зверху campaign-level, якщо вже є `SESSION_CANCELLED` | `/session/:id` або `/campaign/:id` | 🔄 Future | **Учасникам:** сесію в кампанії скасовано — вона не відбудеться |
 
 ---
 
 ## Security та account notifications
 
-| Unified type | Source events | Отримувачі | Severity | Політика | Link | Статус |
-|---|---|---|---|---|---|---|
-| `SECURITY_PASSWORD_CHANGED` | `security.password.changed` | `target_user` | `SECURITY` | Миттєво; важлива подія; body може містити факт інвалідації сесій | `/?tab=profile&section=security` | 🔄 Phase 4 |
-| `SECURITY_SESSIONS_REVOKED` | `security.sessions.revoked` | `target_user` | `SECURITY` | Не окремий template, якщо вже є `SECURITY_PASSWORD_CHANGED`; краще metadata у тому ж повідомленні | `/?tab=profile&section=security` | 🔄 Phase 4 |
-| `SECURITY_EMAIL_CHANGE_REQUESTED` | `security.email-change.requested` | `target_user` | `SECURITY` | Опційно; за замовчуванням не слати окремо в in-app, бо основний канал тут email | `/?tab=profile&section=security` | 🔄 Future |
-| `SECURITY_EMAIL_CHANGED` | `security.email.changed` | `target_user` | `SECURITY` | Миттєво; окреме підтвердження після успішної зміни | `/?tab=profile&section=security` | 🔄 Phase 4 |
-| `SECURITY_NEW_DEVICE_LOGIN` | `security.new-device-login` | `target_user` | `SECURITY` | Future-ready; слати тільки при надійній device-detection стратегії | `/?tab=profile&section=security` | 🔄 Future |
-| `SECURITY_SUSPICIOUS_ACTIVITY` | `security.suspicious-activity` | `target_user` | `CRITICAL` | Future-ready; тільки для справді підозрілих кейсів, не для кожного rate-limit hit | `/?tab=profile&section=security` | 🔄 Future |
-| `AUTH_EMAIL_VERIFIED` | `auth.email.verified` | `target_user` | `SUCCESS` | Опційно; одна коротка success-нотифікація після підтвердження email | `/` | 🔄 Future |
+| Unified type | Source events | Отримувачі | Severity | Політика | Link | Статус | Опис |
+|---|---|---|---|---|---|---|---|
+| `SECURITY_PASSWORD_CHANGED` | `security.password.changed` | `target_user` | `SECURITY` | Миттєво; важлива подія; body може містити факт інвалідації сесій | `/?tab=profile&section=security` | 🔄 Phase 4 | **Користувачеві:** пароль змінено — перевірте, що це зробили ви, а не хтось інший |
+| `SECURITY_SESSIONS_REVOKED` | `security.sessions.revoked` | `target_user` | `SECURITY` | Не окремий template, якщо вже є `SECURITY_PASSWORD_CHANGED`; краще metadata у тому ж повідомленні | `/?tab=profile&section=security` | 🔄 Phase 4 | **Користувачеві:** сесії в інших браузерах/пристроях завершено — частина зміни пароля |
+| `SECURITY_EMAIL_CHANGE_REQUESTED` | `security.email-change.requested` | `target_user` | `SECURITY` | Опційно; за замовчуванням не слати окремо в in-app, бо основний канал тут email | `/?tab=profile&section=security` | 🔄 Future | **Користувачеві:** запитано зміну email — підтвердіть через email-лист |
+| `SECURITY_EMAIL_CHANGED` | `security.email.changed` | `target_user` | `SECURITY` | Миттєво; окреме підтвердження після успішної зміни | `/?tab=profile&section=security` | 🔄 Phase 4 | **Користувачеві:** email успішно змінено — перевірте, що це зробили ви |
+| `SECURITY_NEW_DEVICE_LOGIN` | `security.new-device-login` | `target_user` | `SECURITY` | Future-ready; слати тільки при надійній device-detection стратегії | `/?tab=profile&section=security` | 🔄 Future | **Користувачеві:** вхід з нового пристрою — якщо це не ви, змініть пароль |
+| `SECURITY_SUSPICIOUS_ACTIVITY` | `security.suspicious-activity` | `target_user` | `CRITICAL` | Future-ready; тільки для справді підозрілих кейсів, не для кожного rate-limit hit | `/?tab=profile&section=security` | 🔄 Future | **Користувачеві:** виявлено підозрілу активність — негайно перевірте безпеку акаунта |
+| `AUTH_EMAIL_VERIFIED` | `auth.email.verified` | `target_user` | `SUCCESS` | Опційно; одна коротка success-нотифікація після підтвердження email | `/` | 🔄 Future | **Користувачеві:** email підтверджено — ваш акаунт тепер повністю активний |
 
 ---
 
 ## System та admin notifications
 
-| Unified type | Source events | Отримувачі | Severity | Політика | Link | Статус |
-|---|---|---|---|---|---|---|
-| `SYSTEM_MAINTENANCE_SCHEDULED` | `system.maintenance.scheduled` | `all_users` | `WARNING` | Broadcast; бажано з `expiresAt`; не більше 1 активної нотифікації на вікно робіт | `/` | 🔄 Future |
-| `SYSTEM_MAINTENANCE_STARTED` | `system.maintenance.started` | `all_users` | `WARNING` | Broadcast only if maintenance affects sessions/actions right now | `/` | 🔄 Future |
-| `ADMIN_SESSION_REMOVED` | `admin.session.deleted` | користувачі, пов'язані із сесією | `ERROR` | Миттєво; чітко пояснює, що подію прибрано модератором | `/` | 🔄 Future |
-| `ADMIN_CAMPAIGN_REMOVED` | `admin.campaign.deleted` | власник кампанії та її учасники | `ERROR` | Миттєво; link на `/`, бо campaign page більше не існує | `/` | 🔄 Future |
-| `ADMIN_ACCOUNT_NOTICE` | `admin.user.warning`, `admin.user.restriction` | `target_user` | `WARNING` або `CRITICAL` | Future-ready; окремий канал для moderation notices | `/` | 🔄 Future |
+| Unified type | Source events | Отримувачі | Severity | Політика | Link | Статус | Опис |
+|---|---|---|---|---|---|---|---|
+| `SYSTEM_MAINTENANCE_SCHEDULED` | `system.maintenance.scheduled` | `all_users` | `WARNING` | Broadcast; бажано з `expiresAt`; не більше 1 активної нотифікації на вікно робіт | `/` | 🔄 Future | **Всім:** заплановано технічні роботи — сервіс може бути тимчасово недоступний |
+| `SYSTEM_MAINTENANCE_STARTED` | `system.maintenance.started` | `all_users` | `WARNING` | Broadcast only if maintenance affects sessions/actions right now | `/` | 🔄 Future | **Всім:** технічні роботи розпочато — деякі функції тимчасово недоступні |
+| `ADMIN_SESSION_REMOVED` | `admin.session.deleted` | користувачі, пов'язані із сесією | `ERROR` | Миттєво; чітко пояснює, що подію прибрано модератором | `/` | 🔄 Future | **Учасникам:** сесію видалено адміністратором — вона порушувала правила платформи |
+| `ADMIN_CAMPAIGN_REMOVED` | `admin.campaign.deleted` | власник кампанії та її учасники | `ERROR` | Миттєво; link на `/`, бо campaign page більше не існує | `/` | 🔄 Future | **Учасникам:** кампанію видалено адміністратором — вона порушувала правила платформи |
+| `ADMIN_ACCOUNT_NOTICE` | `admin.user.warning`, `admin.user.restriction` | `target_user` | `WARNING` або `CRITICAL` | Future-ready; окремий канал для moderation notices | `/` | 🔄 Future | **Користувачеві:** попередження від адміністрації — перевірте деталі та дотримуйтесь правил |
 
 ---
 
@@ -210,13 +212,13 @@
 ### Phase 3
 
 - `SESSION_JOIN_REQUESTS_UPDATED`
+- `SESSION_PARTICIPANT_JOINED`
 - `SESSION_PARTICIPATION_CONFIRMED`
 - `SESSION_PARTICIPATION_DECLINED`
 - `SESSION_UPDATED`
 - `SESSION_RESCHEDULED`
+- `SESSION_TIME_CONFLICT` (замінено `SESSION_CONFLICT_REVIEW_REQUIRED` + `SESSION_OWNER_CONFLICT_SUMMARY`)
 - `SESSION_CANCELLED`
-- `SESSION_CONFLICT_REVIEW_REQUIRED`
-- `SESSION_OWNER_CONFLICT_SUMMARY`
 - `CAMPAIGN_JOIN_REQUESTS_UPDATED`
 - `CAMPAIGN_PARTICIPATION_CONFIRMED`
 - `CAMPAIGN_PARTICIPATION_DECLINED`
