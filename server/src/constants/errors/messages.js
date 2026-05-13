@@ -81,6 +81,8 @@ const ERROR_MESSAGES = {
   [ERROR_CODES.CAMPAIGN_SHARE_LINK_UNAVAILABLE]: 'Посилання доступу наразі недоступне',
   [ERROR_CODES.JOIN_REQUEST_NOT_FOUND]: 'Заявку не знайдено',
   [ERROR_CODES.NOTIFICATION_NOT_FOUND]: 'Сповіщення не знайдено',
+  [ERROR_CODES.CHAT_NOT_FOUND]: 'Чат не знайдено',
+  [ERROR_CODES.CHAT_READONLY]: 'Чат доступний лише для читання',
 
   [ERROR_CODES.FILE_INVALID_FORMAT]: 'Недопустимий формат файлу',
   [ERROR_CODES.FILE_TOO_LARGE]: 'Файл занадто великий',

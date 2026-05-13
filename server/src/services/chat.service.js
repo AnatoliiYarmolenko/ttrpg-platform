@@ -89,7 +89,7 @@ class ChatService {
     }
 
     if (!canWriteChat(context)) {
-      throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Чат доступний лише для читання');
+      throw new AppError(ERROR_CODES.CHAT_READONLY);
     }
   }
 
@@ -126,7 +126,7 @@ class ChatService {
     }
 
     if (!campaign.chat) {
-      throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Чат не знайдений');
+      throw new AppError(ERROR_CODES.CHAT_NOT_FOUND);
     }
 
     return {
@@ -159,7 +159,7 @@ class ChatService {
     }
 
     if (!session.chat) {
-      throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Чат не знайдений');
+      throw new AppError(ERROR_CODES.CHAT_NOT_FOUND);
     }
 
     return {
@@ -204,7 +204,7 @@ class ChatService {
     });
 
     if (!chat) {
-      throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Чат не знайдений');
+      throw new AppError(ERROR_CODES.CHAT_NOT_FOUND);
     }
 
     return chat;
