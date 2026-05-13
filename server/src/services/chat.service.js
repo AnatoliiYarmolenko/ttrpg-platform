@@ -240,6 +240,20 @@ class ChatService {
     };
   }
 
+  async getChatJoinState(chatId, userId) {
+    const chat = await this._getChatById(chatId);
+    const context = buildChatAccessContext({ chat, userId });
+    const capabilities = getChatCapabilities(context);
+
+    this._requireCanRead(context);
+
+    return {
+      chatId: chat.id,
+      readonly: Boolean(context.readonly),
+      capabilities,
+    };
+  }
+
   async getRecentMessages(chatId, userId, options = {}) {
     const chat = await this._getChatById(chatId);
     const context = buildChatAccessContext({ chat, userId });

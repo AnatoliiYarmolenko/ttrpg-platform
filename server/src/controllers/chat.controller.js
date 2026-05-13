@@ -40,7 +40,7 @@ class ChatController {
       const { limit } = req.query;
 
       const result = await chatService.getRecentMessages(chatId, userId, {
-        limit,
+        limit: limit ? Number.parseInt(limit, 10) : undefined,
       });
 
       res.json({
