@@ -15,6 +15,16 @@ export const getChatMessages = async (chatId, params = {}) => {
   return response.data;
 };
 
+export const getChatMessagesAfter = async (chatId, after, params = {}) => {
+  const response = await api.get(`/chats/${chatId}/messages`, {
+    params: {
+      ...params,
+      after,
+    },
+  });
+  return response.data;
+};
+
 export const sendChatMessage = async (chatId, payload) => {
   const response = await api.post(`/chats/${chatId}/messages`, payload);
   return response.data;

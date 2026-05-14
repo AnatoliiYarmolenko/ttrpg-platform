@@ -38,6 +38,29 @@ function buildCursor(message) {
   return `${message.createdAt.toISOString()}:${message.id}`;
 }
 
+function parseCursor(cursor) {
+  if (typeof cursor !== 'string' || !cursor.trim()) {
+    throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'cursor повинен бути непорожнім рядком');
+  }
+
+  const separatorIndex = cursor.lastIndexOf(':');
+  if (separatorIndex <= 0 || separatorIndex === cursor.length - 1) {
+    throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Невірний формат cursor');
+  }
+
+  const timestampPart = cursor.slice(0, separatorIndex);
+  const idPart = cursor.slice(separatorIndex + 1);
+  const createdAt = new Date(timestampPart);
+
+  if (Number.isNaN(createdAt.getTime())) {
+    throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Невірний формат cursor');
+  }
+
+  const id = parsePositiveInt(idPart, 'cursor id');
+
+  return { createdAt, id };
+}
+
 function mapChatMessage(message) {
   if (!message) {
     return null;
@@ -247,10 +270,13 @@ class ChatService {
 
     this._requireCanRead(context);
 
+    const snapshotCursor = await this._getLatestCursor(chat.id);
+
     return {
       chatId: chat.id,
       readonly: Boolean(context.readonly),
       capabilities,
+      snapshotCursor,
     };
   }
 
@@ -283,6 +309,53 @@ class ChatService {
 
     return {
       messages: rawMessages.reverse().map(mapChatMessage),
+      limit,
+      total,
+    };
+  }
+
+  async getMessagesAfter(chatId, userId, options = {}) {
+    const chat = await this._getChatById(chatId);
+    const context = buildChatAccessContext({ chat, userId });
+
+    this._requireCanRead(context);
+
+    const { createdAt, id } = parseCursor(options.after);
+    const requestedLimit = Number.isInteger(options.limit) ? options.limit : DEFAULT_MESSAGES_LIMIT;
+    const limit = Math.min(Math.max(requestedLimit, 1), MAX_MESSAGES_LIMIT);
+
+    const rawMessages = await prisma.chatMessage.findMany({
+      where: {
+        chatId: chat.id,
+        OR: [
+          { createdAt: { gt: createdAt } },
+          { createdAt, id: { gt: id } },
+        ],
+      },
+      include: {
+        author: {
+          select: CHAT_MESSAGE_AUTHOR_SELECT,
+        },
+      },
+      orderBy: [
+        { createdAt: 'asc' },
+        { id: 'asc' },
+      ],
+      take: limit,
+    });
+
+    const total = await prisma.chatMessage.count({
+      where: {
+        chatId: chat.id,
+        OR: [
+          { createdAt: { gt: createdAt } },
+          { createdAt, id: { gt: id } },
+        ],
+      },
+    });
+
+    return {
+      messages: rawMessages.map(mapChatMessage),
       limit,
       total,
     };

@@ -95,6 +95,7 @@ function createChatHandler({ roomManager, logger } = {}) {
             chatId,
             readonly: joinState.readonly,
             capabilities: joinState.capabilities,
+            snapshotCursor: joinState.snapshotCursor || null,
           });
           return;
         }

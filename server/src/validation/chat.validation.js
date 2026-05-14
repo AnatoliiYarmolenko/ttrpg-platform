@@ -28,6 +28,10 @@ const messagesQuerySchema = Joi.object({
     'number.min': 'limit повинен бути позитивним числом',
     'number.max': 'limit не повинен перевищувати 100',
   }),
+  after: Joi.string().trim().optional().messages({
+    'string.base': 'after повинен бути рядком',
+    'string.empty': 'after не може бути порожнім',
+  }),
 });
 
 const sendMessageBodySchema = Joi.object({
