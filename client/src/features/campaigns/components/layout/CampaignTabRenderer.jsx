@@ -16,8 +16,10 @@ const COMMUNICATION_TAB_OPTIONS = [
   { key: CAMPAIGN_COMMUNICATION_MODES.CHAT, label: 'Чат' },
   { key: CAMPAIGN_COMMUNICATION_MODES.MEMBERS, label: 'Учасники' },
 ];
-
+// eslint-disable-next-line no-unused-vars
 function CommunicationModeSwitch({ activeMode, onChange }) {
+  return null;
+  /*
   return (
     <fieldset className="max-w-full overflow-x-auto" aria-label="Режим комунікації">
       <legend className="sr-only">Режим комунікації</legend>
@@ -34,6 +36,7 @@ function CommunicationModeSwitch({ activeMode, onChange }) {
       </div>
     </fieldset>
   );
+  */
 }
 
 export default function CampaignTabRenderer({

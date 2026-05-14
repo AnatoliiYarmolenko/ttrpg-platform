@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import useChatStore from '@/stores/useChatStore';
 import useAuthStore, { selectUser } from '@/stores/useAuthStore';
+import { getChatMessagesAfter } from '../api/chatApi';
 import {
   DEFAULT_CHAT_MESSAGES_LIMIT,
   chatMessagesQueryKeys,
+  getLatestCursorFromMessages,
 } from './useChatMessages';
 
 const MAX_RECONNECT_ATTEMPTS = 8;
@@ -41,6 +43,18 @@ const normalizeAuthor = (user) => {
   };
 };
 
+const isFatalChatErrorCode = (code) => {
+  if (typeof code !== 'string') {
+    return false;
+  }
+
+  if (code.startsWith('AUTH_') || code.startsWith('SECURITY_') || code.startsWith('ADMIN_')) {
+    return true;
+  }
+
+  return code === 'CHAT_NOT_FOUND';
+};
+
 const mergeMessageList = (messages, incoming) => {
   if (!Array.isArray(messages)) {
     return [incoming];
@@ -65,6 +79,10 @@ export default function useChatConnection(chatId, options = {}) {
   const reconnectTimeoutRef = useRef(null);
   const reconnectAttemptsRef = useRef(0);
   const manualCloseRef = useRef(false);
+  const fatalCloseRef = useRef(false);
+  const lastFatalErrorRef = useRef(null);
+  const lastCursorRef = useRef(null);
+  const catchUpInProgressRef = useRef(false);
   const connectRef = useRef(null);
 
   const user = useAuthStore(selectUser);
@@ -72,6 +90,7 @@ export default function useChatConnection(chatId, options = {}) {
     connectionState,
     setConnectionState,
     setReadonly,
+    reset: resetChatStore,
   } = useChatStore();
   const [capabilities, setCapabilities] = useState(null);
 
@@ -81,6 +100,10 @@ export default function useChatConnection(chatId, options = {}) {
     queryClient.setQueryData(queryKey, (old) => {
       const base = old || { messages: [], limit, total: 0 };
       const messages = updater(base.messages || []);
+      const latestCursor = getLatestCursorFromMessages(messages);
+      if (latestCursor) {
+        lastCursorRef.current = latestCursor;
+      }
       return {
         ...base,
         messages,
@@ -123,6 +146,88 @@ export default function useChatConnection(chatId, options = {}) {
     updateMessages((messages) => mergeMessageList(messages, optimisticMessage));
   }, [chatId, user, updateMessages]);
 
+  const mergeMessages = useCallback((messages, incomingMessages) => {
+    if (!Array.isArray(incomingMessages) || incomingMessages.length === 0) {
+      return messages;
+    }
+
+    const existingIds = new Set((messages || []).map((message) => message.id));
+    const merged = Array.isArray(messages) ? [...messages] : [];
+
+    incomingMessages.forEach((message) => {
+      if (!existingIds.has(message.id)) {
+        merged.push(message);
+      }
+    });
+
+    return merged;
+  }, []);
+
+  const catchUpMessages = useCallback(async (afterCursor) => {
+    if (!afterCursor || catchUpInProgressRef.current) {
+      return;
+    }
+
+    catchUpInProgressRef.current = true;
+
+    try {
+      const res = await getChatMessagesAfter(chatId, afterCursor, { limit });
+      if (res?.success && Array.isArray(res.data?.messages)) {
+        updateMessages((messages) => mergeMessages(messages, res.data.messages));
+      }
+    } catch (error) {
+      console.warn('[Chat] Failed to catch up messages:', error);
+    } finally {
+      catchUpInProgressRef.current = false;
+    }
+  }, [chatId, limit, mergeMessages, updateMessages]);
+
+  const handleChatJoined = useCallback((data) => {
+    setReadonly(Boolean(data.readonly));
+    setCapabilities(data.capabilities || null);
+    setConnectionState('connected');
+    reconnectAttemptsRef.current = 0;
+    fatalCloseRef.current = false;
+    lastFatalErrorRef.current = null;
+
+    const localCursor = lastCursorRef.current;
+    const snapshotCursor = data.snapshotCursor || null;
+    if (localCursor && snapshotCursor && localCursor !== snapshotCursor) {
+      catchUpMessages(localCursor);
+    } else if (!localCursor && snapshotCursor) {
+      lastCursorRef.current = snapshotCursor;
+    }
+  }, [catchUpMessages, setConnectionState, setReadonly]);
+
+  const handleChatMessage = useCallback((data) => {
+    if (data.clientMessageId) {
+      replaceOptimisticMessage(data.clientMessageId, data.message);
+    } else {
+      updateMessages((messages) => mergeMessageList(messages, data.message));
+    }
+  }, [replaceOptimisticMessage, updateMessages]);
+
+  const handleChatError = useCallback((data) => {
+    if (data.clientMessageId) {
+      markOptimisticFailed(data.clientMessageId);
+    }
+
+    if (!isFatalChatErrorCode(data.code)) {
+      return;
+    }
+
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+
+    fatalCloseRef.current = true;
+    lastFatalErrorRef.current = data.message || 'Помилка доступу до чату';
+    manualCloseRef.current = true;
+    setConnectionState('error', lastFatalErrorRef.current);
+    socketRef.current?.close();
+  }, [markOptimisticFailed, setConnectionState]);
+
   const handleIncomingMessage = useCallback((event) => {
     let data;
 
@@ -138,28 +243,19 @@ export default function useChatConnection(chatId, options = {}) {
     }
 
     if (data.type === 'chat:joined') {
-      setReadonly(Boolean(data.readonly));
-      setCapabilities(data.capabilities || null);
-      setConnectionState('connected');
-      reconnectAttemptsRef.current = 0;
+      handleChatJoined(data);
       return;
     }
 
     if (data.type === 'chat:message:new' && data.message) {
-      if (data.clientMessageId) {
-        replaceOptimisticMessage(data.clientMessageId, data.message);
-      } else {
-        updateMessages((messages) => mergeMessageList(messages, data.message));
-      }
+      handleChatMessage(data);
       return;
     }
 
     if (data.type === 'chat:error') {
-      if (data.clientMessageId) {
-        markOptimisticFailed(data.clientMessageId);
-      }
+      handleChatError(data);
     }
-  }, [markOptimisticFailed, replaceOptimisticMessage, setConnectionState, setReadonly, updateMessages]);
+  }, [handleChatError, handleChatJoined, handleChatMessage]);
 
   const sendEvent = useCallback((type, payload) => {
     if (socketRef.current?.readyState !== WebSocket.OPEN) {
@@ -201,7 +297,7 @@ export default function useChatConnection(chatId, options = {}) {
 
     sendEvent('chat:join', {
       chatId,
-      lastKnownCursor: lastKnownCursor || undefined,
+      lastKnownCursor: lastCursorRef.current || lastKnownCursor || undefined,
     });
   }, [chatId, lastKnownCursor, sendEvent]);
 
@@ -227,16 +323,25 @@ export default function useChatConnection(chatId, options = {}) {
       reconnectTimeoutRef.current = null;
     }
 
+    fatalCloseRef.current = false;
+    lastFatalErrorRef.current = null;
+
     setConnectionState('disconnected');
   }, [leaveChat, setConnectionState]);
 
-  const connect = useCallback(() => {
+  const connect = useCallback((isReconnect = false) => {
     if (!enabled || socketRef.current || !isValidId(chatId)) {
       return;
     }
 
     manualCloseRef.current = false;
-    setConnectionState('connecting');
+    fatalCloseRef.current = false;
+    lastFatalErrorRef.current = null;
+    if (isReconnect) {
+      setConnectionState('reconnecting');
+    } else {
+      setConnectionState('connecting');
+    }
 
     const ws = new WebSocket(resolveWsUrl());
     socketRef.current = ws;
@@ -247,37 +352,59 @@ export default function useChatConnection(chatId, options = {}) {
 
     ws.onmessage = handleIncomingMessage;
 
-    ws.onerror = () => {
-      setConnectionState('error', 'Connection error');
+    ws.onerror = (event) => {
+      console.warn('[Chat] WS error event', event);
     };
 
     ws.onclose = () => {
       socketRef.current = null;
 
+      if (fatalCloseRef.current) {
+        setConnectionState('error', lastFatalErrorRef.current || 'Помилка доступу до чату');
+        return;
+      }
+
       if (manualCloseRef.current) {
         setConnectionState('disconnected');
-      } else {
-        setConnectionState('error', 'Connection closed');
-
-        if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
-          const attempt = reconnectAttemptsRef.current + 1;
-          reconnectAttemptsRef.current = attempt;
-          const delay = Math.min(
-            INITIAL_RECONNECT_DELAY * Math.pow(2, attempt - 1),
-            MAX_RECONNECT_DELAY
-          );
-
-          reconnectTimeoutRef.current = setTimeout(() => {
-            connectRef.current?.();
-          }, delay);
-        }
+        return;
       }
+
+      if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+        const attempt = reconnectAttemptsRef.current + 1;
+        reconnectAttemptsRef.current = attempt;
+        const delay = Math.min(
+          INITIAL_RECONNECT_DELAY * Math.pow(2, attempt - 1),
+          MAX_RECONNECT_DELAY
+        );
+
+        setConnectionState('reconnecting');
+        reconnectTimeoutRef.current = setTimeout(() => {
+          connectRef.current?.(true);
+        }, delay);
+        return;
+      }
+
+      setConnectionState('error', 'Не вдалося перепідключитись');
     };
   }, [chatId, enabled, handleIncomingMessage, joinChat, setConnectionState]);
 
   useEffect(() => {
     connectRef.current = connect;
   }, [connect]);
+
+  useEffect(() => {
+    if (lastKnownCursor) {
+      lastCursorRef.current = lastKnownCursor;
+    }
+  }, [lastKnownCursor]);
+
+  // Reset store state when chatId changes or on unmount to prevent
+  // stale readonly / connectionState from leaking into the next chat.
+  useEffect(() => {
+    return () => {
+      resetChatStore();
+    };
+  }, [chatId, resetChatStore]);
 
   useEffect(() => {
     if (enabled && isValidId(chatId)) {
@@ -293,7 +420,7 @@ export default function useChatConnection(chatId, options = {}) {
     connectionState,
     capabilities,
     isConnected: connectionState === 'connected',
-    isConnecting: connectionState === 'connecting',
+    isConnecting: connectionState === 'connecting' || connectionState === 'reconnecting',
     hasError: connectionState === 'error',
     sendMessage,
     connect,

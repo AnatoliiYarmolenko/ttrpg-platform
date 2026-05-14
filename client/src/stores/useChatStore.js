@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 const useChatStore = create((set) => ({
+  // connecting | reconnecting | connected | disconnected | error
   connectionState: 'disconnected',
   connectionError: null,
   readonly: false,

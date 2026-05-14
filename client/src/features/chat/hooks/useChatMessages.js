@@ -9,6 +9,29 @@ export const chatMessagesQueryKeys = {
 
 const isValidId = (value) => Number.isInteger(value) && value > 0;
 
+export const buildChatCursor = (message) => {
+  if (!message?.createdAt || !Number.isInteger(message?.id)) {
+    return null;
+  }
+
+  return `${new Date(message.createdAt).toISOString()}:${message.id}`;
+};
+
+export const getLatestCursorFromMessages = (messages) => {
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return null;
+  }
+
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const cursor = buildChatCursor(messages[index]);
+    if (cursor) {
+      return cursor;
+    }
+  }
+
+  return null;
+};
+
 export default function useChatMessages(chatId, options = {}) {
   const { limit = DEFAULT_CHAT_MESSAGES_LIMIT, enabled = true } = options;
   const isEnabled = enabled && isValidId(chatId);
@@ -22,7 +45,12 @@ export default function useChatMessages(chatId, options = {}) {
         throw new Error(res.error || 'Failed to fetch chat messages');
       }
 
-      return res.data;
+      const latestCursor = getLatestCursorFromMessages(res.data?.messages);
+
+      return {
+        ...res.data,
+        latestCursor,
+      };
     },
     enabled: isEnabled,
   });
