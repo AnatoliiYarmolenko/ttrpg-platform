@@ -23,14 +23,14 @@ const createClientMessageId = () => {
   return `tmp-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
 };
 
-const resolveWsUrl = () => {
+export const resolveWsUrl = () => {
   const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
   const baseUrl = apiBaseUrl.replace(/\/api\/?$/, '');
   const wsBase = baseUrl.replace(/^http/, 'ws');
   return `${wsBase.replace(/\/$/, '')}/ws/chat`;
 };
 
-const normalizeAuthor = (user) => {
+export const normalizeAuthor = (user) => {
   if (!user) {
     return null;
   }
@@ -43,7 +43,7 @@ const normalizeAuthor = (user) => {
   };
 };
 
-const isFatalChatErrorCode = (code) => {
+export const isFatalChatErrorCode = (code) => {
   if (typeof code !== 'string') {
     return false;
   }
@@ -55,25 +55,53 @@ const isFatalChatErrorCode = (code) => {
   return code === 'CHAT_NOT_FOUND';
 };
 
-const upsertMessageIntoList = (messages, incoming) => {
+export const upsertMessageIntoList = (messages, incoming) => {
   if (!Array.isArray(messages)) {
     return [incoming];
   }
 
-  const idx = messages.findIndex((m) => (
-    (incoming.clientMessageId && m.clientMessageId === incoming.clientMessageId) ||
-    (incoming.id && m.id === incoming.id)
-  ));
+const idx = messages.findIndex((m) => {
+    if (incoming.clientMessageId && m.clientMessageId === incoming.clientMessageId) {
+      return true;
+    }
+    
+    if (incoming.id && m.id === incoming.id) {
+      return true;
+    }
+    const isServerMessageWithoutClientTag = !incoming.clientMessageId && Number.isInteger(incoming.id);
+    
+    if (isServerMessageWithoutClientTag && m.pending && m.authorId === incoming.authorId && m.content === incoming.content) {
+      const mTime = new Date(m.createdAt).getTime();
+      const incomingTime = new Date(incoming.createdAt).getTime();
+      
+      if (!Number.isNaN(mTime) && !Number.isNaN(incomingTime)) {
+         return Math.abs(incomingTime - mTime) < 15000;
+      }
+      
+      return true;
+    }
+
+    return false;
+  });
 
   if (idx !== -1) {
     const updated = [...messages];
-    // Об'єднуємо, щоб зберегти clientMessageId, якщо він був у існуючому записі, 
-    // але сервер його не повернув (наприклад, при завантаженні історії)
     updated[idx] = { ...updated[idx], ...incoming, pending: false, status: 'sent' };
     return updated;
   }
 
   return [...messages, incoming];
+};
+
+export const mergeMessages = (messages, incomingMessages) => {
+  if (!Array.isArray(incomingMessages) || incomingMessages.length === 0) {
+    return messages;
+  }
+
+  return incomingMessages.reduce(
+    (acc, incoming) => upsertMessageIntoList(acc, incoming),
+    messages || []
+  );
 };
 
 export default function useChatConnection(chatId, options = {}) {
@@ -151,15 +179,8 @@ export default function useChatConnection(chatId, options = {}) {
     upsertMessage(optimisticMessage);
   }, [chatId, user, upsertMessage]);
 
-  const mergeMessages = useCallback((messages, incomingMessages) => {
-    if (!Array.isArray(incomingMessages) || incomingMessages.length === 0) {
-      return messages;
-    }
-
-    return incomingMessages.reduce(
-      (acc, incoming) => upsertMessageIntoList(acc, incoming),
-      messages || []
-    );
+  const mergeMessagesCb = useCallback((messages, incomingMessages) => {
+    return mergeMessages(messages, incomingMessages);
   }, []);
 
   const catchUpMessages = useCallback(async (afterCursor) => {
@@ -172,14 +193,14 @@ export default function useChatConnection(chatId, options = {}) {
     try {
       const res = await getChatMessagesAfter(chatId, afterCursor, { limit });
       if (res?.success && Array.isArray(res.data?.messages)) {
-        updateMessages((messages) => mergeMessages(messages, res.data.messages));
+        updateMessages((messages) => mergeMessagesCb(messages, res.data.messages));
       }
     } catch (error) {
       console.warn('[Chat] Failed to catch up messages:', error);
     } finally {
       catchUpInProgressRef.current = false;
     }
-  }, [chatId, limit, mergeMessages, updateMessages]);
+  }, [chatId, limit, mergeMessagesCb, updateMessages]);
 
   const handleChatJoined = useCallback((data) => {
     setReadonly(Boolean(data.readonly));
@@ -222,7 +243,7 @@ export default function useChatConnection(chatId, options = {}) {
     }
 
     fatalCloseRef.current = true;
-    lastFatalErrorRef.current = data.message || 'Помилка доступу до чату';
+    lastFatalErrorRef.current = data.message || 'Access denied to chat';
     manualCloseRef.current = true;
     setConnectionState('error', lastFatalErrorRef.current);
     socketRef.current?.close();
@@ -360,7 +381,7 @@ export default function useChatConnection(chatId, options = {}) {
       socketRef.current = null;
 
       if (fatalCloseRef.current) {
-        setConnectionState('error', lastFatalErrorRef.current || 'Помилка доступу до чату');
+        setConnectionState('error', lastFatalErrorRef.current || 'Access denied to chat');
         return;
       }
 
@@ -384,7 +405,7 @@ export default function useChatConnection(chatId, options = {}) {
         return;
       }
 
-      setConnectionState('error', 'Не вдалося перепідключитись');
+      setConnectionState('error', 'Failed to reconnect');
     };
   }, [chatId, enabled, handleIncomingMessage, joinChat, setConnectionState]);
 
