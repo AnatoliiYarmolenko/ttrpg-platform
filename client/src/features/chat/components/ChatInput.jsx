@@ -20,7 +20,8 @@ export default function ChatInput({
   const [content, setContent] = useState('');
   const [isSending, setIsSending] = useState(false);
 
-  const isDisabled = readonly || isLoading || isSending;
+  const isFieldDisabled = readonly || isLoading;
+  const isButtonDisabled = isFieldDisabled || isSending || !content.trim();
 
   const handleChange = useCallback((e) => {
     const value = e.target.value;
@@ -32,7 +33,7 @@ export default function ChatInput({
   const handleSend = useCallback(async () => {
     const trimmed = content.trim();
 
-    if (!trimmed || isDisabled) {
+    if (isButtonDisabled) {
       return;
     }
 
@@ -44,10 +45,11 @@ export default function ChatInput({
     } finally {
       setIsSending(false);
     }
-  }, [content, isDisabled, onSend]);
+  }, [content, isButtonDisabled, onSend]);
 
   const handleKeyDown = (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
       handleSend();
     }
   };
@@ -61,7 +63,7 @@ export default function ChatInput({
         value={content}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
-        disabled={isDisabled}
+        disabled={isFieldDisabled} 
         maxLength={maxLength}
         className="flex-1 mb-0"
         controlClassName="resize-none !py-4 px-3 rounded-xl min-h-[36px] max-h-[120px]"
@@ -69,13 +71,13 @@ export default function ChatInput({
 
       <Button
         onClick={handleSend}
-        disabled={isDisabled || !content.trim()}
+        disabled={isButtonDisabled} 
         isLoading={isSending}
         loadingText=""
         size="md"
         variant="primary"
         className="flex-shrink-0 h-[36px] w-[36px] !p-0 flex items-center justify-center rounded-xl"
-        title={readonly ? 'Чат недоступний для редагування' : 'Відправити (Ctrl+Enter)'}
+        title={readonly ? 'Чат недоступний для редагування' : 'Відправити (Enter)'}
       >
         <Send className="w-4 h-4" />
       </Button>

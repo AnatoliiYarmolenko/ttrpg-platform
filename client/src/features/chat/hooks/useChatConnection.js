@@ -55,13 +55,22 @@ const isFatalChatErrorCode = (code) => {
   return code === 'CHAT_NOT_FOUND';
 };
 
-const mergeMessageList = (messages, incoming) => {
+const upsertMessageIntoList = (messages, incoming) => {
   if (!Array.isArray(messages)) {
     return [incoming];
   }
 
-  if (messages.some((message) => message.id === incoming.id)) {
-    return messages;
+  const idx = messages.findIndex((m) => (
+    (incoming.clientMessageId && m.clientMessageId === incoming.clientMessageId) ||
+    (incoming.id && m.id === incoming.id)
+  ));
+
+  if (idx !== -1) {
+    const updated = [...messages];
+    // Об'єднуємо, щоб зберегти clientMessageId, якщо він був у існуючому записі, 
+    // але сервер його не повернув (наприклад, при завантаженні історії)
+    updated[idx] = { ...updated[idx], ...incoming, pending: false, status: 'sent' };
+    return updated;
   }
 
   return [...messages, incoming];
@@ -112,12 +121,8 @@ export default function useChatConnection(chatId, options = {}) {
     });
   }, [queryClient, queryKey, limit]);
 
-  const replaceOptimisticMessage = useCallback((clientMessageId, message) => {
-    updateMessages((messages) => messages.map((item) => (
-      item.clientMessageId === clientMessageId
-        ? { ...message, clientMessageId }
-        : item
-    )));
+  const upsertMessage = useCallback((incoming) => {
+    updateMessages((messages) => upsertMessageIntoList(messages, incoming));
   }, [updateMessages]);
 
   const markOptimisticFailed = useCallback((clientMessageId) => {
@@ -143,24 +148,18 @@ export default function useChatConnection(chatId, options = {}) {
       status: 'pending',
     };
 
-    updateMessages((messages) => mergeMessageList(messages, optimisticMessage));
-  }, [chatId, user, updateMessages]);
+    upsertMessage(optimisticMessage);
+  }, [chatId, user, upsertMessage]);
 
   const mergeMessages = useCallback((messages, incomingMessages) => {
     if (!Array.isArray(incomingMessages) || incomingMessages.length === 0) {
       return messages;
     }
 
-    const existingIds = new Set((messages || []).map((message) => message.id));
-    const merged = Array.isArray(messages) ? [...messages] : [];
-
-    incomingMessages.forEach((message) => {
-      if (!existingIds.has(message.id)) {
-        merged.push(message);
-      }
-    });
-
-    return merged;
+    return incomingMessages.reduce(
+      (acc, incoming) => upsertMessageIntoList(acc, incoming),
+      messages || []
+    );
   }, []);
 
   const catchUpMessages = useCallback(async (afterCursor) => {
@@ -200,12 +199,13 @@ export default function useChatConnection(chatId, options = {}) {
   }, [catchUpMessages, setConnectionState, setReadonly]);
 
   const handleChatMessage = useCallback((data) => {
-    if (data.clientMessageId) {
-      replaceOptimisticMessage(data.clientMessageId, data.message);
-    } else {
-      updateMessages((messages) => mergeMessageList(messages, data.message));
-    }
-  }, [replaceOptimisticMessage, updateMessages]);
+    if (!data.message) return;
+
+    upsertMessage({
+      ...data.message,
+      ...(data.clientMessageId ? { clientMessageId: data.clientMessageId } : {}),
+    });
+  }, [upsertMessage]);
 
   const handleChatError = useCallback((data) => {
     if (data.clientMessageId) {
