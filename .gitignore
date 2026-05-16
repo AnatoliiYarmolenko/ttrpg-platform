@@ -90,6 +90,7 @@ out/
 .nuxt/
 
 .env.*.local
+.env.prod
 
 postgres_data/
 mysql_data/

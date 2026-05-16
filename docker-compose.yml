@@ -137,6 +137,7 @@ services:
     build:
       context: .
       dockerfile: client/Dockerfile
+      target: development
     container_name: ttrpg_client
     ports:
       - "${CLIENT_PORT:-5173}:5173"

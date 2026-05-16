@@ -1,6 +1,46 @@
+# Залежності
 node_modules
-npm-debug.log
+**/node_modules
+npm-debug.log*
+
+# Збірки
 dist
 build
+**/dist
+**/build
+
+# Git
 .git
+.gitignore
+
+# Всі .env файли
 .env
+.env.*
+**/.env
+**/.env.*
+server/.env
+server/.env.*
+client/.env
+client/.env.*
+
+# Логи
+*.log
+logs/
+
+# IDE
+.vscode
+.idea
+
+# Docker 
+docker-compose*.yml
+.dockerignore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Тести
+**/*.test.js
+**/*.spec.js
+**/coverage
+**/__tests__
