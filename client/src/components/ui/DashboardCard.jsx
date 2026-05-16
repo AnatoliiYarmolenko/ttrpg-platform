@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-const DashboardCard = ({ children, className = '', title, actions }) => {
+const DashboardCard = ({ children, className = '', title, actions, noScroll = false }) => {
   return (
     // min-h-0 дозволяє flex контейнеру правильно обмежити висоту для скролу
     // overflow-hidden обрізає скролбар по закругленим кутам
@@ -14,8 +14,8 @@ const DashboardCard = ({ children, className = '', title, actions }) => {
         </div>
       )}
       
-      {/* Контент - скролиться окремо */}
-      <div className="p-6 flex-1 overflow-y-auto min-h-0">
+      {/* Контент - скролиться окремо за замовчуванням */}
+      <div className={`p-6 flex-1 min-h-0 ${noScroll ? '' : 'overflow-y-auto'}`}>
         {children}
       </div>
     </div>
@@ -27,6 +27,7 @@ DashboardCard.propTypes = {
   className: PropTypes.string,
   title: PropTypes.node,
   actions: PropTypes.node,
+  noScroll: PropTypes.bool,
 };
 
 export default DashboardCard;

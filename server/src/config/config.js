@@ -88,6 +88,7 @@ module.exports = {
   jwtSecret: process.env.JWT_SECRET,
   databaseUrl: process.env.DATABASE_URL,
   port: process.env.PORT || 5000,
+  wsChatPath: process.env.WS_CHAT_PATH || '/ws/chat',
   nodeEnv,
   // Налаштування для cookies
   cookieSecret: process.env.COOKIE_SECRET || process.env.JWT_SECRET, // Для підпису CSRF токенів

@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import {
   getFormFieldControlClasses,
 } from './formFieldClasses';
@@ -116,3 +117,33 @@ export default function FormField({
     </div>
   );
 }
+
+FormField.propTypes = {
+  as: PropTypes.elementType,
+  id: PropTypes.string,
+  name: PropTypes.string,
+  type: PropTypes.string,
+  label: PropTypes.node,
+  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  defaultValue: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  onChange: PropTypes.func,
+  onBlur: PropTypes.func,
+  placeholder: PropTypes.string,
+  disabled: PropTypes.bool,
+  required: PropTypes.bool,
+  autoComplete: PropTypes.string,
+  maxLength: PropTypes.number,
+  minLength: PropTypes.number,
+  min: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  max: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  step: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  rows: PropTypes.number,
+  inputMode: PropTypes.string,
+  error: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
+  hint: PropTypes.node,
+  register: PropTypes.func,
+  rules: PropTypes.object,
+  children: PropTypes.node,
+  className: PropTypes.string,
+  controlClassName: PropTypes.string,
+};

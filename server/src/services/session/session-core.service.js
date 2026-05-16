@@ -196,6 +196,9 @@ function createSessionCoreService({
               isGuest: false,
             },
           },
+          chat: {
+            create: {},
+          },
         },
         include: {
           owner: {

@@ -21,7 +21,10 @@ const COMMUNICATION_TAB_OPTIONS = [
   { key: COMMUNICATION_MODES.PARTICIPANTS, label: 'Учасники' },
 ];
 
+// eslint-disable-next-line no-unused-vars
 function CommunicationModeSwitch({ activeMode, onChange }) {
+  return null;
+  /*
   return (
     <fieldset className="max-w-full overflow-x-auto" aria-label="Режим комунікації">
       <legend className="sr-only">Режим комунікації</legend>
@@ -38,6 +41,7 @@ function CommunicationModeSwitch({ activeMode, onChange }) {
       </div>
     </fieldset>
   );
+  */
 }
 
 CommunicationModeSwitch.propTypes = {

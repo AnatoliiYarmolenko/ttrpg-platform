@@ -12,6 +12,11 @@ enum UserRole {
   ADMIN
 }
 
+enum ChatMessageType {
+  USER
+  SYSTEM
+}
+
 model User {
   id                      Int                      @id @default(autoincrement())
   email                   String                   @unique
@@ -39,7 +44,7 @@ model User {
   ownedSessions           Session[]                @relation("OwnedSessions")
   joinRequests            JoinRequest[]
   reviewedJoinRequests    JoinRequest[]            @relation("ReviewedBy")
-  messages                ChatMessage[]
+  chatMessages            ChatMessage[]
   emailVerified           Boolean                  @default(false)
   refreshTokens           RefreshToken[]
   emailVerificationTokens EmailVerificationToken[]
@@ -65,23 +70,24 @@ model UserStats {
 }
 
 model Campaign {
-  id                 Int                @id @default(autoincrement())
-  title              String
-  description        String?
-  imageUrl           String?
-  system             String?
-  status             CampaignStatus     @default(ACTIVE)
-  visibility         CampaignVisibility @default(LINK_ONLY)
-  shareTokenHash     String?            @unique
+  id                  Int                @id @default(autoincrement())
+  title               String
+  description         String?
+  imageUrl            String?
+  system              String?
+  status              CampaignStatus     @default(ACTIVE)
+  visibility          CampaignVisibility @default(LINK_ONLY)
+  shareTokenHash      String?            @unique
   shareTokenEncrypted String?
   shareTokenCreatedAt DateTime?
-  ownerId            Int
-  owner              User               @relation("OwnerCampaigns", fields: [ownerId], references: [id])
-  members            CampaignMember[]
-  sessions           Session[]
-  joinRequests       JoinRequest[]
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  ownerId             Int
+  owner               User               @relation("OwnerCampaigns", fields: [ownerId], references: [id])
+  members             CampaignMember[]
+  sessions            Session[]
+  joinRequests        JoinRequest[]
+  chat                Chat?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
 }
 
 enum CampaignStatus {
@@ -132,7 +138,7 @@ model Session {
   ownerId             Int
   owner               User              @relation("OwnedSessions", fields: [ownerId], references: [id])
   participants        SessionParticipant[]
-  messages            ChatMessage[]
+  chat                Chat?
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
 
@@ -213,14 +219,34 @@ model EmailChangeToken {
   createdAt DateTime @default(now())
 }
 
+// ─── New Chat Domain ───────────────────────────────────────────────────────────
+
+model Chat {
+  id         Int          @id @default(autoincrement())
+  campaignId Int?         @unique
+  sessionId  Int?         @unique
+  campaign   Campaign?    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  session    Session?     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  messages   ChatMessage[]
+  createdAt  DateTime     @default(now())
+
+  @@index([campaignId])
+  @@index([sessionId])
+}
+
 model ChatMessage {
-  id        Int      @id @default(autoincrement())
-  text      String
-  createdAt DateTime @default(now())
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id])
-  sessionId Int
-  session   Session  @relation(fields: [sessionId], references: [id])
+  id        Int             @id @default(autoincrement())
+  type      ChatMessageType @default(USER)
+  content   String
+  isDeleted Boolean         @default(false)
+  editedAt  DateTime?
+  chatId    Int
+  chat      Chat            @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  authorId  Int?
+  author    User?           @relation(fields: [authorId], references: [id])
+  createdAt DateTime        @default(now())
+
+  @@index([chatId, createdAt, id])
 }
 
 model Transaction {

@@ -14,6 +14,7 @@ const securityRoutes = require('./routes/security.routes');
 const adminRoutes = require('./routes/admin.routes');
 const campaignRoutes = require('./routes/campaign.routes');
 const sessionRoutes = require('./routes/session.routes');
+const chatRoutes = require('./routes/chat.routes');
 const searchRoutes = require('./routes/search.routes');
 const clientLogsRoutes = require('./routes/client-logs.routes');
 const notificationRoutes = require('./routes/notification.routes');
@@ -61,6 +62,7 @@ function createApp() {
     app.use(`${prefix}/admin`, adminRoutes);
     app.use(`${prefix}/campaigns`, campaignRoutes);
     app.use(`${prefix}/sessions`, sessionRoutes);
+    app.use(`${prefix}/chats`, chatRoutes);
     app.use(`${prefix}/search`, searchRoutes);
     app.use(`${prefix}/client-logs`, clientLogsRoutes);
     app.use(`${prefix}/notifications`, notificationRoutes);
