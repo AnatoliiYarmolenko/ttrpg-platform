@@ -86,6 +86,7 @@ describe('useChatConnection Integration', () => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
     chatStoreMock.setConnectionState.mockClear();
+    chatStoreMock.connectionState = 'disconnected';
   });
 
   describe('Catch-up logic', () => {
@@ -176,6 +177,7 @@ describe('useChatConnection Integration', () => {
         firstWs.simulateClose();
       });
 
+      // State should be 'reconnecting' immediately
       expect(chatStoreMock.setConnectionState).toHaveBeenCalledWith('reconnecting');
 
       await act(async () => {
@@ -197,6 +199,7 @@ describe('useChatConnection Integration', () => {
 
       vi.useFakeTimers();
 
+      // We do 8 failure cycles
       for (let i = 0; i < 8; i++) {
         await act(async () => {
           MockWebSocket.instances[i].simulateClose();
@@ -208,7 +211,15 @@ describe('useChatConnection Integration', () => {
         });
       }
 
+      // 9th instance should be created by now
       expect(MockWebSocket.instances).toHaveLength(9);
+
+      // Final failure of the 9th instance (8th retry result)
+      await act(async () => {
+        MockWebSocket.instances[8].simulateClose();
+      });
+
+      // No more timers should be scheduled, state should be error
       expect(chatStoreMock.setConnectionState).toHaveBeenCalledWith('error', 'Failed to reconnect');
     });
   });

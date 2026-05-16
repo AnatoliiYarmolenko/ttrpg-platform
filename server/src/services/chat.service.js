@@ -1,4 +1,4 @@
-const { prisma } = require('../lib/prisma');
+const prismaModule = require('../lib/prisma');
 const { AppError, ERROR_CODES } = require('../constants/errors');
 const {
   CHAT_SCOPES,
@@ -78,6 +78,10 @@ function mapChatMessage(message) {
 }
 
 class ChatService {
+  get prisma() {
+    return prismaModule.prisma;
+  }
+
   _normalizeContent(content) {
     if (typeof content !== 'string') {
       return '';
@@ -117,7 +121,7 @@ class ChatService {
   }
 
   async _getLatestCursor(chatId) {
-    const latestMessage = await prisma.chatMessage.findFirst({
+    const latestMessage = await this.prisma.chatMessage.findFirst({
       where: { chatId },
       select: { id: true, createdAt: true },
       orderBy: [
@@ -132,7 +136,7 @@ class ChatService {
   async _getChatByCampaignId(campaignId) {
     const campaignIdInt = parsePositiveInt(campaignId, 'ID кампанії');
 
-    const campaign = await prisma.campaign.findUnique({
+    const campaign = await this.prisma.campaign.findUnique({
       where: { id: campaignIdInt },
       include: {
         members: {
@@ -162,7 +166,7 @@ class ChatService {
   async _getChatBySessionId(sessionId) {
     const sessionIdInt = parsePositiveInt(sessionId, 'ID сесії');
 
-    const session = await prisma.session.findUnique({
+    const session = await this.prisma.session.findUnique({
       where: { id: sessionIdInt },
       include: {
         campaign: {
@@ -195,7 +199,7 @@ class ChatService {
   async _getChatById(chatId) {
     const chatIdInt = parsePositiveInt(chatId, 'ID чату');
 
-    const chat = await prisma.chat.findUnique({
+    const chat = await this.prisma.chat.findUnique({
       where: { id: chatIdInt },
       include: {
         campaign: {
@@ -289,7 +293,7 @@ class ChatService {
     const requestedLimit = Number.isInteger(options.limit) ? options.limit : DEFAULT_MESSAGES_LIMIT;
     const limit = Math.min(Math.max(requestedLimit, 1), MAX_MESSAGES_LIMIT);
 
-    const rawMessages = await prisma.chatMessage.findMany({
+    const rawMessages = await this.prisma.chatMessage.findMany({
       where: { chatId: chat.id },
       include: {
         author: {
@@ -303,7 +307,7 @@ class ChatService {
       take: limit,
     });
 
-    const total = await prisma.chatMessage.count({
+    const total = await this.prisma.chatMessage.count({
       where: { chatId: chat.id },
     });
 
@@ -324,7 +328,7 @@ class ChatService {
     const requestedLimit = Number.isInteger(options.limit) ? options.limit : DEFAULT_MESSAGES_LIMIT;
     const limit = Math.min(Math.max(requestedLimit, 1), MAX_MESSAGES_LIMIT);
 
-    const rawMessages = await prisma.chatMessage.findMany({
+    const rawMessages = await this.prisma.chatMessage.findMany({
       where: {
         chatId: chat.id,
         OR: [
@@ -344,7 +348,7 @@ class ChatService {
       take: limit,
     });
 
-    const total = await prisma.chatMessage.count({
+    const total = await this.prisma.chatMessage.count({
       where: {
         chatId: chat.id,
         OR: [
@@ -372,7 +376,7 @@ class ChatService {
       throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Повідомлення не може бути порожнім');
     }
 
-    const message = await prisma.chatMessage.create({
+    const message = await this.prisma.chatMessage.create({
       data: {
         chatId: chat.id,
         type: 'USER',
@@ -390,4 +394,12 @@ class ChatService {
   }
 }
 
-module.exports = new ChatService();
+const chatService = new ChatService();
+
+// Export utilities as instance properties for unit tests
+chatService.parsePositiveInt = parsePositiveInt;
+chatService.buildCursor = buildCursor;
+chatService.parseCursor = parseCursor;
+chatService.mapChatMessage = mapChatMessage;
+
+module.exports = chatService;
