@@ -114,8 +114,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: lint_server
     env:
-      JWT_SECRET: super_secret_dummy_token_for_tests_123
-      DATABASE_URL: postgresql://dummy_user:dummy_pass@localhost:5432/dummy_db
+      DATABASE_URL: "postgresql://testuser:testpass@localhost:5433/ttrpg_test?schema=public"
+      REDIS_URL: "redis://localhost:6380"
+      COOKIE_SECRET: "dummy_cookie"
+      JWT_SECRET: "dummy_jwt"
+      SHARE_TOKEN_SECRET: "dummy_share"
+      POSTGRES_USER: "dummy_user"
+      POSTGRES_PASSWORD: "dummy_pass"
+      POSTGRES_DB: "dummy_db"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -127,14 +133,26 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
+      - name: Start test databases (Postgres & Redis)
+        run: |
+          docker compose --profile test up -d db_test redis_test
+          sleep 10 # Чекаємо, поки бази повністю ініціалізуються
+
       - name: Install server dependencies
         run: npm ci
 
       - name: Generate Prisma client
         run: npm --workspace server exec prisma generate
 
+      - name: Push database schema
+        run: npm --workspace server exec prisma db push --accept-data-loss
+
       - name: Generate server coverage
         run: npm run test:coverage:server
+
+      - name: Stop test databases
+        if: always() 
+        run: docker compose --profile test down -v
 
       - name: Upload server coverage artifacts
         uses: actions/upload-artifact@v4
@@ -150,7 +168,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Обов'язково для SonarCloud, щоб він бачив історію комітів
+          fetch-depth: 0
 
       - name: Download client coverage
         uses: actions/download-artifact@v4
