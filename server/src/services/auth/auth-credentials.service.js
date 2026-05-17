@@ -63,7 +63,10 @@ function createAuthCredentialsService({
       });
 
       const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${rawToken}`;
-      await emailService.sendEmailVerificationEmail(newUser.email, verificationUrl, newUser.username);
+
+      emailService
+        .sendEmailVerificationEmail(newUser.email, verificationUrl, newUser.username)
+        .catch(() => {});
 
       return newUser;
     },

@@ -1,5 +1,3 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
-
 export function getInitials(name) {
   if (!name) return '??';
   const words = name.trim().split(' ').filter((word) => word.length > 0);
@@ -14,6 +12,16 @@ export function getInitials(name) {
 
 export function resolveAvatarUrl(url) {
   if (!url || typeof url !== 'string') return null;
-  if (url.startsWith('/uploads')) return `${API_BASE_URL}${url}`;
+
+  if (url.startsWith('http')) {
+    return url;
+  }
+
+  if (import.meta.env.DEV) {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const baseUrl = apiUrl.replace(/\/api$/, '');
+    return `${baseUrl}${url}`;
+  }
+
   return url;
 }
