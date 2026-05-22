@@ -49,6 +49,8 @@ services:
     restart: always
     expose:
       - "5000"
+    ports:
+      - "40000-49999:40000-49999/udp"
     environment:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
       REDIS_URL: ${REDIS_URL:-redis://ttrpg_redis:6379}
@@ -74,6 +76,20 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       EMAIL_FROM: ${EMAIL_FROM:?Set EMAIL_FROM}
       TOKEN_CLEANUP_SCHEDULE: ${TOKEN_CLEANUP_SCHEDULE:-0 2 * * *}
+      # --- WebRTC / Call ---
+      # На production MEDIASOUP_ANNOUNCED_IP буде IP дроплету (167.172.111.89)
+      WS_CALL_PATH: ${WS_CALL_PATH:-/ws/call}
+      MEDIASOUP_LISTEN_IP: ${MEDIASOUP_LISTEN_IP:-0.0.0.0}
+      MEDIASOUP_ANNOUNCED_IP: ${MEDIASOUP_ANNOUNCED_IP:?Set MEDIASOUP_ANNOUNCED_IP to your server public IP}
+      MEDIASOUP_MIN_PORT: ${MEDIASOUP_MIN_PORT:-40000}
+      MEDIASOUP_MAX_PORT: ${MEDIASOUP_MAX_PORT:-49999}
+      # --- TURN (coturn runs on host, not in Docker on production) ---
+      TURN_ENABLED: ${TURN_ENABLED:-true}
+      TURN_URL: ${TURN_URL:?Set TURN_URL e.g. turn:167.172.111.89:3478}
+      TURN_REALM: ${TURN_REALM:?Set TURN_REALM to match coturn realm}
+      TURN_SHARED_SECRET: ${TURN_SHARED_SECRET:?Set TURN_SHARED_SECRET to match coturn static-auth-secret}
+      TURN_CREDENTIAL_TTL_SECONDS: ${TURN_CREDENTIAL_TTL_SECONDS:-3600}
+      TURN_TRANSPORT: ${TURN_TRANSPORT:-udp}
     depends_on:
       db:
         condition: service_healthy
