@@ -14,6 +14,7 @@ const { createApp } = require('./src/app');
 const { createWsServer } = require('./src/ws/ws-server');
 const { createRoomManager } = require('./src/ws/ws-room.manager');
 const { createChatHandler } = require('./src/ws/ws-chat.handler');
+const { initWorkers, closeWorkers } = require('./src/lib/mediasoup');
 
 // Startup modules
 const {
@@ -40,6 +41,7 @@ async function gracefulShutdown(signal) {
   
   // Зупиняємо прийом нових з'єднань
   if (!server) {
+    closeWorkers();
     await shutdownCleanupJobs();
     await prisma.$disconnect();
     process.exit(1);
@@ -54,6 +56,7 @@ async function gracefulShutdown(signal) {
     }
     
     // Очищаємо ресурси
+    closeWorkers();
     await shutdownCleanupJobs();
     if (redis.status !== 'end' && redis.status !== 'wait') {
       try {
@@ -92,6 +95,9 @@ async function startServer() {
 
   // Потім чекаємо готовність Redis, щоб auth/rate-limit не стартували у деградації.
   await waitForRedisReady();
+
+  // Ініціалізуємо mediasoup workers
+  await initWorkers();
 
   // Ініціалізуємо cleanup jobs (токени та rate limits)
   initAllCleanupJobs();

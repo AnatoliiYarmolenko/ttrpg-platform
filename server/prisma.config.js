@@ -7,7 +7,7 @@ const currentFilePath = fileURLToPath(import.meta.url);
 const currentDirPath = dirname(currentFilePath);
 
 loadDotenv({
-  path: resolve(currentDirPath, '.env'),
+  path: resolve(currentDirPath, '../.env'),
 });
 
 export default defineConfig({

@@ -68,7 +68,7 @@ async function runMigrations() {
       stdio: 'inherit', 
       cwd: prismaDir, 
       env: { ...process.env },
-      shell: '/bin/ash'
+      shell: '/bin/sh'
     });
     logger.info('Міграції виконано успішно');
     return true;
