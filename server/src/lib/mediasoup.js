@@ -11,6 +11,11 @@ let nextWorkerIndex = 0;
  * Створюємо по одному worker на кожне логічне ядро CPU.
  */
 async function initWorkers() {
+  if (workers.length > 0) {
+    logger.warn('Mediasoup workers вже ініціалізовані');
+    return;
+  }
+
   const numWorkers = Object.keys(os.cpus()).length || 1;
   logger.info({ numWorkers }, 'Ініціалізація mediasoup workers...');
 
@@ -61,6 +66,7 @@ function closeWorkers() {
     worker.close();
   }
   workers.length = 0;
+  nextWorkerIndex = 0;
 }
 
 module.exports = {

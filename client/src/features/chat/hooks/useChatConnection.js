@@ -8,6 +8,7 @@ import {
   chatMessagesQueryKeys,
   getLatestCursorFromMessages,
 } from './useChatMessages';
+import api from '@/lib/axios';
 
 const MAX_RECONNECT_ATTEMPTS = 8;
 const INITIAL_RECONNECT_DELAY = 1000;
@@ -318,9 +319,9 @@ export default function useChatConnection(chatId, options = {}) {
 
     sendEvent('chat:join', {
       chatId,
-      lastKnownCursor: lastCursorRef.current || lastKnownCursor || undefined,
+      lastKnownCursor: lastCursorRef.current || undefined,
     });
-  }, [chatId, lastKnownCursor, sendEvent]);
+  }, [chatId, sendEvent]);
 
   const leaveChat = useCallback(() => {
     if (!isValidId(chatId)) {
@@ -390,6 +391,10 @@ export default function useChatConnection(chatId, options = {}) {
         return;
       }
 
+      // Trigger an HTTP ping to force axios interceptor to refresh the token 
+      // if the WebSocket dropped due to 401 (AUTH_TOKEN_EXPIRED/MISSING).
+      api.get('/api/profile/me').catch(() => {});
+
       if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
         const attempt = reconnectAttemptsRef.current + 1;
         reconnectAttemptsRef.current = attempt;
@@ -436,6 +441,18 @@ export default function useChatConnection(chatId, options = {}) {
       disconnect();
     };
   }, [chatId, connect, disconnect, enabled]);
+
+  useEffect(() => {
+    const onFocus = () => {
+      const state = useChatStore.getState().connectionState;
+      if ((state === 'error' || state === 'disconnected') && enabled && isValidId(chatId)) {
+        connectRef.current?.(true);
+      }
+    };
+    
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [chatId, enabled]);
 
   return {
     connectionState,
