@@ -9,11 +9,12 @@ require('./src/config/config');
 const { prisma } = require('./src/lib/prisma');
 const { redis, waitForRedisReady } = require('./src/lib/redis');
 const { logger } = require('./src/lib/logger');
-const { port, wsChatPath } = require('./src/config/config');
+const { port, wsChatPath, wsCallPath } = require('./src/config/config');
 const { createApp } = require('./src/app');
 const { createWsServer } = require('./src/ws/ws-server');
 const { createRoomManager } = require('./src/ws/ws-room.manager');
 const { createChatHandler } = require('./src/ws/ws-chat.handler');
+const { createCallHandler } = require('./src/ws/ws-call.handler');
 const { initWorkers, closeWorkers } = require('./src/lib/mediasoup');
 
 // Startup modules
@@ -25,6 +26,7 @@ const {
 
 let server = null;
 let wsServer = null;
+let wsCallServer = null;
 let roomManager = null;
 
 // ========== GRACEFUL SHUTDOWN ==========
@@ -53,6 +55,9 @@ async function gracefulShutdown(signal) {
 
     if (wsServer) {
       await wsServer.close();
+    }
+    if (wsCallServer) {
+      await wsCallServer.close();
     }
     
     // Очищаємо ресурси
@@ -119,7 +124,16 @@ async function startServer() {
     logger,
     onConnection: chatHandler,
   });
-  logger.info({ path: wsChatPath }, 'WS сервер запущено');
+  logger.info({ path: wsChatPath }, 'WS сервер запущено (Chat)');
+
+  const callHandler = createCallHandler({ logger });
+  wsCallServer = createWsServer({
+    server,
+    path: wsCallPath,
+    logger,
+    onConnection: callHandler,
+  });
+  logger.info({ path: wsCallPath }, 'WS сервер запущено (Call)');
 }
 
 startServer().catch((err) => {
