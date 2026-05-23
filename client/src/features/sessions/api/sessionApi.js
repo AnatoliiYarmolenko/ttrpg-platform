@@ -60,6 +60,11 @@ export const getSessionPageByShareToken = async (shareToken) => {
   return response.data;
 };
 
+export const getSessionCallConfig = async (sessionId) => {
+  const response = await api.get(`/sessions/${sessionId}/call-config`);
+  return response.data;
+};
+
 /**
  * Оновити сесію
  * @param {number} sessionId
