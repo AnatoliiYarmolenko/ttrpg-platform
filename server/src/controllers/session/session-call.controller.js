@@ -7,12 +7,12 @@ const { callService } = require('../../call/call.service');
 exports.getCallConfig = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const userId = req.user.userId;
+    const userId = req.user.id;
 
-    // Get session page (validates access automatically)
+    // Отримуємо сторінку сесії (доступ перевіряється автоматично)
     const sessionPage = await sessionService.getSessionPageById(id, userId);
 
-    const hasAccess = sessionPage.viewer.isSessionOwner || sessionPage.viewer.isParticipant;
+    const hasAccess = sessionPage.actions.canJoinCall || sessionPage.actions.canStartCall || sessionPage.actions.canEndCall;
     
     if (!hasAccess) {
       throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'Access denied to call config');
@@ -32,9 +32,12 @@ exports.getCallConfig = async (req, res, next) => {
     }
 
     res.json({
-      wsCallPath: config.wsCallPath,
-      callState: state.callState,
-      iceServers,
+      success: true,
+      data: {
+        wsCallPath: config.wsCallPath,
+        callState: state.callState,
+        iceServers,
+      }
     });
   } catch (error) {
     next(error);

@@ -15,8 +15,8 @@ class CallPeerState {
     this.consumers = new Map();
     // Стан медіа: мікрофон та камера увімкнені/вимкнені
     this.mediaState = {
-      audio: false,
-      video: false
+      micEnabled: false,
+      camEnabled: false
     };
   }
 
@@ -47,9 +47,9 @@ class CallPeerState {
   addProducer(producer) {
     this.producers.set(producer.id, producer);
     if (producer.kind === 'audio') {
-      this.mediaState.audio = true;
+      this.mediaState.micEnabled = true;
     } else if (producer.kind === 'video') {
-      this.mediaState.video = true;
+      this.mediaState.camEnabled = true;
     }
   }
 
@@ -61,9 +61,9 @@ class CallPeerState {
     const producer = this.producers.get(producerId);
     if (producer) {
       if (producer.kind === 'audio') {
-        this.mediaState.audio = false;
+        this.mediaState.micEnabled = false;
       } else if (producer.kind === 'video') {
-        this.mediaState.video = false;
+        this.mediaState.camEnabled = false;
       }
       producer.close();
       this.producers.delete(producerId);
@@ -102,8 +102,8 @@ class CallPeerState {
     }
     this.transports.clear();
     
-    this.mediaState.audio = false;
-    this.mediaState.video = false;
+    this.mediaState.micEnabled = false;
+    this.mediaState.camEnabled = false;
   }
 }
 
