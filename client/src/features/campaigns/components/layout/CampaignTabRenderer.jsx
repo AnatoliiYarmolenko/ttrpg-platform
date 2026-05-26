@@ -51,6 +51,7 @@ export default function CampaignTabRenderer({
   settingsProps,
   viewingUserId,
   profilePreviewNode,
+  chatProps,
 }) {
   switch (activeTab) {
     case CAMPAIGN_TABS.MANAGE:
@@ -72,6 +73,7 @@ export default function CampaignTabRenderer({
         leftPanel: viewingUserId ? profilePreviewNode : <CampaignInfoWidget {...infoProps} />,
         rightPanel: isChatMode ? (
           <CampaignCommunicationChatWidget
+            chatProps={chatProps}
             actions={(
               <CommunicationModeSwitch
                 activeMode={campaignCommunicationMode}

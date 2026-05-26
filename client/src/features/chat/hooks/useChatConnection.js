@@ -391,10 +391,7 @@ export default function useChatConnection(chatId, options = {}) {
         return;
       }
 
-      // Trigger an HTTP ping to force axios interceptor to refresh the token 
-      // if the WebSocket dropped due to 401 (AUTH_TOKEN_EXPIRED/MISSING).
-      api.get('/api/profile/me').catch(() => {});
-
+      api.get('/profile/me').catch(() => {});
       if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
         const attempt = reconnectAttemptsRef.current + 1;
         reconnectAttemptsRef.current = attempt;

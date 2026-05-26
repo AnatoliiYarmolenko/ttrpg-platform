@@ -59,6 +59,7 @@ export default function SessionTabRenderer({
   profilePreviewNode,
   communicationPanelMode,
   setCommunicationPanelMode,
+  chatProps,
 }) {
   const detailsParticipantsProps = {
     ...participantsProps,
@@ -79,6 +80,7 @@ export default function SessionTabRenderer({
       leftPanel: renderCommunicationLeftPanel({ viewingUserId, profilePreviewNode }),
       rightPanel: isChatMode ? (
         <SessionCommunicationChatWidget
+          chatProps={chatProps}
           actions={(
             <CommunicationModeSwitch
               activeMode={communicationPanelMode}

@@ -21,6 +21,8 @@ import {
 } from '@/components/shared';
 
 import Button from '@/components/ui/Button'; 
+import { useChatController } from '@/features/chat/hooks';
+
 /**
  * SessionPage — тонкий shell-компонент для /session/:id.
  *
@@ -159,6 +161,7 @@ export default function SessionPage() {
     profilePreviewNode,
     communicationPanelMode,
     setCommunicationPanelMode,
+chatProps: chatController.chatPanelProps,
   });
 
   const previewPanels = {

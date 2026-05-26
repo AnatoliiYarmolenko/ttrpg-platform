@@ -11,6 +11,7 @@ import ErrorScreen from '@/components/shared/ErrorScreen';
 import Button from '@/components/ui/Button';
 import DashboardCard from '@/components/ui/DashboardCard';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
+import { useChatController } from '@/features/chat/hooks';
 
 export default function CampaignPage() {
   const {
@@ -59,6 +60,17 @@ export default function CampaignPage() {
     handleBackFromProfile,
     navigate,
   } = useCampaignPageController();
+
+  const chatController = useChatController('campaign', Number.parseInt(id, 10), {
+    enabled: Boolean(user && id),
+  });
+
+  React.useEffect(() => {
+    const disconnect = chatController?.disconnect;
+    return () => {
+      disconnect?.();
+    };
+  }, [chatController?.disconnect]);
 
   if (error) {
     return (
@@ -116,6 +128,7 @@ export default function CampaignPage() {
       setCampaignCommunicationMode,
       viewingUserId,
       profilePreviewNode,
+      chatProps: chatController.chatPanelProps,
       infoProps: {
         campaign: currentCampaign,
         myRole,
