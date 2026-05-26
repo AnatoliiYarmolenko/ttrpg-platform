@@ -6,14 +6,19 @@
 export function resolveCallWsUrl(wsCallPath) {
   if (!wsCallPath) return null;
 
-  // Використовуємо поточний origin, щоб визначити протокол та хост
   const protocol = globalThis.location.protocol === 'https:' ? 'wss:' : 'ws:';
   
-  // У dev-режимі Vite proxy може проксувати /ws на бекенд,
-  // але якщо бекенд на іншому порту і без проксі, потрібна окрема конфігурація.
-  // Зазвичай Vite проксовує або ми підключаємось до того ж хоста.
-  // Покладаємось на той самий хост і очікуємо, що проксі це обробить, як у чаті.
-  const host = globalThis.location.host;
+  // Визначаємо хост на основі VITE_API_URL (як у чаті)
+  const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  const baseUrl = apiBaseUrl.replace(/\/api\/?$/, '');
+  
+  let host;
+  if (baseUrl.startsWith('http')) {
+    const urlObj = new URL(baseUrl);
+    host = urlObj.host;
+  } else {
+    host = globalThis.location.host;
+  }
 
   return `${protocol}//${host}${wsCallPath}`;
 }

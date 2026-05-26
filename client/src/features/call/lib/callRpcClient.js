@@ -13,9 +13,12 @@ export class CallRpcClient {
 
     return new Promise((resolve, reject) => {
       this.isConnecting = true;
+      this.isDisconnecting = false;
+      console.log('[CallRpcClient] Connecting to:', this.url);
       this.ws = new WebSocket(this.url);
 
       this.ws.onopen = () => {
+        console.log('[CallRpcClient] Connected successfully to', this.url);
         this.isConnecting = false;
         resolve();
       };
@@ -28,7 +31,9 @@ export class CallRpcClient {
 
       this.ws.onerror = (err) => {
         this.isConnecting = false;
-        reject(err instanceof Error ? err : new Error('WebSocket connection error'));
+        if (!this.isDisconnecting) {
+          reject(err instanceof Error ? err : new Error('WebSocket connection error'));
+        }
       };
 
       this.ws.onmessage = (event) => {
@@ -39,6 +44,7 @@ export class CallRpcClient {
 
   disconnect() {
     if (this.ws) {
+      this.isDisconnecting = true;
       this.ws.close();
       this.cleanup();
     }
@@ -75,9 +81,10 @@ export class CallRpcClient {
            console.error('Call async error:', message);
            this.emit('error', message);
         }
-      } 
-      // Обробляємо серверні події
-      else {
+      } else if (message.type === 'call:event' && message.event) {
+        // Обробляємо серверні події
+        this.emit(message.event, message.payload);
+      } else {
         this.emit(message.type, message);
       }
     } catch (err) {

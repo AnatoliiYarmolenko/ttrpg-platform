@@ -42,23 +42,27 @@ export function useCallConnection(sessionId) {
       camEnabled: peer.mediaState?.camEnabled || false
     });
 
-    const connect = async () => {
+      const connect = async () => {
       setConnectionState('CONNECTING');
       try {
         await rpcClient.connect();
+        if (rpcClientRef.current !== rpcClient) return; // Prevent race conditions on unmount
         setConnectionState('CONNECTED');
         
         // Отримуємо поточний стан дзвінка під час підключення
         try {
           const state = await rpcClient.request('call:getCallState', { sessionId });
+          if (rpcClientRef.current !== rpcClient) return;
           setCallState(state.callState);
           setPeers((state.peers || []).map(mapPeer));
         } catch (err) {
+          if (rpcClientRef.current !== rpcClient) return;
           console.error('Failed to get initial call state', err);
         }
 
       } catch (err) {
-        console.error('Failed to get initial call state', err);
+        if (rpcClientRef.current !== rpcClient) return;
+        console.error('Failed to connect to call server', err);
         setConnectionState('DISCONNECTED');
         toast.error('Failed to connect to call signaling server');
       }
@@ -66,12 +70,13 @@ export function useCallConnection(sessionId) {
 
     // Обробники серверних подій
     rpcClient.on('call:started', (payload) => {
-      setCallState(payload.callState);
+      setCallState(payload.callState || 'ACTIVE');
     });
 
     rpcClient.on('call:ended', () => {
       setCallState('ENDED');
       setPeers([]);
+      useCallStore.getState().resetMedia();
       // Повністю WS не відключаємо, просто очікуємо
     });
 

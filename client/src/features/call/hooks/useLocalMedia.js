@@ -5,14 +5,11 @@ import { toast } from '@/stores/useToastStore';
 
 export function useLocalMedia({ rpcClient, sessionId, callConfig }) {
   const { 
-    device, 
-    sendTransport, 
-    micProducer,
-    camProducer,
     setDevice,
     setTransports,
     setMicProducer,
     setCamProducer,
+    setMediaPermissionError,
   } = useCallStore();
 
   // Ініціалізуємо mediasoup device
@@ -57,13 +54,14 @@ export function useLocalMedia({ rpcClient, sessionId, callConfig }) {
         }
       });
 
-      sendTrans.on('produce', async ({ kind, rtpParameters }, callback, errback) => {
+      sendTrans.on('produce', async ({ kind, rtpParameters, appData }, callback, errback) => {
         try {
           const { id } = await rpcClient.request('call:produce', {
             sessionId,
             transportId: sendTrans.id,
             kind,
             rtpParameters,
+            appData
           });
           callback({ id });
         } catch (error) {
@@ -105,23 +103,9 @@ export function useLocalMedia({ rpcClient, sessionId, callConfig }) {
     }
   }, [rpcClient, sessionId, callConfig, setTransports]);
 
-  // Запитуємо user media та створюємо producer-и
-  const enableMic = useCallback(async () => {
-    if (!device || !sendTransport) return;
-    if (micProducer) return;
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const track = stream.getAudioTracks()[0];
-      const producer = await sendTransport.produce({ track });
-      setMicProducer(producer);
-      rpcClient.sendEvent('call:setMediaState', { sessionId, mediaState: { micEnabled: true } });
-    } catch (err) {
-      console.error('Failed to enable mic', err);
-      toast.error('Не вдалося отримати доступ до мікрофона');
-    }
-  }, [device, sendTransport, micProducer, setMicProducer, rpcClient, sessionId]);
-
+  // Вимикаємо мікрофон
   const disableMic = useCallback(() => {
+    const { micProducer } = useCallStore.getState();
     if (micProducer) {
       micProducer.track.stop();
       micProducer.close();
@@ -129,26 +113,55 @@ export function useLocalMedia({ rpcClient, sessionId, callConfig }) {
       setMicProducer(null);
       rpcClient.sendEvent('call:setMediaState', { sessionId, mediaState: { micEnabled: false } });
     }
-  }, [micProducer, setMicProducer, rpcClient, sessionId]);
+  }, [rpcClient, sessionId, setMicProducer]);
 
-  const enableCam = useCallback(async () => {
+  // Запитуємо user media та створюємо producer-и
+  const enableMic = useCallback(async () => {
+    const { device, sendTransport, micProducer } = useCallStore.getState();
     if (!device || !sendTransport) return;
-    if (camProducer) return;
+    if (micProducer) return;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { width: { ideal: 1280 }, height: { ideal: 720 } } 
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const track = stream.getAudioTracks()[0];
+      
+      const producer = await sendTransport.produce({ 
+        track, 
+        codecOptions: {
+          opusStereo: true,
+          opusDtx: true
+        }
       });
-      const track = stream.getVideoTracks()[0];
-      const producer = await sendTransport.produce({ track });
-      setCamProducer(producer);
-      rpcClient.sendEvent('call:setMediaState', { sessionId, mediaState: { camEnabled: true } });
+      
+      setMicProducer(producer);
+      
+      producer.on('trackended', () => {
+        disableMic();
+      });
+      producer.on('transportclose', () => {
+        setMicProducer(null);
+      });
+      
+      setMediaPermissionError(false);
+      rpcClient.sendEvent('call:setMediaState', { sessionId, mediaState: { micEnabled: true } });
+
     } catch (err) {
-      console.error('Failed to enable camera', err);
-      toast.error('Не вдалося отримати доступ до камери');
+      if (err.name === 'NotAllowedError') {
+        setMediaPermissionError(true);
+        toast.error('Доступ до мікрофона заборонено браузером');
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        toast.error('Мікрофон вже використовується іншим додатком або вкладкою');
+        console.warn('Microphone in use:', err);
+      } else {
+        toast.error('Не вдалося увімкнути мікрофон');
+        console.error(err);
+      }
     }
-  }, [device, sendTransport, camProducer, setCamProducer, rpcClient, sessionId]);
+  }, [setMicProducer, setMediaPermissionError, disableMic, rpcClient, sessionId]);
+
+  // (disableMic defined above)
 
   const disableCam = useCallback(() => {
+    const { camProducer } = useCallStore.getState();
     if (camProducer) {
       camProducer.track.stop();
       camProducer.close();
@@ -156,7 +169,46 @@ export function useLocalMedia({ rpcClient, sessionId, callConfig }) {
       setCamProducer(null);
       rpcClient.sendEvent('call:setMediaState', { sessionId, mediaState: { camEnabled: false } });
     }
-  }, [camProducer, setCamProducer, rpcClient, sessionId]);
+  }, [rpcClient, sessionId, setCamProducer]);
+
+  const enableCam = useCallback(async () => {
+    const { device, sendTransport, camProducer } = useCallStore.getState();
+    if (!device || !sendTransport) return;
+    if (camProducer) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          width: { ideal: 640 }, 
+          height: { ideal: 360 },
+          frameRate: { ideal: 15, max: 24 }
+        } 
+      });
+      const track = stream.getVideoTracks()[0];
+      const producer = await sendTransport.produce({ track });
+      setCamProducer(producer);
+
+      producer.on('trackended', () => {
+        disableCam();
+      });
+      producer.on('transportclose', () => {
+        setCamProducer(null);
+      });
+
+      setMediaPermissionError(false);
+      rpcClient.sendEvent('call:setMediaState', { sessionId, mediaState: { camEnabled: true } });
+    } catch (err) {
+      if (err.name === 'NotAllowedError') {
+        setMediaPermissionError(true);
+        toast.error('Доступ до камери заборонено браузером');
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        toast.error('Камера вже використовується іншим додатком або вкладкою');
+        console.warn('Camera in use:', err);
+      } else {
+        toast.error('Не вдалося увімкнути камеру');
+        console.error(err);
+      }
+    }
+  }, [setCamProducer, rpcClient, sessionId, setMediaPermissionError, disableCam]);
 
   return {
     initDevice,

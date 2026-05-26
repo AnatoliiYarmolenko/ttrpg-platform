@@ -2,9 +2,10 @@ import { useEffect, useCallback } from 'react';
 import { useCallStore } from '@/stores/useCallStore';
 
 export function useRemoteMedia({ rpcClient, sessionId }) {
-  const { device, recvTransport, addConsumer, removeConsumer } = useCallStore();
+  const { addConsumer, removeConsumer } = useCallStore();
 
-  const consumeTrack = useCallback(async (producerId) => {
+  const consumeTrack = useCallback(async (producerId, userId) => {
+    const { device, recvTransport } = useCallStore.getState();
     if (!device || !recvTransport || !rpcClient) return;
 
     try {
@@ -19,25 +20,27 @@ export function useRemoteMedia({ rpcClient, sessionId }) {
         id,
         producerId,
         kind,
-        rtpParameters
+        rtpParameters,
+        appData: { userId }
       });
 
       addConsumer(consumer);
 
       // Потрібно відновити consumer, бо mediasoup за замовчуванням стартує їх на паузі
       await rpcClient.request('call:resume', { sessionId, consumerId: consumer.id });
+      consumer.resume();
       
     } catch (err) {
       console.error('Failed to consume track:', err);
     }
-  }, [device, recvTransport, rpcClient, sessionId, addConsumer]);
+  }, [rpcClient, sessionId, addConsumer]);
 
   useEffect(() => {
     if (!rpcClient) return;
 
     // Слухаємо нові producer-и, які додають інші учасники
     const onNewProducer = (payload) => {
-      consumeTrack(payload.producerId);
+      consumeTrack(payload.producerId, payload.userId);
     };
 
     const onConsumerClosed = (payload) => {
