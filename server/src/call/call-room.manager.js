@@ -38,16 +38,18 @@ class CallRoomManager {
     return room.peers.get(userId) || null;
   }
 
-  addPeer(sessionId, userId, socketId) {
+  addPeer(sessionId, userId, socketId, user = null) {
     const room = this.getRoom(sessionId);
     let peer = room.peers.get(userId);
     if (peer == null) {
-      peer = new CallPeerState({ userId, socketId });
+      peer = new CallPeerState({ userId, socketId, user });
       room.peers.set(userId, peer);
       logger.debug({ sessionId, userId, socketId }, 'Peer added to CallRoom');
     } else {
-      // Оновлюємо socketId якщо він підключається з нового сокету
+      // Додаємо новий socketId до списку активних підключень
       peer.socketId = socketId;
+      peer.socketIds.add(socketId);
+      logger.debug({ sessionId, userId, socketId }, 'New socket connection added for existing peer');
     }
     return peer;
   }

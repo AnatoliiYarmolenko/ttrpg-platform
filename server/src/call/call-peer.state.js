@@ -3,9 +3,12 @@
  * Зберігає transports, producers, та consumers для конкретного користувача.
  */
 class CallPeerState {
-  constructor({ userId, socketId }) {
+  constructor({ userId, socketId, user = null }) {
     this.userId = userId;
-    this.socketId = socketId; // WS socket ID для зворотного зв'язку
+    this.socketId = socketId; // WS socket ID для зворотного зв'язку (останній підключений)
+    this.socketIds = new Set([socketId]); // Усі активні підключення/вкладки користувача
+    this.username = user?.username || user?.displayName || null;
+    this.avatarUrl = user?.avatarUrl || user?.avatar || null;
     this.joinedAt = Date.now();
     // transportId -> Transport
     this.transports = new Map();
@@ -23,7 +26,10 @@ class CallPeerState {
   get summary() {
     return {
       userId: this.userId,
+      username: this.username,
+      avatarUrl: this.avatarUrl,
       mediaState: this.mediaState,
+      producers: Array.from(this.producers.values()).map(p => ({ id: p.id, kind: p.kind })),
       joinedAt: this.joinedAt
     };
   }
@@ -46,11 +52,7 @@ class CallPeerState {
 
   addProducer(producer) {
     this.producers.set(producer.id, producer);
-    if (producer.kind === 'audio') {
-      this.mediaState.micEnabled = true;
-    } else if (producer.kind === 'video') {
-      this.mediaState.camEnabled = true;
-    }
+    this.updateMediaState();
   }
 
   getProducer(producerId) {
@@ -60,14 +62,15 @@ class CallPeerState {
   removeProducer(producerId) {
     const producer = this.producers.get(producerId);
     if (producer) {
-      if (producer.kind === 'audio') {
-        this.mediaState.micEnabled = false;
-      } else if (producer.kind === 'video') {
-        this.mediaState.camEnabled = false;
-      }
       producer.close();
       this.producers.delete(producerId);
+      this.updateMediaState();
     }
+  }
+
+  updateMediaState() {
+    this.mediaState.micEnabled = Array.from(this.producers.values()).some(p => p.kind === 'audio');
+    this.mediaState.camEnabled = Array.from(this.producers.values()).some(p => p.kind === 'video');
   }
 
   addConsumer(consumer) {
@@ -104,6 +107,7 @@ class CallPeerState {
     
     this.mediaState.micEnabled = false;
     this.mediaState.camEnabled = false;
+    this.socketIds.clear();
   }
 }
 

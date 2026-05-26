@@ -113,6 +113,10 @@ async function handleSessionAction({ socket, type, payload, sessionId, userId, s
       if (!canView) {
         throw new AppError(ERROR_CODES.CALL_JOIN_FORBIDDEN, 'View call state forbidden');
       }
+
+      socket.callSessionId = sessionId;
+      callRoomManager.addSocket(sessionId, socket);
+
       const state = callService.getCallState(sessionId);
       sendEvent(socket, 'call:callState', state);
       sendResponse(state);
@@ -146,6 +150,7 @@ async function handleWebRtcAction({ socket, type, payload, sessionId, userId, se
       return true;
     case 'call:createWebRtcTransport': {
       const transport = await room.router.createWebRtcTransport(webRtcTransportOptions);
+      transport.appData.socketId = socket.id;
       transport.on('dtlsstatechange', (dtlsState) => {
         if (dtlsState === 'closed') transport.close();
       });
@@ -176,6 +181,7 @@ async function handleWebRtcAction({ socket, type, payload, sessionId, userId, se
       if (!transport) throw new Error('Transport not found');
 
       const producer = await transport.produce({ kind, rtpParameters, appData });
+      producer.appData = { ...producer.appData, socketId: socket.id };
       producer.on('transportclose', () => producer.close());
       peer.addProducer(producer);
       sendEvent(socket, 'call:produced', { id: producer.id, kind });
@@ -218,9 +224,14 @@ async function handleWebRtcAction({ socket, type, payload, sessionId, userId, se
       }
 
       const consumer = await transport.consume({ producerId, rtpCapabilities, paused: true });
-      consumer.on('transportclose', () => consumer.close());
+      consumer.appData = { ...consumer.appData, socketId: socket.id };
+      consumer.on('transportclose', () => {
+        consumer.close();
+        peer.removeConsumer(consumer.id);
+      });
       consumer.on('producerclose', () => {
         consumer.close();
+        peer.removeConsumer(consumer.id);
         sendEvent(socket, 'call:consumerClosed', { consumerId: consumer.id });
       });
 

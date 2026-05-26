@@ -34,7 +34,7 @@ class CallService {
 
       logger.info({ sessionId }, 'Call started successfully');
 
-      broadcastCallEvent(room, CALL_EVENTS.STARTED, { sessionId });
+      broadcastCallEvent(room, CALL_EVENTS.STARTED, { sessionId, callState: room.callState });
 
       return room;
     } catch (err) {
@@ -46,7 +46,7 @@ class CallService {
   endCall(sessionId) {
     const room = callRoomManager.getRoomIfExists(sessionId);
     
-    if (!room || room.callState !== CALL_STATES.ACTIVE) {
+    if (room?.callState !== CALL_STATES.ACTIVE) {
       throw new Error('CALL_NOT_ACTIVE');
     }
 
@@ -60,7 +60,7 @@ class CallService {
   joinCall(sessionId, userId, socket) {
     const room = callRoomManager.getRoomIfExists(sessionId);
 
-    if (!room || room.callState !== CALL_STATES.ACTIVE) {
+    if (room?.callState !== CALL_STATES.ACTIVE) {
       throw new Error('CALL_NOT_ACTIVE');
     }
 
@@ -72,7 +72,7 @@ class CallService {
     const socketId = socket.id || Date.now().toString() + Math.random().toString();
     socket.id = socketId;
     
-    const peer = callRoomManager.addPeer(sessionId, userId, socketId);
+    const peer = callRoomManager.addPeer(sessionId, userId, socketId, socket.user);
 
     // Broadcast, що приєднався новий учасник
     broadcastCallEvent(room, CALL_EVENTS.PARTICIPANT_JOINED, {
@@ -99,10 +99,44 @@ class CallService {
     const peer = callRoomManager.getPeer(sessionId, userId);
     
     if (peer) {
-      // Якщо вказаний сокет, і цей сокет вже не належить цьому peer 
-      // (наприклад, peer перепідключився), то не видаляємо peer-а.
-      if (socket && peer.socketId !== socket.id) {
-        return;
+      if (socket) {
+        // 1. Видаляємо socketId з активних сокетів peer
+        peer.socketIds.delete(socket.id);
+
+        // 2. Закриваємо та видаляємо продюсери, створені цим сокетом
+        for (const producer of Array.from(peer.producers.values())) {
+          if (producer.appData?.socketId === socket.id) {
+            producer.close();
+            peer.removeProducer(producer.id);
+            broadcastCallEvent(room, 'call:producerClosed', { producerId: producer.id, userId });
+          }
+        }
+
+        // 3. Закриваємо та видаляємо консюмери, створені цим сокетом
+        for (const consumer of Array.from(peer.consumers.values())) {
+          if (consumer.appData?.socketId === socket.id) {
+            consumer.close();
+            peer.removeConsumer(consumer.id);
+          }
+        }
+
+        // 4. Закриваємо та видаляємо транспорти, створені цим сокетом
+        for (const transport of Array.from(peer.transports.values())) {
+          if (transport.appData?.socketId === socket.id) {
+            transport.close();
+            peer.transports.delete(transport.id);
+          }
+        }
+
+        // Оновлюємо стан медіа для інших користувачів, якщо він змінився
+        broadcastCallEvent(room, 'call:media-state-changed', { userId, mediaState: peer.mediaState });
+
+        // Якщо в цього користувача ще залишилися активні сокети/вкладки, не видаляємо peer повністю!
+        if (peer.socketIds.size > 0) {
+          // Оновлюємо socketId на один з існуючих активних
+          peer.socketId = Array.from(peer.socketIds)[0];
+          return;
+        }
       }
       
       callRoomManager.removePeer(sessionId, userId);

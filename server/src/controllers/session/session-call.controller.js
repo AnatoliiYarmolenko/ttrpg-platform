@@ -12,7 +12,12 @@ exports.getCallConfig = async (req, res, next) => {
     // Отримуємо сторінку сесії (доступ перевіряється автоматично)
     const sessionPage = await sessionService.getSessionPageById(id, userId);
 
-    const hasAccess = sessionPage.actions.canJoinCall || sessionPage.actions.canStartCall || sessionPage.actions.canEndCall;
+    const hasAccess = 
+      sessionPage.viewer.isSessionOwner || 
+      sessionPage.viewer.isParticipant || 
+      sessionPage.actions.canJoinCall || 
+      sessionPage.actions.canStartCall || 
+      sessionPage.actions.canEndCall;
     
     if (!hasAccess) {
       throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'Access denied to call config');

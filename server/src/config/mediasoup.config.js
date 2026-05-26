@@ -103,12 +103,15 @@ const webRtcTransportOptions = {
       ip: mediasoupListenIp,
       // announcedAddress оголошується клієнтам у ICE candidates
       // У production це зовнішній IP сервера (MEDIASOUP_ANNOUNCED_IP)
-      announcedAddress: mediasoupAnnouncedIp !== '127.0.0.1' ? mediasoupAnnouncedIp : undefined,
+      //announcedAddress: mediasoupAnnouncedIp !== '127.0.0.1' ? mediasoupAnnouncedIp : undefined,
+      announcedAddress:mediasoupAnnouncedIp,
     },
     {
       protocol: 'tcp',
       ip: mediasoupListenIp,
-      announcedAddress: mediasoupAnnouncedIp !== '127.0.0.1' ? mediasoupAnnouncedIp : undefined,
+      //announcedAddress: mediasoupAnnouncedIp !== '127.0.0.1' ? mediasoupAnnouncedIp : undefined,
+      announcedAddress:mediasoupAnnouncedIp,
+
     },
   ],
   // Початкові обмеження бітрейту (auto-adjusts через REMB/TWCC)
