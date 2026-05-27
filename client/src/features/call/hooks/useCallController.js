@@ -31,6 +31,9 @@ export function useCallController({ rpcClient, sessionId }) {
     if (!rpcClient) return;
     try {
       const response = await rpcClient.request('call:join', { sessionId });
+      if (response?.myPeerId) {
+        useCallStore.getState().setMyPeerId(response.myPeerId);
+      }
       toast.success('Ви приєднались до дзвінка');
       return response;
     } catch (err) {
@@ -46,15 +49,7 @@ export function useCallController({ rpcClient, sessionId }) {
       rpcClient.sendEvent('call:leave', { sessionId }); // Відправляємо call:leave
     }
     
-    const store = useCallStore.getState();
-    const isOnSessionPage = globalThis.location?.pathname?.includes(`/session/${sessionId}`);
-    
-    if (isOnSessionPage) {
-      store.cleanupCallMedia(); // Очищуємо медіа
-      store.setPresenceState('NOT_JOINED'); // Повертаємо стан участі
-    } else {
-      store.cleanupCallConnection(); // Повністю розриваємо з'єднання
-    }
+    useCallStore.getState().disconnectAndCleanup();
   }, [rpcClient, sessionId, leaveCallSession]);
 
   return {

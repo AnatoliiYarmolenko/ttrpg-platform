@@ -22,7 +22,7 @@ export function useCallViewerSync(sessionId) {
       const currentStore = useCallStore.getState();
       const currentActiveId = currentStore.activeSessionId ? Number(currentStore.activeSessionId) : null;
       if (currentActiveId === numericSessionId && currentStore.presenceState === 'NOT_JOINED') {
-        currentStore.cleanupCallConnection();
+        currentStore.disconnectAndCleanup();
       }
     };
   }, [numericSessionId]);

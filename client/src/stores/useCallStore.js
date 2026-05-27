@@ -11,6 +11,7 @@ import { create } from 'zustand';
 export const useCallStore = create((set, get) => ({
   // 1. Ідентифікатор поточної сесії дзвінка
   activeSessionId: null,
+  myPeerId: null,
 
   // 2. Розділені статуси
   connectionState: 'DISCONNECTED', // CONNECTED, DISCONNECTED
@@ -40,6 +41,7 @@ export const useCallStore = create((set, get) => ({
 
   // Setters
   setActiveSessionId: (activeSessionId) => set({ activeSessionId: activeSessionId ? Number(activeSessionId) : null }),
+  setMyPeerId: (myPeerId) => set({ myPeerId }),
   setConnectionState: (state) => set({ connectionState: state }),
   setPresenceState: (state) => set({ presenceState: state }),
   setCallState: (state) => set({ callState: state }),
@@ -67,17 +69,17 @@ export const useCallStore = create((set, get) => ({
   setPeers: (peers) => set({ peers }),
   
   addPeer: (peer) => set((state) => {
-    if (state.peers.some(p => p.userId === peer.userId)) return state;
+    if (state.peers.some(p => p.peerId === peer.peerId)) return state;
     return { peers: [...state.peers, peer] };
   }),
   
-  removePeer: (userId) => set((state) => ({
-    peers: state.peers.filter(p => p.userId !== userId)
+  removePeer: (peerId) => set((state) => ({
+    peers: state.peers.filter(p => p.peerId !== peerId)
   })),
 
-  updatePeerMedia: (userId, { micEnabled, camEnabled }) => set((state) => ({
+  updatePeerMedia: (peerId, { micEnabled, camEnabled }) => set((state) => ({
     peers: state.peers.map(p => 
-      p.userId === userId 
+      p.peerId === peerId 
         ? { ...p, micEnabled: micEnabled ?? p.micEnabled, camEnabled: camEnabled ?? p.camEnabled } 
         : p
     )
@@ -98,16 +100,15 @@ export const useCallStore = create((set, get) => ({
     set({ presenceState: 'LEAVING' });
   },
 
-  endCurrentCallLocally: () => {
+  disconnectAndCleanup: (forceFullCleanup = false) => {
     const state = get();
     const isOnSessionPage = globalThis.location?.pathname?.includes(`/session/${state.activeSessionId}`);
     
     state.cleanupCallMedia();
     
-    if (isOnSessionPage) {
+    if (isOnSessionPage && !forceFullCleanup) {
       // Якщо користувач на сторінці сесії, зберігаємо WS з'єднання у режимі глядача
       set({
-        callState: 'ENDED',
         presenceState: 'NOT_JOINED',
         peers: [],
       });
@@ -115,7 +116,9 @@ export const useCallStore = create((set, get) => ({
       // Якщо користувач пішов зі сторінки, повністю розриваємо з'єднання
       set({
         activeSessionId: null,
-        callState: 'ENDED',
+        myPeerId: null,
+        callState: 'IDLE',
+        connectionState: 'DISCONNECTED',
         presenceState: 'NOT_JOINED',
         peers: [],
       });
@@ -157,19 +160,9 @@ export const useCallStore = create((set, get) => ({
     });
   },
 
-  cleanupCallConnection: () => {
-    get().cleanupCallMedia();
-    set({
-      activeSessionId: null,
-      callState: 'IDLE',
-      connectionState: 'DISCONNECTED',
-      presenceState: 'NOT_JOINED',
-      peers: [],
-    });
-  },
-  
-  // Backward compatibility helpers temporarily
+  // Backward compatibility aliases if needed (temporarily, until we refactor all calls)
+  cleanupCallConnection: () => get().disconnectAndCleanup(),
   resetMedia: () => get().cleanupCallMedia(),
-  reset: () => get().cleanupCallConnection(),
+  reset: () => get().disconnectAndCleanup(),
   setIsJoining: (isJoining) => set({ presenceState: isJoining ? 'JOINING' : 'NOT_JOINED' })
 }));

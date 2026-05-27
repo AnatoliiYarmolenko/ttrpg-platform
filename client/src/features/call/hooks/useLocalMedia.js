@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import * as mediasoupClient from 'mediasoup-client';
 import { useCallStore } from '@/stores/useCallStore';
 import { toast } from '@/stores/useToastStore';
@@ -11,6 +11,9 @@ export function useLocalMedia({ rpcClient, sessionId, callConfig }) {
     setCamProducer,
     setMediaPermissionError,
   } = useCallStore();
+
+  const isTogglingMic = useRef(false);
+  const isTogglingCam = useRef(false);
 
   // Ініціалізуємо mediasoup device
   const initDevice = useCallback(async (routerRtpCapabilities) => {
@@ -111,15 +114,17 @@ export function useLocalMedia({ rpcClient, sessionId, callConfig }) {
       micProducer.close();
       rpcClient.request('call:closeProducer', { sessionId, producerId: micProducer.id }).catch(console.error);
       setMicProducer(null);
-      rpcClient.sendEvent('call:setMediaState', { sessionId, mediaState: { micEnabled: false } });
     }
   }, [rpcClient, sessionId, setMicProducer]);
 
   // Запитуємо user media та створюємо producer-и
   const enableMic = useCallback(async () => {
+    if (isTogglingMic.current) return;
     const { device, sendTransport, micProducer } = useCallStore.getState();
     if (!device || !sendTransport) return;
     if (micProducer) return;
+    
+    isTogglingMic.current = true;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const track = stream.getAudioTracks()[0];
@@ -142,8 +147,6 @@ export function useLocalMedia({ rpcClient, sessionId, callConfig }) {
       });
       
       setMediaPermissionError(false);
-      rpcClient.sendEvent('call:setMediaState', { sessionId, mediaState: { micEnabled: true } });
-
     } catch (err) {
       if (err.name === 'NotAllowedError') {
         setMediaPermissionError(true);
@@ -155,8 +158,10 @@ export function useLocalMedia({ rpcClient, sessionId, callConfig }) {
         toast.error('Не вдалося увімкнути мікрофон');
         console.error(err);
       }
+    } finally {
+      isTogglingMic.current = false;
     }
-  }, [setMicProducer, setMediaPermissionError, disableMic, rpcClient, sessionId]);
+  }, [setMicProducer, setMediaPermissionError, disableMic]);
 
   // (disableMic defined above)
 
@@ -167,14 +172,16 @@ export function useLocalMedia({ rpcClient, sessionId, callConfig }) {
       camProducer.close();
       rpcClient.request('call:closeProducer', { sessionId, producerId: camProducer.id }).catch(console.error);
       setCamProducer(null);
-      rpcClient.sendEvent('call:setMediaState', { sessionId, mediaState: { camEnabled: false } });
     }
   }, [rpcClient, sessionId, setCamProducer]);
 
   const enableCam = useCallback(async () => {
+    if (isTogglingCam.current) return;
     const { device, sendTransport, camProducer } = useCallStore.getState();
     if (!device || !sendTransport) return;
     if (camProducer) return;
+    
+    isTogglingCam.current = true;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
@@ -195,7 +202,6 @@ export function useLocalMedia({ rpcClient, sessionId, callConfig }) {
       });
 
       setMediaPermissionError(false);
-      rpcClient.sendEvent('call:setMediaState', { sessionId, mediaState: { camEnabled: true } });
     } catch (err) {
       if (err.name === 'NotAllowedError') {
         setMediaPermissionError(true);
@@ -207,8 +213,10 @@ export function useLocalMedia({ rpcClient, sessionId, callConfig }) {
         toast.error('Не вдалося увімкнути камеру');
         console.error(err);
       }
+    } finally {
+      isTogglingCam.current = false;
     }
-  }, [setCamProducer, rpcClient, sessionId, setMediaPermissionError, disableCam]);
+  }, [setCamProducer, setMediaPermissionError, disableCam]);
 
   return {
     initDevice,

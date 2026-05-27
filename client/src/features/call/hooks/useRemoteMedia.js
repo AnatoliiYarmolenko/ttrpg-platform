@@ -4,7 +4,7 @@ import { useCallStore } from '@/stores/useCallStore';
 export function useRemoteMedia({ rpcClient, sessionId }) {
   const { addConsumer, removeConsumer } = useCallStore();
 
-  const consumeTrack = useCallback(async (producerId, userId) => {
+  const consumeTrack = useCallback(async (producerId, peerId) => {
     const { device, recvTransport } = useCallStore.getState();
     if (!device || !recvTransport || !rpcClient) return;
 
@@ -21,7 +21,7 @@ export function useRemoteMedia({ rpcClient, sessionId }) {
         producerId,
         kind,
         rtpParameters,
-        appData: { userId }
+        appData: { peerId }
       });
 
       addConsumer(consumer);
@@ -40,7 +40,7 @@ export function useRemoteMedia({ rpcClient, sessionId }) {
 
     // Слухаємо нові producer-и, які додають інші учасники
     const onNewProducer = (payload) => {
-      consumeTrack(payload.producerId, payload.userId);
+      consumeTrack(payload.producerId, payload.peerId);
     };
 
     const onConsumerClosed = (payload) => {
