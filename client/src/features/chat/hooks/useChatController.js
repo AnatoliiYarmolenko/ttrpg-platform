@@ -23,12 +23,12 @@ import useChatStore from '@/stores/useChatStore';
 export default function useChatController(entityType, entityId, options = {}) {
   const { enabled = true } = options;
 
-  const metaQuery = useChatMeta(entityType, entityId);
+  const metaQuery = useChatMeta(entityType, entityId, { enabled });
   const chatId = metaQuery.data?.chat?.id || null;
 
   const messagesQuery = useChatMessages(chatId, {
     limit: 50,
-    enabled: !!chatId,
+    enabled: enabled && !!chatId,
   });
 
   const connectionHook = useChatConnection(chatId, {

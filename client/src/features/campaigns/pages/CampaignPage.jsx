@@ -62,7 +62,7 @@ export default function CampaignPage() {
   } = useCampaignPageController();
 
   const chatController = useChatController('campaign', Number.parseInt(id, 10), {
-    enabled: Boolean(user && id),
+    enabled: Boolean(user && id && !isPreviewMode),
   });
 
   React.useEffect(() => {

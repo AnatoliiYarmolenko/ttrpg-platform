@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 
 // Controller hook — вся логіка сторінки інкапсульована тут
 import useSessionPageController from '../hooks/useSessionPageController';
+import { useCallViewerSync } from '@/features/call/hooks/useCallViewerSync';
 
 // Layout & Navigation
 import SessionLayout from '../components/layout/SessionLayout';
@@ -79,6 +80,20 @@ export default function SessionPage() {
     navigate,
     viewer,
   } = useSessionPageController();
+
+  // Синхронізація підключення до дзвінка для поточної сторінки
+  useCallViewerSync(isPreviewMode ? null : id);
+
+  const chatController = useChatController('session', Number.parseInt(id, 10), {
+    enabled: Boolean(user && id && !isPreviewMode),
+  });
+
+  React.useEffect(() => {
+    const disconnect = chatController?.disconnect;
+    return () => {
+      disconnect?.();
+    };
+  }, [chatController?.disconnect]);
 
   if (shouldRedirectToLogin) {
     return <Navigate to="/login" replace />;
@@ -161,7 +176,7 @@ export default function SessionPage() {
     profilePreviewNode,
     communicationPanelMode,
     setCommunicationPanelMode,
-chatProps: chatController.chatPanelProps,
+    chatProps: chatController.chatPanelProps,
   });
 
   const previewPanels = {
