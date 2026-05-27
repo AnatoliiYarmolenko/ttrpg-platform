@@ -127,13 +127,13 @@ async function handleSessionAction({ socket, type, payload, sessionId, userId, s
   }
 }
 
-function ensureActiveCallRoom(sessionId, userId) {
+function ensureActiveCallRoom(sessionId, socketId) {
   const room = callRoomManager.getRoomIfExists(sessionId);
   if (room?.callState !== CALL_STATES.ACTIVE) {
     throw new AppError(ERROR_CODES.CALL_NOT_STARTED, 'Call is not active');
   }
 
-  const peer = room.peers.get(userId);
+  const peer = room.peers.get(socketId);
   if (!peer) {
     throw new AppError(ERROR_CODES.CALL_JOIN_FORBIDDEN, 'Peer not in call');
   }
@@ -142,7 +142,7 @@ function ensureActiveCallRoom(sessionId, userId) {
 }
 
 async function handleWebRtcAction({ socket, type, payload, sessionId, userId, sendResponse, sendEvent }) {
-  const { room, peer } = ensureActiveCallRoom(sessionId, userId);
+  const { room, peer } = ensureActiveCallRoom(sessionId, socket.id);
 
   switch (type) {
     case 'call:getRouterRtpCapabilities':
@@ -152,7 +152,10 @@ async function handleWebRtcAction({ socket, type, payload, sessionId, userId, se
       const transport = await room.router.createWebRtcTransport(webRtcTransportOptions);
       transport.appData.socketId = socket.id;
       transport.on('dtlsstatechange', (dtlsState) => {
-        if (dtlsState === 'closed') transport.close();
+        if (dtlsState === 'closed' || dtlsState === 'failed') {
+          transport.close();
+          peer.transports.delete(transport.id);
+        }
       });
       peer.addTransport(transport);
       const data = {
@@ -182,13 +185,21 @@ async function handleWebRtcAction({ socket, type, payload, sessionId, userId, se
 
       const producer = await transport.produce({ kind, rtpParameters, appData });
       producer.appData = { ...producer.appData, socketId: socket.id };
-      producer.on('transportclose', () => producer.close());
+      producer.on('transportclose', () => {
+        producer.close();
+        peer.removeProducer(producer.id);
+
+        const { broadcastCallEvent } = require('../call/call.service');
+        broadcastCallEvent(room, 'call:producerClosed', { producerId: producer.id, peerId: socket.id });
+        broadcastCallEvent(room, 'call:media-state-changed', { peerId: socket.id, mediaState: peer.mediaState });
+      });
       peer.addProducer(producer);
       sendEvent(socket, 'call:produced', { id: producer.id, kind });
       sendResponse({ id: producer.id });
 
       const { broadcastCallEvent } = require('../call/call.service');
-      broadcastCallEvent(room, 'call:newProducer', { producerId: producer.id, userId, kind }, socket);
+      broadcastCallEvent(room, 'call:newProducer', { producerId: producer.id, peerId: socket.id, kind }, socket);
+      broadcastCallEvent(room, 'call:media-state-changed', { peerId: socket.id, mediaState: peer.mediaState }, socket);
       return true;
     }
     case 'call:closeProducer': {
@@ -199,7 +210,8 @@ async function handleWebRtcAction({ socket, type, payload, sessionId, userId, se
         peer.removeProducer(producerId);
 
         const { broadcastCallEvent } = require('../call/call.service');
-        broadcastCallEvent(room, 'call:producerClosed', { producerId, userId }, socket);
+        broadcastCallEvent(room, 'call:producerClosed', { producerId, peerId: socket.id }, socket);
+        broadcastCallEvent(room, 'call:media-state-changed', { peerId: socket.id, mediaState: peer.mediaState }, socket);
       }
       sendEvent(socket, 'call:producerClosed', { producerId });
       sendResponse({ success: true });
@@ -210,7 +222,7 @@ async function handleWebRtcAction({ socket, type, payload, sessionId, userId, se
       Object.assign(peer.mediaState, mediaState);
 
       const { broadcastCallEvent } = require('../call/call.service');
-      broadcastCallEvent(room, 'call:media-state-changed', { userId, mediaState: peer.mediaState }, socket);
+      broadcastCallEvent(room, 'call:media-state-changed', { peerId: socket.id, mediaState: peer.mediaState }, socket);
       sendResponse({ success: true });
       return true;
     }
@@ -318,8 +330,7 @@ function createCallHandler({ logger } = {}) {
         }
 
         if (actualType === 'call:leave') {
-          callService.leaveCall(sessionId, userId, socket);
-          socket.callSessionId = null;
+          callService.leaveCall(sessionId, userId, socket, false); // isDisconnect = false
           sendResponse({ success: true });
           return;
         }
@@ -340,7 +351,7 @@ function createCallHandler({ logger } = {}) {
 
     socket.on('close', () => {
       if (socket.callSessionId && socket.user?.id) {
-        callService.leaveCall(socket.callSessionId, socket.user.id, socket);
+        callService.leaveCall(socket.callSessionId, socket.user.id, socket, true); // isDisconnect = true
       }
     });
   };

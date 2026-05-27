@@ -5,6 +5,7 @@ const { logger } = require('../lib/logger');
 const { COOKIE_NAMES } = require('../utils/cookie.helper');
 const { jwtSecret, corsAllowedOrigins, nodeEnv } = require('../config/config');
 const { isUserDeleted } = require('../store/deleted-users');
+const prismaModule = require('../lib/prisma');
 
 const verifyJwt = promisify(jwt.verify);
 const LOCALHOST_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1']);
@@ -95,10 +96,25 @@ async function authenticateWsRequest(request) {
   }
 
   try {
-    const user = await verifyJwt(token, jwtSecret);
+    const decoded = await verifyJwt(token, jwtSecret);
 
-    if (await isUserDeleted(user.id)) {
+    if (await isUserDeleted(decoded.id)) {
       throw new AppError(ERROR_CODES.AUTH_TOKEN_INVALID, 'Акаунт було видалено');
+    }
+
+    const user = await prismaModule.prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: {
+        id: true,
+        username: true,
+        displayName: true,
+        avatarUrl: true,
+        role: true,
+      },
+    });
+
+    if (!user) {
+      throw new AppError(ERROR_CODES.AUTH_TOKEN_INVALID, 'Користувача не знайдено');
     }
 
     return user;

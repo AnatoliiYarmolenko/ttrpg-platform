@@ -83,68 +83,30 @@ class CallService {
     return {
       callState: room.callState,
       routerRtpCapabilities: room.router.rtpCapabilities,
-      peers: Array.from(room.peers.values()).map(p => p.summary)
+      peers: Array.from(room.peers.values()).map(p => p.summary),
+      myPeerId: socketId
     };
   }
 
-  leaveCall(sessionId, userId, socket) {
+  leaveCall(sessionId, userId, socket, isDisconnect = false) {
     const room = callRoomManager.getRoomIfExists(sessionId);
     
     if (!room) return;
 
     if (socket) {
-      callRoomManager.removeSocket(sessionId, socket);
-    }
-
-    const peer = callRoomManager.getPeer(sessionId, userId);
-    
-    if (peer) {
-      if (socket) {
-        // 1. Видаляємо socketId з активних сокетів peer
-        peer.socketIds.delete(socket.id);
-
-        // 2. Закриваємо та видаляємо продюсери, створені цим сокетом
-        for (const producer of Array.from(peer.producers.values())) {
-          if (producer.appData?.socketId === socket.id) {
-            producer.close();
-            peer.removeProducer(producer.id);
-            broadcastCallEvent(room, 'call:producerClosed', { producerId: producer.id, userId });
-          }
-        }
-
-        // 3. Закриваємо та видаляємо консюмери, створені цим сокетом
-        for (const consumer of Array.from(peer.consumers.values())) {
-          if (consumer.appData?.socketId === socket.id) {
-            consumer.close();
-            peer.removeConsumer(consumer.id);
-          }
-        }
-
-        // 4. Закриваємо та видаляємо транспорти, створені цим сокетом
-        for (const transport of Array.from(peer.transports.values())) {
-          if (transport.appData?.socketId === socket.id) {
-            transport.close();
-            peer.transports.delete(transport.id);
-          }
-        }
-
-        // Оновлюємо стан медіа для інших користувачів, якщо він змінився
-        broadcastCallEvent(room, 'call:media-state-changed', { userId, mediaState: peer.mediaState });
-
-        // Якщо в цього користувача ще залишилися активні сокети/вкладки, не видаляємо peer повністю!
-        if (peer.socketIds.size > 0) {
-          // Оновлюємо socketId на один з існуючих активних
-          peer.socketId = Array.from(peer.socketIds)[0];
-          return;
-        }
+      if (isDisconnect) {
+        callRoomManager.removeSocket(sessionId, socket);
       }
       
-      callRoomManager.removePeer(sessionId, userId);
-      
-      broadcastCallEvent(room, CALL_EVENTS.PARTICIPANT_LEFT, {
-        sessionId,
-        userId
-      });
+      const peer = callRoomManager.getPeer(sessionId, socket.id);
+      if (peer) {
+        callRoomManager.removePeer(sessionId, socket.id);
+        
+        broadcastCallEvent(room, CALL_EVENTS.PARTICIPANT_LEFT, {
+          sessionId,
+          peerId: socket.id
+        });
+      }
     }
   }
 

@@ -5,9 +5,9 @@
 class CallPeerState {
   constructor({ userId, socketId, user = null }) {
     this.userId = userId;
-    this.socketId = socketId; // WS socket ID для зворотного зв'язку (останній підключений)
-    this.socketIds = new Set([socketId]); // Усі активні підключення/вкладки користувача
-    this.username = user?.username || user?.displayName || null;
+    this.socketId = socketId; // WS socket ID як унікальний ідентифікатор сесії
+    this.username = user?.username || null;
+    this.displayName = user?.displayName || user?.username || null;
     this.avatarUrl = user?.avatarUrl || user?.avatar || null;
     this.joinedAt = Date.now();
     // transportId -> Transport
@@ -25,8 +25,10 @@ class CallPeerState {
 
   get summary() {
     return {
+      peerId: this.socketId,
       userId: this.userId,
       username: this.username,
+      displayName: this.displayName,
       avatarUrl: this.avatarUrl,
       mediaState: this.mediaState,
       producers: Array.from(this.producers.values()).map(p => ({ id: p.id, kind: p.kind })),
@@ -107,7 +109,6 @@ class CallPeerState {
     
     this.mediaState.micEnabled = false;
     this.mediaState.camEnabled = false;
-    this.socketIds.clear();
   }
 }
 
