@@ -8,7 +8,7 @@
     "test": "node --test tests/unit/**/*.test.js",
     "pretest:coverage": "prisma generate --schema=prisma/schema.prisma",
     "test:coverage": "c8 --all --include=src/**/*.js --exclude=src/constants/** --exclude=src/validation/** --reporter=text-summary --reporter=lcov --reporter=html node --test tests/**/*.test.js",
-    "test:unit": "node --test tests/unit/**/*.test.js",
+    "test:unit": "node --test tests/unit/**/*.test.js tests/policy/**/*.test.js tests/security/**/*.test.js",
     "test:integration": "docker compose --profile test up -d db_test redis_test && DATABASE_URL='postgresql://testuser:testpass@localhost:5433/ttrpg_test?schema=public' npx prisma db push && DATABASE_URL='postgresql://testuser:testpass@localhost:5433/ttrpg_test?schema=public' REDIS_URL='redis://localhost:6380' node --test tests/integration/**/*.test.js",
     "test:integration:cleanup": "docker compose rm -f -s db_test redis_test",
     "dev": "nodemon index.js",
