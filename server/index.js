@@ -9,11 +9,13 @@ require('./src/config/config');
 const { prisma } = require('./src/lib/prisma');
 const { redis, waitForRedisReady } = require('./src/lib/redis');
 const { logger } = require('./src/lib/logger');
-const { port, wsChatPath } = require('./src/config/config');
+const { port, wsChatPath, wsCallPath } = require('./src/config/config');
 const { createApp } = require('./src/app');
 const { createWsServer } = require('./src/ws/ws-server');
 const { createRoomManager } = require('./src/ws/ws-room.manager');
 const { createChatHandler } = require('./src/ws/ws-chat.handler');
+const { createCallHandler } = require('./src/ws/ws-call.handler');
+const { initWorkers, closeWorkers } = require('./src/lib/mediasoup');
 
 // Startup modules
 const {
@@ -24,6 +26,7 @@ const {
 
 let server = null;
 let wsServer = null;
+let wsCallServer = null;
 let roomManager = null;
 
 // ========== GRACEFUL SHUTDOWN ==========
@@ -40,6 +43,7 @@ async function gracefulShutdown(signal) {
   
   // Зупиняємо прийом нових з'єднань
   if (!server) {
+    closeWorkers();
     await shutdownCleanupJobs();
     await prisma.$disconnect();
     process.exit(1);
@@ -52,8 +56,12 @@ async function gracefulShutdown(signal) {
     if (wsServer) {
       await wsServer.close();
     }
+    if (wsCallServer) {
+      await wsCallServer.close();
+    }
     
     // Очищаємо ресурси
+    closeWorkers();
     await shutdownCleanupJobs();
     if (redis.status !== 'end' && redis.status !== 'wait') {
       try {
@@ -93,6 +101,9 @@ async function startServer() {
   // Потім чекаємо готовність Redis, щоб auth/rate-limit не стартували у деградації.
   await waitForRedisReady();
 
+  // Ініціалізуємо mediasoup workers
+  await initWorkers();
+
   // Ініціалізуємо cleanup jobs (токени та rate limits)
   initAllCleanupJobs();
 
@@ -113,7 +124,16 @@ async function startServer() {
     logger,
     onConnection: chatHandler,
   });
-  logger.info({ path: wsChatPath }, 'WS сервер запущено');
+  logger.info({ path: wsChatPath }, 'WS сервер запущено (Chat)');
+
+  const callHandler = createCallHandler({ logger });
+  wsCallServer = createWsServer({
+    server,
+    path: wsCallPath,
+    logger,
+    onConnection: callHandler,
+  });
+  logger.info({ path: wsCallPath }, 'WS сервер запущено (Call)');
 }
 
 startServer().catch((err) => {

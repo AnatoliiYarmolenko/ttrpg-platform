@@ -1,4 +1,5 @@
 const { canOpenCampaign: canOpenCampaignByAccess } = require('../../domain/access/access-rules');
+const permissionsService = require('./session-call-permissions.service');
 
 function createSessionPageService({ sessionQueryService }) {
   const mapOwner = (owner) => {
@@ -191,6 +192,10 @@ function createSessionPageService({ sessionQueryService }) {
       })
     );
 
+    const canStartCall = permissionsService.canStartCall({ session, isOwner, isConfirmedGm });
+    const canEndCall = permissionsService.canEndCall({ session, isOwner, isConfirmedGm });
+    const canJoinCall = permissionsService.canJoinCall({ session, isOwner, isConfirmedGm, isParticipant });
+
     return {
       isOwner,
       isParticipant,
@@ -212,6 +217,9 @@ function createSessionPageService({ sessionQueryService }) {
       canManageGmRequests,
       canManageShareLink,
       canOpenCampaign,
+      canStartCall,
+      canEndCall,
+      canJoinCall,
     };
   };
 
@@ -240,6 +248,9 @@ function createSessionPageService({ sessionQueryService }) {
     canManageGmRequests: viewerState.canManageGmRequests,
     canManageShareLink: viewerState.canManageShareLink,
     canOpenCampaign: viewerState.canOpenCampaign,
+    canStartCall: viewerState.canStartCall,
+    canEndCall: viewerState.canEndCall,
+    canJoinCall: viewerState.canJoinCall,
   });
 
   const buildSessionPageSections = ({ session, viewerState, participants, campaignSectionVisible, campaignData }) => ({

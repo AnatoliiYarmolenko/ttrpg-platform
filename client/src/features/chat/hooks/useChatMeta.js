@@ -22,9 +22,10 @@ const resolveDescriptorFetch = (entityType) => {
 
 const isValidId = (value) => Number.isInteger(value) && value > 0;
 
-export default function useChatMeta(entityType, entityId) {
+export default function useChatMeta(entityType, entityId, options = {}) {
   const fetchDescriptor = resolveDescriptorFetch(entityType);
-  const enabled = Boolean(fetchDescriptor) && isValidId(entityId);
+  const { enabled: optionEnabled = true } = options;
+  const enabled = Boolean(fetchDescriptor) && isValidId(entityId) && optionEnabled;
 
   return useQuery({
     queryKey: chatMetaQueryKeys.detail({ entityType, entityId }),

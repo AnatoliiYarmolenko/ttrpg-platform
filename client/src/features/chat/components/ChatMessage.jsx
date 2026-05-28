@@ -33,11 +33,28 @@ function formatTimeAgo(dateStr) {
   }
 }
 
+function useRelativeTime(dateStr) {
+  const [tick, setTick] = React.useState(0);
+
+  React.useEffect(() => {
+    // Оновлювати таймер кожну хвилину
+    const intervalId = setInterval(() => {
+      setTick((t) => t + 1);
+    }, 60000);
+
+    return () => clearInterval(intervalId);
+  }, []);
+
+  return tick >= 0 ? formatTimeAgo(dateStr) : '';
+}
+
 export default function ChatMessage({
   message,
   isCurrentUser = false,
   className = '',
 }) {
+  const time = useRelativeTime(message?.createdAt);
+
   if (!message) {
     return null;
   }
@@ -46,12 +63,10 @@ export default function ChatMessage({
     id,
     author,
     content,
-    createdAt,
     pending,
     status,
   } = message;
 
-  const time = formatTimeAgo(createdAt);
   const authorName = author?.displayName || author?.username || 'Невідомий';
   const authorAvatar = author?.avatarUrl || null;
 

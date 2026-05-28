@@ -15,6 +15,7 @@ import {
   leaveSession,
   updateParticipantStatus,
   removeParticipant,
+  getSessionCallConfig,
 } from '../api/sessionApi';
 
 export const sessionPageQueryKeys = {
@@ -105,6 +106,23 @@ export const useSessionShareLinkQuery = (sessionId, enabled = true) => {
     },
     enabled: isValidId && enabled,
     staleTime: 30 * 1000,
+  });
+};
+
+export const useSessionCallConfigQuery = (sessionId, enabled = true) => {
+  const isValidId = Number.isInteger(sessionId) && sessionId > 0;
+
+  return useQuery({
+    queryKey: ['session', sessionId, 'call-config'],
+    queryFn: async () => {
+      const res = await getSessionCallConfig(sessionId);
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to fetch call config');
+      }
+      return res.data || null;
+    },
+    enabled: isValidId && enabled,
+    staleTime: 5 * 60 * 1000, // Config won't change often, keep it cached for 5 mins
   });
 };
 

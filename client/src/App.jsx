@@ -5,6 +5,8 @@ import { useCsrfInit } from "./hooks/useCsrfInit";
 import ToastViewport from "./components/ui/toast/ToastViewport";
 import useAuthStore from "./stores/useAuthStore";
 import GlobalNotificationProvider from "./features/notifications/components/GlobalNotificationProvider";
+import { GlobalCallProvider } from "./features/call/components/GlobalCallProvider";
+import { GlobalInCallBadge } from "./features/call/components/GlobalInCallBadge";
 
 function AuthExpiredRedirectListener() {
   const navigate = useNavigate();
@@ -36,8 +38,11 @@ function App() {
     <BrowserRouter>
       <AuthExpiredRedirectListener />
       <GlobalNotificationProvider />
-      <AppRoutes />
-      <ToastViewport />
+      <GlobalCallProvider>
+        <AppRoutes />
+        <GlobalInCallBadge />
+        <ToastViewport />
+      </GlobalCallProvider>
     </BrowserRouter>
   );
 }

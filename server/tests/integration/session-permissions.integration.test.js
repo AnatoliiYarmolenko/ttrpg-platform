@@ -99,8 +99,8 @@ async function createTestCampaign(ownerId, overrides = {}) {
 }
 
 async function createTestSession(ownerId, campaignId = null, overrides = {}) {
+  // Використовуємо поточний момент, щоб гарантувати перевірки в той самий день за часовим поясом користувача.
   const today = new Date();
-  today.setHours(12, 0, 0, 0);
 
   return testPrisma.session.create({
     data: {

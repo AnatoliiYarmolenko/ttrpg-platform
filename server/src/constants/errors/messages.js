@@ -73,6 +73,14 @@ const ERROR_MESSAGES = {
   [ERROR_CODES.SESSION_LINK_ONLY_ONE_SHOT_ONLY]: 'Режим LINK_ONLY дозволений лише для одиночних сесій',
   [ERROR_CODES.SESSION_DELETE_FORBIDDEN]: 'Видаляти можна лише заплановані сесії',
 
+  [ERROR_CODES.CALL_NOT_AVAILABLE]: 'Відеодзвінок недоступний для цієї сесії',
+  [ERROR_CODES.CALL_NOT_STARTED]: 'Відеодзвінок ще не розпочався',
+  [ERROR_CODES.CALL_ALREADY_ACTIVE]: 'Відеодзвінок вже активний',
+  [ERROR_CODES.CALL_ALREADY_ENDED]: 'Відеодзвінок вже завершено',
+  [ERROR_CODES.CALL_JOIN_FORBIDDEN]: 'У вас немає прав для приєднання до цього відеодзвінка',
+  [ERROR_CODES.CALL_START_FORBIDDEN]: 'У вас немає прав для початку відеодзвінка',
+  [ERROR_CODES.CALL_END_FORBIDDEN]: 'У вас немає прав для завершення відеодзвінка',
+
   [ERROR_CODES.CAMPAIGN_TRANSFER_FAILED]: 'Не вдалося передати права власності кампанії',
   [ERROR_CODES.CAMPAIGN_OWNER_REQUIRED]: 'Дія доступна тільки власнику кампанії',
   [ERROR_CODES.CAMPAIGN_NOT_FOUND]: 'Кампанія не знайдена',

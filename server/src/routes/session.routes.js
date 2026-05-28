@@ -13,6 +13,7 @@ const {
 const sessionCrudController = require('../controllers/session/session-crud.controller');
 const sessionCalendarController = require('../controllers/session/session-calendar.controller');
 const sessionParticipantsController = require('../controllers/session/session-participants.controller');
+const sessionCallController = require('../controllers/session/session-call.controller');
 const {
   validateCreateSession,
   validateUpdateSession,
@@ -140,6 +141,12 @@ router.get(
   '/:id/participants',
   [authenticateToken, ...validateSessionId],
   (req, res, next) => sessionParticipantsController.getSessionParticipants(req, res, next)
+);
+
+router.get(
+  '/:id/call-config',
+  [authenticateToken, ...validateSessionId],
+  (req, res, next) => sessionCallController.getCallConfig(req, res, next)
 );
 
 router.post(

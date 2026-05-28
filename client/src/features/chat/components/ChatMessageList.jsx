@@ -44,11 +44,23 @@ export default function ChatMessageList({
     [messages, currentUserId]
   );
 
+  // Автоматичний скрол при завантаженні повідомлень
+  useEffect(() => {
+    const container = containerRef.current;
+    if (container && messages.length > 0) {
+      setTimeout(() => {
+        container.scrollTop = container.scrollHeight;
+      }, 0);
+    }
+  }, [messages.length]);
+
+  // Автоматичний скрол при нових повідомленнях
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const shouldAutoScroll = prevMessageCountRef.current < messages.length;
+    
     if (shouldAutoScroll) {
       setTimeout(() => {
         container.scrollTop = container.scrollHeight;

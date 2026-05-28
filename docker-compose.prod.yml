@@ -26,8 +26,8 @@ services:
     image: redis:7-alpine
     container_name: ttrpg_redis
     restart: always
-    expose:
-      - "6379"
+    ports:
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     command: redis-server --save 60 1 --loglevel warning
@@ -47,11 +47,13 @@ services:
       dockerfile: server/Dockerfile
     container_name: ttrpg_server
     restart: always
-    expose:
-      - "5000"
+    # Mediasoup UDP порти: НЕ проксюємо через Docker ports!
+    # UFW вже відкрив 40000-40499/udp на рівні хоста.
+    # Щоб mediasoup отримував пакети напряму — server використовує host network.
+    network_mode: host
     environment:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
-      REDIS_URL: ${REDIS_URL:-redis://ttrpg_redis:6379}
+      REDIS_URL: ${REDIS_URL:-redis://127.0.0.1:6379}
       PORT: 5000
       NODE_ENV: production
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
@@ -68,12 +70,25 @@ services:
       GMAIL_USER: ${GMAIL_USER:-}
       GMAIL_PASSWORD: ${GMAIL_PASSWORD:-}
       SMTP_HOST: ${SMTP_HOST:?Set SMTP_HOST}
-      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_PORT: ${SMTP_PORT:-2525}
       SMTP_SECURE: ${SMTP_SECURE:-false}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       EMAIL_FROM: ${EMAIL_FROM:?Set EMAIL_FROM}
       TOKEN_CLEANUP_SCHEDULE: ${TOKEN_CLEANUP_SCHEDULE:-0 2 * * *}
+      # --- WebRTC / Call ---
+      WS_CALL_PATH: ${WS_CALL_PATH:-/ws/call}
+      MEDIASOUP_LISTEN_IP: ${MEDIASOUP_LISTEN_IP:-0.0.0.0}
+      MEDIASOUP_ANNOUNCED_IP: ${MEDIASOUP_ANNOUNCED_IP:?Set MEDIASOUP_ANNOUNCED_IP}
+      MEDIASOUP_MIN_PORT: ${MEDIASOUP_MIN_PORT:-40000}
+      MEDIASOUP_MAX_PORT: ${MEDIASOUP_MAX_PORT:-40499}
+      # --- TURN (coturn на хості, не в Docker) ---
+      TURN_ENABLED: ${TURN_ENABLED:-true}
+      TURN_URL: ${TURN_URL:?Set TURN_URL}
+      TURN_REALM: ${TURN_REALM:?Set TURN_REALM}
+      TURN_SHARED_SECRET: ${TURN_SHARED_SECRET:?Set TURN_SHARED_SECRET}
+      TURN_CREDENTIAL_TTL_SECONDS: ${TURN_CREDENTIAL_TTL_SECONDS:-3600}
+      TURN_TRANSPORT: ${TURN_TRANSPORT:-udp}
     depends_on:
       db:
         condition: service_healthy
@@ -81,8 +96,6 @@ services:
         condition: service_healthy
     volumes:
       - uploads_data:/app/server/uploads
-    networks:
-      - internal
     logging:
       driver: "json-file"
       options:
@@ -99,6 +112,8 @@ services:
         VITE_API_URL: /api
     container_name: ttrpg_client
     restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "80:80"
       - "443:443"

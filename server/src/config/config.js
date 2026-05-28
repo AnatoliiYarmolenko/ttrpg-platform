@@ -1,4 +1,7 @@
-require('dotenv').config();
+const path = require('node:path');
+require('dotenv').config({
+  path: path.resolve(__dirname, '../../../.env'),
+});
 const { logger } = require('../lib/logger');
 
 /**
@@ -35,7 +38,7 @@ if (missingVars.length > 0) {
   missingVars.forEach(varName => {
     logger.error({ varName }, 'Відсутня змінна оточення');
   });
-  logger.error('Створіть файл .env в директорії server/ з необхідними змінними. Приклад: .env.example');
+  logger.error('Створіть кореневий файл .env з необхідними змінними. Приклад: .env.example');
   process.exit(1);
 }
 
@@ -84,6 +87,64 @@ if (nodeEnv === 'production') {
   }
 }
 
+// ========== mediasoup port range ==========
+const parsedMinPort = Number(process.env.MEDIASOUP_MIN_PORT);
+const mediasoupMinPort = Number.isInteger(parsedMinPort) && parsedMinPort > 0 ? parsedMinPort : 40000;
+const parsedMaxPort = Number(process.env.MEDIASOUP_MAX_PORT);
+const mediasoupMaxPort = Number.isInteger(parsedMaxPort) && parsedMaxPort > mediasoupMinPort ? parsedMaxPort : 49999;
+
+// ========== WebRTC & TURN Validation ==========
+const mediasoupListenIp = process.env.MEDIASOUP_LISTEN_IP || '0.0.0.0';
+const mediasoupAnnouncedIp = (process.env.MEDIASOUP_ANNOUNCED_IP || '127.0.0.1').trim();
+const turnEnabled = process.env.TURN_ENABLED === 'true';
+const turnUrl = (process.env.TURN_URL || '').trim();
+const turnSharedSecret = (process.env.TURN_SHARED_SECRET || '').trim();
+const turnRealm = (process.env.TURN_REALM || '').trim();
+const parsedTurnCredentialTtlSeconds = Number(process.env.TURN_CREDENTIAL_TTL_SECONDS);
+const turnCredentialTtlSeconds = Number.isInteger(parsedTurnCredentialTtlSeconds)
+  && parsedTurnCredentialTtlSeconds > 0
+  ? parsedTurnCredentialTtlSeconds
+  : 3600;
+const turnTransport = process.env.TURN_TRANSPORT || 'udp';
+
+// Валідація анонсованого IP для WebRTC
+const isLoopbackIp = (ip) => ['127.0.0.1', 'localhost', '::1', '0.0.0.0'].includes(ip.toLowerCase());
+
+if (nodeEnv === 'production') {
+  if (!process.env.MEDIASOUP_ANNOUNCED_IP) {
+    logger.error('ПОМИЛКА: Для production обов\'язково вкажіть MEDIASOUP_ANNOUNCED_IP (публічний IP сервера).');
+    process.exit(1);
+  }
+  if (isLoopbackIp(mediasoupAnnouncedIp)) {
+    logger.error(`ПОМИЛКА: MEDIASOUP_ANNOUNCED_IP (${mediasoupAnnouncedIp}) не може бути loopback/local IP у production.`);
+    process.exit(1);
+  }
+} else {
+  if (!process.env.MEDIASOUP_ANNOUNCED_IP) {
+    logger.warn('УВАГА: MEDIASOUP_ANNOUNCED_IP не вказано. Використовується дефолтний 127.0.0.1 для локальної розробки.');
+  }
+}
+
+// Валідація TURN налаштувань, якщо TURN увімкнено
+if (turnEnabled) {
+  if (!turnUrl) {
+    logger.error('ПОМИЛКА: TURN_ENABLED=true, але TURN_URL не вказано.');
+    process.exit(1);
+  }
+  if (!turnUrl.startsWith('turn:') && !turnUrl.startsWith('turns:')) {
+    logger.error(`ПОМИЛКА: Невалідний формат TURN_URL (${turnUrl}). URL має починатися з 'turn:' або 'turns:'.`);
+    process.exit(1);
+  }
+  if (!turnSharedSecret) {
+    logger.error('ПОМИЛКА: TURN_ENABLED=true, але TURN_SHARED_SECRET не вказано.');
+    process.exit(1);
+  }
+  if (!turnRealm) {
+    logger.error('ПОМИЛКА: TURN_ENABLED=true, але TURN_REALM не вказано.');
+    process.exit(1);
+  }
+}
+
 module.exports = {
   jwtSecret: process.env.JWT_SECRET,
   databaseUrl: process.env.DATABASE_URL,
@@ -99,4 +160,34 @@ module.exports = {
   homeActiveMaxAgeHours,
   // Вікно запізнення PLANNED сесії для Home next-relevant
   homePlannedToleranceMinutes,
+
+  // ========== WebRTC / Call ==========
+  // Шлях для окремого WebSocket-з'єднання дзвінків
+  wsCallPath: process.env.WS_CALL_PATH || '/ws/call',
+
+  // ========== mediasoup ==========
+  // IP, на якому mediasoup worker слухає WebRTC транспорти
+  // У Docker/production — 0.0.0.0; локально — 127.0.0.1
+  mediasoupListenIp,
+  // Зовнішній IP, який mediasoup оголошує клієнтам у ICE candidates
+  // ОБОВ'ЯЗКОВО змінити на реальний IP сервера у production
+  mediasoupAnnouncedIp,
+  // Діапазон UDP портів для RTC транспортів (потрібно відкрити на firewall)
+  mediasoupMinPort,
+  mediasoupMaxPort,
+
+  // ========== TURN ==========
+  // Вмикає/вимикає TURN у ICE конфігурації клієнта
+  // false — безпечний дефолт для локальної розробки (між вкладками одного браузера TURN не потрібен)
+  turnEnabled,
+  // TURN сервер URL (формат: turn:host:port або turns:host:port?transport=tcp)
+  turnUrl,
+  // Shared secret для time-limited TURN credentials (coturn use-auth-secret)
+  turnSharedSecret,
+  // Realm для TURN credentials generation
+  turnRealm,
+  // Час життя тимчасових TURN credentials
+  turnCredentialTtlSeconds,
+  // Транспортний протокол TURN: 'udp' | 'tcp'
+  turnTransport,
 };
