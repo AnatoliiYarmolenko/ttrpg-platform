@@ -556,7 +556,7 @@ function createSessionLifecycleService({
         // Note: We no longer reset conflicting participants to PENDING
         // Users are notified and decide themselves whether to stay or leave
 
-        return tx.session.update({
+        const sessionUpdateResult = await tx.session.update({
           where: { id: sessionIdInt },
           data: buildSessionUpdatePayload({
             normalizedUpdateData,
@@ -578,6 +578,33 @@ function createSessionLifecycleService({
             },
           },
         });
+
+        if (normalizedUpdateData.status === 'FINISHED' && session.status !== 'FINISHED') {
+          const hoursToAdd = Math.round((session.duration || 180) / 60);
+          
+          const participantIds = session.participants
+            .filter(p => p.status === 'CONFIRMED')
+            .map(p => p.userId);
+          
+          const uniqueUserIds = [...new Set([...participantIds, session.ownerId])];
+
+          for (const uid of uniqueUserIds) {
+            await tx.userStats.upsert({
+              where: { userId: uid },
+              update: {
+                hoursPlayed: { increment: hoursToAdd },
+                sessionsPlayed: { increment: 1 },
+              },
+              create: {
+                userId: uid,
+                hoursPlayed: hoursToAdd,
+                sessionsPlayed: 1,
+              },
+            });
+          }
+        }
+
+        return sessionUpdateResult;
       });
 
       // Check if date or duration actually changed (not just present in update data)
