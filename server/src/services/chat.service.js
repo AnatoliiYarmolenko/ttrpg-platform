@@ -365,6 +365,53 @@ class ChatService {
     };
   }
 
+  async getMessagesBefore(chatId, userId, options = {}) {
+    const chat = await this._getChatById(chatId);
+    const context = buildChatAccessContext({ chat, userId });
+
+    this._requireCanRead(context);
+
+    const { createdAt, id } = parseCursor(options.before);
+    const requestedLimit = Number.isInteger(options.limit) ? options.limit : DEFAULT_MESSAGES_LIMIT;
+    const limit = Math.min(Math.max(requestedLimit, 1), MAX_MESSAGES_LIMIT);
+
+    const rawMessages = await this.prisma.chatMessage.findMany({
+      where: {
+        chatId: chat.id,
+        OR: [
+          { createdAt: { lt: createdAt } },
+          { createdAt, id: { lt: id } },
+        ],
+      },
+      include: {
+        author: {
+          select: CHAT_MESSAGE_AUTHOR_SELECT,
+        },
+      },
+      orderBy: [
+        { createdAt: 'desc' },
+        { id: 'desc' },
+      ],
+      take: limit,
+    });
+
+    const total = await this.prisma.chatMessage.count({
+      where: {
+        chatId: chat.id,
+        OR: [
+          { createdAt: { lt: createdAt } },
+          { createdAt, id: { lt: id } },
+        ],
+      },
+    });
+
+    return {
+      messages: rawMessages.reverse().map(mapChatMessage),
+      limit,
+      total,
+    };
+  }
+
   async createUserMessage(chatId, userId, content) {
     const chat = await this._getChatById(chatId);
     const context = buildChatAccessContext({ chat, userId });

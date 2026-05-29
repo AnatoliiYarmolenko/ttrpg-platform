@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useEffect } from 'react';
+import React, { useMemo, useRef } from 'react';
 import PropTypes from 'prop-types';
 import ChatMessage from './ChatMessage';
 import ChatSystemMessage from './ChatSystemMessage';
@@ -15,10 +15,12 @@ export default function ChatMessageList({
   isLoading = false,
   hasError = false,
   errorMessage = null,
+  onLoadMore,
+  isLoadingOlder = false,
+  hasMoreMessages = false,
   className = '',
 }) {
   const containerRef = useRef(null);
-  const prevMessageCountRef = useRef(messages.length);
   const currentUser = useAuthStore(selectUser);
   const currentUserId = currentUser?.id;
 
@@ -44,31 +46,41 @@ export default function ChatMessageList({
     [messages, currentUserId]
   );
 
-  // Автоматичний скрол при завантаженні повідомлень
-  useEffect(() => {
-    const container = containerRef.current;
-    if (container && messages.length > 0) {
-      setTimeout(() => {
-        container.scrollTop = container.scrollHeight;
-      }, 0);
-    }
-  }, [messages.length]);
+  const isInitialLoadRef = useRef(true);
+  const prevMessagesLengthRef = useRef(messages.length);
+  const previousScrollHeightRef = useRef(0);
+  const previousScrollTopRef = useRef(0);
+  const firstMessageIdRef = useRef(messages[0]?.id || null);
 
-  // Автоматичний скрол при нових повідомленнях
-  useEffect(() => {
+  React.useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    const shouldAutoScroll = prevMessageCountRef.current < messages.length;
-    
-    if (shouldAutoScroll) {
-      setTimeout(() => {
-        container.scrollTop = container.scrollHeight;
-      }, 0);
+    const currentFirstMessageId = messages[0]?.id || null;
+
+    if (isInitialLoadRef.current && messages.length > 0) {
+      container.scrollTop = container.scrollHeight;
+      isInitialLoadRef.current = false;
+    } else if (currentFirstMessageId !== firstMessageIdRef.current && firstMessageIdRef.current) {
+      const scrollDiff = container.scrollHeight - previousScrollHeightRef.current;
+      if (scrollDiff > 0) {
+        container.scrollTop = previousScrollTopRef.current + scrollDiff;
+      }
+    } else if (messages.length > prevMessagesLengthRef.current && prevMessagesLengthRef.current > 0) {
+      container.scrollTop = container.scrollHeight;
     }
 
-    prevMessageCountRef.current = messages.length;
-  }, [messages.length]);
+    firstMessageIdRef.current = currentFirstMessageId;
+    previousScrollHeightRef.current = container.scrollHeight;
+    previousScrollTopRef.current = container.scrollTop;
+    prevMessagesLengthRef.current = messages.length;
+  }, [messages]);
+
+  const handleScroll = () => {
+    if (containerRef.current) {
+      previousScrollTopRef.current = containerRef.current.scrollTop;
+    }
+  };
 
   if (isLoading && messages.length === 0) {
     return (
@@ -102,8 +114,32 @@ export default function ChatMessageList({
   return (
     <div
       ref={containerRef}
+      onScroll={handleScroll}
       className={`flex flex-col gap-1 overflow-y-auto overflow-x-hidden h-full min-h-0 ${className}`}
     >
+      {hasMoreMessages && (
+        <button
+          onClick={onLoadMore}
+          disabled={isLoadingOlder}
+          className="
+            mt-2 py-3 px-4 rounded-xl
+            bg-brand-light/10 text-brand-dark font-medium
+            hover:bg-brand-light/20
+            disabled:opacity-50 disabled:cursor-not-allowed
+            transition-colors
+            flex items-center justify-center gap-2
+          "
+        >
+          {isLoadingOlder ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Завантаження...</span>
+            </>
+          ) : (
+            'Завантажити ще'
+          )}
+        </button>
+      )}
       {messageElements}
       {isLoading && (
         <div className="flex justify-center p-4">
@@ -131,5 +167,8 @@ ChatMessageList.propTypes = {
   isLoading: PropTypes.bool,
   hasError: PropTypes.bool,
   errorMessage: PropTypes.string,
+  onLoadMore: PropTypes.func,
+  isLoadingOlder: PropTypes.bool,
+  hasMoreMessages: PropTypes.bool,
   className: PropTypes.string,
 };

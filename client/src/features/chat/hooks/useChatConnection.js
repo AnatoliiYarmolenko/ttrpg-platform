@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import useChatStore from '@/stores/useChatStore';
 import useAuthStore, { selectUser } from '@/stores/useAuthStore';
-import { getChatMessagesAfter } from '../api/chatApi';
+import { getChatMessagesAfter, getChatMessagesBefore } from '../api/chatApi';
 import {
   DEFAULT_CHAT_MESSAGES_LIMIT,
   chatMessagesQueryKeys,
   getLatestCursorFromMessages,
+  buildChatCursor,
 } from './useChatMessages';
 import api from '@/lib/axios';
 
@@ -202,6 +203,34 @@ export default function useChatConnection(chatId, options = {}) {
       catchUpInProgressRef.current = false;
     }
   }, [chatId, limit, mergeMessagesCb, updateMessages]);
+
+  const loadOlderMessages = useCallback(async () => {
+    const currentData = queryClient.getQueryData(queryKey);
+    const messages = currentData?.messages || [];
+    if (messages.length === 0) return { hasMore: false };
+
+    const earliestMessage = messages.find(m => m.id && m.createdAt);
+    if (!earliestMessage) return { hasMore: false };
+
+    const beforeCursor = buildChatCursor(earliestMessage);
+    if (!beforeCursor) return { hasMore: false };
+
+    try {
+      const res = await getChatMessagesBefore(chatId, beforeCursor, { limit });
+      if (res?.success && Array.isArray(res.data?.messages)) {
+        const olderMessages = res.data.messages;
+        
+        updateMessages((prevMessages) => {
+          return [...olderMessages, ...prevMessages];
+        });
+
+        return { hasMore: olderMessages.length === limit };
+      }
+    } catch (error) {
+      console.warn('[Chat] Failed to load older messages:', error);
+    }
+    return { hasMore: false };
+  }, [chatId, limit, queryClient, queryKey, updateMessages]);
 
   const handleChatJoined = useCallback((data) => {
     setReadonly(Boolean(data.readonly));
@@ -458,6 +487,7 @@ export default function useChatConnection(chatId, options = {}) {
     isConnecting: connectionState === 'connecting' || connectionState === 'reconnecting',
     hasError: connectionState === 'error',
     sendMessage,
+    loadOlderMessages,
     connect,
     disconnect,
   };

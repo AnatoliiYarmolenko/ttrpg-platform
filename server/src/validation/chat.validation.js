@@ -32,6 +32,10 @@ const messagesQuerySchema = Joi.object({
     'string.base': 'after повинен бути рядком',
     'string.empty': 'after не може бути порожнім',
   }),
+  before: Joi.string().trim().optional().messages({
+    'string.base': 'before повинен бути рядком',
+    'string.empty': 'before не може бути порожнім',
+  }),
 });
 
 const sendMessageBodySchema = Joi.object({
