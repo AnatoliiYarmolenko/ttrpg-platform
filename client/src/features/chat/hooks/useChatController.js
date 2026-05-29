@@ -32,7 +32,7 @@ export default function useChatController(entityType, entityId, options = {}) {
   });
 
   const connectionHook = useChatConnection(chatId, {
-    enabled: enabled && !!chatId,
+    enabled: enabled && !!chatId && messagesQuery.isSuccess,
     limit: 50,
     lastKnownCursor: messagesQuery.data?.latestCursor || null,
   });

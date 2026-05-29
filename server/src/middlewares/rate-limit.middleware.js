@@ -183,6 +183,17 @@ const publicProfileLimiter = createRedisLimiter({
   statusCode: 429,
 });
 
+// Ліміт для відправки повідомлень в чат (захист від спаму)
+
+const chatSendMessageLimiter = createRedisLimiter({
+  type: 'chat_send_message',
+  windowMs: 10 * 1000, // 10 секунд
+  max: 20, // 20 повідомлень за 10 секунд
+  message: { message: 'Занадто багато повідомлень. Зачекайте трохи.' },
+  statusCode: 429,
+  keyGenerator: (req) => String(req.user?.id || getClientIp(req)),
+});
+
 // Ліміт для інжесту клієнтських логів
 const clientLogLimiter = createRedisLimiter({
   type: 'client_log_ingest',
@@ -209,4 +220,5 @@ module.exports = {
   avatarUploadLimiter,
   publicProfileLimiter,
   clientLogLimiter,
+  chatSendMessageLimiter,
 };

@@ -19,6 +19,7 @@ const CHAT_MESSAGE_AUTHOR_SELECT = Object.freeze({
 
 const DEFAULT_MESSAGES_LIMIT = 50;
 const MAX_MESSAGES_LIMIT = 100;
+const MAX_MESSAGE_LENGTH = 2000;
 
 function parsePositiveInt(value, label = 'ID') {
   const parsed = Number.parseInt(value, 10);
@@ -219,6 +220,7 @@ class ChatService {
             title: true,
             status: true,
             campaignId: true,
+            ownerId: true,
             campaign: {
               select: { id: true, status: true, ownerId: true },
             },
@@ -421,6 +423,10 @@ class ChatService {
     const normalizedContent = this._normalizeContent(content);
     if (!normalizedContent) {
       throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Повідомлення не може бути порожнім');
+    }
+
+    if (normalizedContent.length > MAX_MESSAGE_LENGTH) {
+      throw new AppError(ERROR_CODES.VALIDATION_FAILED, `Повідомлення не може перевищувати ${MAX_MESSAGE_LENGTH} символів`);
     }
 
     const message = await this.prisma.chatMessage.create({

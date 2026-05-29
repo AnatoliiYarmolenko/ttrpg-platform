@@ -63,6 +63,7 @@ function buildChatAccessContext({ chat, userId = null } = {}) {
   const isSessionParticipant = Boolean(confirmedParticipation);
   const isPendingParticipant = Boolean(pendingParticipation);
   const isCampaignOwnerOverride = Boolean(userId && session?.campaign?.ownerId === userId);
+  const isSessionOwner = Boolean(userId && session?.ownerId === userId);
 
   const readonly = isReadonlyByStatus({
     campaignStatus: campaign?.status || session?.campaign?.status || null,
@@ -82,6 +83,7 @@ function buildChatAccessContext({ chat, userId = null } = {}) {
     isSessionParticipant,
     isPendingParticipant,
     isCampaignOwnerOverride,
+    isSessionOwner,
     readonly,
   };
 }

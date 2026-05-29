@@ -14,7 +14,7 @@ function canReadChat(context = {}) {
   }
 
   if (context.scope === CHAT_SCOPES.SESSION) {
-    return Boolean(context.isSessionParticipant || context.isCampaignOwnerOverride);
+    return Boolean(context.isSessionParticipant || context.isCampaignOwnerOverride || context.isSessionOwner);
   }
 
   return false;

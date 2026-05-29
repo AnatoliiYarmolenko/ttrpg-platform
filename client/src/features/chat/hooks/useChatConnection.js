@@ -245,9 +245,10 @@ export default function useChatConnection(chatId, options = {}) {
     if (localCursor && snapshotCursor && localCursor !== snapshotCursor) {
       catchUpMessages(localCursor);
     } else if (!localCursor && snapshotCursor) {
+      queryClient.invalidateQueries({ queryKey });
       lastCursorRef.current = snapshotCursor;
     }
-  }, [catchUpMessages, setConnectionState, setReadonly]);
+  }, [catchUpMessages, setConnectionState, setReadonly, queryClient, queryKey]);
 
   const handleChatMessage = useCallback((data) => {
     if (!data.message) return;
