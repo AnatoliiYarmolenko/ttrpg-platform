@@ -78,6 +78,9 @@ class NotificationService {
 
       const attachedRecipientIds = await this._attachRecipients(tx, notification.id, resolvedRecipientIds);
 
+      // Створюємо події в Outbox для Telegram
+      await this._createTelegramOutboxEvents(tx, notification, attachedRecipientIds);
+
       return {
         notification,
         attachedRecipientIds,
@@ -171,6 +174,59 @@ class NotificationService {
     });
 
     return newRecipientIds;
+  }
+
+  async _createTelegramOutboxEvents(tx, notification, recipientIds) {
+    if (!recipientIds || recipientIds.length === 0) return;
+
+    // Знаходимо користувачів, у яких є telegramChatId
+    const users = await tx.user.findMany({
+      where: {
+        id: { in: recipientIds },
+        telegramChatId: { not: null },
+      },
+      select: {
+        id: true,
+        telegramChatId: true,
+        notificationPreference: {
+          select: { enabledChannels: true },
+        },
+      },
+    });
+
+    const outboxPayloads = [];
+
+    for (const user of users) {
+      let channels = [];
+      if (user.notificationPreference?.enabledChannels) {
+        channels = Array.isArray(user.notificationPreference.enabledChannels)
+          ? user.notificationPreference.enabledChannels
+          : [];
+      }
+      
+      if (channels.includes('TELEGRAM')) {
+        outboxPayloads.push({
+          notificationId: notification.id,
+          type: 'TELEGRAM_NOTIFICATION',
+          payload: {
+            chatId: user.telegramChatId,
+            title: notification.title,
+            body: notification.body,
+            severity: notification.severity,
+            link: notification.link,
+          },
+          status: 'PENDING',
+          attempts: 0,
+          maxAttempts: 3,
+        });
+      }
+    }
+
+    if (outboxPayloads.length > 0) {
+      await tx.outboxEvent.createMany({
+        data: outboxPayloads,
+      });
+    }
   }
 
   /**
@@ -332,14 +388,18 @@ class NotificationService {
     }
 
     const now = new Date();
+    const data = {
+      status: 'ARCHIVED',
+      archivedAt: now,
+    };
+
+    if (!recipient.readAt) {
+      data.readAt = now;
+    }
 
     return this.prisma.notificationRecipient.update({
       where: { id: recipient.id },
-      data: {
-        status: 'ARCHIVED',
-        readAt: recipient.readAt || now,
-        archivedAt: recipient.archivedAt || now,
-      },
+      data,
     });
   }
 

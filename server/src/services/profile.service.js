@@ -328,11 +328,12 @@ async function linkTelegram(token, chatId) {
  * @param {number|string} chatId - ID чату Telegram
  */
 async function unlinkTelegramByChatId(chatId) {
-  const user = await prisma.user.findFirst({
+  // Знаходимо всі акаунти з цим chatId (на випадок, якщо один телеграм прив'язали до кількох профілів)
+  const users = await prisma.user.findMany({
     where: { telegramChatId: chatId.toString() },
   });
   
-  if (user) {
+  for (const user of users) {
     await unlinkTelegram(user.id);
   }
 }

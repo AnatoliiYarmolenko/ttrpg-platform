@@ -69,3 +69,19 @@ export const uploadAvatar = async (file) => {
   });
   return response.data;
 };
+
+/**
+ * Отримати токен для прив'язки Telegram
+ */
+export const getTelegramLinkToken = async () => {
+  const response = await api.get('/profile/telegram/link');
+  return response.data;
+};
+
+/**
+ * Відв'язати Telegram
+ */
+export const unlinkTelegram = async () => {
+  const response = await api.delete('/profile/telegram/link');
+  return response.data;
+};

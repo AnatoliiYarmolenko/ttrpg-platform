@@ -1,4 +1,5 @@
 const telegramService = require('../services/telegram.service');
+const telegramOutboxWorker = require('../services/telegram-outbox.worker');
 const config = require('../config/config');
 
 async function initTelegramBot(app) {
@@ -12,9 +13,13 @@ async function initTelegramBot(app) {
 
   // Запускаємо бота
   await telegramService.launch();
+
+  // Запускаємо фоновий worker для відправки нотифікацій
+  telegramOutboxWorker.start();
 }
 
 function stopTelegramBot(signal) {
+  telegramOutboxWorker.stop();
   telegramService.stop(signal);
 }
 
