@@ -190,4 +190,9 @@ module.exports = {
   turnCredentialTtlSeconds,
   // Транспортний протокол TURN: 'udp' | 'tcp'
   turnTransport,
+
+  // ========== Telegram ==========
+  telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
+  telegramWebhookDomain: process.env.TELEGRAM_WEBHOOK_DOMAIN || process.env.FRONTEND_URL,
+  telegramWebhookPath: process.env.TELEGRAM_WEBHOOK_PATH || '/telegram/webhook',
 };
