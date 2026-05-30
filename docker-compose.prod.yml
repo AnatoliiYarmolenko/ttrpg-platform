@@ -89,6 +89,10 @@ services:
       TURN_SHARED_SECRET: ${TURN_SHARED_SECRET:?Set TURN_SHARED_SECRET}
       TURN_CREDENTIAL_TTL_SECONDS: ${TURN_CREDENTIAL_TTL_SECONDS:-3600}
       TURN_TRANSPORT: ${TURN_TRANSPORT:-udp}
+      # --- Telegram ---
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_WEBHOOK_DOMAIN: ${TELEGRAM_WEBHOOK_DOMAIN}
+      TELEGRAM_WEBHOOK_PATH: ${TELEGRAM_WEBHOOK_PATH:-/api/telegram/webhook}
     depends_on:
       db:
         condition: service_healthy
@@ -110,6 +114,7 @@ services:
       target: production
       args:
         VITE_API_URL: /api
+        VITE_TELEGRAM_BOT_USERNAME: ${VITE_TELEGRAM_BOT_USERNAME}
     container_name: ttrpg_client
     restart: always
     extra_hosts:

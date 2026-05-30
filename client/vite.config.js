@@ -7,6 +7,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 
 // https://vite.dev/config/
 export default defineConfig({
+  envDir: '../', // Кажемо Vite шукати .env на рівень вище (в корені проекту)
   plugins: [react()],
   cacheDir: '/tmp/ttrpg-platform-client-vite-cache',
   server: {

@@ -132,6 +132,7 @@ services:
       TURN_SHARED_SECRET: ${TURN_SHARED_SECRET:-change_me_turn_shared_secret}
       TURN_CREDENTIAL_TTL_SECONDS: ${TURN_CREDENTIAL_TTL_SECONDS:-3600}
       TURN_TRANSPORT: ${TURN_TRANSPORT:-udp}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
     depends_on:
       db:
         condition: service_healthy
@@ -173,11 +174,15 @@ services:
       context: .
       dockerfile: client/Dockerfile
       target: development
+      args:
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:5000/api}
+        - VITE_TELEGRAM_BOT_USERNAME=${VITE_TELEGRAM_BOT_USERNAME}
     container_name: ttrpg_client
     ports:
       - "${CLIENT_PORT:-5173}:5173"
     environment:
       VITE_API_URL: ${VITE_API_URL:-http://localhost:5000/api}
+      VITE_TELEGRAM_BOT_USERNAME: ${VITE_TELEGRAM_BOT_USERNAME}
     volumes:
       - ./client:/app/client
       - /app/node_modules
