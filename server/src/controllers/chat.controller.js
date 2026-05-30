@@ -37,7 +37,20 @@ class ChatController {
     try {
       const { chatId } = req.params;
       const userId = req.user.id;
-      const { limit, after } = req.query;
+      const { limit, after, before } = req.query;
+
+      if (before) {
+        const result = await chatService.getMessagesBefore(chatId, userId, {
+          before,
+          limit: limit ? Number.parseInt(limit, 10) : undefined,
+        });
+
+        res.json({
+          success: true,
+          data: result,
+        });
+        return;
+      }
 
       if (after) {
         const result = await chatService.getMessagesAfter(chatId, userId, {

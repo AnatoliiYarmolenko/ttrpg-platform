@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import useChatMeta from './useChatMeta';
 import useChatMessages from './useChatMessages';
 import useChatConnection from './useChatConnection';
@@ -32,7 +32,7 @@ export default function useChatController(entityType, entityId, options = {}) {
   });
 
   const connectionHook = useChatConnection(chatId, {
-    enabled: enabled && !!chatId,
+    enabled: enabled && !!chatId && messagesQuery.isSuccess,
     limit: 50,
     lastKnownCursor: messagesQuery.data?.latestCursor || null,
   });
@@ -47,6 +47,23 @@ export default function useChatController(entityType, entityId, options = {}) {
 
   const readonly = storeReadonly || metaQuery.data?.chat?.readonly || false;
 
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+  const [hasMoreMessagesState, setHasMoreMessagesState] = useState(null);
+
+  const initialMessagesLength = messagesQuery.data?.messages?.length || 0;
+  
+  const hasMoreMessages = hasMoreMessagesState === null
+    ? (initialMessagesLength >= 50)
+    : hasMoreMessagesState;
+
+  const handleLoadOlder = useCallback(async () => {
+    if (isLoadingOlder) return;
+    setIsLoadingOlder(true);
+    const { hasMore } = await connectionHook.loadOlderMessages();
+    setHasMoreMessagesState(hasMore);
+    setIsLoadingOlder(false);
+  }, [connectionHook, isLoadingOlder]);
+
   const chatPanelProps = useMemo(
     () => ({
       title: metaQuery.data?.chat?.title || 'Чат',
@@ -58,6 +75,9 @@ export default function useChatController(entityType, entityId, options = {}) {
       connectionState: connectionHook.connectionState,
       readonly,
       onSend: connectionHook.sendMessage,
+      onLoadMore: handleLoadOlder,
+      isLoadingOlder,
+      hasMoreMessages,
     }),
     [
       metaQuery.data?.chat?.title,
@@ -69,6 +89,9 @@ export default function useChatController(entityType, entityId, options = {}) {
       hasError,
       errorMessage,
       readonly,
+      handleLoadOlder,
+      hasMoreMessages,
+      isLoadingOlder,
     ]
   );
 

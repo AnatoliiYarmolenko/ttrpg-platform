@@ -2,6 +2,7 @@ const express = require('express');
 
 const router = express.Router();
 const { authenticateToken } = require('../middlewares/auth.middleware');
+const { chatSendMessageLimiter } = require('../middlewares/rate-limit.middleware');
 const chatController = require('../controllers/chat.controller');
 const {
   validateChatCampaignId,
@@ -31,7 +32,7 @@ router.get(
 
 router.post(
   '/:chatId/messages',
-  [authenticateToken, ...validateChatId, ...validateChatSendMessage],
+  [authenticateToken, chatSendMessageLimiter, ...validateChatId, ...validateChatSendMessage],
   (req, res, next) => chatController.sendMessage(req, res, next)
 );
 

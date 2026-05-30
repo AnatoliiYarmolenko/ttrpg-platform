@@ -24,6 +24,8 @@ export default function ChatPanel({
   readonly = false,
   onSend,
   onLoadMore,
+  isLoadingOlder = false,
+  hasMoreMessages = true,
   actions = null,
   className = '',
 }) {
@@ -110,6 +112,8 @@ export default function ChatPanel({
             hasError={hasError && connectionState === 'error'}
             errorMessage={errorMessage}
             onLoadMore={onLoadMore}
+            isLoadingOlder={isLoadingOlder}
+            hasMoreMessages={hasMoreMessages}
             className="px-2 py-2"
           />
         </div>
@@ -137,6 +141,8 @@ ChatPanel.propTypes = {
   readonly: PropTypes.bool,
   onSend: PropTypes.func.isRequired,
   onLoadMore: PropTypes.func,
+  isLoadingOlder: PropTypes.bool,
+  hasMoreMessages: PropTypes.bool,
   actions: PropTypes.node,
   className: PropTypes.string,
 };

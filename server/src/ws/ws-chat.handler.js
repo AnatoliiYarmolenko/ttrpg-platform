@@ -1,5 +1,6 @@
 const { AppError, ERROR_CODES } = require('../constants/errors');
 const chatService = require('../services/chat.service');
+const { checkRateLimit } = require('../services/rate-limit.service');
 
 function parseIncomingMessage(raw) {
   let data = raw;
@@ -108,6 +109,14 @@ function createChatHandler({ roomManager, logger } = {}) {
 
         if (type === 'chat:message:send') {
           const chatId = parseChatId(payload.chatId);
+
+          const rateLimitKey = String(socket.user?.id || 'unknown_ws_client');
+          await checkRateLimit('chat_send_message', rateLimitKey, {
+            maxRequests: 20,
+            windowMs: 10 * 1000,
+            blockDurationMs: 10 * 1000,
+          });
+
           const { clientMessageId, content } = payload;
           const message = await chatService.createUserMessage(chatId, socket.user?.id, content);
 
