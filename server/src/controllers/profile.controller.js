@@ -1,6 +1,7 @@
 const profileService = require('../services/profile.service');
 const { processAndSaveAvatar, deleteOldAvatar } = require('../services/upload.service');
 const { logger } = require('../lib/logger');
+const config = require('../config/config');
 
 class ProfileController {
   /**
@@ -140,6 +141,41 @@ class ProfileController {
       next(error);
     }
   }
+
+  /**
+   * GET /api/profile/telegram/link
+   * Генерує токен та посилання для прив'язки Telegram
+   */
+  async generateTelegramLink(req, res, next) {
+    try {
+      const userId = req.user.id;
+      const token = await profileService.generateTelegramLinkToken(userId);
+      res.json({
+        success: true,
+        data: { token },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * DELETE /api/profile/telegram/link
+   * Відв'язує Telegram акаунт від профілю
+   */
+  async unlinkTelegram(req, res, next) {
+    try {
+      const userId = req.user.id;
+      await profileService.unlinkTelegram(userId);
+      res.json({
+        success: true,
+        message: 'Telegram акаунт відв\'язано',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   /**
    * GET /api/profile/user/:id
    * Отримати публічний профіль за userId

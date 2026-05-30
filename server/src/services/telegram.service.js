@@ -9,9 +9,52 @@ class TelegramService {
   constructor() {
     if (config.telegramBotToken) {
       this.bot = new Telegraf(config.telegramBotToken);
+      this._setupHandlers();
     } else {
       logger.warn('TELEGRAM_BOT_TOKEN не задано. Telegram-бот не буде активовано.');
     }
+  }
+
+  /**
+   * Налаштування обробників команд
+   * @private
+   */
+  _setupHandlers() {
+    this.bot.start(async (ctx) => {
+      const payload = ctx.payload;
+      const chatId = ctx.chat.id;
+
+      if (!payload) {
+        return ctx.reply('Вітаю! Це бот для нотифікацій. Щоб отримувати сповіщення, прив\'яжіть акаунт через налаштування профілю на сайті.');
+      }
+
+      try {
+        // Ліниве завантаження для уникнення циклічних залежностей
+        const profileService = require('./profile.service');
+        const success = await profileService.linkTelegram(payload, chatId);
+        
+        if (success) {
+          await ctx.reply('Ваш Telegram акаунт успішно прив\'язано! Тепер ви будете отримувати нотифікації сюди.');
+        } else {
+          await ctx.reply('Посилання недійсне або прострочене. Будь ласка, згенеруйте нове посилання на сайті.');
+        }
+      } catch (error) {
+        logger.error({ err: error, chatId }, 'Помилка при спробі прив\'язки Telegram');
+        await ctx.reply('Сталася помилка при спробі прив\'язки акаунту. Спробуйте пізніше.');
+      }
+    });
+
+    this.bot.command('stop', async (ctx) => {
+      const chatId = ctx.chat.id;
+      try {
+        const profileService = require('./profile.service');
+        await profileService.unlinkTelegramByChatId(chatId);
+        await ctx.reply('Нотифікації вимкнено. Ваш Telegram акаунт відв\'язано від платформи.');
+      } catch (error) {
+        logger.error({ err: error, chatId }, 'Помилка при спробі відв\'язки Telegram');
+        await ctx.reply('Сталася помилка при спробі відв\'язки акаунту. Спробуйте пізніше.');
+      }
+    });
   }
 
   /**

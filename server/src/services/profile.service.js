@@ -1,6 +1,8 @@
 const { prisma } = require('../lib/prisma');
 const { createError, AppError, ERROR_CODES } = require('../constants/errors');
 const { PUBLIC_PROFILE_FIELDS, PRIVATE_PROFILE_FIELDS } = require('../constants/profile-fields');
+const { redis } = require('../lib/redis');
+const crypto = require('node:crypto');
 
 // Поля, які можна оновлювати
 const UPDATABLE_FIELDS = ['displayName', 'bio', 'timezone', 'language', 'avatarUrl'];
@@ -76,8 +78,8 @@ async function getProfileByUsername(username) {
 async function getProfileByUserId(userId) {
   const user = await prisma.user.findFirst({
     where: { 
-      id: parseInt(userId),
-      isDeleted: false  // Не повертаємо видалених користувачів
+      id: Number.parseInt(userId),
+      isDeleted: false 
     },
     select: {
       ...PUBLIC_PROFILE_FIELDS,
@@ -215,6 +217,126 @@ async function deleteAvatar(userId) {
   };
 }
 
+/**
+ * Генерує токен для прив'язки Telegram
+ * @param {number} userId - ID користувача
+ * @returns {Promise<string>} - Згенерований токен
+ */
+async function generateTelegramLinkToken(userId) {
+  const token = crypto.randomBytes(16).toString('hex');
+  const redisKey = `telegram_link:${token}`;
+  
+  // Зберігаємо на 10 хвилин (600 секунд)
+  await redis.set(redisKey, userId.toString(), 'EX', 600);
+  
+  return token;
+}
+
+/**
+ * Відв'язує Telegram від акаунту
+ * @param {number} userId - ID користувача
+ */
+async function unlinkTelegram(userId) {
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: userId },
+      data: {
+        telegramChatId: null,
+        telegramLinkedAt: null,
+      },
+    });
+
+    const pref = await tx.notificationPreference.findUnique({
+      where: { userId },
+    });
+
+    if (pref?.enabledChannels) {
+      let channels = pref.enabledChannels || [];
+      if (!Array.isArray(channels)) {
+        channels = [];
+      }
+      
+      const newChannels = channels.filter(c => c !== 'TELEGRAM');
+      
+      await tx.notificationPreference.update({
+        where: { userId },
+        data: { enabledChannels: newChannels },
+      });
+    }
+  });
+}
+
+/**
+ * Прив'язує Telegram за токеном
+ * @param {string} token - Згенерований токен
+ * @param {number|string} chatId - ID чату Telegram
+ * @returns {Promise<boolean>} - Успішність операції
+ */
+async function linkTelegram(token, chatId) {
+  const redisKey = `telegram_link:${token}`;
+  const userIdStr = await redis.get(redisKey);
+  
+  if (!userIdStr) {
+    return false; // Токен не знайдено або прострочено
+  }
+  
+  const userId = Number.parseInt(userIdStr, 10);
+  
+  await prisma.$transaction(async (tx) => {
+    // 1. Прив'язуємо чат
+    await tx.user.update({
+      where: { id: userId },
+      data: {
+        telegramChatId: chatId.toString(),
+        telegramLinkedAt: new Date(),
+      },
+    });
+
+    // 2. Вмикаємо TELEGRAM у налаштуваннях нотифікацій
+    const pref = await tx.notificationPreference.findUnique({
+      where: { userId },
+    });
+
+    if (pref) {
+      let channels = pref.enabledChannels || [];
+      if (!Array.isArray(channels)) channels = [];
+      if (!channels.includes('TELEGRAM')) {
+        channels.push('TELEGRAM');
+        await tx.notificationPreference.update({
+          where: { userId },
+          data: { enabledChannels: channels },
+        });
+      }
+    } else {
+      await tx.notificationPreference.create({
+        data: {
+          userId,
+          enabledChannels: ['TELEGRAM'],
+        }
+      });
+    }
+  });
+  
+  // Видаляємо токен
+  await redis.del(redisKey);
+  
+  return true;
+}
+
+/**
+ * Відв'язує Telegram за Chat ID (наприклад, по команді /stop)
+ * @param {number|string} chatId - ID чату Telegram
+ */
+async function unlinkTelegramByChatId(chatId) {
+  const user = await prisma.user.findFirst({
+    where: { telegramChatId: chatId.toString() },
+  });
+  
+  if (user) {
+    await unlinkTelegram(user.id);
+  }
+}
+
 module.exports = {
   getMyProfile,
   getProfileByUsername,
@@ -224,4 +346,8 @@ module.exports = {
   updateLastActive,
   updateAvatar,
   deleteAvatar,
+  generateTelegramLinkToken,
+  unlinkTelegram,
+  linkTelegram,
+  unlinkTelegramByChatId,
 };

@@ -57,6 +57,19 @@ router.delete('/me/avatar',
   profileController.deleteAvatar
 );
 
+// Згенерувати токен прив'язки Telegram
+router.get('/telegram/link',
+  authenticateToken,
+  profileController.generateTelegramLink
+);
+
+// Відв'язати Telegram
+router.delete('/telegram/link',
+  authenticateToken,
+  verifyCSRFToken,
+  profileController.unlinkTelegram
+);
+
 // ===== ПУБЛІЧНІ РОУТИ =====
 
 // Отримати профіль за userId (публічний) — до /:username щоб не конфліктував
