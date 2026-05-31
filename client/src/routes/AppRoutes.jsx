@@ -19,6 +19,7 @@ const ConfirmEmailChangePage = lazy(() => import("../features/security/pages/Con
 
 const CampaignPage = lazy(() => import("../features/campaigns/pages/CampaignPage"));
 const SessionPage = lazy(() => import("../features/sessions/pages/SessionPage"));
+const VttPage = lazy(() => import("../features/vtt/pages/VttPage"));
 const AdminPage = lazy(() => import("../features/admin/pages/AdminPage"));
 
 const AppRoutes = () => {
@@ -53,6 +54,15 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <CampaignPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/session/:id/vtt"
+          element={
+            <ProtectedRoute>
+              <VttPage />
             </ProtectedRoute>
           }
         />

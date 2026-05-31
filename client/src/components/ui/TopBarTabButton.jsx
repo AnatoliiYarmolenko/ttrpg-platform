@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import Button from '@/components/ui/Button';
 
 /**
@@ -10,16 +11,26 @@ export default function TopBarTabButton({
   isActive = false,
   onClick,
   className = '',
+  disabled = false,
 }) {
   return (
     <Button
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
       variant={isActive ? 'tabActive' : 'tabInactive'}
       size="md"
       fullWidth={false}
+      disabled={disabled}
       className={`justify-center px-3 py-1.5 text-sm lg:py-2 lg:px-6 lg:text-base ${className}`}
     >
       <span className="font-bold whitespace-nowrap">{label}</span>
     </Button>
   );
 }
+
+TopBarTabButton.propTypes = {
+  label: PropTypes.string.isRequired,
+  isActive: PropTypes.bool,
+  onClick: PropTypes.func,
+  className: PropTypes.string,
+  disabled: PropTypes.bool,
+};
