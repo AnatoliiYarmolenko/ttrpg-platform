@@ -89,6 +89,7 @@ async function gracefulShutdown(signal) {
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGUSR2', () => gracefulShutdown('SIGUSR2')); // Для nodemon
 process.on('unhandledRejection', (reason) => {
   logger.error({ err: reason }, 'UNHANDLED_REJECTION');
   gracefulShutdown('UNHANDLED_REJECTION');
