@@ -16,6 +16,8 @@ const PRIVATE_PROFILE_FIELDS = {
   lastActiveAt: true,
   updatedAt: true,
   emailVerified: true,
+  telegramChatId: true,
+  telegramLinkedAt: true,
 };
 
 module.exports = {

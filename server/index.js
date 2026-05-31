@@ -22,6 +22,8 @@ const {
   initMigrations,
   initAllCleanupJobs,
   shutdownCleanupJobs,
+  initTelegramBot,
+  stopTelegramBot,
 } = require('./src/startup');
 
 let server = null;
@@ -43,6 +45,7 @@ async function gracefulShutdown(signal) {
   
   // Зупиняємо прийом нових з'єднань
   if (!server) {
+    stopTelegramBot(signal);
     closeWorkers();
     await shutdownCleanupJobs();
     await prisma.$disconnect();
@@ -61,6 +64,7 @@ async function gracefulShutdown(signal) {
     }
     
     // Очищаємо ресурси
+    stopTelegramBot(signal);
     closeWorkers();
     await shutdownCleanupJobs();
     if (redis.status !== 'end' && redis.status !== 'wait') {
@@ -109,6 +113,9 @@ async function startServer() {
 
   // ========== CREATE APP ==========
   const app = createApp();
+
+  // Ініціалізуємо Telegram бота
+  await initTelegramBot(app);
 
   // ========== START SERVER ==========
   server = app.listen(port, () => {
