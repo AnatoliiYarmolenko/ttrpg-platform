@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import useChatStore from '@/stores/useChatStore';
+import useVttStore from '@/stores/useVttStore';
 import useAuthStore, { selectUser } from '@/stores/useAuthStore';
 import { getChatMessagesAfter, getChatMessagesBefore } from '../api/chatApi';
 import {
@@ -306,6 +307,14 @@ export default function useChatConnection(chatId, options = {}) {
 
     if (data.type === 'chat:error') {
       handleChatError(data);
+      return;
+    }
+
+    // VTT events — оновлюємо глобальний VTT store
+    if (data.type === 'vtt:opened' || data.type === 'vtt:state') {
+      if (data.sessionId != null) {
+        useVttStore.getState().setVttOpen(data.sessionId, Boolean(data.isOpen));
+      }
     }
   }, [handleChatError, handleChatJoined, handleChatMessage]);
 
@@ -460,11 +469,17 @@ export default function useChatConnection(chatId, options = {}) {
   }, [chatId, resetChatStore]);
 
   useEffect(() => {
-    if (enabled && isValidId(chatId)) {
+    if (!enabled || !isValidId(chatId)) return undefined;
+
+    // Невелика затримка (0ms мікрозадача) захищає від React Strict Mode:
+    // у dev-режимі React навмисно монтує двічі; без затримки cleanup першого
+    // монтування закриває WS до того, як він встиг відкритися.
+    const timerId = setTimeout(() => {
       connect();
-    }
+    }, 0);
 
     return () => {
+      clearTimeout(timerId);
       disconnect();
     };
   }, [chatId, connect, disconnect, enabled]);
@@ -481,6 +496,16 @@ export default function useChatConnection(chatId, options = {}) {
     return () => window.removeEventListener('focus', onFocus);
   }, [chatId, enabled]);
 
+  const sendVttOpen = useCallback(() => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:open', { chatId });
+  }, [chatId, sendEvent]);
+
+  const sendVttGetState = useCallback(() => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:getState', { chatId });
+  }, [chatId, sendEvent]);
+
   return {
     connectionState,
     capabilities,
@@ -491,5 +516,7 @@ export default function useChatConnection(chatId, options = {}) {
     loadOlderMessages,
     connect,
     disconnect,
+    sendVttOpen,
+    sendVttGetState,
   };
 }
