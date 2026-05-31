@@ -21,12 +21,26 @@ function createMockPrisma(overrides = {}) {
     ...overrides.notification,
   };
 
+  const user = {
+    findMany: mock.fn(async () => []),
+    ...overrides.user,
+  };
+
+  const outboxEvent = {
+    createMany: mock.fn(async () => ({ count: 0 })),
+    ...overrides.outboxEvent,
+  };
+
   return {
     notificationRecipient,
     notification,
+    user,
+    outboxEvent,
     $transaction: mock.fn(async (callback) => callback({
       notificationRecipient,
       notification,
+      user,
+      outboxEvent,
     })),
     ...overrides,
   };
@@ -259,7 +273,7 @@ test('resolveRecipientIds combines explicit IDs and audience resolution', async 
     context: { userId: 10, campaignId: 5 },
   });
 
-  assert.deepStrictEqual(result.sort((a, b) => a - b), [1, 2, 3, 10, 20, 21]);
+  assert.deepStrictEqual(result.toSorted((a, b) => a - b), [1, 2, 3, 10, 20, 21]);
   assert.strictEqual(mockResolver.resolve.mock.callCount(), 2);
 });
 

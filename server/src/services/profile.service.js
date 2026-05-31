@@ -274,10 +274,11 @@ async function unlinkTelegram(userId) {
  */
 async function linkTelegram(token, chatId) {
   const redisKey = `telegram_link:${token}`;
-  const userIdStr = await redis.get(redisKey);
+  
+  const userIdStr = await redis.getdel(redisKey);
   
   if (!userIdStr) {
-    return false; // Токен не знайдено або прострочено
+    return false;
   }
   
   const userId = Number.parseInt(userIdStr, 10);
@@ -316,9 +317,6 @@ async function linkTelegram(token, chatId) {
       });
     }
   });
-  
-  // Видаляємо токен
-  await redis.del(redisKey);
   
   return true;
 }

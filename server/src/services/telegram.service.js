@@ -80,7 +80,6 @@ class TelegramService {
 
     try {
       if (config.nodeEnv === 'production' && config.telegramWebhookDomain) {
-        // У продакшені ми підключаємо webhook в Express, тут тільки кажемо Телеграму куди слати запити
         const url = `${config.telegramWebhookDomain}${config.telegramWebhookPath}`;
         await this.bot.telegram.setWebhook(url);
         logger.info({ url }, 'Telegram бот налаштовано на Webhook');
@@ -112,7 +111,9 @@ class TelegramService {
    * @param {Object} payload Об'єкт повідомлення (title, body, severity, link)
    */
   async sendMessage(chatId, payload) {
-    if (!this.bot || !this.isInitialized) return null;
+    if (!this.bot || !this.isInitialized) {
+      throw new Error('Telegram bot is not initialized or token is missing');
+    }
 
     try {
       const text = this._formatMessage(payload);
@@ -123,7 +124,6 @@ class TelegramService {
       });
       return message;
     } catch (error) {
-      // Викидаємо помилку далі, щоб worker міг її обробити (напр., 403 Forbidden)
       logger.error({ err: error, chatId }, 'Помилка відправки Telegram повідомлення');
       throw error;
     }
@@ -146,9 +146,9 @@ class TelegramService {
     }
     
     if (link) {
-      // Якщо посилання відносне, додаємо домен фронтенду
       const fullLink = link.startsWith('http') ? link : `${config.frontendUrl}${link}`;
-      text += `\n<a href="${fullLink}">Перейти</a>`;
+      const safeLink = this._escapeHtml(fullLink);
+      text += `\n<a href="${safeLink}">Перейти</a>`;
     }
     
     return text;
