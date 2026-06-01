@@ -59,7 +59,7 @@ router.get(
   (req, res, next) => campaignController.getCampaignPageById(req, res, next)
 );
 
-router.put(
+router.patch(
   '/:campaignId',
   [authenticateToken, verifyCSRFToken, ...validateUpdateCampaign],
   (req, res, next) => campaignController.updateCampaign(req, res, next)
@@ -75,12 +75,6 @@ router.get(
   '/:campaignId/members',
   [authenticateToken, ...validateCampaignId],
   (req, res, next) => campaignController.getCampaignMembers(req, res, next)
-);
-
-router.post(
-  '/:campaignId/members',
-  [authenticateToken, verifyCSRFToken, ...validateAddMember],
-  (req, res, next) => campaignController.addMemberToCampaign(req, res, next)
 );
 
 router.delete(

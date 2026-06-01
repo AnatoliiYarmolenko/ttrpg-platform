@@ -15,14 +15,11 @@ const {
   usernameChangeLimiter,
   avatarUploadLimiter,
   publicProfileLimiter,
+  telegramLinkLimiter,
 } = require('../middlewares/rate-limit.middleware');
 
-// ===== ЗАХИЩЕНІ РОУТИ (потребують авторизації) =====
-
-// Отримати власний профіль
 router.get('/me', authenticateToken, profileController.getMyProfile);
 
-// Оновити профіль
 router.patch('/me', 
   authenticateToken, 
   profileUpdateLimiter,
@@ -31,7 +28,6 @@ router.patch('/me',
   profileController.updateProfile
 );
 
-// Оновити username (окремий endpoint)
 router.patch('/me/username', 
   authenticateToken, 
   usernameChangeLimiter,
@@ -40,7 +36,6 @@ router.patch('/me/username',
   profileController.updateUsername
 );
 
-// Завантажити аватар
 router.post('/me/avatar', 
   authenticateToken, 
   avatarUploadLimiter,
@@ -50,32 +45,27 @@ router.post('/me/avatar',
   profileController.uploadAvatar
 );
 
-// Видалити аватар
 router.delete('/me/avatar', 
   authenticateToken, 
   verifyCSRFToken,
   profileController.deleteAvatar
 );
 
-// Згенерувати токен прив'язки Telegram
-router.get('/telegram/link',
+router.post('/telegram/link',
   authenticateToken,
+  verifyCSRFToken,
+  telegramLinkLimiter,
   profileController.generateTelegramLink
 );
 
-// Відв'язати Telegram
 router.delete('/telegram/link',
   authenticateToken,
   verifyCSRFToken,
   profileController.unlinkTelegram
 );
 
-// ===== ПУБЛІЧНІ РОУТИ =====
-
-// Отримати профіль за userId (публічний) — до /:username щоб не конфліктував
 router.get('/user/:id', validateParams(userIdParamSchema), publicProfileLimiter, profileController.getProfileByUserId);
 
-// Отримати профіль за username (публічний)
 router.get('/:username', publicProfileLimiter, profileController.getProfileByUsername);
 
 module.exports = router;

@@ -161,12 +161,6 @@ router.post(
   (req, res, next) => sessionParticipantsController.leaveSession(req, res, next)
 );
 
-router.post(
-  '/:id/kick-gm',
-  [authenticateToken, verifyCSRFToken, ...validateSessionId, loadSessionContext, requireSessionOwnerOrCampaignOwner],
-  (req, res, next) => sessionParticipantsController.kickGm(req, res, next)
-);
-
 router.patch(
   '/:id/participants/:participantId',
   [authenticateToken, verifyCSRFToken, ...validateUpdateParticipantStatus, loadSessionContext, requireSessionOwnerOrGm],

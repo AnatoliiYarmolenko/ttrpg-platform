@@ -31,7 +31,7 @@ export const getCampaignPageByShareToken = async (shareToken) => {
 };
 
 export const updateCampaign = async (campaignId, campaignData) => {
-  const response = await api.put(`/campaigns/${campaignId}`, campaignData);
+  const response = await api.patch(`/campaigns/${campaignId}`, campaignData);
   return response.data;
 };
 
