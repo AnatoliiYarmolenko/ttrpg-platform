@@ -7,7 +7,6 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 
-// Routes
 const authRoutes = require('./routes/auth.routes');
 const profileRoutes = require('./routes/profile.routes');
 const securityRoutes = require('./routes/security.routes');
@@ -19,7 +18,6 @@ const searchRoutes = require('./routes/search.routes');
 const clientLogsRoutes = require('./routes/client-logs.routes');
 const notificationRoutes = require('./routes/notification.routes');
 
-// Middlewares
 const { errorHandler } = require('./middlewares/error.middleware');
 const { addCorrelationId } = require('./middlewares/correlation.middleware');
 
@@ -31,22 +29,22 @@ function resolveTrustProxySetting() {
   const raw = process.env.TRUST_PROXY;
 
   if (raw === undefined) {
-    return false;
+    return { value: false };
   }
 
   if (raw === 'true') {
-    return true;
+    return { value: true };
   }
 
   if (raw === 'false') {
-    return false;
+    return { value: false };
   }
 
   if (/^\d+$/.test(raw)) {
-    return Number(raw);
+    return { value: Number(raw) };
   }
 
-  return raw;
+  return { value: raw };
 }
 
 /**
@@ -66,43 +64,36 @@ function createApp() {
     app.use(`${prefix}/search`, searchRoutes);
     app.use(`${prefix}/client-logs`, clientLogsRoutes);
     app.use(`${prefix}/notifications`, notificationRoutes);
+
+    if (process.env.NODE_ENV !== 'production' && process.env.ENABLE_DEV_AUTH === 'true') {
+      const devRoutes = require('./routes/dev.routes');
+      app.use(`${prefix}/dev`, devRoutes);
+    }
   };
 
-  // ========== MIDDLEWARE ==========
-
-  // Налаштування CORS для роботи з cookies
   app.use(createCorsMiddleware());
 
-  // Correlation ID для зв'язку клієнтських та серверних логів
   app.use(addCorrelationId);
 
-  // Структуроване логування HTTP запитів (reqId, statusCode, responseTime)
   app.use(httpLogger);
 
-  // Базові security headers.
-  // CORP вимикаємо, щоб не ламати завантаження аватарів з окремого фронтенд origin.
   app.use(helmet({ crossOriginResourcePolicy: false }));
 
-  // Парсери
-  app.use(express.json({ limit: '10mb' })); // JSON з підтримкою UTF-8
-  app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Для форм
-  app.use(cookieParser()); // Парсер для cookies
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  app.use(cookieParser());
 
-  // Статична папка для завантажених файлів (аватари тощо)
   setupStaticFiles(app);
 
-  // Налаштування для отримання правильного IP адреси (для rate limiting)
-  // Важливо для роботи за proxy/load balancer
-  app.set('trust proxy', resolveTrustProxySetting());
+  const trustProxySetting = resolveTrustProxySetting();
+  app.set('trust proxy', trustProxySetting.value);
 
   // ========== ROUTES ==========
 
-  // Health check / Root endpoint
   app.get('/', (req, res) => {
     res.send('Сервер працює! Готовий до НРІ.');
   });
 
-  // Health check endpoint для Docker/Kubernetes
   app.get('/health', (req, res) => {
     const redisHealth = getRedisHealthState();
     const isHealthy = redisHealth.isReady;
@@ -114,11 +105,8 @@ function createApp() {
     });
   });
 
-  // API Routes
   registerApiRoutes('/api');
 
-  // ========== ERROR HANDLER ==========
-  // Повинен бути останнім middleware
   app.use(errorHandler);
 
   return app;

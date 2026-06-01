@@ -99,6 +99,7 @@ services:
       REDIS_URL: ${REDIS_URL:-redis://ttrpg_redis:6379}
       PORT: ${SERVER_PORT:-5000}
       NODE_ENV: ${NODE_ENV:-development}
+      ENABLE_DEV_AUTH: ${ENABLE_DEV_AUTH:-false}
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
       TRUST_PROXY: ${TRUST_PROXY:-1}
       FRONTEND_URL: ${FRONTEND_URL:-https://app.example.com}
