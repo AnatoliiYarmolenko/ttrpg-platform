@@ -330,7 +330,7 @@ function createCallHandler({ logger } = {}) {
         }
 
         if (actualType === 'call:leave') {
-          callService.leaveCall(sessionId, userId, socket, false); // isDisconnect = false
+          callService.leaveCall(sessionId, userId, socket, true); 
           sendResponse({ success: true });
           return;
         }
@@ -351,7 +351,7 @@ function createCallHandler({ logger } = {}) {
 
     socket.on('close', () => {
       if (socket.callSessionId && socket.user?.id) {
-        callService.leaveCall(socket.callSessionId, socket.user.id, socket, true); // isDisconnect = true
+        callService.leaveCall(socket.callSessionId, socket.user.id, socket, true);
       }
     });
   };
