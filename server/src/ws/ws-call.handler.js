@@ -1,76 +1,11 @@
 const { AppError, ERROR_CODES } = require('../constants/errors');
-const { callService } = require('../call/call.service');
+const { callService, broadcastCallEvent } = require('../call/call.service');
 const { callRoomManager } = require('../call/call-room.manager');
 const { webRtcTransportOptions } = require('../config/mediasoup.config');
 const { CALL_STATES } = require('../call/call-events');
 const sessionService = require('../services/session.service');
-
-function parseIncomingMessage(raw) {
-  let data = raw;
-
-  if (Buffer.isBuffer(raw)) {
-    data = raw.toString('utf8');
-  }
-
-  if (typeof data === 'string') {
-    try {
-      data = JSON.parse(data);
-    } catch {
-      throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Невірний формат JSON');
-    }
-  }
-
-  if (!data || typeof data !== 'object' || Array.isArray(data)) {
-    throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Невірний формат повідомлення');
-  }
-
-  const type = data.type;
-  if (!type || typeof type !== 'string') {
-    throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Не вказано тип повідомлення');
-  }
-
-  const id = data.id;
-  const method = data.method;
-
-  let payload = {};
-  if (data.payload && typeof data.payload === 'object' && !Array.isArray(data.payload)) {
-    payload = { ...data.payload };
-  } else {
-    payload = { ...data };
-    delete payload.type;
-    delete payload.payload;
-    delete payload.id;
-    delete payload.method;
-  }
-
-  return { type, id, method, payload };
-}
-
-function sendEvent(socket, type, payload = {}) {
-  const message = {
-    type,
-    ...payload,
-  };
-
-  if (socket.readyState === 1 /* WebSocket.OPEN */) {
-    socket.send(JSON.stringify(message));
-  }
-}
-
-function resolveErrorCode(error) {
-  if (error instanceof AppError) {
-    return error.code;
-  }
-  if (error.message === 'CALL_NOT_ACTIVE') return ERROR_CODES.CALL_NOT_STARTED;
-  return ERROR_CODES.SERVER_ERROR;
-}
-
-function resolveErrorMessage(error) {
-  if (error instanceof AppError) {
-    return error.message;
-  }
-  return error.message || 'Помилка сервера';
-}
+const { checkRateLimit } = require('../services/rate-limit.service');
+const { parseIncomingMessage, sendEvent, resolveErrorCode, resolveErrorMessage } = require('./ws-utils');
 
 function sendError(socket, error, type) {
   const code = resolveErrorCode(error);
@@ -189,7 +124,6 @@ async function handleWebRtcAction({ socket, type, payload, sessionId, userId, se
         producer.close();
         peer.removeProducer(producer.id);
 
-        const { broadcastCallEvent } = require('../call/call.service');
         broadcastCallEvent(room, 'call:producerClosed', { producerId: producer.id, peerId: socket.id });
         broadcastCallEvent(room, 'call:media-state-changed', { peerId: socket.id, mediaState: peer.mediaState });
       });
@@ -197,7 +131,6 @@ async function handleWebRtcAction({ socket, type, payload, sessionId, userId, se
       sendEvent(socket, 'call:produced', { id: producer.id, kind });
       sendResponse({ id: producer.id });
 
-      const { broadcastCallEvent } = require('../call/call.service');
       broadcastCallEvent(room, 'call:newProducer', { producerId: producer.id, peerId: socket.id, kind }, socket);
       broadcastCallEvent(room, 'call:media-state-changed', { peerId: socket.id, mediaState: peer.mediaState }, socket);
       return true;
@@ -209,7 +142,6 @@ async function handleWebRtcAction({ socket, type, payload, sessionId, userId, se
         producer.close();
         peer.removeProducer(producerId);
 
-        const { broadcastCallEvent } = require('../call/call.service');
         broadcastCallEvent(room, 'call:producerClosed', { producerId, peerId: socket.id }, socket);
         broadcastCallEvent(room, 'call:media-state-changed', { peerId: socket.id, mediaState: peer.mediaState }, socket);
       }
@@ -221,7 +153,6 @@ async function handleWebRtcAction({ socket, type, payload, sessionId, userId, se
       const { mediaState } = payload;
       Object.assign(peer.mediaState, mediaState);
 
-      const { broadcastCallEvent } = require('../call/call.service');
       broadcastCallEvent(room, 'call:media-state-changed', { peerId: socket.id, mediaState: peer.mediaState }, socket);
       sendResponse({ success: true });
       return true;
@@ -325,6 +256,13 @@ function createCallHandler({ logger } = {}) {
       }
 
       try {
+        const rateLimitKey = String(socket.user?.id || 'unknown_ws_call_client');
+        await checkRateLimit('call_signaling_messages', rateLimitKey, {
+          maxRequests: 50,
+          windowMs: 10 * 1000,
+          blockDurationMs: 15 * 1000,
+        });
+
         if (await handleSessionAction({ socket, type: actualType, payload: actualPayload, sessionId, userId, sendResponse, sendEvent })) {
           return;
         }

@@ -1,22 +1,16 @@
-/**
- * SSE (Server-Sent Events) Manager for Notifications
- * MVP-13: Real-time notification delivery
- */
+const { logger } = require('../../lib/logger');
 
 class NotificationSSEService {
   constructor() {
-    // Map userId -> Set of response objects
     this.connections = new Map();
-    // Heartbeat interval reference
     this.heartbeatInterval = null;
-    // Start heartbeat
     this.startHeartbeat();
   }
 
   /**
-   * Register new SSE connection for user
-   * @param {number} userId - User ID
-   * @param {Object} res - Express response object with SSE headers
+   * Зареєструвати нове SSE з'єднання для користувача
+   * @param {number} userId - ID користувача
+   * @param {Object} res - Об'єкт відповіді Express із заголовками SSE
    */
   registerConnection(userId, res) {
     if (!this.connections.has(userId)) {
@@ -26,7 +20,6 @@ class NotificationSSEService {
     const userConnections = this.connections.get(userId);
     userConnections.add(res);
 
-    // Remove connection when client disconnects
     res.on('close', () => {
       this.removeConnection(userId, res);
     });
@@ -35,19 +28,18 @@ class NotificationSSEService {
       this.removeConnection(userId, res);
     });
 
-    // Send initial connection success
     this.sendToConnection(res, {
       type: 'connected',
       timestamp: new Date().toISOString(),
     });
 
-    console.log(`[SSE] User ${userId} connected. Total connections: ${this.getTotalConnections()}`);
+    logger.info({ userId, totalConnections: this.getTotalConnections() }, '[SSE] Користувач підключився');
   }
 
   /**
-   * Remove SSE connection for user
-   * @param {number} userId - User ID
-   * @param {Object} res - Express response object
+   * Видалити SSE з'єднання для користувача
+   * @param {number} userId - ID користувача
+   * @param {Object} res - Об'єкт відповіді Express
    */
   removeConnection(userId, res) {
     const userConnections = this.connections.get(userId);
@@ -57,13 +49,13 @@ class NotificationSSEService {
         this.connections.delete(userId);
       }
     }
-    console.log(`[SSE] User ${userId} disconnected. Total connections: ${this.getTotalConnections()}`);
+    logger.info({ userId, totalConnections: this.getTotalConnections() }, '[SSE] Користувач відключився');
   }
 
   /**
-   * Push notification to specific user
-   * @param {number} userId - User ID
-   * @param {Object} payload - Notification payload
+   * Надіслати сповіщення конкретному користувачу
+   * @param {number} userId - ID користувача
+   * @param {Object} payload - Дані сповіщення (payload)
    */
   pushToUser(userId, payload) {
     const userConnections = this.connections.get(userId);
@@ -83,7 +75,7 @@ class NotificationSSEService {
         this.sendToConnection(res, message);
         sentCount++;
       } catch (error) {
-        console.error(`[SSE] Failed to send to user ${userId}:`, error.message);
+        logger.error({ err: error, userId }, '[SSE] Помилка при відправці повідомлення користувачу');
         this.removeConnection(userId, res);
       }
     });
@@ -92,9 +84,9 @@ class NotificationSSEService {
   }
 
   /**
-   * Push to multiple users
-   * @param {number[]} userIds - Array of user IDs
-   * @param {Object} payload - Notification payload
+   * Надіслати сповіщення декільком користувачам
+   * @param {number[]} userIds - Масив ID користувачів
+   * @param {Object} payload - Дані сповіщення (payload)
    */
   pushToUsers(userIds, payload) {
     let totalSent = 0;
@@ -107,9 +99,9 @@ class NotificationSSEService {
   }
 
   /**
-   * Send message to specific connection
-   * @param {Object} res - Express response object
-   * @param {Object} data - Data to send
+   * Надіслати повідомлення до конкретного з'єднання
+   * @param {Object} res - Об'єкт відповіді Express
+   * @param {Object} data - Дані для відправки
    */
   sendToConnection(res, data) {
     if (!res.writableEnded) {
@@ -117,9 +109,6 @@ class NotificationSSEService {
     }
   }
 
-  /**
-   * Start heartbeat to keep connections alive
-   */
   startHeartbeat() {
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
@@ -127,18 +116,15 @@ class NotificationSSEService {
 
     this.heartbeatInterval = setInterval(() => {
       this.sendHeartbeat();
-    }, 30000); // 30 seconds
+    }, 30000); // 30 секунд
 
     if (typeof this.heartbeatInterval.unref === 'function') {
       this.heartbeatInterval.unref();
     }
 
-    console.log('[SSE] Heartbeat started (30s interval)');
+    logger.info('[SSE] Запущено heartbeat для підтримки активних з\'єднань');
   }
 
-  /**
-   * Stop heartbeat
-   */
   stopHeartbeat() {
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
@@ -146,9 +132,6 @@ class NotificationSSEService {
     }
   }
 
-  /**
-   * Send heartbeat ping to all connections
-   */
   sendHeartbeat() {
     const heartbeat = {
       type: 'heartbeat',
@@ -160,16 +143,13 @@ class NotificationSSEService {
         try {
           this.sendToConnection(res, heartbeat);
         } catch (error) {
-          console.error(`[SSE] Heartbeat failed for user ${userId}:`, error.message);
+          logger.error({ err: error, userId }, '[SSE] Помилка при відправці heartbeat користувачу');
           this.removeConnection(userId, res);
         }
       });
     });
   }
 
-  /**
-   * Get total number of active connections
-   */
   getTotalConnections() {
     let total = 0;
     this.connections.forEach((userConnections) => {
@@ -178,16 +158,32 @@ class NotificationSSEService {
     return total;
   }
 
-  /**
-   * Get number of connected users (unique)
-   */
   getConnectedUsersCount() {
     return this.connections.size;
   }
 
   /**
-   * Check if user has active connections
-   * @param {number} userId - User ID
+   * Закрити всі з'єднання та зупинити heartbeat (для graceful shutdown)
+   */
+  shutdown() {
+    this.stopHeartbeat();
+    this.connections.forEach((userConnections, userId) => {
+      userConnections.forEach((res) => {
+        try {
+          this.sendToConnection(res, { type: 'shutdown', timestamp: new Date().toISOString() });
+          res.end();
+        } catch (e) {
+          logger.warn({ err: e, userId }, '[SSE] Помилка при закритті з\'єднання під час завершення роботи');
+        }
+      });
+    });
+    this.connections.clear();
+    logger.info('[SSE] Завершення роботи завершено, всі з\'єднання закрито');
+  }
+
+  /**
+   * Перевірити, чи є у користувача активні з'єднання
+   * @param {number} userId - ID користувача
    */
   isUserConnected(userId) {
     const userConnections = this.connections.get(userId);
@@ -195,5 +191,4 @@ class NotificationSSEService {
   }
 }
 
-// Singleton instance
 module.exports = new NotificationSSEService();
