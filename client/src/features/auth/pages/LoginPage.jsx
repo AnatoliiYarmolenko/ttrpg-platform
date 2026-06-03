@@ -1,11 +1,8 @@
 // LoginPage.jsx
-import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import LoginForm from "../components/LoginForm";
 import AuthLayout from "../components/AuthLayout";
-import { fetchCsrfToken } from "../api/authApi";
 import useAuthStore from '../../../stores/useAuthStore';
-import logger from "../../../lib/clientLogger";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -15,10 +12,6 @@ function LoginPage() {
     returnTo = '/';
   }
   const setUser = useAuthStore((state) => state.setUser);
-
-  useEffect(() => {
-    fetchCsrfToken().catch((error) => logger.error(error));
-  }, []);
 
   return (
     <AuthLayout 
@@ -31,7 +24,6 @@ function LoginPage() {
           if (userData) {
             setUser(userData);
           }
-          await new Promise(resolve => setTimeout(resolve, 100));
           navigate(returnTo, { replace: true });
         }} 
       />

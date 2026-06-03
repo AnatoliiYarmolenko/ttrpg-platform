@@ -9,6 +9,7 @@ const { PASSWORD_HASH_ROUNDS, TOKEN_TTL_MS } = require('../config/tokens.config'
 const { PRIVATE_PROFILE_FIELDS } = require('../constants/profile-fields');
 const emailService = require('./email.service');
 const { deleteOldAvatar } = require('./upload.service');
+const { frontendUrl } = require('../config/config');
 
 /**
  * Змінити пароль користувача
@@ -123,7 +124,7 @@ async function requestEmailChange(userId, password, newEmail) {
   });
 
   // Формуємо URL підтвердження
-  const confirmUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/confirm-email-change?token=${rawToken}`;
+  const confirmUrl = `${frontendUrl}/confirm-email-change?token=${rawToken}`;
 
   // Надсилаємо лист на НОВИЙ email
   const emailResult = await emailService.sendEmailChangeConfirmation(

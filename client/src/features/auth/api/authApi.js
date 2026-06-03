@@ -49,8 +49,8 @@ export const resetPassword = async ({ resetToken, newPassword }) => {
 
 // 7. Підтвердження email (перехід за посиланням)
 export const verifyEmail = async (token) => {
-  // Передаємо токен як query parameter
-  const response = await api.get(`/auth/verify-email?token=${token}`);
+  // Передаємо токен як query parameter через об'єкт params
+  const response = await api.get('/auth/verify-email', { params: { token } });
   return response.data;
 };
 
