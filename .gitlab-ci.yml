@@ -23,6 +23,7 @@ build_server:
   tags: [student]
   script:
     - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline
+    - npm audit --audit-level=high
     - cd server
     - npx prisma generate
   artifacts:
@@ -35,6 +36,7 @@ build_client:
   tags: [student]
   script:
     - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline
+    - npm audit --audit-level=high
     - npm run build --workspace=client
 
 # --- ЕТАП TEST ---
@@ -136,3 +138,8 @@ sonarcloud_scan:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH == "main"'
     - if: '$CI_COMMIT_BRANCH == "develop"'
+
+include:
+  - template: Security/SAST.gitlab-ci.yml
+  - template: Security/Secret-Detection.gitlab-ci.yml
+  - template: Security/Dependency-Scanning.gitlab-ci.yml

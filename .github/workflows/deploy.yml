@@ -22,7 +22,11 @@ jobs:
           script: |
             cd /app
             git pull origin main
-            docker compose -f docker-compose.prod.yml \
-              --env-file .env.prod \
-              up -d --build
+            echo "Building and starting containers. Waiting for health checks..."
+            if ! docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build --wait --wait-timeout 180; then
+              echo "Deployment failed! Rolling back to the previous version..."
+              git reset --hard HEAD@{1}
+              docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+              exit 1
+            fi
             docker image prune -f
