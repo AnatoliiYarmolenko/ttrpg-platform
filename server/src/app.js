@@ -65,7 +65,7 @@ function createApp() {
     app.use(`${prefix}/client-logs`, clientLogsRoutes);
     app.use(`${prefix}/notifications`, notificationRoutes);
 
-    if (process.env.NODE_ENV !== 'production' && process.env.ENABLE_DEV_AUTH === 'true') {
+    if (process.env.NODE_ENV === 'development' && process.env.ENABLE_DEV_AUTH === 'true') {
       const devRoutes = require('./routes/dev.routes');
       app.use(`${prefix}/dev`, devRoutes);
     }

@@ -4,7 +4,7 @@ function createAuthPasswordService({
   createError,
   AppError,
   ERROR_CODES,
-  getTokenCandidates,
+  hashToken,
   createRawAndHashedToken,
   TOKEN_TTL_MS,
   PASSWORD_HASH_ROUNDS,
@@ -57,16 +57,17 @@ function createAuthPasswordService({
 
     async resetPassword(resetToken, newPassword) {
       const now = new Date();
-      const tokenCandidates = getTokenCandidates(resetToken);
+      const tokenHash = hashToken(resetToken);
 
-      if (tokenCandidates.length === 0) {
-        throw createError.passwordResetTokenInvalid();
+      if (!tokenHash) {
+        throw new AppError(ERROR_CODES.PASSWORD_RESET_INVALID_TOKEN);
       }
 
       const user = await prisma.user.findFirst({
         where: {
-          passwordResetToken: {
-            in: tokenCandidates,
+          passwordResetToken: tokenHash,
+          passwordResetExpiry: {
+            gte: now,
           },
         },
         select: {

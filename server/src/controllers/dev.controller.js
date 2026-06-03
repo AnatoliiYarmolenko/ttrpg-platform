@@ -8,7 +8,7 @@ const { jwtSecret } = require('../config/config');
 class DevController {
   async magicLogin(req, res, next) {
     try {
-      if (process.env.NODE_ENV === 'production' || process.env.ENABLE_DEV_AUTH !== 'true') {
+      if (process.env.NODE_ENV !== 'development' || process.env.ENABLE_DEV_AUTH !== 'true') {
         return res.status(404).json({ error: 'Not Found' });
       }
 
