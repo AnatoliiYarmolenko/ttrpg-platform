@@ -1,14 +1,19 @@
 // LoginPage.jsx
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import LoginForm from "../components/LoginForm";
-import AuthLayout from "../components/AuthLayout"; // Імпортуємо обгортку
+import AuthLayout from "../components/AuthLayout";
 import { fetchCsrfToken } from "../api/authApi";
 import useAuthStore from '../../../stores/useAuthStore';
 import logger from "../../../lib/clientLogger";
 
 function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  let returnTo = searchParams.get("returnTo") || "/";
+  if (!returnTo.startsWith('/') || returnTo.startsWith('//')) {
+    returnTo = '/';
+  }
   const setUser = useAuthStore((state) => state.setUser);
 
   useEffect(() => {
@@ -26,9 +31,8 @@ function LoginPage() {
           if (userData) {
             setUser(userData);
           }
-          // Невелика затримка, щоб браузер встиг встановити cookies
           await new Promise(resolve => setTimeout(resolve, 100));
-          navigate("/", { replace: true });
+          navigate(returnTo, { replace: true });
         }} 
       />
     </AuthLayout>

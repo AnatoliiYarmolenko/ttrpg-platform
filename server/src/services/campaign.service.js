@@ -438,93 +438,83 @@ class CampaignService {
 
     const campaignIdInt = Number.parseInt(campaignId, 10);
     const isFinishingCampaign = campaign.status !== 'FINISHED' && nextStatus === 'FINISHED';
-    const shareTokenUpdate = this._buildCampaignShareTokenUpdate(campaign, updateData.visibility);
-    const campaignUpdateData = {
-        ...this._buildCampaignUpdateData(updateData, nextStatus),
-      ...(Object.hasOwn(shareTokenUpdate, 'shareTokenHash')
-        ? {
-          shareTokenHash: shareTokenUpdate.shareTokenHash,
-          shareTokenEncrypted: shareTokenUpdate.shareTokenEncrypted,
-          shareTokenCreatedAt: shareTokenUpdate.shareTokenCreatedAt,
-        }
-        : {}),
-    };
+    
+    const updatedCampaign = await prisma.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw`
+        SELECT visibility, "shareTokenHash" 
+        FROM "Campaign" 
+        WHERE id = ${campaignIdInt} 
+        FOR UPDATE
+      `;
 
-    if (isFinishingCampaign) {
-      const [, , updatedCampaign] = await prisma.$transaction([
-        prisma.session.updateMany({
+      if (!rows || rows.length === 0) {
+        throw new AppError(ERROR_CODES.CAMPAIGN_NOT_FOUND, 'Кампанія не знайдена');
+      }
+
+      const lockedCampaign = rows[0];
+
+      const shareTokenUpdate = this._buildCampaignShareTokenUpdate({ ...campaign, visibility: lockedCampaign.visibility, shareTokenHash: lockedCampaign.shareTokenHash }, updateData.visibility);
+      const campaignUpdateData = {
+        ...this._buildCampaignUpdateData(updateData, nextStatus),
+        ...(Object.hasOwn(shareTokenUpdate, 'shareTokenHash')
+          ? {
+            shareTokenHash: shareTokenUpdate.shareTokenHash,
+            shareTokenEncrypted: shareTokenUpdate.shareTokenEncrypted,
+            shareTokenCreatedAt: shareTokenUpdate.shareTokenCreatedAt,
+          }
+          : {}),
+      };
+
+      let result;
+
+      if (isFinishingCampaign) {
+        await tx.session.updateMany({
           where: {
             campaignId: campaignIdInt,
             status: 'ACTIVE',
           },
-          data: {
-            status: 'FINISHED',
-          },
-        }),
-        prisma.session.updateMany({
+          data: { status: 'FINISHED' },
+        });
+
+        await tx.session.updateMany({
           where: {
             campaignId: campaignIdInt,
             status: 'PLANNED',
           },
-          data: {
-            status: 'CANCELED',
-          },
-        }),
-        prisma.campaign.update({
+          data: { status: 'CANCELED' },
+        });
+
+        result = await tx.campaign.update({
           where: { id: campaignIdInt },
           data: campaignUpdateData,
           include: {
-            owner: {
-              select: { id: true, username: true, displayName: true },
-            },
-            members: {
-              include: {
-                user: {
-                  select: { id: true, username: true, displayName: true },
-                },
-              },
-            },
+            owner: { select: { id: true, username: true, displayName: true } },
+            members: { include: { user: { select: { id: true, username: true, displayName: true } } } },
           },
-        }),
-      ]);
-
-      if (shareTokenUpdate.rawToken) {
-        updatedCampaign.shareToken = shareTokenUpdate.rawToken;
+        });
+      } else {
+        result = await tx.campaign.update({
+          where: { id: campaignIdInt },
+          data: campaignUpdateData,
+          include: {
+            owner: { select: { id: true, username: true, displayName: true } },
+            members: { include: { user: { select: { id: true, username: true, displayName: true } } } },
+          },
+        });
       }
 
-      delete updatedCampaign.shareTokenHash;
-      delete updatedCampaign.shareTokenEncrypted;
-      delete updatedCampaign.shareTokenCreatedAt;
+      if (shareTokenUpdate.rawToken) {
+        result.shareToken = shareTokenUpdate.rawToken;
+      }
 
-      return updatedCampaign;
-    }
-
-    const updated = await prisma.campaign.update({
-      where: { id: campaignIdInt },
-      data: campaignUpdateData,
-      include: {
-        owner: {
-          select: { id: true, username: true, displayName: true },
-        },
-        members: {
-          include: {
-            user: {
-              select: { id: true, username: true, displayName: true },
-            },
-          },
-        },
-      },
+      return result;
     });
 
-    if (shareTokenUpdate.rawToken) {
-      updated.shareToken = shareTokenUpdate.rawToken;
-    }
+    delete updatedCampaign.shareTokenHash;
+    delete updatedCampaign.shareTokenEncrypted;
+    delete updatedCampaign.shareTokenCreatedAt;
 
-    delete updated.shareTokenHash;
-    delete updated.shareTokenEncrypted;
-    delete updated.shareTokenCreatedAt;
-
-    return updated;
+    return updatedCampaign;
   }
 
   async getCampaignByShareToken(rawToken, userId = null) {
@@ -558,16 +548,10 @@ class CampaignService {
   }
 
   async regenerateShareToken(campaignId, userId) {
-    const campaign = await this.getCampaignById(campaignId, userId);
+    const campaignIdInt = Number.parseInt(campaignId, 10);
+    const campaign = await this.getCampaignById(campaignIdInt, userId);
 
     this._requireCampaignOwner(campaign, userId, 'Тільки власник може оновлювати посилання доступу');
-
-    if (campaign.visibility !== 'LINK_ONLY') {
-      throw new AppError(
-        ERROR_CODES.VALIDATION_FAILED,
-        'Посилання доступу доступне тільки для LINK_ONLY кампаній'
-      );
-    }
 
     if (campaign.status === 'FINISHED') {
       throw new AppError(
@@ -576,20 +560,45 @@ class CampaignService {
       );
     }
 
-    const { rawToken, tokenHash, tokenEncrypted } = createRawEncryptedAndHashedShareToken();
-    await prisma.campaign.update({
-      where: { id: Number.parseInt(campaignId, 10) },
-      data: {
-        shareTokenHash: tokenHash,
-        shareTokenEncrypted: tokenEncrypted,
-        shareTokenCreatedAt: new Date(),
-      },
-    });
+    return await prisma.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw`
+        SELECT visibility 
+        FROM "Campaign" 
+        WHERE id = ${campaignIdInt} 
+        FOR UPDATE
+      `;
 
-    return {
-      token: rawToken,
-      campaignId: Number.parseInt(campaignId, 10),
-    };
+      if (!rows || rows.length === 0) {
+        throw new AppError(ERROR_CODES.CAMPAIGN_NOT_FOUND, 'Кампанія не знайдена');
+      }
+
+      const lockedCampaign = rows[0];
+
+      if (lockedCampaign.visibility !== 'LINK_ONLY') {
+        throw new AppError(
+          ERROR_CODES.VALIDATION_FAILED,
+          'Посилання доступу можна оновить тільки для LINK_ONLY кампаній'
+        );
+      }
+
+      const { rawToken, tokenHash, tokenEncrypted } = createRawEncryptedAndHashedShareToken();
+      await tx.campaign.update({
+        where: { id: campaignIdInt },
+        data: {
+          shareTokenHash: tokenHash,
+          shareTokenEncrypted: tokenEncrypted,
+          shareTokenCreatedAt: new Date(),
+        },
+      });
+
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+      return {
+        token: rawToken,
+        campaignId: campaignIdInt,
+        shareUrl: `${frontendUrl}/campaigns/share/${rawToken}`,
+      };
+    });
   }
 
   async getCampaignShareLink(campaignId, userId) {

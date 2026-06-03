@@ -205,6 +205,16 @@ const telegramLinkLimiter = createRedisLimiter({
   keyGenerator: (req) => String(req.user?.id || getClientIp(req)),
 });
 
+// Ліміт для доступу по share токену (захист від brute-force токенів)
+const shareTokenLimiter = createRedisLimiter({
+  type: 'share_token_access',
+  windowMs: 15 * 60 * 1000, // 15 хвилин
+  max: 60, // 60 спроб на 15 хвилин (4 спроби на хвилину)
+  message: { message: 'Занадто багато спроб доступу. Спробуйте пізніше.' },
+  statusCode: 429,
+  keyGenerator: (req) => getClientIp(req),
+});
+
 module.exports = {
   loginLimiter,
   registerLimiter,
@@ -224,4 +234,5 @@ module.exports = {
   clientLogLimiter,
   chatSendMessageLimiter,
   telegramLinkLimiter,
+  shareTokenLimiter,
 };

@@ -291,6 +291,7 @@ const sessionCrudController = {
         message: 'Share link regenerated successfully',
         data: {
           shareToken: result.token,
+          shareUrl: result.shareUrl,
         },
       });
     } catch (error) {

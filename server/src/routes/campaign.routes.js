@@ -2,6 +2,7 @@ const express = require('express');
 
 const router = express.Router();
 const { authenticateToken, optionalAuthenticateToken } = require('../middlewares/auth.middleware');
+const { shareTokenLimiter } = require('../middlewares/rate-limit.middleware');
 const { verifyCSRFToken } = require('../middlewares/csrf.middleware');
 const campaignController = require('../controllers/campaign.controller');
 const sessionCrudController = require('../controllers/session/session-crud.controller');
@@ -25,13 +26,13 @@ const { validateGetCampaignSessions } = require('../validation/session.validatio
 
 router.get(
   '/share/:shareToken',
-  [optionalAuthenticateToken, ...validateShareToken],
+  [shareTokenLimiter, optionalAuthenticateToken, ...validateShareToken],
   (req, res, next) => campaignController.getCampaignByShareToken(req, res, next)
 );
 
 router.get(
   '/share/:shareToken/page',
-  [optionalAuthenticateToken, ...validateShareToken],
+  [shareTokenLimiter, optionalAuthenticateToken, ...validateShareToken],
   (req, res, next) => campaignController.getCampaignPageByShareToken(req, res, next)
 );
 

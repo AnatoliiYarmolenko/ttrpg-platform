@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import DashboardCard from '@/components/ui/DashboardCard';
 import FormField from '@/components/ui/FormField';
 import Button from '@/components/ui/Button';
@@ -89,6 +90,7 @@ function SessionSettingsWidgetContent({
   onCopyShareLink,
   canDelete = true,
   isLoading = false,
+  isRegeneratingShareLink = false,
 }) {
   const [formData, setFormData] = useState(() => buildFormData(session));
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -341,6 +343,7 @@ function SessionSettingsWidgetContent({
                       onClick={onCopyShareLink}
                       variant="outline"
                       fullWidth={true}
+                      disabled={isRegeneratingShareLink}
                       className="w-full min-h-[44px] !shadow-none"
                     >
                       Копіювати посилання
@@ -351,6 +354,9 @@ function SessionSettingsWidgetContent({
                     onClick={handleRotateShareLink}
                     variant="outline"
                     fullWidth={true}
+                    disabled={isRegeneratingShareLink}
+                    isLoading={isRegeneratingShareLink}
+                    loadingText="╨Ю╨╜╨╛╨▓╨╗╨╡╨╜╨╜╤П..."
                     className="w-full min-h-[44px] !shadow-none"
                   >
                     {currentShareLink ? 'Оновити share-посилання' : 'Згенерувати share-посилання'}
@@ -422,3 +428,45 @@ export default function SessionSettingsWidget(props) {
 
   return <SessionSettingsWidgetContent key={session.id ?? 'new-session'} {...props} />;
 }
+
+SessionSettingsWidgetContent.propTypes = {
+  session: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    title: PropTypes.string,
+    description: PropTypes.string,
+    startAt: PropTypes.string,
+    duration: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    maxPlayers: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    system: PropTypes.string,
+    visibility: PropTypes.string,
+    price: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    campaignId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    campaign: PropTypes.shape({
+      system: PropTypes.string,
+    }),
+  }).isRequired,
+  onSave: PropTypes.func,
+  onDelete: PropTypes.func,
+  canManageSettings: PropTypes.bool,
+  canManageShareLink: PropTypes.bool,
+  currentShareLink: PropTypes.string,
+  onRegenerateShareLink: PropTypes.func,
+  onCopyShareLink: PropTypes.func,
+  canDelete: PropTypes.bool,
+  isLoading: PropTypes.bool,
+  isRegeneratingShareLink: PropTypes.bool,
+};
+
+SessionSettingsWidget.propTypes = {
+  session: SessionSettingsWidgetContent.propTypes.session,
+  onSave: PropTypes.func,
+  onDelete: PropTypes.func,
+  canManageSettings: PropTypes.bool,
+  canManageShareLink: PropTypes.bool,
+  currentShareLink: PropTypes.string,
+  onRegenerateShareLink: PropTypes.func,
+  onCopyShareLink: PropTypes.func,
+  canDelete: PropTypes.bool,
+  isLoading: PropTypes.bool,
+  isRegeneratingShareLink: PropTypes.bool,
+};

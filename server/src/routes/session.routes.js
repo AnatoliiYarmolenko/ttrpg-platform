@@ -2,6 +2,7 @@ const express = require('express');
 
 const router = express.Router();
 const { authenticateToken, optionalAuthenticateToken } = require('../middlewares/auth.middleware');
+const { shareTokenLimiter } = require('../middlewares/rate-limit.middleware');
 const { verifyCSRFToken } = require('../middlewares/csrf.middleware');
 const {
   loadSessionContext,
@@ -73,13 +74,13 @@ router.get(
 
 router.get(
   '/share/:shareToken',
-  [optionalAuthenticateToken, ...validateSessionShareToken],
+  [shareTokenLimiter, optionalAuthenticateToken, ...validateSessionShareToken],
   (req, res, next) => sessionCrudController.getSessionByShareToken(req, res, next)
 );
 
 router.get(
   '/share/:shareToken/page',
-  [optionalAuthenticateToken, ...validateSessionShareToken],
+  [shareTokenLimiter, optionalAuthenticateToken, ...validateSessionShareToken],
   (req, res, next) => sessionCrudController.getSessionPageByShareToken(req, res, next)
 );
 

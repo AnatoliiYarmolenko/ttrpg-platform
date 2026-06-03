@@ -300,5 +300,7 @@ export const useSessionMutations = (sessionId, options = {}) => {
     leaveSession: leaveSessionMutation.mutateAsync,
     updateParticipantStatus: updateParticipantStatusMutation.mutateAsync,
     removeParticipant: removeParticipantMutation.mutateAsync,
+    isPendingUpdate: updateSessionMutation.isPending,
+    isPendingRegenerateShareLink: regenerateShareLinkMutation.isPending,
   };
 };

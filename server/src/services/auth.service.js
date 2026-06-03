@@ -1,4 +1,4 @@
-﻿const { prisma } = require('../lib/prisma');
+const { prisma } = require('../lib/prisma');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('node:crypto');
@@ -9,7 +9,7 @@ const { createError, AppError, ERROR_CODES } = require('../constants/errors');
 const { isUserDeleted } = require('../store/deleted-users');
 const { redis } = require('../lib/redis');
 const { logger } = require('../lib/logger');
-const { getTokenCandidates, createRawAndHashedToken } = require('../utils/token.helper');
+const { hashToken, createRawAndHashedToken } = require('../utils/token.helper');
 const { PASSWORD_HASH_ROUNDS, TOKEN_TTL_MS } = require('../config/tokens.config');
 
 const createAuthVerificationService = require('./auth/auth-verification.service');
@@ -54,7 +54,7 @@ class AuthService {
       ERROR_CODES,
       isUserDeleted,
       logger,
-      getTokenCandidates,
+      hashToken,
       createRawAndHashedToken,
       PASSWORD_HASH_ROUNDS,
       TOKEN_TTL_MS,

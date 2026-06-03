@@ -1,4 +1,5 @@
 import React from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 
 import useCampaignPageController from '../hooks/useCampaignPageController';
 import CampaignLayout from '../components/layout/CampaignLayout';
@@ -14,6 +15,7 @@ import GroupPeople from '@/components/ui/icons/GroupPeople';
 import { useChatController } from '@/features/chat/hooks';
 
 export default function CampaignPage() {
+  const location = useLocation();
   const {
     id,
     routeShareToken,
@@ -24,6 +26,7 @@ export default function CampaignPage() {
     sessionsSection,
     isLoading,
     error,
+    shouldRedirectToLogin,
     activeTab,
     availableTabs,
     setActiveTab,
@@ -46,6 +49,8 @@ export default function CampaignPage() {
     canCancelJoinRequest,
     pendingRequestStatus,
     currentShareLink,
+    isUpdatingSettings,
+    isRegeneratingShareLink,
     handleJoinRequest,
     handleCancelJoinRequest,
     handleLeave,
@@ -71,6 +76,11 @@ export default function CampaignPage() {
       disconnect?.();
     };
   }, [chatController?.disconnect]);
+
+  if (shouldRedirectToLogin) {
+    const returnTo = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/login?returnTo=${returnTo}`} replace />;
+  }
 
   if (error) {
     return (
@@ -180,7 +190,8 @@ export default function CampaignPage() {
         onSave: handleSaveSettings,
         onTransferOwnership: handleTransferOwnership,
         canTransferOwnership: isOwner,
-        isLoading,
+        isLoading: isLoading || isUpdatingSettings,
+        isRegeneratingShareLink,
       },
     });
   };

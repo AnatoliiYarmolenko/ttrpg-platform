@@ -543,18 +543,37 @@ function createSessionLifecycleService({
         sessionDate: updateMeta.sessionDate,
       });
 
-      const shareTokenState = resolveShareTokenState({
-        session,
-        normalizedUpdateData,
-        createRawEncryptedAndHashedShareToken,
-        AppError,
-        ERROR_CODES,
-      });
+      const targetVisibility = hasOwnField(normalizedUpdateData, 'visibility')
+        ? normalizedUpdateData.visibility
+        : session.visibility;
+
+      if (session.campaignId && targetVisibility === 'LINK_ONLY') {
+        throw new AppError(ERROR_CODES.SESSION_LINK_ONLY_ONE_SHOT_ONLY);
+      }
+
       const sessionIdInt = sessionQueryService.parsePositiveInt(sessionId, 'Session ID');
 
-      const updated = await prisma.$transaction(async (tx) => {
-        // Note: We no longer reset conflicting participants to PENDING
-        // Users are notified and decide themselves whether to stay or leave
+      const transactionResult = await prisma.$transaction(async (tx) => {
+        const rows = await tx.$queryRaw`
+          SELECT visibility, "shareTokenHash" 
+          FROM "Session" 
+          WHERE id = ${sessionIdInt} 
+          FOR UPDATE
+        `;
+
+        if (!rows || rows.length === 0) {
+          throw new AppError(ERROR_CODES.SESSION_NOT_FOUND);
+        }
+
+        const lockedSession = rows[0];
+
+        const shareTokenState = resolveShareTokenState({
+          session: { ...session, visibility: lockedSession.visibility, shareTokenHash: lockedSession.shareTokenHash },
+          normalizedUpdateData,
+          createRawEncryptedAndHashedShareToken,
+          AppError,
+          ERROR_CODES,
+        });
 
         const sessionUpdateResult = await tx.session.update({
           where: { id: sessionIdInt },
@@ -604,10 +623,11 @@ function createSessionLifecycleService({
           }
         }
 
-        return sessionUpdateResult;
+        return { sessionUpdateResult, shareTokenState };
       });
 
-      // Check if date or duration actually changed (not just present in update data)
+      const { sessionUpdateResult: updated, shareTokenState } = transactionResult;
+
       const dateChanged = hasOwnField(normalizedUpdateData, 'date')
         && new Date(normalizedUpdateData.date).getTime() !== new Date(session.date).getTime();
       const durationChanged = hasOwnField(normalizedUpdateData, 'duration')
@@ -628,8 +648,6 @@ function createSessionLifecycleService({
           requesterId,
         });
 
-        // Notify only conflicting participants about the time conflict
-        // They decide themselves whether to stay or leave
         await notifyConflictingParticipants({
           notificationService,
           session,
