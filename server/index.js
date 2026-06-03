@@ -24,6 +24,8 @@ const {
   stopTelegramBot,
 } = require('./src/startup');
 
+const notificationSSEService = require('./src/services/notification/notification-sse.service');
+
 let server = null;
 let wsServer = null;
 let wsCallServer = null;
@@ -44,6 +46,7 @@ async function gracefulShutdown(signal) {
   if (!server) {
     stopTelegramBot(signal);
     closeWorkers();
+    notificationSSEService.shutdown();
     await shutdownCleanupJobs();
     await prisma.$disconnect();
     process.exit(1);
@@ -63,6 +66,7 @@ async function gracefulShutdown(signal) {
     // Очищаємо ресурси
     stopTelegramBot(signal);
     closeWorkers();
+    notificationSSEService.shutdown();
     await shutdownCleanupJobs();
     if (redis.status !== 'end' && redis.status !== 'wait') {
       try {
