@@ -1,0 +1,147 @@
+paths:
+  /api/chats/campaign/{campaignId}:
+    get:
+      summary: Отримати чат кампанії
+      description: Повертає базову інформацію про чат, прив'язаний до конкретної кампанії.
+      tags: [Chat]
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: campaignId
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Інформація про чат
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/ChatDescriptor'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        403:
+          description: Немає доступу до чату кампанії
+        404:
+          description: Кампанію не знайдено
+
+  /api/chats/session/{sessionId}:
+    get:
+      summary: Отримати чат сесії
+      description: Повертає базову інформацію про чат, прив'язаний до конкретної ігрової сесії.
+      tags: [Chat]
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Інформація про чат
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/ChatDescriptor'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        403:
+          description: Немає доступу до чату сесії
+        404:
+          description: Сесію не знайдено
+
+  /api/chats/{chatId}/messages:
+    get:
+      summary: Отримати повідомлення чату
+      description: Повертає список повідомлень чату з пагінацією (limit, after, before).
+      tags: [Chat]
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: chatId
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 50
+        - in: query
+          name: after
+          schema:
+            type: string
+          description: Cursor для отримання повідомлень ПІСЛЯ вказаного (наприклад, ID повідомлення або дата)
+        - in: query
+          name: before
+          schema:
+            type: string
+          description: Cursor для отримання повідомлень ДО вказаного
+      responses:
+        200:
+          description: Список повідомлень
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ChatMessage'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+
+    post:
+      summary: Надіслати повідомлення в чат
+      description: Створює нове повідомлення у вказаному чаті.
+      tags: [Chat]
+      security:
+        - cookieAuth: []
+          csrfAuth: []
+      parameters:
+        - in: path
+          name: chatId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendChatMessageInput'
+      responses:
+        201:
+          description: Повідомлення успішно надіслано
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/ChatMessage'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        422:
+          $ref: '#/components/responses/ValidationError'
+        429:
+          $ref: '#/components/responses/RateLimitError'

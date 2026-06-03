@@ -3,7 +3,6 @@
  * Відповідає тільки за запуск сервера та graceful shutdown
  */
 
-// Завантажуємо конфігурацію (перевіряє змінні оточення)
 require('./src/config/config');
 
 const { prisma } = require('./src/lib/prisma');
@@ -17,7 +16,6 @@ const { createChatHandler } = require('./src/ws/ws-chat.handler');
 const { createCallHandler } = require('./src/ws/ws-call.handler');
 const { initWorkers, closeWorkers } = require('./src/lib/mediasoup');
 
-// Startup modules
 const {
   initMigrations,
   initAllCleanupJobs,
@@ -31,7 +29,6 @@ let wsServer = null;
 let wsCallServer = null;
 let roomManager = null;
 
-// ========== GRACEFUL SHUTDOWN ==========
 let isShuttingDown = false;
 
 async function gracefulShutdown(signal) {
@@ -80,7 +77,6 @@ async function gracefulShutdown(signal) {
     process.exit(0);
   });
   
-  // Якщо shutdown займає більше 10 секунд - примусово завершуємо
   setTimeout(() => {
     logger.error('Примусове завершення через timeout');
     process.exit(1);
@@ -111,15 +107,16 @@ async function startServer() {
   // Ініціалізуємо cleanup jobs (токени та rate limits)
   initAllCleanupJobs();
 
-  // ========== CREATE APP ==========
   const app = createApp();
 
   // Ініціалізуємо Telegram бота
   await initTelegramBot(app);
 
-  // ========== START SERVER ==========
   server = app.listen(port, () => {
     logger.info({ port }, 'Сервер запущено');
+    if (process.env.NODE_ENV !== 'production') {
+      logger.info(`Swagger UI доступний за адресою: http://localhost:${port}/api-docs`);
+    }
   });
 
   roomManager = createRoomManager();

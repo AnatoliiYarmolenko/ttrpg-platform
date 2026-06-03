@@ -1,0 +1,125 @@
+paths:
+  /api/notifications:
+    get:
+      summary: Отримати список сповіщень
+      description: Повертає сповіщення поточного користувача з підтримкою пагінації та фільтрації.
+      tags: [Notifications]
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [ACTIVE, ARCHIVED]
+          description: Фільтр за статусом (за замовчуванням ACTIVE)
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+      responses:
+        200:
+          description: Список сповіщень
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Notification'
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      limit:
+                        type: integer
+                      offset:
+                        type: integer
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/notifications/unread-count:
+    get:
+      summary: Отримати кількість непрочитаних сповіщень
+      tags: [Notifications]
+      security:
+        - cookieAuth: []
+      responses:
+        200:
+          description: Кількість непрочитаних сповіщень
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      count:
+                        type: integer
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/notifications/{id}/read:
+    post:
+      summary: Позначити сповіщення як прочитане
+      tags: [Notifications]
+      security:
+        - cookieAuth: []
+          csrfAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Сповіщення прочитано
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/notifications/read-bulk:
+    post:
+      summary: Позначити масив сповіщень як прочитані
+      tags: [Notifications]
+      security:
+        - cookieAuth: []
+          csrfAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarkManyAsReadInput'
+      responses:
+        200:
+          description: Сповіщення успішно позначені як прочитані
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/notifications/stream:
+    get:
+      summary: Підключення до SSE потоку сповіщень
+      description: Встановлює з'єднання Server-Sent Events для отримання сповіщень в реальному часі.
+      tags: [Notifications]
+      security:
+        - cookieAuth: []
+      responses:
+        200:
+          description: SSE потік встановлено (Content-Type text/event-stream)
+        401:
+          $ref: '#/components/responses/UnauthorizedError'

@@ -1,0 +1,27 @@
+paths:
+  /api/dev/magic-login:
+    post:
+      summary: Магічний логін
+      description: Тільки для розробки. Дозволяє миттєво авторизувати користувача за ID без пароля.
+      tags: [Dev]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: integer
+                  example: 1
+      responses:
+        200:
+          description: Успішна авторизація
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: accessToken=abc; refreshToken=xyz; HttpOnly
+        404:
+          description: Користувача не знайдено

@@ -1,0 +1,174 @@
+components:
+  schemas:
+    Campaign:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: "Підземелля Драконів"
+        description:
+          type: string
+          nullable: true
+          example: "Епічна пригода на 5 гравців."
+        imageUrl:
+          type: string
+          nullable: true
+          example: "https://example.com/image.jpg"
+        system:
+          type: string
+          nullable: true
+          enum: ["D&D 5e", "Pathfinder 2e", "Call of Cthulhu", "Інша", ""]
+          example: "D&D 5e"
+        status:
+          type: string
+          enum: [ACTIVE, FINISHED]
+          example: "ACTIVE"
+        visibility:
+          type: string
+          enum: [PUBLIC, LINK_ONLY]
+          example: "PUBLIC"
+        ownerId:
+          type: integer
+          example: 1
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CampaignMember:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        role:
+          type: string
+          enum: [OWNER, GM, PLAYER]
+          example: "PLAYER"
+        joinedAt:
+          type: string
+          format: date-time
+        userId:
+          type: integer
+          example: 2
+        campaignId:
+          type: integer
+          example: 1
+
+    CampaignJoinRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        status:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED]
+          example: "PENDING"
+        message:
+          type: string
+          nullable: true
+          example: "Хочу грати за барда"
+        userId:
+          type: integer
+          example: 3
+        campaignId:
+          type: integer
+          example: 1
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateCampaignInput:
+      type: object
+      required:
+        - title
+        - visibility
+      properties:
+        title:
+          type: string
+          minLength: 3
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 1000
+          nullable: true
+        imageUrl:
+          type: string
+          format: uri
+          nullable: true
+        system:
+          type: string
+          enum: ["D&D 5e", "Pathfinder 2e", "Call of Cthulhu", "Інша", ""]
+          example: "D&D 5e"
+          nullable: true
+        visibility:
+          type: string
+          enum: [PUBLIC, LINK_ONLY]
+
+    UpdateCampaignInput:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 3
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 1000
+          nullable: true
+        imageUrl:
+          type: string
+          format: uri
+          nullable: true
+        system:
+          type: string
+          nullable: true
+        visibility:
+          type: string
+          enum: [PUBLIC, LINK_ONLY]
+        status:
+          type: string
+          enum: [ACTIVE, FINISHED]
+
+    TransferOwnershipInput:
+      type: object
+      required:
+        - newOwnerId
+      properties:
+        newOwnerId:
+          type: integer
+
+    UpdateMemberRoleInput:
+      type: object
+      required:
+        - role
+      properties:
+        role:
+          type: string
+          enum: [GM, PLAYER]
+
+    SubmitJoinRequestInput:
+      type: object
+      properties:
+        message:
+          type: string
+          maxLength: 500
+          nullable: true
+        shareToken:
+          type: string
+          minLength: 10
+          maxLength: 255
+
+    ApproveJoinRequestInput:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [GM, PLAYER]
+          default: "PLAYER"

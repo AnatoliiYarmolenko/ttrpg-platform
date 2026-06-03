@@ -1,0 +1,23 @@
+paths:
+  /api/client-logs:
+    post:
+      summary: Зберегти лог з клієнта
+      description: Ендпоінт для відправки помилок та логів з frontend частини платформи.
+      tags: ['Client Logs']
+      security:
+        - cookieAuth: []
+          csrfAuth: []
+        - csrfAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientLogInput'
+      responses:
+        202:
+          description: Лог прийнято до обробки
+        422:
+          $ref: '#/components/responses/ValidationError'
+        429:
+          $ref: '#/components/responses/RateLimitError'

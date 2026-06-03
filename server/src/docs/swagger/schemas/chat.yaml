@@ -1,0 +1,67 @@
+components:
+  schemas:
+    ChatDescriptor:
+      type: object
+      description: Базова інформація про чат
+      properties:
+        id:
+          type: integer
+          example: 1
+        type:
+          type: string
+          enum: [CAMPAIGN, SESSION]
+          example: "CAMPAIGN"
+        campaignId:
+          type: integer
+          nullable: true
+          example: 1
+        sessionId:
+          type: integer
+          nullable: true
+          example: null
+        createdAt:
+          type: string
+          format: date-time
+
+    ChatMessage:
+      type: object
+      description: Повідомлення в чаті
+      properties:
+        id:
+          type: integer
+          example: 123
+        chatId:
+          type: integer
+          example: 1
+        authorId:
+          type: integer
+          example: 5
+        content:
+          type: string
+          example: "Усім привіт! О котрій сьогодні збираємося?"
+        clientMessageId:
+          type: string
+          example: "abc-123-uuid"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SendChatMessageInput:
+      type: object
+      required:
+        - content
+        - clientMessageId
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: Текст повідомлення
+        clientMessageId:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Унікальний ID для ідентифікації повідомлення на клієнті

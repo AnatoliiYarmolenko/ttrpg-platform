@@ -21,8 +21,7 @@ const notificationRoutes = require('./routes/notification.routes');
 const { errorHandler } = require('./middlewares/error.middleware');
 const { addCorrelationId } = require('./middlewares/correlation.middleware');
 
-// Startup modules
-const { createCorsMiddleware, setupStaticFiles, httpLogger } = require('./startup');
+const { createCorsMiddleware, setupStaticFiles, httpLogger, setupSwagger } = require('./startup');
 const { getRedisHealthState } = require('./lib/redis');
 
 function resolveTrustProxySetting() {
@@ -88,7 +87,7 @@ function createApp() {
   const trustProxySetting = resolveTrustProxySetting();
   app.set('trust proxy', trustProxySetting.value);
 
-  // ========== ROUTES ==========
+  setupSwagger(app);
 
   app.get('/', (req, res) => {
     res.send('Сервер працює! Готовий до НРІ.');

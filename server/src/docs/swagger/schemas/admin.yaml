@@ -1,0 +1,29 @@
+components:
+  schemas:
+    PlatformStats:
+      type: object
+      description: Загальна статистика платформи
+      properties:
+        totalUsers:
+          type: integer
+          example: 1500
+        totalCampaigns:
+          type: integer
+          example: 320
+        activeSessions:
+          type: integer
+          example: 45
+
+    TokenStats:
+      type: object
+      description: Статистика по refresh токенах
+      properties:
+        totalTokens:
+          type: integer
+          example: 2500
+        activeTokens:
+          type: integer
+          example: 1800
+        expiredTokens:
+          type: integer
+          example: 700
