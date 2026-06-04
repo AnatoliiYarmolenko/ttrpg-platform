@@ -25,7 +25,7 @@ Wrapper.propTypes = {
   className: PropTypes.string,
 };
 
-export default function DiceIcon({ label, className = "", size = 12 }) {
+export default function DiceIcon({ label, value, className = "", size = 12 }) {
   // Extract just the 'd<number>' part (e.g., '2d6' -> 'd6')
   const typeMatch = label ? label.toLowerCase().match(/d\d+/) : null;
   const type = typeMatch ? typeMatch[0] : 'd20';
@@ -79,6 +79,24 @@ export default function DiceIcon({ label, className = "", size = 12 }) {
           <line x1="2" y1="9" x2="7.5" y2="10" />
         </Wrapper>
       );
+    case 'd2':
+      return (
+        <Wrapper size={size} className={className}>
+          <circle cx="12" cy="12" r="10" />
+          {value ? (
+            value === 2 ? (
+              <polyline points="7 12 10.5 15.5 17 8" fill="none" stroke="currentColor" strokeWidth="2.5" />
+            ) : (
+              <g stroke="currentColor" strokeWidth="2.5">
+                <line x1="8" y1="8" x2="16" y2="16" />
+                <line x1="16" y1="8" x2="8" y2="16" />
+              </g>
+            )
+          ) : (
+            <text x="12" y="16" fontSize="11" fontWeight="bold" textAnchor="middle" fill="currentColor" stroke="none">2</text>
+          )}
+        </Wrapper>
+      );
     case 'd20':
     default:
       return (
@@ -101,6 +119,7 @@ export default function DiceIcon({ label, className = "", size = 12 }) {
 
 DiceIcon.propTypes = {
   label: PropTypes.string,
+  value: PropTypes.number,
   className: PropTypes.string,
   size: PropTypes.number,
 };

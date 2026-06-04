@@ -4,7 +4,25 @@ import useVttStore from '@/stores/useVttStore';
 import { X } from 'lucide-react';
 import DiceIcon from './DiceIcon';
 
-function getDiceResultClasses(v, isD20) {
+function getDiceResultClasses(v, isD20, isD2) {
+  if (isD2) {
+    if (v === 2) {
+      return {
+        textColor: 'text-brand-accent',
+        iconColor: 'text-brand-accent',
+        borderColor: 'border-brand-accent/50',
+        bgColor: 'bg-brand-accent/10',
+      };
+    } else {
+      return {
+        textColor: 'text-red-400',
+        iconColor: 'text-red-400',
+        borderColor: 'border-red-400/50',
+        bgColor: 'bg-red-400/10',
+      };
+    }
+  }
+
   const isCritSuccess = isD20 && v === 20;
   const isCritFail = isD20 && v === 1;
 
@@ -38,16 +56,24 @@ function renderDetailItem(d, di) {
   if (d.values && d.values.length > 0) {
     return d.values.map((v, vi) => {
       const isD20 = d.label?.toLowerCase().includes('d20');
-      const { textColor, iconColor, borderColor, bgColor } = getDiceResultClasses(v, isD20);
+      const isD2 = d.label?.toLowerCase().match(/d2$/) !== null;
+      const { textColor, iconColor, borderColor, bgColor } = getDiceResultClasses(v, isD20, isD2);
+
+      let displayValue = v;
+      let textClass = "text-sm";
+      if (isD2) {
+        displayValue = v === 2 ? 'ТАК' : 'НІ';
+        textClass = "text-[10px] tracking-tighter";
+      }
 
       return (
         <div
           key={`die-${d.label || 'dice'}-${di}-${vi}`}
           className={`w-[34px] h-[40px] rounded-lg ${bgColor} border ${borderColor} flex flex-col items-center justify-center shadow-inner transition-colors`}
         >
-          <span className={`${textColor} font-bold text-sm leading-none mt-1`}>{d.sign === '-' ? '-' : ''}{v}</span>
+          <span className={`${textColor} font-bold ${textClass} leading-none mt-1`}>{d.sign === '-' ? '-' : ''}{displayValue}</span>
           <span className={`${iconColor} text-[9px] leading-none mt-1 uppercase`}>
-            <DiceIcon label={d.label} size={12} />
+            <DiceIcon label={d.label} value={v} size={12} />
           </span>
         </div>
       );

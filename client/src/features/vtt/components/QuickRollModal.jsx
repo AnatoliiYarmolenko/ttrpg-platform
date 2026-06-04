@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import BaseModal from '@/components/shared/BaseModal';
 import Button from '@/components/ui/Button';
 import { X } from 'lucide-react';
+import { parseFormula } from '@/features/vtt/utils/diceFormulaEngine';
 
 const diceTypes = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20', 'd100'];
 
@@ -73,14 +74,42 @@ export default function QuickRollModal({
       return;
     }
     
-    // Проста валідація формули
-    const validFormula = /^[\d\s+\-dD]+$/.exec(formula);
-    if (!validFormula) {
-      setError('Формула містить недопустимі символи. Використовуйте лише цифри, d, +, -.');
+    const tokens = parseFormula(formula);
+    if (tokens.length === 0) {
+      setError('Не вдалося розпізнати формулу кидка. Введіть коректні значення (напр. 1d20+5).');
       return;
     }
 
-    onSave({ name: name.trim(), formula: formula.trim().toLowerCase() });
+    let wasModified = false;
+    const formattedParts = tokens.map((t, index) => {
+      let partStr = '';
+      if (t.type === 'dice') {
+        let count = t.count;
+        if (count > 20) {
+          count = 20;
+          wasModified = true;
+        }
+        partStr = `${count}d${t.sides}`;
+      } else {
+        partStr = `${t.value}`;
+      }
+
+      if (index === 0) {
+        return t.sign === '-' ? `-${partStr}` : partStr;
+      } else {
+        return t.sign === '-' ? `- ${partStr}` : `+ ${partStr}`;
+      }
+    });
+
+    const cleanFormula = formattedParts.join(' ');
+
+    if (wasModified) {
+      setFormula(cleanFormula);
+      setError('Ліміт 20 кубиків! Значення автоматично виправлено.');
+      return;
+    }
+
+    onSave({ name: name.trim(), formula: cleanFormula });
     onClose();
   };
 

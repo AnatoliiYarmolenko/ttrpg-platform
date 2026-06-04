@@ -70,13 +70,13 @@ export default function QuickBar({ onRoll }) {
           
           {/* Заглушки для майбутніх слотів (Quick Slots) */}
           <div className="flex gap-2">
-            {slotIndices.map((index) => {
-              const roll = currentRolls[index];
+            {slotIndices.map((slotId) => {
+              const roll = currentRolls[slotId];
               return (
-                <div key={`quick-slot-${index}`} className="relative group/slot">
+                <div key={`quick-slot-${slotId}`} className="relative group/slot">
                   <button 
-                    onClick={() => handleSlotClick(index, roll)}
-                    onContextMenu={(e) => handleSlotContextMenu(e, index)}
+                    onClick={() => handleSlotClick(slotId, roll)}
+                    onContextMenu={(e) => handleSlotContextMenu(e, slotId)}
                     className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
                       roll 
                         ? 'bg-brand-medium/30 border border-brand-light/30 text-brand-light hover:bg-brand-medium/60 hover:text-white hover:border-brand-accent' 
@@ -118,6 +118,7 @@ export default function QuickBar({ onRoll }) {
           
           {/* Кнопка Roll Maker */}
           <button
+            data-roll-maker-toggle="true"
             onClick={toggleRollMaker}
             className={`w-12 h-12 flex items-center justify-center rounded-xl transition-all duration-200 ${
               isRollMakerOpen 
@@ -134,7 +135,7 @@ export default function QuickBar({ onRoll }) {
       <QuickRollModal
         isOpen={editingSlotIndex !== null}
         onClose={() => setEditingSlotIndex(null)}
-        initialData={editingSlotIndex === null ? null : currentRolls[editingSlotIndex]}
+        initialData={editingSlotIndex !== null ? currentRolls[editingSlotIndex] : null}
         onSave={handleSaveModal}
         onClear={handleClearModal}
       />

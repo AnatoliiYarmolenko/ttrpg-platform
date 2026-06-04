@@ -26,12 +26,13 @@ function parsePartToToken(part) {
     value = value.slice(1);
   }
 
-  const diceRegex = /^(\d*)d(\d+)$/i;
+  const diceRegex = /^(\d*)([dдкkвlлr])(\d+)$/i;
   const diceMatch = diceRegex.exec(value);
   if (diceMatch) {
     const count = diceMatch[1] ? Number.parseInt(diceMatch[1], 10) : 1;
-    const sides = Number.parseInt(diceMatch[2], 10);
-    return { type: 'dice', sign, count, sides };
+    const letter = 'd'; // Завжди нормалізуємо до 'd'
+    const sides = Number.parseInt(diceMatch[3], 10);
+    return { type: 'dice', sign, count, letter, sides };
   }
 
   const num = Number.parseInt(value, 10);
@@ -46,10 +47,15 @@ export function parseFormula(formula) {
   if (!formula || typeof formula !== 'string') return [];
 
   // Прибираємо /r або /roll префікс
-  const clean = formula.trim().replace(/^\/r(?:oll)?\s+/i, '').trim();
+  let clean = formula.trim().replace(/^\/r(?:oll)?\s+/i, '').trim();
   if (!clean) return [];
 
-  const parts = clean.match(/[+-]?\s*(?:\d+d\d+|\d+)/gi);
+  // З'єднуємо розірвані кубики та приводимо до стандарту 'd'
+  clean = clean.replace(/(\d*)\s*([dдкkвlлr])\s*(\d+)/gi, (match, count, letter, sides) => {
+    return `${count || '1'}d${sides}`;
+  });
+
+  const parts = clean.match(/[+-]?\s*(?:\d+[dдкkвlлr]\d+|\d+)/gi);
   if (!parts) return [];
 
   const tokens = [];

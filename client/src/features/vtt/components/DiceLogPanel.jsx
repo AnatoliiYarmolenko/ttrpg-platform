@@ -1,10 +1,29 @@
 /* eslint-disable jsx-a11y/no-static-element-interactions */
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React from 'react';
 import useVttStore from '@/stores/useVttStore';
 import { X, GripVertical, Lock, Unlock } from 'lucide-react';
 import DiceIcon from './DiceIcon';
+import useDraggablePanel from '../hooks/useDraggablePanel';
 
-function getDiceResultClasses(v, isD20) {
+function getDiceResultClasses(v, isD20, isD2) {
+  if (isD2) {
+    if (v === 2) {
+      return {
+        textColor: 'text-brand-accent',
+        iconColor: 'text-brand-accent',
+        borderColor: 'border-brand-accent/50',
+        bgColor: 'bg-brand-accent/10',
+      };
+    } else {
+      return {
+        textColor: 'text-red-400',
+        iconColor: 'text-red-400',
+        borderColor: 'border-red-400/50',
+        bgColor: 'bg-red-400/10',
+      };
+    }
+  }
+
   const isCritSuccess = isD20 && v === 20;
   const isCritFail = isD20 && v === 1;
 
@@ -38,18 +57,26 @@ function renderDiceDetails(d, di) {
   if (d.values && d.values.length > 0) {
     return d.values.map((v, vi) => {
       const isD20 = d.label?.toLowerCase().includes('d20');
-      const { textColor, iconColor, borderColor, bgColor } = getDiceResultClasses(v, isD20);
+      const isD2 = d.label?.toLowerCase().match(/d2$/) !== null;
+      const { textColor, iconColor, borderColor, bgColor } = getDiceResultClasses(v, isD20, isD2);
+
+      let displayValue = v;
+      let textClass = "text-[12px]";
+      if (isD2) {
+        displayValue = v === 2 ? 'ТАК' : 'НІ';
+        textClass = "text-[9px] tracking-tighter";
+      }
 
       return (
         <div
           key={`die-${d.label || 'dice'}-${di}-${vi}`}
           className={`w-[28px] h-[34px] rounded ${bgColor} border ${borderColor} flex flex-col items-center justify-center transition-colors`}
         >
-          <span className={`${textColor} font-bold text-[12px] leading-none mt-1`}>
-            {d.sign === '-' ? '-' : ''}{v}
+          <span className={`${textColor} font-bold ${textClass} leading-none mt-1`}>
+            {d.sign === '-' ? '-' : ''}{displayValue}
           </span>
           <span className={`${iconColor} text-[8px] leading-none mt-1`}>
-            <DiceIcon label={d.label} size={10} />
+            <DiceIcon label={d.label} value={v} size={10} />
           </span>
         </div>
       );
@@ -69,126 +96,23 @@ const DEFAULT_HEIGHT = 450;
  */
 export default function DiceLogPanel() {
   const { isDiceLogOpen, toggleDiceLog, rollHistory, clearRollHistory, diceLogState, setDiceLogState } = useVttStore();
-  const containerRef = useRef(null);
-
-  // Поточний стан зберігаємо у Ref
-  const stateRef = useRef({
-    x: diceLogState?.x ?? (globalThis.window === undefined ? 0 : globalThis.window.innerWidth - DEFAULT_WIDTH - 16),
-    y: diceLogState?.y ?? 16,
-    w: diceLogState?.w ?? DEFAULT_WIDTH,
-    h: diceLogState?.h ?? DEFAULT_HEIGHT,
-    isLocked: diceLogState?.isLocked ?? false,
-  });
-
-  const [isLocked, setIsLocked] = useState(diceLogState?.isLocked ?? false);
-
-  const [renderTrigger, setRenderTrigger] = useState(0);
-
-  useEffect(() => {
-    // renderTrigger використовується для синхронізації рендеру
-  }, [renderTrigger]);
-
-  // Refs для подій
-  const action = useRef(null);
-  const start = useRef({ mx: 0, my: 0, ox: 0, oy: 0, w: 0, h: 0 });
-  const rafRef = useRef(null);
-
-  // Функція прямого застосування стилів
-  const applyStyles = () => {
-    if (!containerRef.current) return;
-    const { x, y, w, h } = stateRef.current;
-    containerRef.current.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-    containerRef.current.style.width = `${w}px`;
-    containerRef.current.style.height = `${h}px`;
-  };
-
-  // --- Drag ---
-  const onDragMouseDown = useCallback((e) => {
-    if (stateRef.current.isLocked || e.button !== 0) return;
-    action.current = 'drag';
-    start.current = { mx: e.clientX, my: e.clientY, ox: stateRef.current.x, oy: stateRef.current.y };
-    e.preventDefault();
-  }, []);
-
-  // --- Resize ---
-  const onResizeMouseDown = useCallback((direction) => (e) => {
-    if (stateRef.current.isLocked || e.button !== 0) return;
-    action.current = `resize-${direction}`;
-    start.current = { mx: e.clientX, my: e.clientY, ox: stateRef.current.x, oy: stateRef.current.y, w: stateRef.current.w, h: stateRef.current.h };
-    e.preventDefault();
-    e.stopPropagation();
-  }, []);
-
-  useEffect(() => {
-    if (!isDiceLogOpen) return;
-    
-    // Якщо вікно було змінено і панель опинилася за межами, повертаємо її на екран
-    const max_x = globalThis.window.innerWidth - stateRef.current.w;
-    const max_y = globalThis.window.innerHeight - stateRef.current.h;
-    if (stateRef.current.x > max_x) stateRef.current.x = Math.max(0, max_x);
-    if (stateRef.current.y > max_y) stateRef.current.y = Math.max(0, max_y);
-    applyStyles();
-  }, [isDiceLogOpen]);
-
-  useEffect(() => {
-    const onMouseMove = (e) => {
-      if (!action.current) return;
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-
-      rafRef.current = requestAnimationFrame(() => {
-        const dx = e.clientX - start.current.mx;
-        const dy = e.clientY - start.current.my;
-        
-        if (action.current === 'drag') {
-          stateRef.current.x = Math.max(0, Math.min(globalThis.window.innerWidth - stateRef.current.w, start.current.ox + dx));
-          stateRef.current.y = Math.max(0, Math.min(globalThis.window.innerHeight - 40, start.current.oy + dy));
-        } else if (action.current.startsWith('resize-')) {
-          const dir = action.current.replace('resize-', '');
-          let newW = start.current.w;
-          let newH = start.current.h;
-          let newX = start.current.ox;
-          let newY = start.current.oy;
-
-          if (dir.includes('e')) newW = Math.max(MIN_WIDTH, start.current.w + dx);
-          if (dir.includes('s')) newH = Math.max(MIN_HEIGHT, start.current.h + dy);
-          if (dir.includes('w')) { 
-            newW = Math.max(MIN_WIDTH, start.current.w - dx); 
-            newX = start.current.ox + (start.current.w - newW); 
-          }
-          if (dir.includes('n')) { 
-            newH = Math.max(MIN_HEIGHT, start.current.h - dy); 
-            newY = start.current.oy + (start.current.h - newH); 
-          }
-
-          stateRef.current.w = newW;
-          stateRef.current.h = newH;
-          stateRef.current.x = newX;
-          stateRef.current.y = newY;
-        }
-        applyStyles();
-      });
-    };
-
-    const onMouseUp = () => {
-      if (!action.current) return;
-      action.current = null;
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      // Save state to store
-      setDiceLogState({ ...stateRef.current });
-      setRenderTrigger(n => n + 1);
-    };
-
-    globalThis.addEventListener('mousemove', onMouseMove, { passive: true });
-    globalThis.addEventListener('mouseup', onMouseUp);
-    return () => { 
-      globalThis.removeEventListener('mousemove', onMouseMove); 
-      globalThis.removeEventListener('mouseup', onMouseUp); 
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-  }, [setDiceLogState]);
-
-  useEffect(() => {
-    applyStyles();
+  
+  const {
+    containerRef,
+    isLocked,
+    toggleLock,
+    onDragMouseDown,
+    onResizeMouseDown
+  } = useDraggablePanel({
+    initialState: diceLogState,
+    defaultWidth: DEFAULT_WIDTH,
+    defaultHeight: DEFAULT_HEIGHT,
+    defaultX: globalThis.window?.innerWidth ? globalThis.window.innerWidth - DEFAULT_WIDTH - 16 : 0,
+    defaultY: 16,
+    minWidth: MIN_WIDTH,
+    minHeight: MIN_HEIGHT,
+    onSaveState: setDiceLogState,
+    isOpen: isDiceLogOpen
   });
 
   if (!isDiceLogOpen) return null;
@@ -202,8 +126,8 @@ export default function DiceLogPanel() {
       style={{ 
         left: 0, 
         top: 0,
-        background: 'rgba(22,36,34,0.95)', // brand-dark with opacity
-        backdropFilter: 'blur(12px)'
+        background: 'rgba(22,36,34,0.5)', // semi-transparent brand-dark
+        backdropFilter: 'blur(24px)'
       }}
     >
       {/* Resize handles */}
@@ -242,12 +166,7 @@ export default function DiceLogPanel() {
           )}
           <button
             onMouseDown={(e) => e.stopPropagation()}
-            onClick={() => {
-              const newLocked = !isLocked;
-              setIsLocked(newLocked);
-              stateRef.current.isLocked = newLocked;
-              setDiceLogState({ ...stateRef.current });
-            }}
+            onClick={toggleLock}
             className={`text-brand-light/70 hover:text-white transition-colors p-1 ${isLocked ? 'text-amber-400 hover:text-amber-300' : ''}`}
             title={isLocked ? "Відкріпити (Unlock)" : "Закріпити (Lock)"}
           >

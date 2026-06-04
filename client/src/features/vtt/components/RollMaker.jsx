@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { X, Dices } from 'lucide-react';
 import useVttStore from '@/stores/useVttStore';
@@ -12,21 +12,39 @@ export default function RollMaker({ onRoll }) {
   const { isRollMakerOpen, setRollMakerOpen } = useVttStore();
   const [formula, setFormula] = useState('1d20');
   const [errorMsg, setErrorMsg] = useState(null);
+  const containerRef = useRef(null);
   
   // Для спрощеної версії поки що лише базові типи кубиків
   const diceTypes = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20', 'd100'];
 
-  if (!isRollMakerOpen && !formula) {
-    // We can reset formula when closed, but let's just keep it.
-  }
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        isRollMakerOpen &&
+        containerRef.current &&
+        !containerRef.current.contains(event.target) &&
+        !event.target.closest('[data-roll-maker-toggle]')
+      ) {
+        setRollMakerOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isRollMakerOpen, setRollMakerOpen]);
 
   const handleRoll = () => {
     if (formula.trim() && onRoll) {
       let newFormula = formula;
       let wasModified = false;
       
+      // З'єднуємо пробіли та приводимо всі варіанти до стандарту 'd'
+      newFormula = newFormula.replace(/(\d*)\s*([dдкkвlлr])\s*(\d+)/gi, (match, count, letter, sides) => {
+        return `${count || '1'}d${sides}`;
+      });
+
       // Автоматичне виправлення: не більше 20 кубиків одного типу
-      newFormula = newFormula.replace(/(\d+)d\d+/gi, (match, countStr) => {
+      newFormula = newFormula.replace(/(\d+)[dдкkвlлr]\d+/gi, (match, countStr) => {
         const count = Number.parseInt(countStr, 10);
         if (count > 20) {
           wasModified = true;
@@ -42,7 +60,8 @@ export default function RollMaker({ onRoll }) {
         return; // Зупиняємо кидок, щоб користувач побачив виправлення
       }
 
-      onRoll(formula);
+      onRoll(newFormula, 'Fast Roll');
+      setRollMakerOpen(false); // Автоматичне закриття після кидка
     }
   };
 
@@ -77,6 +96,7 @@ export default function RollMaker({ onRoll }) {
 
   return (
     <div 
+      ref={containerRef}
       className={`absolute left-1/2 -translate-x-1/2 w-96 bg-brand-dark/95 backdrop-blur-md border border-brand-light/20 rounded-xl shadow-[0_8px_30px_rgba(22,74,65,0.6)] z-50 overflow-hidden flex flex-col text-sm text-white transition-all duration-300 ease-in-out ${
         isRollMakerOpen 
           ? 'bottom-24 opacity-100 pointer-events-auto translate-y-0' 
