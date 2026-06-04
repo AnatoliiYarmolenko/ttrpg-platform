@@ -1,7 +1,7 @@
 function createAuthVerificationService({
   prisma,
   createError,
-  getTokenCandidates,
+  hashToken,
   createRawAndHashedToken,
   emailService,
   TOKEN_TTL_MS,
@@ -9,15 +9,15 @@ function createAuthVerificationService({
   return {
     async verifyEmailToken(token) {
       const now = new Date();
-      const tokenCandidates = getTokenCandidates(token);
+      const tokenHash = hashToken(token);
 
-      if (tokenCandidates.length === 0) {
+      if (!tokenHash) {
         return { success: false, message: 'Токен не знайдено або вже використано.' };
       }
 
       const record = await prisma.emailVerificationToken.findFirst({
         where: {
-          token: { in: tokenCandidates },
+          token: tokenHash,
         },
         include: { user: true },
       });

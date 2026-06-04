@@ -17,9 +17,7 @@ const {
   deleteAccountLimiter,
 } = require('../middlewares/rate-limit.middleware');
 
-// ===== ЗАХИЩЕНІ РОУТИ (потребують авторизації) =====
 
-// Змінити пароль
 router.patch('/password', 
   authenticateToken, 
   changePasswordLimiter,
@@ -28,7 +26,6 @@ router.patch('/password',
   securityController.changePassword
 );
 
-// Запит на зміну email
 router.post('/email', 
   authenticateToken, 
   emailChangeLimiter,
@@ -37,7 +34,6 @@ router.post('/email',
   securityController.requestEmailChange
 );
 
-// Видалити акаунт
 router.delete('/account', 
   authenticateToken, 
   deleteAccountLimiter,
@@ -46,11 +42,9 @@ router.delete('/account',
   securityController.deleteAccount
 );
 
-// ===== ПУБЛІЧНІ РОУТИ =====
-
-// Підтвердити зміну email (з токеном)
 router.post('/confirm-email-change', 
   confirmEmailChangeLimiter,
+  verifyCSRFToken,
   validateBody(confirmEmailChangeSchema), 
   securityController.confirmEmailChange
 );

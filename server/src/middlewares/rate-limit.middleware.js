@@ -47,15 +47,11 @@ function createRedisLimiter({
   };
 }
 
-/**
- * Rate limiter.
- */
-
 // Ліміт для запиту "Забув пароль"
 const emailLimiter = createRedisLimiter({
   type: 'auth_forgot_password',
   windowMs: 60 * 60 * 1000, // 1 година
-  max: 3, // Збільшив до 3, щоб було трохи лояльніше
+  max: 3, // 3 запити на годину
   message: { message: 'Забагато запитів на відновлення. Спробуйте пізніше.' },
 });
 
@@ -75,6 +71,7 @@ const verifyEmailLimiter = createRedisLimiter({
   message: { message: 'Занадто багато спроб підтвердження. Спробуйте пізніше.' },
 });
 
+// Ліміт для входу
 const loginLimiter = createRedisLimiter({
   type: 'auth_login',
   windowMs: 15 * 60 * 1000, 
@@ -89,6 +86,7 @@ const loginLimiter = createRedisLimiter({
   skipSuccessfulRequests: true, // Якщо логін успішний, лічильник не росте
 });
 
+// Ліміт для реєстрації
 const registerLimiter = createRedisLimiter({
   type: 'auth_register',
   windowMs: 60 * 60 * 1000, // 1 година
@@ -99,8 +97,6 @@ const registerLimiter = createRedisLimiter({
   statusCode: 429,
   skipSuccessfulRequests: true,
 });
-
-// ===== SECURITY ENDPOINTS RATE LIMITERS =====
 
 // Ліміт для зміни пароля (захист від brute-force)
 const changePasswordLimiter = createRedisLimiter({
@@ -132,7 +128,7 @@ const confirmEmailChangeLimiter = createRedisLimiter({
   statusCode: 429,
 });
 
-// Ліміт для видалення акаунту (суворий - 3 спроби на день)
+// Ліміт для видалення акаунту
 const deleteAccountLimiter = createRedisLimiter({
   type: 'security_delete_account',
   windowMs: 24 * 60 * 60 * 1000, // 24 години
@@ -141,8 +137,6 @@ const deleteAccountLimiter = createRedisLimiter({
   statusCode: 429,
   keyGenerator: (req) => String(req.user?.id || getClientIp(req)),
 });
-
-// ===== PROFILE ENDPOINTS RATE LIMITERS =====
 
 // Ліміт для оновлення профілю
 const profileUpdateLimiter = createRedisLimiter({
@@ -154,7 +148,7 @@ const profileUpdateLimiter = createRedisLimiter({
   keyGenerator: (req) => String(req.user?.id || getClientIp(req)),
 });
 
-// Ліміт для зміни username (суворий - рідка операція)
+// Ліміт для зміни username)
 const usernameChangeLimiter = createRedisLimiter({
   type: 'profile_username_change',
   windowMs: 24 * 60 * 60 * 1000, // 24 години
@@ -184,7 +178,6 @@ const publicProfileLimiter = createRedisLimiter({
 });
 
 // Ліміт для відправки повідомлень в чат (захист від спаму)
-
 const chatSendMessageLimiter = createRedisLimiter({
   type: 'chat_send_message',
   windowMs: 10 * 1000, // 10 секунд
@@ -203,22 +196,43 @@ const clientLogLimiter = createRedisLimiter({
   statusCode: 429,
 });
 
+const telegramLinkLimiter = createRedisLimiter({
+  type: 'profile_telegram_link',
+  windowMs: 60 * 1000,
+  max: 3,
+  message: { message: 'Занадто багато спроб генерації токена. Зачекайте хвилину.' },
+  statusCode: 429,
+  keyGenerator: (req) => String(req.user?.id || getClientIp(req)),
+});
+
+// Ліміт для доступу по share токену (захист від brute-force токенів)
+const shareTokenLimiter = createRedisLimiter({
+  type: 'share_token_access',
+  windowMs: 15 * 60 * 1000, // 15 хвилин
+  max: 60, // 60 спроб на 15 хвилин (4 спроби на хвилину)
+  message: { message: 'Занадто багато спроб доступу. Спробуйте пізніше.' },
+  statusCode: 429,
+  keyGenerator: (req) => getClientIp(req),
+});
+
 module.exports = {
   loginLimiter,
   registerLimiter,
   emailLimiter,
   resendVerificationLimiter,
   verifyEmailLimiter,
-  // Security endpoints
+
   changePasswordLimiter,
   emailChangeLimiter,
   confirmEmailChangeLimiter,
   deleteAccountLimiter,
-  // Profile endpoints
+
   profileUpdateLimiter,
   usernameChangeLimiter,
   avatarUploadLimiter,
   publicProfileLimiter,
   clientLogLimiter,
   chatSendMessageLimiter,
+  telegramLinkLimiter,
+  shareTokenLimiter,
 };

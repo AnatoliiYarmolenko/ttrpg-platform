@@ -20,7 +20,3 @@ export const markManyAsRead = async (ids) => {
   return response.data;
 };
 
-export const archiveNotification = async (notificationId) => {
-  const response = await api.post(`/notifications/${notificationId}/archive`);
-  return response.data;
-};

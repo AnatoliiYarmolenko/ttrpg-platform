@@ -5,22 +5,16 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-// https://vite.dev/config/
 export default defineConfig({
-  envDir: '../', // Кажемо Vite шукати .env на рівень вище (в корені проекту)
+  envDir: '../',
   plugins: [react()],
   cacheDir: '/tmp/ttrpg-platform-client-vite-cache',
   server: {
-    host: true, // Або '0.0.0.0' - дозволяє доступ ззовні контейнера
-    port: 5173, // Стандартний порт Vite
-    strictPort: true, // Якщо порт зайнятий, Vite не буде шукати інший
-    //watch: {
-    //  usePolling: true, // КРИТИЧНО: змушує Vite примусово сканувати файли на зміни
-    //  interval: 500,
-    //  ignored: ['**/node_modules/**', '**/.git/**'], // Інтервал перевірки в мілісекундах (опціонально)
-    //},
+    host: true,
+    port: 5173,
+    strictPort: true,
     hmr: {
-      clientPort: 5173, // Вказуємо браузеру, куди стукати по WebSockets
+      clientPort: 5173,
     },
   },
   test: {
@@ -39,11 +33,12 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"), // Кажемо, що @ це папка src
+      "@": path.resolve(__dirname, "./src"),
     },
   },
   esbuild: {
-    drop: ['console', 'debugger'],
+    drop: ['debugger'],
+    pure: ['console.log'], 
   },
   build: {
     rollupOptions: {

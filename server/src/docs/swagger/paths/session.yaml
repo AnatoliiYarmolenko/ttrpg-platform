@@ -1,0 +1,517 @@
+paths:
+  /api/sessions:
+    get:
+      summary: Отримати мої сесії
+      tags: [Sessions]
+      security: 
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [PLANNED, ACTIVE, FINISHED, CANCELED]
+        - in: query
+          name: role
+          schema:
+            type: string
+            enum: [GM, PLAYER, ALL]
+        - in: query
+          name: limit
+          schema:
+            type: integer
+        - in: query
+          name: offset
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Список сесій
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Session'
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      limit:
+                        type: integer
+                      offset:
+                        type: integer
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+
+    post:
+      summary: Створити нову сесію
+      tags: [Sessions]
+      security: 
+        - cookieAuth: []
+          csrfAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionInput'
+      responses:
+        201:
+          description: Сесію успішно створено
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        422:
+          $ref: '#/components/responses/ValidationError'
+
+  /api/sessions/next-relevant:
+    get:
+      summary: Отримати наступну актуальну сесію користувача
+      tags: [Sessions]
+      security: 
+        - cookieAuth: []
+      responses:
+        200:
+          description: Дані наступної сесії
+
+  /api/sessions/calendar:
+    get:
+      summary: Отримати календар сесій
+      tags: [Sessions]
+      security: 
+        - cookieAuth: []
+        - {}
+      parameters:
+        - in: query
+          name: year
+          schema:
+            type: integer
+        - in: query
+          name: month
+          schema:
+            type: integer
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [MY, PUBLIC, ALL]
+        - in: query
+          name: timeZone
+          schema:
+            type: string
+      responses:
+        200:
+          description: Дані календаря
+
+  /api/sessions/calendar-stats:
+    get:
+      summary: Отримати статистику календаря (кількість сесій по днях)
+      tags: [Sessions]
+      security: 
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: month
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: scope
+          schema:
+            type: string
+            enum: [global, user, search]
+        - in: query
+          name: timeZone
+          schema:
+            type: string
+        - in: query
+          name: filters
+          schema:
+            type: string
+            description: JSON строка з додатковими фільтрами
+      responses:
+        200:
+          description: Статистика по днях
+
+  /api/sessions/day/{date}:
+    get:
+      summary: Отримати сесії за конкретний день
+      tags: [Sessions]
+      security: 
+        - cookieAuth: []
+        - {}
+      parameters:
+        - in: path
+          name: date
+          required: true
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [MY, PUBLIC, ALL]
+      responses:
+        200:
+          description: Список сесій за день
+
+  /api/sessions/day-filtered/{date}:
+    get:
+      summary: Отримати відфільтровані сесії за день
+      tags: [Sessions]
+      security: 
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: date
+          required: true
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: scope
+          schema:
+            type: string
+            enum: [global, user, search]
+        - in: query
+          name: timeZone
+          schema:
+            type: string
+        - in: query
+          name: filters
+          schema:
+            type: string
+      responses:
+        200:
+          description: Відфільтровані сесії
+
+  /api/sessions/share/{shareToken}:
+    get:
+      summary: Отримати сесію за Share Token
+      tags: [Sessions]
+      security: 
+        - cookieAuth: []
+        - {}
+      parameters:
+        - in: path
+          name: shareToken
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Дані сесії
+        404:
+          description: Сесію не знайдено
+        429:
+          $ref: '#/components/responses/RateLimitError'
+
+  /api/sessions/share/{shareToken}/page:
+    get:
+      summary: Отримати сторінку сесії за Share Token
+      tags: [Sessions]
+      security: 
+        - cookieAuth: []
+        - {}
+      parameters:
+        - in: path
+          name: shareToken
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Розширені дані для сторінки
+        429:
+          $ref: '#/components/responses/RateLimitError'
+
+  /api/sessions/{id}:
+    get:
+      summary: Отримати сесію за ID
+      tags: [Sessions]
+      security: 
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Дані сесії
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Session'
+        404:
+          description: Сесію не знайдено
+
+    patch:
+      summary: Оновити сесію
+      tags: [Sessions]
+      security: 
+        - cookieAuth: []
+          csrfAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSessionInput'
+      responses:
+        200:
+          description: Сесію оновлено
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+
+    delete:
+      summary: Видалити сесію
+      tags: [Sessions]
+      security: 
+        - cookieAuth: []
+          csrfAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Сесію видалено
+
+  /api/sessions/{id}/page:
+    get:
+      summary: Отримати сторінку сесії за ID
+      tags: [Sessions]
+      security: 
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Розширені дані сторінки
+
+  /api/sessions/{id}/share/regenerate:
+    post:
+      summary: Згенерувати новий Share Token
+      tags: [Sessions]
+      security: 
+        - cookieAuth: []
+          csrfAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Токен згенеровано
+
+  /api/sessions/{id}/share-link:
+    get:
+      summary: Отримати Share Link сесії
+      tags: [Sessions]
+      security: 
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Лінк отримано
+
+  /api/sessions/{id}/cancel:
+    post:
+      summary: Скасувати сесію
+      tags: [Sessions]
+      security: 
+        - cookieAuth: []
+          csrfAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Сесію скасовано
+
+  /api/sessions/{id}/mark-finished:
+    post:
+      summary: Завершити сесію
+      tags: [Sessions]
+      security: 
+        - cookieAuth: []
+          csrfAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Сесію відмічено як завершену
+
+  /api/sessions/{id}/participants:
+    get:
+      summary: Отримати учасників сесії
+      tags: [Sessions]
+      security: 
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Список учасників
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SessionParticipant'
+
+  /api/sessions/{id}/call-config:
+    get:
+      summary: Отримати конфігурацію аудіо/відео дзвінка
+      tags: [Sessions]
+      security: 
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Дані для підключення до WebRTC
+
+  /api/sessions/{id}/join:
+    post:
+      summary: Приєднатися до сесії
+      tags: [Sessions]
+      security: 
+        - cookieAuth: []
+          csrfAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JoinSessionInput'
+      responses:
+        200:
+          description: Запит на приєднання надіслано/схвалено
+
+  /api/sessions/{id}/leave:
+    post:
+      summary: Покинути сесію
+      tags: [Sessions]
+      security: 
+        - cookieAuth: []
+          csrfAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Сесію покинуто
+
+
+
+  /api/sessions/{id}/participants/{participantId}:
+    patch:
+      summary: Змінити статус учасника (PENDING -> CONFIRMED)
+      tags: [Sessions]
+      security: 
+        - cookieAuth: []
+          csrfAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: participantId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateParticipantStatusInput'
+      responses:
+        200:
+          description: Статус оновлено
+
+    delete:
+      summary: Видалити учасника із сесії
+      tags: [Sessions]
+      security: 
+        - cookieAuth: []
+          csrfAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: participantId
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Учасника видалено

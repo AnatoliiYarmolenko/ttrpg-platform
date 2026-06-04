@@ -14,6 +14,7 @@ const nodeEnv = process.env.NODE_ENV || 'development';
 const requiredEnvVars = [
   'JWT_SECRET',
   'DATABASE_URL',
+  'SHARE_TOKEN_SECRET',
   ...(nodeEnv === 'production' ? ['COOKIE_SECRET', 'CORS_ALLOWED_ORIGINS'] : [])
 ];
 const corsAllowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || process.env.FRONTEND_URL || 'http://localhost:5173')
@@ -119,10 +120,9 @@ if (nodeEnv === 'production') {
     logger.error(`ПОМИЛКА: MEDIASOUP_ANNOUNCED_IP (${mediasoupAnnouncedIp}) не може бути loopback/local IP у production.`);
     process.exit(1);
   }
-} else {
-  if (!process.env.MEDIASOUP_ANNOUNCED_IP) {
-    logger.warn('УВАГА: MEDIASOUP_ANNOUNCED_IP не вказано. Використовується дефолтний 127.0.0.1 для локальної розробки.');
-  }
+}
+if (nodeEnv !== 'production' && !process.env.MEDIASOUP_ANNOUNCED_IP) {
+  logger.warn('УВАГА: MEDIASOUP_ANNOUNCED_IP не вказано. Використовується дефолтний 127.0.0.1 для локальної розробки.');
 }
 
 // Валідація TURN налаштувань, якщо TURN увімкнено
@@ -161,11 +161,9 @@ module.exports = {
   // Вікно запізнення PLANNED сесії для Home next-relevant
   homePlannedToleranceMinutes,
 
-  // ========== WebRTC / Call ==========
   // Шлях для окремого WebSocket-з'єднання дзвінків
   wsCallPath: process.env.WS_CALL_PATH || '/ws/call',
 
-  // ========== mediasoup ==========
   // IP, на якому mediasoup worker слухає WebRTC транспорти
   // У Docker/production — 0.0.0.0; локально — 127.0.0.1
   mediasoupListenIp,
@@ -176,7 +174,6 @@ module.exports = {
   mediasoupMinPort,
   mediasoupMaxPort,
 
-  // ========== TURN ==========
   // Вмикає/вимикає TURN у ICE конфігурації клієнта
   // false — безпечний дефолт для локальної розробки (між вкладками одного браузера TURN не потрібен)
   turnEnabled,
@@ -191,7 +188,6 @@ module.exports = {
   // Транспортний протокол TURN: 'udp' | 'tcp'
   turnTransport,
 
-  // ========== Telegram ==========
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
   telegramWebhookDomain: process.env.TELEGRAM_WEBHOOK_DOMAIN || process.env.FRONTEND_URL,
   telegramWebhookPath: process.env.TELEGRAM_WEBHOOK_PATH || '/telegram/webhook',

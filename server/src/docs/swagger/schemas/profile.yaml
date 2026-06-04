@@ -1,0 +1,89 @@
+components:
+  schemas:
+    PublicUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        displayName:
+          type: string
+          nullable: true
+        avatarUrl:
+          type: string
+          nullable: true
+        bio:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    PrivateUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        username:
+          type: string
+        displayName:
+          type: string
+          nullable: true
+        avatarUrl:
+          type: string
+          nullable: true
+        bio:
+          type: string
+          nullable: true
+        role:
+          type: string
+        timezone:
+          type: string
+          nullable: true
+        language:
+          type: string
+          nullable: true
+        emailVerified:
+          type: boolean
+        telegramChatId:
+          type: string
+          nullable: true
+        telegramLinkedAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastActiveAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    UpdateProfileInput:
+      type: object
+      properties:
+        displayName:
+          type: string
+          minLength: 2
+          maxLength: 50
+        bio:
+          type: string
+          maxLength: 500
+        timezone:
+          type: string
+        language:
+          type: string
+          minLength: 2
+          maxLength: 2
+        avatarUrl:
+          type: string
+          format: uri
+
+

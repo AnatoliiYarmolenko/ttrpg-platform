@@ -1,0 +1,48 @@
+paths:
+  /:
+    get:
+      summary: Root endpoint
+      description: Базовий роут для перевірки, що API працює
+      tags: [System]
+      security: []
+      responses:
+        200:
+          description: Сервер працює
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Сервер працює! Готовий до НРІ."
+
+  /health:
+    get:
+      summary: Health check
+      description: Ендпоінт для моніторингу працездатності сервера (K8s, Docker, Load Balancers тощо)
+      tags: [System]
+      security: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  timestamp:
+                    type: string
+                    format: date-time
+                  redis:
+                    type: object
+                    properties:
+                      isReady:
+                        type: boolean
+                      status:
+                        type: string
+                      memoryUsageBytes:
+                        type: number
+                      error:
+                        type: string
+                        nullable: true

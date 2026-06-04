@@ -1,5 +1,4 @@
 services:
-  # ─── База даних ───────────────────────────────────────────────
   db:
     image: postgres:15
     container_name: ttrpg_db
@@ -12,6 +11,11 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB}
     volumes:
       - db_data:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 512M
     networks:
       - internal
     healthcheck:
@@ -21,7 +25,6 @@ services:
       retries: 10
       start_period: 15s
 
-  # ─── Redis ────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: ttrpg_redis
@@ -30,32 +33,34 @@ services:
       - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --save 60 1 --loglevel warning
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+    command: redis-server --save 60 1 --loglevel warning --requirepass ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
     networks:
       - internal
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 3s
       retries: 10
       start_period: 10s
 
-  # ─── Бекенд ───────────────────────────────────────────────────
   server:
     build:
       context: .
       dockerfile: server/Dockerfile
     container_name: ttrpg_server
     restart: always
-    # Mediasoup UDP порти: НЕ проксюємо через Docker ports!
-    # UFW вже відкрив 40000-40499/udp на рівні хоста.
-    # Щоб mediasoup отримував пакети напряму — server використовує host network.
     network_mode: host
     environment:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
-      REDIS_URL: ${REDIS_URL:-redis://127.0.0.1:6379}
+      REDIS_URL: ${REDIS_URL:-redis://:${REDIS_PASSWORD}@127.0.0.1:6379}
       PORT: 5000
       NODE_ENV: production
+      ENABLE_DEV_AUTH: ${ENABLE_DEV_AUTH:-false}
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
       TRUST_PROXY: 1
       FRONTEND_URL: ${FRONTEND_URL:?Set FRONTEND_URL}
@@ -76,20 +81,20 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       EMAIL_FROM: ${EMAIL_FROM:?Set EMAIL_FROM}
       TOKEN_CLEANUP_SCHEDULE: ${TOKEN_CLEANUP_SCHEDULE:-0 2 * * *}
-      # --- WebRTC / Call ---
+
       WS_CALL_PATH: ${WS_CALL_PATH:-/ws/call}
       MEDIASOUP_LISTEN_IP: ${MEDIASOUP_LISTEN_IP:-0.0.0.0}
       MEDIASOUP_ANNOUNCED_IP: ${MEDIASOUP_ANNOUNCED_IP:?Set MEDIASOUP_ANNOUNCED_IP}
       MEDIASOUP_MIN_PORT: ${MEDIASOUP_MIN_PORT:-40000}
       MEDIASOUP_MAX_PORT: ${MEDIASOUP_MAX_PORT:-40499}
-      # --- TURN (coturn на хості, не в Docker) ---
+
       TURN_ENABLED: ${TURN_ENABLED:-true}
       TURN_URL: ${TURN_URL:?Set TURN_URL}
       TURN_REALM: ${TURN_REALM:?Set TURN_REALM}
       TURN_SHARED_SECRET: ${TURN_SHARED_SECRET:?Set TURN_SHARED_SECRET}
       TURN_CREDENTIAL_TTL_SECONDS: ${TURN_CREDENTIAL_TTL_SECONDS:-3600}
       TURN_TRANSPORT: ${TURN_TRANSPORT:-udp}
-      # --- Telegram ---
+
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_WEBHOOK_DOMAIN: ${TELEGRAM_WEBHOOK_DOMAIN}
       TELEGRAM_WEBHOOK_PATH: ${TELEGRAM_WEBHOOK_PATH:-/api/telegram/webhook}
@@ -98,15 +103,26 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:5000/health', (r) => { if (r.statusCode !== 200) process.exit(1) }).on('error', () => process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
     volumes:
       - uploads_data:/app/server/uploads
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 768M
     logging:
       driver: "json-file"
       options:
         max-size: "50m"
         max-file: "5"
 
-  # ─── Фронтенд (nginx) ─────────────────────────────────────────
+
   client:
     build:
       context: .
@@ -124,17 +140,29 @@ services:
       - "443:443"
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 64M
     depends_on:
-      - server
+      server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     networks:
       - internal
 
-# ─── Мережа ───────────────────────────────────────────────────────
+
 networks:
   internal:
     driver: bridge
 
-# ─── Сховища ──────────────────────────────────────────────────────
+
 volumes:
   db_data:
   uploads_data:

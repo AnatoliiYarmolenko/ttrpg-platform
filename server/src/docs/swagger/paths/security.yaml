@@ -1,0 +1,136 @@
+paths:
+  /api/security/password:
+    patch:
+      summary: Змінити пароль
+      description: Змінює пароль поточного користувача. Потребує підтвердження поточним паролем.
+      tags: [Security]
+      security:
+        - cookieAuth: []
+          csrfAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordInput'
+      responses:
+        200:
+          description: Пароль успішно змінено
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        400:
+          description: Невірний поточний пароль або новий пароль не пройшов валідацію
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        422:
+          $ref: '#/components/responses/ValidationError'
+        429:
+          $ref: '#/components/responses/RateLimitError'
+
+  /api/security/email:
+    post:
+      summary: Запит на зміну email-адреси
+      description: Надсилає лист з токеном підтвердження на нову email-адресу.
+      tags: [Security]
+      security:
+        - cookieAuth: []
+          csrfAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestEmailChangeInput'
+      responses:
+        200:
+          description: Лист надіслано на нову адресу
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        400:
+          description: Невірний пароль або email вже використовується
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        422:
+          $ref: '#/components/responses/ValidationError'
+        429:
+          $ref: '#/components/responses/RateLimitError'
+
+  /api/security/confirm-email-change:
+    post:
+      summary: Підтвердити зміну email
+      description: Змінює email-адресу користувача на основі токена, отриманого з листа.
+      tags: [Security]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmEmailChangeInput'
+      responses:
+        200:
+          description: Email успішно змінено
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        400:
+          description: Невірний або застарілий токен
+        422:
+          $ref: '#/components/responses/ValidationError'
+        429:
+          $ref: '#/components/responses/RateLimitError'
+
+  /api/security/account:
+    delete:
+      summary: Видалити акаунт
+      description: Безповоротно видаляє акаунт користувача та всі пов'язані з ним персональні дані (софт-деліт).
+      tags: [Security]
+      security:
+        - cookieAuth: []
+          csrfAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteAccountInput'
+      responses:
+        200:
+          description: Акаунт успішно видалено
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        400:
+          description: Невірний пароль або підтвердження
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        422:
+          $ref: '#/components/responses/ValidationError'
+        429:
+          $ref: '#/components/responses/RateLimitError'

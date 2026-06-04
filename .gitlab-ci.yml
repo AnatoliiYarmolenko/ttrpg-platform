@@ -16,13 +16,12 @@ cache:
   paths:
     - .npm/
 
-# --- ЕТАП BUILD ---
-
 build_server:
   stage: build
   tags: [student]
   script:
     - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline
+    - npm audit --audit-level=high
     - cd server
     - npx prisma generate
   artifacts:
@@ -35,9 +34,9 @@ build_client:
   tags: [student]
   script:
     - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline
+    - npm audit --audit-level=high
     - npm run build --workspace=client
 
-# --- ЕТАП TEST ---
 lint_client:
   stage: test
   tags: [student]
@@ -80,11 +79,11 @@ coverage_server:
   tags: [student]
   dependencies: []
   variables:
-    # 1. Справжні підключення для тестового прогону
+    # Справжні підключення для тестового прогону
     DATABASE_URL: "postgresql://testuser:testpass@localhost:5433/ttrpg_test?schema=public"
     REDIS_URL: "redis://localhost:6380"
     
-    # 2. Фейкові значення-заглушки для парсингу docker-compose.yml
+    # Фейкові значення-заглушки для парсингу docker-compose.yml
     COOKIE_SECRET: "dummy_cookie"
     JWT_SECRET: "dummy_jwt"
     SHARE_TOKEN_SECRET: "dummy_share"
@@ -136,3 +135,8 @@ sonarcloud_scan:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH == "main"'
     - if: '$CI_COMMIT_BRANCH == "develop"'
+
+#include:
+#  - template: Security/SAST.gitlab-ci.yml
+#  - template: Security/Secret-Detection.gitlab-ci.yml
+#  - template: Security/Dependency-Scanning.gitlab-ci.yml

@@ -5,7 +5,6 @@ import {
   getUnreadCount,
   markAsRead,
   markManyAsRead,
-  archiveNotification,
 } from '../api/notificationApi';
 
 export const notificationQueryKeys = {
@@ -88,22 +87,9 @@ export const useNotificationMutations = () => {
     },
   });
 
-  const archiveMutation = useMutation({
-    mutationFn: archiveNotification,
-    onSuccess: () => {
-      invalidateUnreadCount();
-      invalidateNotifications();
-      toast.success('Notification archived');
-    },
-    onError: (error) => {
-      toast.error(error.message || 'Failed to archive notification');
-    },
-  });
-
   return {
     markAsReadMutation,
     markManyAsReadMutation,
-    archiveMutation,
     invalidateNotifications,
     invalidateUnreadCount,
   };

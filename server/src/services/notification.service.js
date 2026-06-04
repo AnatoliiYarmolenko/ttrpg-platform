@@ -10,9 +10,9 @@ class NotificationService {
     this.sseService = deps.sseService || defaultSseService;
   }
   /**
-   * Create a notification with recipients
-   * @param {Object} input - Notification input
-   * @returns {Promise<Object>} Created notification
+    * Створити повідомлення з отримувачами
+    * @param {Object} input - Вхідні дані повідомлення
+    * @returns {Promise<Object>} Створене повідомлення
    */
   async createNotification(input) {
     const {
@@ -44,7 +44,7 @@ class NotificationService {
       return null;
     }
 
-    // Create notification and recipients in a transaction
+      // Створюємо повідомлення та отримувачів у транзакції
     const result = await this.prisma.$transaction(async (tx) => {
       const existingNotification = await this._findExistingNotificationForDedupe(tx, {
         dedupeKey,
@@ -87,7 +87,7 @@ class NotificationService {
       };
     });
 
-    // Push to connected users via SSE (outside transaction)
+    // Відправляємо підключеним користувачам через SSE (поза транзакцією)
     this.pushToConnectedUsers(result.notification, result.attachedRecipientIds);
 
     return result.notification;
@@ -112,7 +112,7 @@ class NotificationService {
       });
     }
 
-    // Exclude actor if specified (anti-spam rule)
+    // Виключаємо актора якщо вказано (правило анти-спам)
     if (context.excludeUserId) {
       const excludedId = Number.parseInt(context.excludeUserId, 10);
       resolvedIds.delete(context.excludeUserId);
@@ -230,10 +230,10 @@ class NotificationService {
   }
 
   /**
-   * List notifications for a user
-   * @param {number} userId - User ID
-   * @param {Object} options - Query options
-   * @returns {Promise<Object>} Notifications list with pagination
+    * Повернути список повідомлень для користувача
+    * @param {number} userId - ID користувача
+    * @param {Object} options - Параметри запиту
+    * @returns {Promise<Object>} Список повідомлень з пагінацією
    */
   async listNotificationsForUser(userId, options = {}) {
     const { status, limit = 20, offset = 0 } = options;
@@ -285,9 +285,9 @@ class NotificationService {
   }
 
   /**
-   * Get unread count for a user
-   * @param {number} userId - User ID
-   * @returns {Promise<number>} Unread count
+    * Отримати кількість непрочитаних повідомлень для користувача
+    * @param {number} userId - ID користувача
+    * @returns {Promise<number>} Кількість непрочитаних
    */
   async getUnreadCount(userId) {
     return this.prisma.notificationRecipient.count({
@@ -299,10 +299,10 @@ class NotificationService {
   }
 
   /**
-   * Mark a notification as read
-   * @param {number} userId - User ID
-   * @param {number} notificationId - Notification ID
-   * @returns {Promise<Object>} Updated recipient
+    * Позначити повідомлення як прочитане
+    * @param {number} userId - ID користувача
+    * @param {number} notificationId - ID повідомлення
+    * @returns {Promise<Object>} Оновлений запис отримувача
    */
   async markAsRead(userId, notificationId) {
     const recipient = await this.prisma.notificationRecipient.findFirst({
@@ -333,10 +333,10 @@ class NotificationService {
   }
 
   /**
-   * Mark multiple notifications as read
-   * @param {number} userId - User ID
-   * @param {number[]} notificationIds - Notification IDs
-   * @returns {Promise<number>} Count of updated recipients
+    * Позначити кілька повідомлень як прочитані
+    * @param {number} userId - ID користувача
+    * @param {number[]} notificationIds - Масив ID повідомлень
+    * @returns {Promise<number>} Кількість оновлених записів
    */
   async markManyAsRead(userId, notificationIds) {
     const recipients = await this.prisma.notificationRecipient.findMany({
@@ -366,47 +366,9 @@ class NotificationService {
   }
 
   /**
-   * Archive a notification for a user
-   * @param {number} userId - User ID
-   * @param {number} notificationId - Notification ID
-   * @returns {Promise<Object>} Updated recipient
-   */
-  async archiveNotification(userId, notificationId) {
-    const recipient = await this.prisma.notificationRecipient.findFirst({
-      where: {
-        userId,
-        notificationId,
-      },
-    });
-
-    if (!recipient) {
-      throw new AppError(ERROR_CODES.NOTIFICATION_NOT_FOUND);
-    }
-
-    if (recipient.status === 'ARCHIVED') {
-      return recipient;
-    }
-
-    const now = new Date();
-    const data = {
-      status: 'ARCHIVED',
-      archivedAt: now,
-    };
-
-    if (!recipient.readAt) {
-      data.readAt = now;
-    }
-
-    return this.prisma.notificationRecipient.update({
-      where: { id: recipient.id },
-      data,
-    });
-  }
-
-  /**
-   * Push notification to connected users via SSE
-   * @param {Object} notification - Created notification
-   * @param {number[]} recipientIds - Array of recipient user IDs
+    * Відправити повідомлення підключеним користувачам через SSE
+    * @param {Object} notification - Створене повідомлення
+    * @param {number[]} recipientIds - Масив ID користувачів-отримувачів
    */
   pushToConnectedUsers(notification, recipientIds) {
     if (!notification || !recipientIds || recipientIds.length === 0) {
@@ -427,7 +389,6 @@ class NotificationService {
       status: 'ACTIVE',
     };
 
-    // Push to all connected recipients
     this.sseService.pushToUsers(recipientIds, payload);
   }
 }

@@ -1,0 +1,426 @@
+paths:
+  /api/campaigns:
+    get:
+      summary: Отримати мої кампанії
+      tags: [Campaigns]
+      security: 
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: role
+          schema:
+            type: string
+            enum: [all, owner, member]
+          description: Фільтр за роллю (за замовчуванням 'all')
+      responses:
+        200:
+          description: Список кампаній
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Campaign'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+
+    post:
+      summary: Створити нову кампанію
+      tags: [Campaigns]
+      security: 
+        - cookieAuth: []
+          csrfAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCampaignInput'
+      responses:
+        201:
+          description: Кампанію успішно створено
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Campaign'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        422:
+          $ref: '#/components/responses/ValidationError'
+
+  /api/campaigns/share/{shareToken}:
+    get:
+      summary: Отримати кампанію за Share Token
+      tags: [Campaigns]
+      security: 
+        - cookieAuth: []
+        - {}
+      parameters:
+        - in: path
+          name: shareToken
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Дані кампанії
+        404:
+          description: Кампанію не знайдено або токен недійсний
+        429:
+          $ref: '#/components/responses/RateLimitError'
+
+  /api/campaigns/share/{shareToken}/page:
+    get:
+      summary: Отримати сторінку кампанії за Share Token
+      tags: [Campaigns]
+      security: 
+        - cookieAuth: []
+        - {}
+      parameters:
+        - in: path
+          name: shareToken
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Розширені дані для відображення сторінки
+        404:
+          description: Кампанію не знайдено
+        429:
+          $ref: '#/components/responses/RateLimitError'
+
+  /api/campaigns/{campaignId}:
+    get:
+      summary: Отримати кампанію за ID
+      tags: [Campaigns]
+      security: 
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: campaignId
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Дані кампанії
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Campaign'
+        404:
+          description: Кампанію не знайдено
+
+    patch:
+      summary: Оновити кампанію
+      tags: [Campaigns]
+      security: 
+        - cookieAuth: []
+          csrfAuth: []
+      parameters:
+        - in: path
+          name: campaignId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCampaignInput'
+      responses:
+        200:
+          description: Кампанію оновлено
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/campaigns/{campaignId}/page:
+    get:
+      summary: Отримати сторінку кампанії за ID
+      tags: [Campaigns]
+      security: 
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: campaignId
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Розширені дані сторінки
+
+  /api/campaigns/{campaignId}/transfer-ownership:
+    post:
+      summary: Передати права власника
+      tags: [Campaigns]
+      security: 
+        - cookieAuth: []
+          csrfAuth: []
+      parameters:
+        - in: path
+          name: campaignId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferOwnershipInput'
+      responses:
+        200:
+          description: Права передано
+
+  /api/campaigns/{campaignId}/members:
+    get:
+      summary: Отримати учасників кампанії
+      tags: [Campaigns]
+      security: 
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: campaignId
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Список учасників
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CampaignMember'
+
+
+
+  /api/campaigns/{campaignId}/members/{memberId}:
+    delete:
+      summary: Видалити учасника
+      tags: [Campaigns]
+      security: 
+        - cookieAuth: []
+          csrfAuth: []
+      parameters:
+        - in: path
+          name: campaignId
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: memberId
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Учасника видалено
+
+    patch:
+      summary: Змінити роль учасника
+      tags: [Campaigns]
+      security: 
+        - cookieAuth: []
+          csrfAuth: []
+      parameters:
+        - in: path
+          name: campaignId
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: memberId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMemberRoleInput'
+      responses:
+        200:
+          description: Роль оновлено
+
+  /api/campaigns/{campaignId}/sessions:
+    get:
+      summary: Отримати сесії кампанії
+      tags: [Campaigns]
+      security: 
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: campaignId
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Список сесій
+
+  /api/campaigns/{campaignId}/share/regenerate:
+    post:
+      summary: Згенерувати новий Share Token
+      tags: [Campaigns]
+      security: 
+        - cookieAuth: []
+          csrfAuth: []
+      parameters:
+        - in: path
+          name: campaignId
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Токен згенеровано
+
+  /api/campaigns/{campaignId}/share-link:
+    get:
+      summary: Отримати Share Link кампанії
+      tags: [Campaigns]
+      security: 
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: campaignId
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Лінк отримано
+
+  /api/campaigns/{campaignId}/requests:
+    get:
+      summary: Отримати заявки на вступ
+      tags: [Campaigns]
+      security: 
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: campaignId
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Список заявок
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CampaignJoinRequest'
+
+    post:
+      summary: Подати заявку на вступ
+      tags: [Campaigns]
+      security: 
+        - cookieAuth: []
+          csrfAuth: []
+      parameters:
+        - in: path
+          name: campaignId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitJoinRequestInput'
+      responses:
+        201:
+          description: Заявку подано
+
+  /api/campaigns/{campaignId}/requests/cancel:
+    post:
+      summary: Відкликати свою заявку
+      tags: [Campaigns]
+      security: 
+        - cookieAuth: []
+          csrfAuth: []
+      parameters:
+        - in: path
+          name: campaignId
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Заявку відкликано
+
+  /api/campaigns/requests/{requestId}/approve:
+    post:
+      summary: Схвалити заявку
+      tags: [Campaigns]
+      security: 
+        - cookieAuth: []
+          csrfAuth: []
+      parameters:
+        - in: path
+          name: requestId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApproveJoinRequestInput'
+      responses:
+        200:
+          description: Заявку схвалено
+
+  /api/campaigns/requests/{requestId}/reject:
+    post:
+      summary: Відхилити заявку
+      tags: [Campaigns]
+      security: 
+        - cookieAuth: []
+          csrfAuth: []
+      parameters:
+        - in: path
+          name: requestId
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Заявку відхилено

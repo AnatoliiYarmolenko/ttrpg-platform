@@ -251,5 +251,7 @@ export const useCampaignMutations = (campaignId, options = {}) => {
     changeMemberRole: changeMemberRoleMutation.mutateAsync,
     cancelSession: cancelSessionMutation.mutateAsync,
     deleteSession: deleteSessionMutation.mutateAsync,
+    isPendingUpdate: updateCampaignMutation.isPending,
+    isPendingRegenerateShareLink: regenerateShareLinkMutation.isPending,
   };
 };

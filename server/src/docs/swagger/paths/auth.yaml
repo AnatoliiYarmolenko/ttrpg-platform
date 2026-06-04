@@ -1,0 +1,131 @@
+paths:
+  /api/auth/register:
+    post:
+      summary: Реєстрація нового користувача
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterInput'
+      responses:
+        201:
+          description: Успішна реєстрація
+
+  /api/auth/login:
+    post:
+      summary: Вхід в систему
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginInput'
+      responses:
+        200:
+          description: Успішний вхід (або вимога MFA)
+
+  /api/auth/csrf-token:
+    get:
+      summary: Отримати CSRF токен
+      tags: [Auth]
+      security: []
+      responses:
+        200:
+          description: CSRF токен отримано
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "CSRF токен встановлено"
+
+  /api/auth/forgot-password:
+    post:
+      summary: Запит на відновлення пароля
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordInput'
+      responses:
+        200:
+          description: Лист для відновлення надіслано
+
+  /api/auth/reset-password:
+    post:
+      summary: Відновлення пароля
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordInput'
+      responses:
+        200:
+          description: Пароль успішно змінено
+
+  /api/auth/resend-verification:
+    post:
+      summary: Повторна відправка листа для верифікації
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordInput'
+      responses:
+        200:
+          description: Лист надіслано
+
+  /api/auth/verify-email:
+    get:
+      summary: Верифікація електронної пошти
+      tags: [Auth]
+      security: []
+      parameters:
+        - in: query
+          name: token
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Пошту верифіковано
+
+  /api/auth/refresh:
+    post:
+      summary: Оновлення токенів
+      tags: [Auth]
+      security: []
+      responses:
+        200:
+          description: Токени оновлено
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: accessToken=abc; refreshToken=xyz; HttpOnly
+
+  /api/auth/logout:
+    post:
+      summary: Вихід із системи
+      tags: [Auth]
+      security:
+        - cookieAuth: []
+      responses:
+        200:
+          description: Успішний вихід

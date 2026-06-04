@@ -1,0 +1,60 @@
+components:
+  schemas:
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        notificationId:
+          type: integer
+          example: 10
+        userId:
+          type: integer
+          example: 5
+        status:
+          type: string
+          enum: [ACTIVE, ARCHIVED]
+          example: "ACTIVE"
+        readAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        notification:
+          type: object
+          properties:
+            type:
+              type: string
+              example: "SYSTEM_ALERT"
+            severity:
+              type: string
+              enum: [INFO, SUCCESS, WARNING, ERROR, CRITICAL, SECURITY]
+              example: "INFO"
+            title:
+              type: string
+              example: "Оновлення платформи"
+            body:
+              type: string
+              example: "Ми додали нові фічі для ваших ігор!"
+            link:
+              type: string
+              nullable: true
+              example: "/changelog"
+            metadata:
+              type: object
+              nullable: true
+
+    MarkManyAsReadInput:
+      type: object
+      required:
+        - ids
+      properties:
+        ids:
+          type: array
+          items:
+            type: integer
+          minItems: 1
+          description: Масив ID сповіщень, які треба позначити прочитаними

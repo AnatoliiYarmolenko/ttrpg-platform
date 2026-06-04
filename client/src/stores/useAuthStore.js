@@ -7,7 +7,6 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { resetAllStores } from './appSessionManager';
 
-// Константа ключа для localStorage (така ж як була в storage.js)
 const STORAGE_KEY = 'ttrpg_app_user';
 
 /**
@@ -43,14 +42,11 @@ const STORAGE_KEY = 'ttrpg_app_user';
 const useAuthStore = create(
   persist(
     (set, get) => ({
-      // ===== STATE =====
       user: null,
       isAuthenticated: false,
       isLoading: false,
       isHydrated: false,
       isSessionValidated: false,
-
-      // ===== ACTIONS =====
       
       /**
        * Встановити користувача після успішного логіну
@@ -84,9 +80,6 @@ const useAuthStore = create(
         }
       },
 
-      /**
-       * Очистити користувача (logout)
-       */
       clearUser: () => {
         resetAllStores();
 
@@ -106,9 +99,6 @@ const useAuthStore = create(
         set({ isLoading: loading });
       },
 
-      /**
-       * Позначити, що стан відновлено з localStorage
-       */
       setHydrated: () => {
         set({ isHydrated: true });
       },
@@ -125,16 +115,11 @@ const useAuthStore = create(
       name: STORAGE_KEY,
       storage: createJSONStorage(() => localStorage),
       
-      // Зберігаємо тільки user - isAuthenticated обчислюється
-      partialize: (state) => ({ user: state.user }),
+      partialize: (state) => ({ isAuthenticated: state.isAuthenticated }),
       
-      // При відновленні з localStorage
       onRehydrateStorage: () => (state) => {
         if (state) {
-          // Встановлюємо isAuthenticated на основі user
-          state.isAuthenticated = !!state.user;
           state.isHydrated = true;
-          // Після гідратації обов'язково чекаємо реальної перевірки через API.
           state.isSessionValidated = false;
         }
       },
@@ -143,8 +128,6 @@ const useAuthStore = create(
 );
 
 export default useAuthStore;
-
-// ===== СЕЛЕКТОРИ (для оптимізації ререндерів) =====
 
 /**
  * Селектор для отримання тільки user

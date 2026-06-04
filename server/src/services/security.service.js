@@ -1,14 +1,15 @@
 const { prisma } = require('../lib/prisma');
 const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
+const crypto = require('node:crypto');
 const { createError, AppError, ERROR_CODES } = require('../constants/errors');
 const { markUserAsDeleted } = require('../store/deleted-users');
 const { logger } = require('../lib/logger');
-const { getTokenCandidates, createRawAndHashedToken } = require('../utils/token.helper');
+const { hashToken, createRawAndHashedToken } = require('../utils/token.helper');
 const { PASSWORD_HASH_ROUNDS, TOKEN_TTL_MS } = require('../config/tokens.config');
 const { PRIVATE_PROFILE_FIELDS } = require('../constants/profile-fields');
 const emailService = require('./email.service');
 const { deleteOldAvatar } = require('./upload.service');
+const { frontendUrl } = require('../config/config');
 
 /**
  * Змінити пароль користувача
@@ -54,8 +55,6 @@ async function changePassword(userId, currentPassword, newPassword) {
       },
     });
 
-    // Інвалідуємо всі активні сесії (видаляємо refresh токени)
-    // Це змусить користувача перелогінитися на всіх пристроях
     const deletedTokens = await tx.refreshToken.deleteMany({ 
       where: { userId } 
     });
@@ -125,7 +124,7 @@ async function requestEmailChange(userId, password, newEmail) {
   });
 
   // Формуємо URL підтвердження
-  const confirmUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/confirm-email-change?token=${rawToken}`;
+  const confirmUrl = `${frontendUrl}/confirm-email-change?token=${rawToken}`;
 
   // Надсилаємо лист на НОВИЙ email
   const emailResult = await emailService.sendEmailChangeConfirmation(
@@ -147,18 +146,16 @@ async function requestEmailChange(userId, password, newEmail) {
  * @returns {Promise<Object>} - Оновлений профіль
  */
 async function confirmEmailChange(token) {
-  const tokenCandidates = getTokenCandidates(token);
+  const tokenHash = hashToken(token);
 
-  if (tokenCandidates.length === 0) {
+  if (!tokenHash) {
     throw new AppError(ERROR_CODES.EMAIL_CHANGE_TOKEN_INVALID);
   }
 
   // Знаходимо токен
   const record = await prisma.emailChangeToken.findFirst({
     where: {
-      token: {
-        in: tokenCandidates,
-      },
+      token: tokenHash,
     },
     include: { user: true },
   });
@@ -230,7 +227,6 @@ async function deleteAccount(userId, password) {
   }
 
   // Перевіряємо, що користувач не є власником активних кампаній
-  // (деактивованих — проходять по статусу)
   const ownedCampaignsCount = await prisma.campaign.count({
     where: { 
       ownerId: userId,
@@ -254,44 +250,37 @@ async function deleteAccount(userId, password) {
 
   // Виконуємо анонімізацію в транзакції
   await prisma.$transaction(async (tx) => {
-    // 1. Видаляємо токени безпеки
     await tx.refreshToken.deleteMany({ where: { userId } });
     await tx.emailVerificationToken.deleteMany({ where: { userId } });
     await tx.emailChangeToken.deleteMany({ where: { userId } });
     
-    // 2. Очищаємо посилання де користувач є "рев'ювером" (щоб не ламати історію заявок)
     await tx.joinRequest.updateMany({
       where: { reviewedBy: userId },
       data: { reviewedBy: null }
     });
 
-    // 3. Скасовуємо всі сесії, які належать цьому користувачу (овнер)
     await tx.session.updateMany({
       where: { 
         ownerId: userId,
-        status: { not: 'CANCELED' } // Тільки не-скасовані
+        status: { not: 'CANCELED' }
       },
       data: { status: 'CANCELED' }
     });
 
-    // 4. Завершуємо всі кампанії, які належать цьому користувачу (овнер)
     await tx.campaign.updateMany({
       where: {
         ownerId: userId,
-        status: { not: 'FINISHED' } // Тільки не-завершені
+        status: { not: 'FINISHED' }
       },
       data: { status: 'FINISHED' }
     });
 
-    // 5. Видаляємо гаманець (фінансову активність)
     const wallet = await tx.wallet.findUnique({ where: { userId } });
     if (wallet) {
       await tx.transaction.deleteMany({ where: { walletId: wallet.id } });
       await tx.wallet.delete({ where: { userId } });
     }
 
-    // 6. Видаляємо всі PENDING join-запити від цього користувача в чужих кампаніях
-    // (щоб власники кампаній не бачили "привид"-заявок від видаленого акаунту)
     await tx.joinRequest.deleteMany({
       where: {
         userId,
@@ -299,7 +288,6 @@ async function deleteAccount(userId, password) {
       }
     });
 
-    // 7. Анонімізуємо користувача
     await tx.user.update({
       where: { id: userId },
       data: {
@@ -319,21 +307,16 @@ async function deleteAccount(userId, password) {
       }
     });
 
-    // 8. Видаляємо всю статистику (необов'язково, можна зберігти)
     await tx.userStats.deleteMany({ where: { userId } });
 
-    // 9. Блокуємо доступ через активні JWT токени.
-    // Якщо Redis недоступний, markUserAsDeleted кине помилку і транзакція буде відкотана.
     await markUserAsDeleted(userId);
   });
 
-  // Видаляємо аватар файл якщо є
-  if (user.avatarUrl && user.avatarUrl.startsWith('/uploads/')) {
+  if (user.avatarUrl?.startsWith('/uploads/')) {
     try {
       await deleteOldAvatar(user.avatarUrl);
     } catch (e) {
       logger.error({ err: e }, 'Помилка видалення аватара');
-      // Не кидаємо помилку, бо акаунт вже анонімізовано в БД
     }
   }
 

@@ -1,12 +1,12 @@
-function findStoredRefreshToken(prisma, tokenCandidates) {
+function findStoredRefreshToken(prisma, tokenHash) {
   return prisma.refreshToken.findFirst({
-    where: { token: { in: tokenCandidates } },
+    where: { token: tokenHash },
     select: { id: true, userId: true, expiresAt: true },
   });
 }
 
 function assertRefreshTokenPresence({ prisma, logger, createError, oldRefreshToken }) {
-  if (!prisma || !prisma.refreshToken) {
+  if (!prisma?.refreshToken) {
     logger.error('Prisma client or refreshToken model is unavailable');
     throw createError.serverError();
   }
@@ -16,8 +16,8 @@ function assertRefreshTokenPresence({ prisma, logger, createError, oldRefreshTok
   }
 }
 
-function assertTokenCandidates(tokenCandidates, createError) {
-  if (tokenCandidates.length === 0) {
+function assertTokenHash(tokenHash, createError) {
+  if (!tokenHash) {
     throw createError.refreshTokenInvalid();
   }
 }
@@ -47,7 +47,7 @@ async function acquireUserRefreshLock({
 
     return lockValue;
   } catch (err) {
-    if (err && err.status === 429) {
+    if (err?.status === 429) {
       throw err;
     }
 
@@ -110,7 +110,7 @@ function createAuthTokenService({
   jwtSecret,
   logger,
   createError,
-  getTokenCandidates,
+  hashToken,
   createRawAndHashedToken,
   TOKEN_TTL_MS,
   checkRefreshRateLimit,
@@ -122,10 +122,10 @@ function createAuthTokenService({
     async refreshTokens(oldRefreshToken) {
       assertRefreshTokenPresence({ prisma, logger, createError, oldRefreshToken });
 
-      const tokenCandidates = getTokenCandidates(oldRefreshToken);
-      assertTokenCandidates(tokenCandidates, createError);
+      const tokenHash = hashToken(oldRefreshToken);
+      assertTokenHash(tokenHash, createError);
 
-      let stored = await findStoredRefreshToken(prisma, tokenCandidates);
+      let stored = await findStoredRefreshToken(prisma, tokenHash);
       assertStoredToken(stored, createError);
 
       await checkRefreshRateLimit(stored.userId);
@@ -138,7 +138,7 @@ function createAuthTokenService({
       });
 
       try {
-        stored = await findStoredRefreshToken(prisma, tokenCandidates);
+        stored = await findStoredRefreshToken(prisma, tokenHash);
         assertStoredToken(stored, createError);
 
         const now = new Date();
@@ -180,23 +180,23 @@ function createAuthTokenService({
     },
 
     async revokeRefreshToken(refreshToken) {
-      if (!refreshToken || !prisma || !prisma.refreshToken) {
+      if (!refreshToken || !prisma?.refreshToken) {
         return;
       }
 
-      const tokenCandidates = getTokenCandidates(refreshToken);
-      if (tokenCandidates.length === 0) {
+      const tokenHash = hashToken(refreshToken);
+      if (!tokenHash) {
         return;
       }
 
       try {
         await prisma.refreshToken.deleteMany({
           where: {
-            token: { in: tokenCandidates },
+            token: tokenHash,
           },
         });
       } catch (error) {
-        // Ignore logout revoke errors.
+        logger.error({ error }, '[Auth] Failed to revoke refresh token');
       }
     },
   };
