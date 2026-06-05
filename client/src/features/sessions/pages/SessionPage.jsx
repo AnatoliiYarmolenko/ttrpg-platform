@@ -34,6 +34,7 @@ export default function SessionPage() {
     id,
     user,
     currentSession,
+    actions,
     isLoading,
     error,
     shouldRedirectToLogin,
@@ -222,6 +223,8 @@ export default function SessionPage() {
             onTabChange={setActiveTab}
             canManage={canManageSettings}
             canManageSession={canManageSession}
+            isSessionActive={currentSession?.status === 'ACTIVE'}
+            actions={actions}
           />
         )
       }

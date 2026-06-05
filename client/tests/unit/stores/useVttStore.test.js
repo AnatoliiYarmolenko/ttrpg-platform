@@ -1,0 +1,81 @@
+import { describe, it, expect, beforeEach } from 'vitest';
+import useVttStore from '@/stores/useVttStore';
+
+describe('useVttStore', () => {
+  beforeEach(() => {
+    const store = useVttStore.getState();
+    store.reset();
+    store.clearRollHistory();
+    store.setFloatingChatState(null);
+    store.setDiceLogState(null);
+  });
+
+  it('should initialize with default state', () => {
+    const state = useVttStore.getState();
+    expect(state.isVttOpen).toBe(false);
+    expect(state.rollHistory).toEqual([]);
+    expect(state.isChatOpen).toBe(false);
+    expect(state.isDiceLogOpen).toBe(false);
+    expect(state.floatingChatState).toBeNull();
+    expect(state.diceLogState).toBeNull();
+  });
+
+  it('should toggle chat state', () => {
+    const { toggleChat } = useVttStore.getState();
+    expect(useVttStore.getState().isChatOpen).toBe(false);
+    
+    toggleChat();
+    expect(useVttStore.getState().isChatOpen).toBe(true);
+    
+    toggleChat();
+    expect(useVttStore.getState().isChatOpen).toBe(false);
+  });
+
+  it('should add roll to history and limit to 8 items', () => {
+    const { addRollResult } = useVttStore.getState();
+    
+    // Додаємо 10 кидків
+    for (let i = 1; i <= 10; i++) {
+      addRollResult({ id: i, total: i * 2, formula: `1d20+${i}` });
+    }
+
+    const state = useVttStore.getState();
+    
+    // Має зберегтися лише 8 останніх кидків
+    expect(state.rollHistory.length).toBe(8);
+    // Останній кидок має бути першим у списку (id: 10)
+    expect(state.rollHistory[0].total).toBe(20);
+    expect(state.rollHistory[0].id).toBe(10);
+    // Найстаріший збережений кидок має бути id: 3 (бо 1 і 2 були витіснені)
+    expect(state.rollHistory[7].id).toBe(3);
+    
+    expect(state.latestRoll.total).toBe(20);
+  });
+
+  it('should update floating chat state for UI persistence', () => {
+    const { setFloatingChatState } = useVttStore.getState();
+    const mockState = { x: 100, y: 200, w: 300, h: 400, isLocked: true };
+    
+    setFloatingChatState(mockState);
+    expect(useVttStore.getState().floatingChatState).toEqual(mockState);
+  });
+
+  it('should update dice log state for UI persistence', () => {
+    const { setDiceLogState } = useVttStore.getState();
+    const mockState = { x: 50, y: 50, w: 250, h: 350, isLocked: false };
+    
+    setDiceLogState(mockState);
+    expect(useVttStore.getState().diceLogState).toEqual(mockState);
+  });
+  
+  it('should successfully clear roll history', () => {
+    const { addRollResult, clearRollHistory } = useVttStore.getState();
+    addRollResult({ id: 1, total: 20 });
+    
+    expect(useVttStore.getState().rollHistory.length).toBe(1);
+    
+    clearRollHistory();
+    expect(useVttStore.getState().rollHistory.length).toBe(0);
+    expect(useVttStore.getState().latestRoll).toBeNull();
+  });
+});

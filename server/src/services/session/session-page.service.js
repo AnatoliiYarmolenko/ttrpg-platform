@@ -1,5 +1,7 @@
 const { canOpenCampaign: canOpenCampaignByAccess } = require('../../domain/access/access-rules');
 const permissionsService = require('./session-call-permissions.service');
+const vttPermissionsService = require('./session-vtt-permissions.service');
+const { vttStateManager } = require('../../vtt/vtt-state.manager');
 
 function createSessionPageService({ sessionQueryService }) {
   const mapOwner = (owner) => {
@@ -196,6 +198,10 @@ function createSessionPageService({ sessionQueryService }) {
     const canEndCall = permissionsService.canEndCall({ session, isOwner, isConfirmedGm });
     const canJoinCall = permissionsService.canJoinCall({ session, isOwner, isConfirmedGm, isParticipant });
 
+    const isVttOpen = vttStateManager.isVttOpen(session.id);
+    const canOpenVtt = vttPermissionsService.canOpenVtt({ session, isOwner, isConfirmedGm, isVttOpen });
+    const canJoinVtt = vttPermissionsService.canJoinVtt({ session, isOwner, isConfirmedGm, isParticipant, isVttOpen });
+
     return {
       isOwner,
       isParticipant,
@@ -220,6 +226,9 @@ function createSessionPageService({ sessionQueryService }) {
       canStartCall,
       canEndCall,
       canJoinCall,
+      isVttOpen,
+      canOpenVtt,
+      canJoinVtt,
     };
   };
 
@@ -251,6 +260,9 @@ function createSessionPageService({ sessionQueryService }) {
     canStartCall: viewerState.canStartCall,
     canEndCall: viewerState.canEndCall,
     canJoinCall: viewerState.canJoinCall,
+    isVttOpen: viewerState.isVttOpen,
+    canOpenVtt: viewerState.canOpenVtt,
+    canJoinVtt: viewerState.canJoinVtt,
   });
 
   const buildSessionPageSections = ({ session, viewerState, participants, campaignSectionVisible, campaignData }) => ({

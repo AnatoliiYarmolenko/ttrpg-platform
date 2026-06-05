@@ -114,6 +114,8 @@ export default function useChatController(entityType, entityId, options = {}) {
     connect: connectionHook.connect,
     disconnect: connectionHook.disconnect,
     sendMessage: connectionHook.sendMessage,
+    sendVttOpen: connectionHook.sendVttOpen,
+    sendVttGetState: connectionHook.sendVttGetState,
     connectionState: connectionHook.connectionState,
     isConnected: connectionHook.isConnected,
 

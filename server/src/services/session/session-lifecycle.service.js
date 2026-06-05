@@ -3,6 +3,7 @@ const {
   NotificationSeverity,
   NotificationType,
 } = require('../../constants/notification.constants');
+const { vttStateManager } = require('../../vtt/vtt-state.manager');
 
 const SESSION_SETTINGS_FIELDS = [
   'title',
@@ -656,6 +657,11 @@ function createSessionLifecycleService({
         });
       }
 
+      // Автоматично скидаємо VTT стан при завершенні або скасуванні сесії
+      if (['FINISHED', 'CANCELED'].includes(normalizedUpdateData.status)) {
+        vttStateManager.closeVtt(sessionId);
+      }
+
       return attachPublicShareToken(updated, shareTokenState);
     },
 
@@ -723,6 +729,9 @@ function createSessionLifecycleService({
         session: updated,
         requesterId: userId,
       });
+
+      // Автоматично скидаємо VTT стан при скасуванні сесії
+      vttStateManager.closeVtt(sessionId);
 
       return { ...updated, startAt: updated.date };
     },

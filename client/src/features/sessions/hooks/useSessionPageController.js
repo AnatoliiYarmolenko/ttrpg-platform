@@ -444,6 +444,7 @@ export default function useSessionPageController() {
     routeShareToken,
     user,
     currentSession,
+    actions,
     viewer,
     isLoading,
     error,

@@ -455,4 +455,7 @@ chatService.buildCursor = buildCursor;
 chatService.parseCursor = parseCursor;
 chatService.mapChatMessage = mapChatMessage;
 
+// Публічний доступ до internal методу для VTT handler (отримання sessionId за chatId)
+chatService.getChatById = (chatId) => chatService._getChatById(chatId);
+
 module.exports = chatService;
