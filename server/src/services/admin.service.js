@@ -12,11 +12,6 @@ const { prisma } = require('../lib/prisma');
 const { AppError, ERROR_CODES } = require('../constants/errors');
 
 class AdminService {
-  // ============== СТАТИСТИКА ==============
-
-  /**
-   * Загальна статистика платформи
-   */
   async getStats() {
     const [usersCount, campaignsCount, sessionsCount, activeSessions] = await Promise.all([
       prisma.user.count(),
@@ -33,11 +28,6 @@ class AdminService {
     };
   }
 
-  // ============== КОРИСТУВАЧІ ==============
-
-  /**
-   * Список користувачів з пагінацією та пошуком
-   */
   async getUsers({ page = 1, limit = 20, search = '' }) {
     const skip = (page - 1) * limit;
     
@@ -89,49 +79,6 @@ class AdminService {
     };
   }
 
-  /**
-   * Деталі конкретного користувача
-   */
-  async getUserById(userId) {
-    const user = await prisma.user.findUnique({
-      where: { id: parseInt(userId) },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        displayName: true,
-        avatarUrl: true,
-        bio: true,
-        role: true,
-        emailVerified: true,
-        timezone: true,
-        language: true,
-        createdAt: true,
-        updatedAt: true,
-        lastActiveAt: true,
-        _count: {
-          select: {
-            campaignsOwned: true,
-            campaignMembers: true,
-            ownedSessions: true,
-            sessionsJoined: true,
-          },
-        },
-      },
-    });
-
-    if (!user) {
-      throw new AppError(ERROR_CODES.ADMIN_RESOURCE_NOT_FOUND, 'Користувача не знайдено');
-    }
-
-    return user;
-  }
-
-  // ============== КАМПАНІЇ ==============
-
-  /**
-   * Список кампаній з пагінацією та пошуком
-   */
   async getCampaigns({ page = 1, limit = 20, search = '', visibility = '' }) {
     const skip = (page - 1) * limit;
 
@@ -194,65 +141,8 @@ class AdminService {
     };
   }
 
-  /**
-   * Деталі кампанії для адміна
-   */
-  async getCampaignById(campaignId) {
-    const campaign = await prisma.campaign.findUnique({
-      where: { id: parseInt(campaignId) },
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        imageUrl: true,
-        system: true,
-        status: true,
-        visibility: true,
-        createdAt: true,
-        updatedAt: true,
-        owner: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-            email: true,
-          },
-        },
-        members: {
-          select: {
-            id: true,
-            role: true,
-            joinedAt: true,
-            user: {
-              select: {
-                id: true,
-                username: true,
-                displayName: true,
-              },
-            },
-          },
-        },
-        _count: {
-          select: {
-            sessions: true,
-            joinRequests: true,
-          },
-        },
-      },
-    });
-
-    if (!campaign) {
-      throw new AppError(ERROR_CODES.ADMIN_RESOURCE_NOT_FOUND, 'Кампанію не знайдено');
-    }
-
-    return campaign;
-  }
-
-  /**
-   * Видалення кампанії адміністратором
-   */
   async deleteCampaign(campaignId) {
-    const id = parseInt(campaignId);
+    const id = Number.parseInt(campaignId);
 
     const campaign = await prisma.campaign.findUnique({
       where: { id },
@@ -269,11 +159,6 @@ class AdminService {
     return { message: `Кампанію "${campaign.title}" видалено` };
   }
 
-  // ============== СЕСІЇ ==============
-
-  /**
-   * Список сесій з пагінацією та фільтрами
-   */
   async getSessions({ page = 1, limit = 20, search = '', status = '' }) {
     const skip = (page - 1) * limit;
 
@@ -343,69 +228,8 @@ class AdminService {
     };
   }
 
-  /**
-   * Деталі сесії для адміна
-   */
-  async getSessionById(sessionId) {
-    const session = await prisma.session.findUnique({
-      where: { id: parseInt(sessionId) },
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        date: true,
-        duration: true,
-        status: true,
-        visibility: true,
-        system: true,
-        price: true,
-        maxPlayers: true,
-        createdAt: true,
-        updatedAt: true,
-        owner: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-            email: true,
-          },
-        },
-        campaign: {
-          select: {
-            id: true,
-            title: true,
-          },
-        },
-        participants: {
-          select: {
-            id: true,
-            role: true,
-            status: true,
-            isGuest: true,
-            user: {
-              select: {
-                id: true,
-                username: true,
-                displayName: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!session) {
-      throw new AppError(ERROR_CODES.ADMIN_RESOURCE_NOT_FOUND, 'Сесію не знайдено');
-    }
-
-    return { ...session, startAt: session.date };
-  }
-
-  /**
-   * Видалення сесії адміністратором
-   */
   async deleteSession(sessionId) {
-    const id = parseInt(sessionId);
+    const id = Number.parseInt(sessionId);
 
     const session = await prisma.session.findUnique({
       where: { id },

@@ -1,4 +1,5 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
+import PropTypes from "prop-types";
 import { useEffect, useRef, useCallback } from "react";
 import { getCurrentUser } from "../features/auth/api/authApi";
 import useAuthStore from '../stores/useAuthStore';
@@ -6,7 +7,8 @@ import FullPageLoader from "../components/shared/FullPageLoader";
 
 const MIN_CHECK_INTERVAL = 30 * 1000;
 
-function ProtectedRoute({ children }) {
+function ProtectedRoute({ children, requireAuth = true }) {
+  const location = useLocation();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isHydrated = useAuthStore((state) => state.isHydrated);
   const isSessionValidated = useAuthStore((state) => state.isSessionValidated);
@@ -37,7 +39,6 @@ function ProtectedRoute({ children }) {
         clearUser();
       }
     } catch (error) {
-      // Temporary network/server failures should not destroy local auth state.
       if (isAuthFailure(error)) {
         clearUser();
       }
@@ -74,11 +75,17 @@ function ProtectedRoute({ children }) {
     return <FullPageLoader text="Завантаження..." />;
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+  if (requireAuth && !isAuthenticated) {
+    const returnTo = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/login?returnTo=${returnTo}`} replace />;
   }
 
   return children;
 }
+
+ProtectedRoute.propTypes = {
+  children: PropTypes.node.isRequired,
+  requireAuth: PropTypes.bool,
+};
 
 export default ProtectedRoute;

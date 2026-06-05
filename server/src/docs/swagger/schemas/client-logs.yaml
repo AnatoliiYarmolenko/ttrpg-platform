@@ -1,0 +1,26 @@
+components:
+  schemas:
+    ClientLogInput:
+      type: object
+      required:
+        - message
+      properties:
+        level:
+          type: string
+          description: Рівень логування (warn/error). Інші рівні автоматично стають error.
+        message:
+          type: string
+          description: Текст помилки або повідомлення
+        meta:
+          type: object
+          description: Додаткові дані про помилку (userAgent, url, stackTrace тощо)
+          nullable: true
+        correlationId:
+          type: string
+          nullable: true
+        sessionId:
+          type: string
+          nullable: true
+        path:
+          type: string
+          nullable: true

@@ -87,11 +87,11 @@ export function useCallConnection(sessionId) {
     });
 
     rpcClient.on('call:participant-left', (payload) => {
-      removePeer(payload.userId);
+      removePeer(payload.peerId);
     });
 
     rpcClient.on('call:media-state-changed', (payload) => {
-      updatePeerMedia(payload.userId, {
+      updatePeerMedia(payload.peerId, {
         micEnabled: payload.mediaState.micEnabled || false,
         camEnabled: payload.mediaState.camEnabled || false
       });

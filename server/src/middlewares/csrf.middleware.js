@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+const crypto = require('node:crypto');
 const { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } = require('../constants/errors');
 const { COOKIE_NAMES } = require('../utils/cookie.helper');
 
@@ -42,10 +42,8 @@ const isBearerOnlyRequest = (req) => {
 
 // Middleware для встановлення CSRF токена в cookie та повернення його в заголовку
 const setCSRFToken = (req, res, next) => {
-  // Перевіряємо, чи вже є CSRF токен в cookie
   const existingToken = req.cookies?.[COOKIE_NAMES.XSRF_TOKEN];
   
-  // Якщо токен вже є, використовуємо його, інакше генеруємо новий
   const csrfToken = existingToken || generateCSRFToken();
   
   setCSRFTokenCookie(res, csrfToken);
@@ -55,36 +53,33 @@ const setCSRFToken = (req, res, next) => {
 
 // Middleware для перевірки CSRF токена
 const verifyCSRFToken = (req, res, next) => {
-  // Перевіряємо тільки для небезпечних методів
   const unsafeMethods = ['POST', 'PUT', 'DELETE', 'PATCH'];
   
   if (!unsafeMethods.includes(req.method)) {
-    return next(); // Пропускаємо безпечні методи
+    return next();
   }
 
   if (isBearerOnlyRequest(req)) {
     return next();
   }
 
-  // Отримуємо CSRF токен з cookie
   const cookieToken = req.cookies?.[COOKIE_NAMES.XSRF_TOKEN];
   
-  // Отримуємо CSRF токен з заголовка (перевіряємо різні варіанти назв)
   const headerToken = req.headers['x-csrf-token'] || req.headers['x-xsrf-token'] || req.headers['X-CSRF-Token'];
 
-  // Якщо cookie немає, видаємо новий токен, але не пропускаємо unsafe-запит без перевірки.
   if (!cookieToken) {
     setCSRFTokenCookie(res, generateCSRFToken());
     return rejectCSRFRequest(res, 'CSRF токен відсутній. Оновіть сторінку та повторіть запит.');
   }
 
-  // Перевіряємо наявність заголовка
   if (!headerToken) {
     return rejectCSRFRequest(res, 'CSRF токен не надано в заголовку');
   }
 
-  // Перевіряємо, чи токени співпадають
-  if (cookieToken !== headerToken) {
+  const cookieBuffer = Buffer.from(String(cookieToken));
+  const headerBuffer = Buffer.from(String(headerToken));
+
+  if (cookieBuffer.length !== headerBuffer.length || !crypto.timingSafeEqual(cookieBuffer, headerBuffer)) {
     return rejectCSRFRequest(res);
   }
 

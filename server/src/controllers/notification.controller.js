@@ -2,10 +2,6 @@ const notificationService = require('../services/notification.service');
 const sseService = require('../services/notification/notification-sse.service');
 
 class NotificationController {
-  /**
-   * Get notifications list for current user
-   * GET /api/notifications
-   */
   async getNotifications(req, res, next) {
     try {
       const userId = req.user.id;
@@ -26,10 +22,6 @@ class NotificationController {
     }
   }
 
-  /**
-   * Get active notifications count
-   * GET /api/notifications/unread-count
-   */
   async getUnreadCount(req, res, next) {
     try {
       const userId = req.user.id;
@@ -44,10 +36,6 @@ class NotificationController {
     }
   }
 
-  /**
-   * Consume notification and move it to archive
-   * POST /api/notifications/:id/read
-   */
   async markAsRead(req, res, next) {
     try {
       const userId = req.user.id;
@@ -64,10 +52,6 @@ class NotificationController {
     }
   }
 
-  /**
-   * Consume multiple notifications and move them to archive
-   * POST /api/notifications/read-bulk
-   */
   async markManyAsRead(req, res, next) {
     try {
       const userId = req.user.id;
@@ -88,45 +72,18 @@ class NotificationController {
     }
   }
 
-  /**
-   * Archive notification
-   * POST /api/notifications/:id/archive
-   */
-  async archiveNotification(req, res, next) {
-    try {
-      const userId = req.user.id;
-      const { id } = req.params;
-
-      await notificationService.archiveNotification(userId, Number.parseInt(id));
-
-      res.json({
-        success: true,
-        message: 'Notification archived',
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
-   * SSE stream for live notifications
-   * GET /api/notifications/stream
-   */
   async stream(req, res, next) {
     try {
       const userId = req.user.id;
 
-      // Set SSE headers
       res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
       });
 
-      // Register connection
       sseService.registerConnection(userId, res);
 
-      // Send initial keep-alive comment
       res.write(':ok\n\n');
     } catch (error) {
       next(error);

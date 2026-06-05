@@ -9,12 +9,26 @@ const { createRawEncryptedAndHashedShareToken } = require('../../src/utils/token
 
 function withMockedPrismaUpdate(mockImpl, callback) {
   const originalUpdate = prisma.session.update;
+  const originalTransaction = prisma.$transaction;
+
   prisma.session.update = mockImpl;
+  prisma.$transaction = async (cb) => {
+    return cb({
+      session: {
+        update: mockImpl,
+      },
+      $queryRaw: async () => [{ visibility: 'LINK_ONLY', shareTokenHash: 'mocked' }],
+      userStats: {
+        upsert: async () => null,
+      }
+    });
+  };
 
   return Promise.resolve()
     .then(callback)
     .finally(() => {
       prisma.session.update = originalUpdate;
+      prisma.$transaction = originalTransaction;
     });
 }
 

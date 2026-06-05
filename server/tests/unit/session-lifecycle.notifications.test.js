@@ -35,9 +35,7 @@ function createLifecycleService(overrides = {}) {
 
   const prisma = overrides.prisma || {
     $transaction: mock.fn(async (callback) => callback({
-      sessionParticipant: {
-        updateMany: mock.fn(async () => ({ count: 0 })),
-      },
+      $queryRaw: mock.fn(async () => [{ visibility: 'LINK_ONLY', shareTokenHash: 'mocked' }]),
       session: {
         update: mock.fn(async ({ data }) => ({
           id: 101,
@@ -50,6 +48,12 @@ function createLifecycleService(overrides = {}) {
           status: data?.status || 'PLANNED',
           ...data,
         })),
+      },
+      sessionParticipant: {
+        updateMany: mock.fn(async () => ({ count: 0 })),
+      },
+      userStats: {
+        upsert: mock.fn(async () => null),
       },
     })),
     session: {

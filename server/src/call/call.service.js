@@ -3,6 +3,7 @@ const { CALL_STATES, CALL_EVENTS } = require('./call-events');
 const mediasoupLib = require('../lib/mediasoup');
 const { routerOptions } = require('../config/mediasoup.config');
 const { logger } = require('../lib/logger');
+const crypto = require('node:crypto');
 
 // Допоміжна функція для надсилання подій всім учасникам
 function broadcastCallEvent(room, event, payload, excludeSocket = null) {
@@ -13,7 +14,7 @@ function broadcastCallEvent(room, event, payload, excludeSocket = null) {
   });
 
   for (const socket of room.sockets) {
-    if (socket !== excludeSocket && socket.readyState === 1 /* WebSocket.OPEN */) {
+    if (socket !== excludeSocket && socket.readyState === 1) {
       socket.send(message);
     }
   }
@@ -68,8 +69,7 @@ class CallService {
     callRoomManager.addSocket(sessionId, socket);
 
     // Додаємо або оновлюємо peer
-    // У WS сокету має бути унікальний id для розрізнення підключень
-    const socketId = socket.id || Date.now().toString() + Math.random().toString();
+    const socketId = socket.id || crypto.randomUUID();
     socket.id = socketId;
     
     const peer = callRoomManager.addPeer(sessionId, userId, socketId, socket.user);

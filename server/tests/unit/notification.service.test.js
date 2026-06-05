@@ -358,45 +358,6 @@ test('markManyAsRead updates all active recipients', async () => {
   assert.deepStrictEqual(call.arguments[0].where.id.in, [1, 2]);
 });
 
-test('archiveNotification throws when recipient not found', async () => {
-  const mockPrisma = createMockPrisma({
-    notificationRecipient: {
-      findFirst: mock.fn(async () => null),
-    },
-  });
-
-  const service = new NotificationService({ prisma: mockPrisma });
-
-  await assert.rejects(
-    () => service.archiveNotification(1, 100),
-    (error) => error?.code === 'NOTIFICATION_NOT_FOUND'
-  );
-});
-
-test('archiveNotification archives active notification', async () => {
-  const recipient = {
-    id: 1,
-    userId: 5,
-    notificationId: 100,
-    status: 'ACTIVE',
-    readAt: null,
-    archivedAt: null,
-  };
-
-  const mockPrisma = createMockPrisma({
-    notificationRecipient: {
-      findFirst: mock.fn(async () => recipient),
-      update: mock.fn(async ({ data }) => ({ ...recipient, ...data })),
-    },
-  });
-
-  const service = new NotificationService({ prisma: mockPrisma });
-  const result = await service.archiveNotification(5, 100);
-
-  assert.equal(result.status, 'ARCHIVED');
-  assert.ok(result.archivedAt instanceof Date);
-});
-
 test('pushToConnectedUsers does nothing when no recipients', async () => {
   const mockPrisma = createMockPrisma();
   const mockSseService = createMockSseService();

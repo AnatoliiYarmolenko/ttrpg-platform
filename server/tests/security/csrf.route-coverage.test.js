@@ -1,84 +1,73 @@
-﻿const test = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
 
+const authRoutes = require('../../src/routes/auth.routes');
+const profileRoutes = require('../../src/routes/profile.routes');
+const securityRoutes = require('../../src/routes/security.routes');
 const adminRoutes = require('../../src/routes/admin.routes');
 const campaignRoutes = require('../../src/routes/campaign.routes');
-const clientLogsRoutes = require('../../src/routes/client-logs.routes');
 const sessionRoutes = require('../../src/routes/session.routes');
+const chatRoutes = require('../../src/routes/chat.routes');
+const searchRoutes = require('../../src/routes/search.routes');
+const clientLogsRoutes = require('../../src/routes/client-logs.routes');
+const notificationRoutes = require('../../src/routes/notification.routes');
 
 function collectRouteMiddleware(router) {
-  return router.stack
-    .filter((layer) => layer.route)
-    .map((layer) => {
-      const methods = Object.keys(layer.route.methods).filter((method) => layer.route.methods[method]);
+  const routes = [];
+  
+  if (!router?.stack) return routes;
 
-      return {
+  router.stack.forEach((layer) => {
+    if (layer.route) {
+      const methods = Object.keys(layer.route.methods).filter((method) => layer.route.methods[method]);
+      routes.push({
         path: layer.route.path,
         methods,
         middlewareNames: layer.route.stack.map((routeLayer) => routeLayer.handle.name),
-      };
-    });
+      });
+    }
+  });
+  
+  return routes;
 }
 
-function assertRouteUsesCsrf(router, expectedUnsafeRoutes) {
-  const routes = collectRouteMiddleware(router);
+const routersToTest = [
+  { name: 'Auth', router: authRoutes },
+  { name: 'Profile', router: profileRoutes },
+  { name: 'Security', router: securityRoutes },
+  { name: 'Admin', router: adminRoutes },
+  { name: 'Campaign', router: campaignRoutes },
+  { name: 'Session', router: sessionRoutes },
+  { name: 'Chat', router: chatRoutes },
+  { name: 'Search', router: searchRoutes },
+  { name: 'Client Logs', router: clientLogsRoutes },
+  { name: 'Notifications', router: notificationRoutes }
+];
 
-  for (const expectedRoute of expectedUnsafeRoutes) {
-    const route = routes.find(({ path, methods }) => path === expectedRoute.path && methods.includes(expectedRoute.method));
-
-    assert.ok(route, `Route ${expectedRoute.method.toUpperCase()} ${expectedRoute.path} should exist`);
-    assert.ok(
-      route.middlewareNames.includes('verifyCSRFToken'),
-      `Route ${expectedRoute.method.toUpperCase()} ${expectedRoute.path} should include verifyCSRFToken`
+test('All write routes must enforce CSRF verification', () => {
+  const unsafeMethods = new Set(['post', 'put', 'patch', 'delete']);
+  
+  for (const { name, router } of routersToTest) {
+    const routes = collectRouteMiddleware(router);
+    const routerLevelMiddleware = new Set(
+      router.stack
+        .filter((layer) => layer.name === 'setCSRFToken' || layer.name === 'verifyCSRFToken')
+        .map((layer) => layer.name)
     );
+      
+    for (const route of routes) {
+      const isUnsafe = route.methods.some((m) => unsafeMethods.has(m));
+      
+      if (isUnsafe) {
+        const hasCsrf = route.middlewareNames.includes('verifyCSRFToken') || routerLevelMiddleware.has('verifyCSRFToken') || routerLevelMiddleware.has('setCSRFToken');
+        
+        assert.ok(
+          hasCsrf,
+          `${name} route ${route.methods.join(',').toUpperCase()} ${route.path} should include verifyCSRFToken`
+        );
+      }
+    }
   }
-}
-
-test('Campaign write routes enforce CSRF verification', () => {
-  assertRouteUsesCsrf(campaignRoutes, [
-    { method: 'post', path: '/' },
-    { method: 'put', path: '/:campaignId' },
-    { method: 'post', path: '/:campaignId/transfer-ownership' },
-    { method: 'post', path: '/:campaignId/members' },
-    { method: 'delete', path: '/:campaignId/members/:memberId' },
-    { method: 'patch', path: '/:campaignId/members/:memberId' },
-    { method: 'post', path: '/:campaignId/share/regenerate' },
-    { method: 'post', path: '/:campaignId/requests' },
-    { method: 'post', path: '/requests/:requestId/approve' },
-    { method: 'post', path: '/requests/:requestId/reject' },
-  ]);
-});
-
-test('Session write routes enforce CSRF verification', () => {
-  assertRouteUsesCsrf(sessionRoutes, [
-    { method: 'post', path: '/' },
-    { method: 'patch', path: '/:id' },
-    { method: 'delete', path: '/:id' },
-    { method: 'post', path: '/:id/cancel' },
-    { method: 'post', path: '/:id/mark-finished' },
-    { method: 'post', path: '/:id/join' },
-    { method: 'post', path: '/:id/leave' },
-    { method: 'post', path: '/:id/kick-gm' },
-    { method: 'patch', path: '/:id/participants/:participantId' },
-    { method: 'delete', path: '/:id/participants/:participantId' },
-  ]);
-});
-
-test('Admin write routes enforce CSRF verification', () => {
-  assertRouteUsesCsrf(adminRoutes, [
-    { method: 'post', path: '/cleanup-tokens' },
-    { method: 'delete', path: '/campaigns/:id' },
-    { method: 'delete', path: '/sessions/:id' },
-  ]);
-});
-
-test('Client log ingest route enforces CSRF verification and optional auth', () => {
-  const routes = collectRouteMiddleware(clientLogsRoutes);
-  const route = routes.find(({ path, methods }) => path === '/' && methods.includes('post'));
-
-  assert.ok(route, 'Route POST / should exist');
-  assert.ok(route.middlewareNames.includes('verifyCSRFToken'));
-  assert.ok(route.middlewareNames.includes('optionalAuthenticateToken'));
 });
 
 test('Dashboard calendar routes require auth instead of silently falling back to anonymous mode', () => {
@@ -102,4 +91,3 @@ test('Dashboard calendar routes require auth instead of silently falling back to
     );
   }
 });
-

@@ -265,6 +265,9 @@ export default function useSessionPageController() {
     shareToken: hasShareToken ? routeShareToken : null,
   });
 
+  const isUpdatingSettings = mutations.isPendingUpdate;
+  const isRegeneratingShareLink = mutations.isPendingRegenerateShareLink;
+
   const canStartSession = Boolean(actions.canStart);
   const canFinishSession = Boolean(actions.canFinish);
   const canCancelSession = Boolean(actions.canCancel);
@@ -474,6 +477,8 @@ export default function useSessionPageController() {
     canNavigateToCampaignDirectly,
     campaignNavigationTarget,
     currentShareLink,
+    isUpdatingSettings,
+    isRegeneratingShareLink,
     handleJoin,
     handleLeave,
     handleStatusChange,

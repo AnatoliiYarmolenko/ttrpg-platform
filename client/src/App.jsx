@@ -7,6 +7,7 @@ import useAuthStore from "./stores/useAuthStore";
 import GlobalNotificationProvider from "./features/notifications/components/GlobalNotificationProvider";
 import { GlobalCallProvider } from "./features/call/components/GlobalCallProvider";
 import { GlobalInCallBadge } from "./features/call/components/GlobalInCallBadge";
+import FullPageLoader from "./components/shared/FullPageLoader";
 
 function AuthExpiredRedirectListener() {
   const navigate = useNavigate();
@@ -24,8 +25,6 @@ function AuthExpiredRedirectListener() {
 
   return null;
 }
-
-import FullPageLoader from "./components/shared/FullPageLoader";
 
 function App() {
   const { isInitialized } = useCsrfInit();

@@ -93,8 +93,15 @@ const clearExpiredAuthState = () => {
     globalThis.window.localStorage.removeItem('ttrpg_app_user');
   }
 
+  const currentPath = globalThis.location.pathname + globalThis.location.search;
+  let redirectTo = '/login';
+  
+  if (currentPath !== '/' && currentPath !== '/login') {
+    redirectTo = `/login?returnTo=${encodeURIComponent(currentPath)}`;
+  }
+
   globalThis.window.dispatchEvent(
-    new CustomEvent('app:auth-expired', { detail: { redirectTo: '/login' } })
+    new CustomEvent('app:auth-expired', { detail: { redirectTo } })
   );
 };
 

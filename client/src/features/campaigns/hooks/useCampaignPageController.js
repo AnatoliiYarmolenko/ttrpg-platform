@@ -16,6 +16,14 @@ import {
 } from "@/utils/urlState";
 import { normalizePageError } from "@/utils/errorUtils";
 
+function shouldRedirectSharedGuestToLogin({ hasShareToken, user, queryError }) {
+  return Boolean(
+    hasShareToken
+    && !user
+    && (queryError?.response?.status === 401 || queryError?.response?.status === 403)
+  );
+}
+
 function buildCampaignShareUrl(token) {
   return `${globalThis.location.origin}/campaign/share/${token}`;
 }
@@ -171,10 +179,14 @@ export default function useCampaignPageController() {
 
   const isLoading = isCampaignLoading;
   const error = normalizePageError(campaignError, invalidIdError);
+  const shouldRedirectToLogin = shouldRedirectSharedGuestToLogin({ hasShareToken, user, queryError: campaignError });
   const activeCampaignId = currentCampaign?.id ?? (isValidId ? campaignIdNumber : null);
   const mutations = useCampaignMutations(activeCampaignId, {
     shareToken: hasShareToken ? routeShareToken : null,
   });
+
+  const isUpdatingSettings = mutations.isPendingUpdate;
+  const isRegeneratingShareLink = mutations.isPendingRegenerateShareLink;
 
   const canManageCampaignSettings = Boolean(actions.canEditSettings);
   const availableTabs = useMemo(
@@ -356,6 +368,7 @@ export default function useCampaignPageController() {
     sessionsSection,
     isLoading,
     error,
+    shouldRedirectToLogin,
     activeTab,
     availableTabs,
     setActiveTab,
@@ -380,6 +393,8 @@ export default function useCampaignPageController() {
     canCancelJoinRequest,
     pendingRequestStatus,
     currentShareLink,
+    isUpdatingSettings,
+    isRegeneratingShareLink,
     handleJoinRequest,
     handleCancelJoinRequest,
     handleLeave,

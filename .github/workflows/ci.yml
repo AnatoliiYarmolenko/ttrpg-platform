@@ -23,6 +23,7 @@ jobs:
       - name: Install and build server prerequisites
         run: |
           npm ci
+          npm audit --audit-level=high
           npm --workspace server exec prisma generate
 
   build_client:
@@ -41,6 +42,7 @@ jobs:
       - name: Install and build client
         run: |
           npm ci
+          npm audit --audit-level=high
           npm run build:client
 
   lint_client:
@@ -190,3 +192,25 @@ jobs:
         with:
           args: >
             -Dsonar.host.url=https://sonarcloud.io
+
+  security_scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks (Secret Detection)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trivy (Vulnerability Scanner)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'

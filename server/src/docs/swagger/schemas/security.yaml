@@ -1,0 +1,56 @@
+components:
+  schemas:
+    ChangePasswordInput:
+      type: object
+      required:
+        - currentPassword
+        - newPassword
+        - confirmPassword
+      properties:
+        currentPassword:
+          type: string
+          description: Поточний пароль
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 128
+          description: Новий пароль
+        confirmPassword:
+          type: string
+          description: Підтвердження нового пароля (повинно збігатися)
+
+    RequestEmailChangeInput:
+      type: object
+      required:
+        - password
+        - newEmail
+      properties:
+        password:
+          type: string
+          description: Поточний пароль для підтвердження дії
+        newEmail:
+          type: string
+          format: email
+          description: Нова email-адреса
+
+    ConfirmEmailChangeInput:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          description: Токен з листа підтвердження
+
+    DeleteAccountInput:
+      type: object
+      required:
+        - password
+        - confirmation
+      properties:
+        password:
+          type: string
+          description: Пароль для підтвердження видалення
+        confirmation:
+          type: string
+          description: Слово 'ВИДАЛИТИ' для підтвердження дії

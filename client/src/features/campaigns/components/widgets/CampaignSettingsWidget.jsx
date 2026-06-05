@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import DashboardCard from '@/components/ui/DashboardCard';
 import FormField from '@/components/ui/FormField';
 import Button from '@/components/ui/Button';
@@ -55,6 +56,7 @@ function CampaignSettingsWidgetContent({
   onCopyShareLink,
   myRole,
   isLoading = false,
+  isRegeneratingShareLink = false,
 }) {
   const [formData, setFormData] = useState(() => buildFormData(campaign));
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -262,6 +264,7 @@ function CampaignSettingsWidgetContent({
                       onClick={onCopyShareLink}
                       variant="outline"
                       fullWidth={true}
+                      disabled={isRegeneratingShareLink}
                       className="w-full min-h-[44px] !shadow-none"
                     >
                       Копіювати посилання
@@ -272,6 +275,9 @@ function CampaignSettingsWidgetContent({
                     onClick={handleRegenerateShareLink}
                     variant="outline"
                     fullWidth={true}
+                    disabled={isRegeneratingShareLink}
+                    isLoading={isRegeneratingShareLink}
+                    loadingText="╨Ю╨╜╨╛╨▓╨╗╨╡╨╜╨╜╤П..."
                     className="w-full min-h-[44px] !shadow-none"
                   >
                     {currentShareLink ? 'Оновити share-посилання' : 'Згенерувати share-посилання'}
@@ -418,3 +424,24 @@ export default function CampaignSettingsWidget(props) {
 
   return <CampaignSettingsWidgetContent key={campaign.id ?? 'new-campaign'} {...props} />;
 }
+
+CampaignSettingsWidget.propTypes = {
+  campaign: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  }),
+};
+
+CampaignSettingsWidgetContent.propTypes = {
+  campaign: PropTypes.object,
+  onSave: PropTypes.func,
+  onTransferOwnership: PropTypes.func,
+  onLeave: PropTypes.func,
+  canTransferOwnership: PropTypes.bool,
+  canManageShareLink: PropTypes.bool,
+  currentShareLink: PropTypes.string,
+  onRegenerateShareLink: PropTypes.func,
+  onCopyShareLink: PropTypes.func,
+  myRole: PropTypes.string,
+  isLoading: PropTypes.bool,
+  isRegeneratingShareLink: PropTypes.bool,
+};

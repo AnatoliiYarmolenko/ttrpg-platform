@@ -1,7 +1,7 @@
 const crypto = require('node:crypto');
 
 function resolveShareTokenSecret() {
-  const secret = process.env.SHARE_TOKEN_SECRET || process.env.SERVER_SECRET || process.env.JWT_SECRET;
+  const secret = process.env.SHARE_TOKEN_SECRET;
 
   if (secret) {
     return secret;
@@ -19,7 +19,7 @@ function getShareTokenEncryptionKey() {
   const shareTokenSecret = resolveShareTokenSecret();
 
   if (!shareTokenSecret) {
-    throw new Error('SHARE_TOKEN_SECRET or SERVER_SECRET must be configured for share token encryption');
+    throw new Error('SHARE_TOKEN_SECRET must be configured for share token encryption');
   }
 
   return crypto.createHash('sha256').update(shareTokenSecret).digest();
@@ -29,19 +29,6 @@ function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-function getTokenCandidates(token) {
-  if (typeof token !== 'string' || token.length === 0) {
-    return [];
-  }
-
-  const normalized = token.trim();
-  if (!normalized) {
-    return [];
-  }
-
-  const hashed = hashToken(normalized);
-  return normalized === hashed ? [normalized] : [normalized, hashed];
-}
 
 function createRawAndHashedToken(bytes = 32) {
   const rawToken = crypto.randomBytes(bytes).toString('hex');
@@ -115,7 +102,6 @@ function createRawEncryptedAndHashedShareToken(bytes = 24) {
 
 module.exports = {
   hashToken,
-  getTokenCandidates,
   createRawAndHashedToken,
   createRawAndHashedShareToken,
   encryptShareToken,

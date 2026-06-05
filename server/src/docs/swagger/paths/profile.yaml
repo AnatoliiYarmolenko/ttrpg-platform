@@ -1,0 +1,160 @@
+paths:
+  /api/profile/me:
+    get:
+      summary: Отримати свій профіль
+      tags: [Profile]
+      security:
+        - cookieAuth: []
+      responses:
+        200:
+          description: Дані користувача
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/PrivateUser'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+
+    patch:
+      summary: Оновити свій профіль
+      tags: [Profile]
+      security:
+        - cookieAuth: []
+          csrfAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileInput'
+      responses:
+        200:
+          description: Профіль оновлено
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        422:
+          $ref: '#/components/responses/ValidationError'
+
+  /api/profile/me/avatar:
+    post:
+      summary: Завантажити аватар
+      tags: [Profile]
+      security:
+        - cookieAuth: []
+          csrfAuth: []
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                avatar:
+                  type: string
+                  format: binary
+      responses:
+        200:
+          description: Аватар оновлено
+
+    delete:
+      summary: Видалити аватар
+      tags: [Profile]
+      security:
+        - cookieAuth: []
+          csrfAuth: []
+      responses:
+        200:
+          description: Аватар видалено
+
+  /api/profile/me/username:
+    patch:
+      summary: Змінити юзернейм
+      description: >
+        Змінює унікальний ідентифікатор користувача (username). 
+        
+        **Примітка:** Наразі цей ендпоінт не задіяний в UI клієнта (у профілі змінюється лише `displayName`). Маршрут повністю реалізовано, захищено (включно з CSRF та перевіркою унікальності) і має жорсткий rate-limit (максимум 3 зміни на добу). Закладено на майбутнє.
+      tags: [Profile]
+      security:
+        - cookieAuth: []
+          csrfAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+      responses:
+        200:
+          description: Юзернейм оновлено
+
+  /api/profile/telegram/link:
+    post:
+      summary: Згенерувати посилання для Telegram
+      tags: [Profile]
+      security:
+        - cookieAuth: []
+          csrfAuth: []
+      responses:
+        200:
+          description: Посилання створено
+    delete:
+      summary: Відв'язати Telegram
+      tags: [Profile]
+      security:
+        - cookieAuth: []
+          csrfAuth: []
+      responses:
+        200:
+          description: Telegram відв'язано
+
+  /api/profile/user/{id}:
+    get:
+      summary: Отримати профіль за ID
+      tags: [Profile]
+      security:
+        - cookieAuth: []
+        - {}
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Профіль користувача
+
+  /api/profile/{username}:
+    get:
+      summary: Отримати публічний профіль
+      tags: [Profile]
+      security:
+        - cookieAuth: []
+        - {}
+      parameters:
+        - in: path
+          name: username
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Публічні дані
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/PublicUser'
+        404:
+          description: Користувача не знайдено

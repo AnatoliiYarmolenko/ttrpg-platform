@@ -4,13 +4,7 @@ const { createError } = require('../constants/errors');
 const { logger } = require('../lib/logger');
 
 /**
- * Blacklist видалених акаунтів — тепер у Redis.
- *
- * Замість in-memory Set використовується Redis ключ з TTL = 900 секунд (15 хвилин).
- * Це відповідає терміну дії access JWT токена, що закриває вікно вразливості.
- *
- * При горизонтальному масштабуванні всі інстанси читають один Redis →
- * видалений акаунт заблокований на всіх подах одразу.
+ * Blacklist видалених акаунтів у Redis.
  */
 
 const DELETED_USER_TTL_SECONDS = 15 * 60; // 900 сек = 15 хвилин (час життя access JWT)
@@ -30,8 +24,6 @@ async function markUserAsDeleted(userId) {
   } catch (err) {
     recordRedisDegradation('deleted-users:mark', err);
     logger.error({ err, userId }, '[DeletedUsers] Redis помилка markUserAsDeleted');
-    // Fail-closed для критичної операції видалення акаунту.
-    // Якщо Redis blacklist недоступний, блокуємо завершення видалення.
     throw createError.serverUnavailable();
   }
 }
@@ -61,11 +53,8 @@ async function isUserDeleted(userId) {
 
       return Boolean(user?.isDeleted);
     } catch (dbErr) {
-      // Якщо DB також недоступна (наприклад, під час startup),
-      // безпечно припускаємо що користувач НЕ видалений (fail-open)
-      // замість кидання 503 помилки
-      logger.error({ err: dbErr, userId }, '[DeletedUsers] DB fallback failed, assuming user is NOT deleted');
-      return false;
+      logger.error({ err: dbErr, userId }, '[DeletedUsers] DB fallback failed, denying access');
+      throw createError.serverUnavailable('Authorization check failed due to unavailable data stores');
     }
   }
 }

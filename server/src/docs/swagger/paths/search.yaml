@@ -1,0 +1,180 @@
+paths:
+  /api/search/campaigns:
+    get:
+      summary: Пошук кампаній
+      description: Пошук по публічних кампаніях за назвою, описом, системою тощо.
+      tags: [Search]
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+            maxLength: 200
+          description: Рядок для пошуку по назві або опису
+        - in: query
+          name: system
+          schema:
+            type: string
+          description: Ігрова система (наприклад DND5E, PATHFINDER)
+        - in: query
+          name: ownerUsername
+          schema:
+            type: string
+            maxLength: 100
+          description: Фільтр за юзернеймом власника
+        - in: query
+          name: onlyMyParticipation
+          schema:
+            type: boolean
+          description: Тільки ті кампанії, в яких я беру участь
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - in: query
+          name: sortBy
+          schema:
+            type: string
+            enum: [newest, popular, title]
+      responses:
+        200:
+          description: Результати пошуку
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Campaign'
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      limit:
+                        type: integer
+                      offset:
+                        type: integer
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/search/sessions:
+    get:
+      summary: Пошук сесій
+      description: Пошук по публічних сесіях за різноманітними критеріями (дати, ціна, наявність місць).
+      tags: [Search]
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+            maxLength: 200
+          description: Рядок для пошуку по назві або опису
+        - in: query
+          name: system
+          schema:
+            type: string
+          description: Ігрова система
+        - in: query
+          name: ownerUsername
+          schema:
+            type: string
+            maxLength: 100
+          description: Фільтр за юзернеймом власника
+        - in: query
+          name: onlyMyParticipation
+          schema:
+            type: boolean
+          description: Тільки ті сесії, в яких я беру участь
+        - in: query
+          name: dateFrom
+          schema:
+            type: string
+            format: date-time
+          description: Нижня межа дати
+        - in: query
+          name: dateTo
+          schema:
+            type: string
+            format: date-time
+          description: Верхня межа дати
+        - in: query
+          name: minPrice
+          schema:
+            type: number
+            minimum: 0
+        - in: query
+          name: maxPrice
+          schema:
+            type: number
+            minimum: 0
+        - in: query
+          name: hasAvailableSlots
+          schema:
+            type: boolean
+          description: Тільки сесії, де є вільні місця
+        - in: query
+          name: oneShot
+          schema:
+            type: boolean
+          description: Тільки ваншоти (сесії без кампанії)
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - in: query
+          name: sortBy
+          schema:
+            type: string
+            enum: [date, price, newest]
+      responses:
+        200:
+          description: Результати пошуку
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Session'
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      limit:
+                        type: integer
+                      offset:
+                        type: integer
+        401:
+          $ref: '#/components/responses/UnauthorizedError'

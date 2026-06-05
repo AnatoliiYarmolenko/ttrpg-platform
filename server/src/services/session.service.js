@@ -352,19 +352,42 @@ class SessionService {
     const { rawToken, tokenHash, tokenEncrypted } = createRawEncryptedAndHashedShareToken();
     const sessionIdInt = this._parsePositiveInt(sessionId, 'ID сесії');
 
-    await this.sessionDeps.prisma.session.update({
-      where: { id: sessionIdInt },
-      data: {
-        shareTokenHash: tokenHash,
-        shareTokenEncrypted: tokenEncrypted,
-        shareTokenCreatedAt: new Date(),
-      },
-    });
+    return await this.sessionDeps.prisma.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw`
+        SELECT visibility 
+        FROM "Session" 
+        WHERE id = ${sessionIdInt} 
+        FOR UPDATE
+      `;
 
-    return {
-      token: rawToken,
-      sessionId: sessionIdInt,
-    };
+      if (!rows || rows.length === 0) {
+        throw new AppError(ERROR_CODES.SESSION_NOT_FOUND, 'Сесія не знайдена');
+      }
+
+      if (rows[0].visibility !== 'LINK_ONLY') {
+        throw new AppError(
+          ERROR_CODES.VALIDATION_FAILED,
+          'Посилання доступу доступне тільки для LINK_ONLY сесій'
+        );
+      }
+
+      await tx.session.update({
+        where: { id: sessionIdInt },
+        data: {
+          shareTokenHash: tokenHash,
+          shareTokenEncrypted: tokenEncrypted,
+          shareTokenCreatedAt: new Date(),
+        },
+      });
+
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+      return {
+        token: rawToken,
+        sessionId: sessionIdInt,
+        shareUrl: `${frontendUrl}/sessions/share/${rawToken}`,
+      };
+    });
   }
 
   async getSessionShareLink(sessionId, userId) {

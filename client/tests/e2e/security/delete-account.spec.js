@@ -83,7 +83,7 @@ test('allows a signed-in user to delete their account from profile security', as
       password: 'secret-password',
       confirmation: 'ВИДАЛИТИ',
     });
-    await expect(page).toHaveURL(/\/login$/);
+    await expect(page).toHaveURL(/.*\/login(\?.*)?$/);
     await expect(page.getByRole('heading', { name: 'Вхід' })).toBeVisible();
     await captureStep(page, testInfo, '04-redirected-to-login');
   });

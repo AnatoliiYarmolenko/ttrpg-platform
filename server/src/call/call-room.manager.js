@@ -4,7 +4,6 @@ const { logger } = require('../lib/logger');
 
 class CallRoomManager {
   constructor() {
-    // Map<sessionId, CallRoomState>
     this.rooms = new Map();
   }
 
@@ -17,7 +16,7 @@ class CallRoomManager {
         callState: CALL_STATES.IDLE,
         sockets: new Set(),
         router: null,
-        peers: new Map(), // socketId -> CallPeerState
+        peers: new Map(),
         emptyTimeout: null,
       };
       this.rooms.set(sessionId, room);
@@ -62,6 +61,8 @@ class CallRoomManager {
       room.peers.delete(socketId);
       logger.debug({ sessionId, socketId }, 'Peer removed from CallRoom');
     }
+
+    this._checkAndCleanupEmptyRoom(sessionId);
   }
 
   addSocket(sessionId, socket) {
@@ -69,7 +70,6 @@ class CallRoomManager {
     const room = this.getRoom(sessionId);
     room.sockets.add(socket);
 
-    // Cancel the empty room timeout if someone joins back
     if (room.emptyTimeout) {
       clearTimeout(room.emptyTimeout);
       room.emptyTimeout = null;
@@ -92,13 +92,12 @@ class CallRoomManager {
 
     if (room.sockets.size === 0 && room.peers.size === 0) {
       if (room.callState === CALL_STATES.ACTIVE) {
-        // Grace period timeout for ACTIVE rooms (3 minutes)
         if (!room.emptyTimeout) {
           logger.debug({ sessionId }, 'Room is empty but ACTIVE. Starting 3-minute grace period timeout');
           room.emptyTimeout = setTimeout(() => {
             logger.info({ sessionId }, 'Room grace period expired. Destroying zombie call');
             this.deleteRoom(sessionId);
-          }, 3 * 60 * 1000); // 3 minutes
+          }, 3 * 60 * 1000); // 3 хвилини
         }
       } else {
         logger.debug({ sessionId }, 'Room is completely empty and inactive, deleting from memory immediately');

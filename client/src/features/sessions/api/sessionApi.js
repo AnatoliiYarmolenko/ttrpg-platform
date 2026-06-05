@@ -1,7 +1,5 @@
 import api from '@/lib/axios';
 
-// === CRUD Сесії ===
-
 /**
  * Створити нову сесію
  * @param {Object} sessionData - Дані сесії
@@ -85,7 +83,7 @@ export const deleteSession = async (sessionId) => {
 };
 
 /**
- * Скасувати сесію (soft delete)
+ * Скасувати сесію
  * @param {number} sessionId
  */
 export const cancelSession = async (sessionId) => {
@@ -112,19 +110,6 @@ export const getSessionShareLink = async (sessionId) => {
   return response.data;
 };
 
-// === Календар ===
-
-/**
- * Отримати агрегацію для календаря
- * @param {Object} params
- * @param {number} [params.year]
- * @param {number} [params.month]
- * @param {string} [params.type] - MY | PUBLIC | ALL
- */
-export const getCalendar = async (params = {}) => {
-  const response = await api.get('/sessions/calendar', { params });
-  return response.data;
-};
 
 /**
  * Отримати статистику календаря з фільтрами (новий API для Dashboard)
@@ -140,16 +125,6 @@ export const getCalendarStats = async (params = {}) => {
     ...(filters && { filters: JSON.stringify(filters) }),
   };
   const response = await api.get('/sessions/calendar-stats', { params: queryParams });
-  return response.data;
-};
-
-/**
- * Отримати сесії конкретного дня
- * @param {string} date - Дата у форматі YYYY-MM-DD
- * @param {Object} [params] - Додаткові параметри
- */
-export const getSessionsByDay = async (date, params = {}) => {
-  const response = await api.get(`/sessions/day/${date}`, { params });
   return response.data;
 };
 
@@ -180,8 +155,6 @@ export const getCampaignSessions = async (campaignId, params = {}) => {
   const response = await api.get(`/campaigns/${campaignId}/sessions`, { params });
   return response.data;
 };
-
-// === Учасники сесії ===
 
 /**
  * Отримати учасників сесії

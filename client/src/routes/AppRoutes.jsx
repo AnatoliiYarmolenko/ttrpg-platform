@@ -46,8 +46,22 @@ const AppRoutes = () => {
           }
         />
 
-        <Route path="/campaign/share/:shareToken" element={<CampaignPage />} />
-        <Route path="/session/share/:shareToken" element={<SessionPage />} />
+        <Route
+          path="/campaign/share/:shareToken"
+          element={
+            <ProtectedRoute requireAuth={false}>
+              <CampaignPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/session/share/:shareToken"
+          element={
+            <ProtectedRoute requireAuth={false}>
+              <SessionPage />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/campaign/:id"
@@ -104,7 +118,14 @@ const AppRoutes = () => {
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/verify-email-notice" element={<VerifyEmailNoticePage />} />
         <Route path="/confirm-email-change" element={<ConfirmEmailChangePage />} />
-        <Route path="/user/:username" element={<PublicProfilePage />} />
+        <Route
+          path="/user/:username"
+          element={
+            <ProtectedRoute requireAuth={false}>
+              <PublicProfilePage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>

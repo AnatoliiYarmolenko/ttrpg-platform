@@ -8,9 +8,6 @@ const {
   validateSearchSessions,
 } = require('../validation/search.validation');
 
-// === Маршрути пошуку ===
-// Пошук доступний лише авторизованим користувачам платформи
-
 /**
  * Пошук публічних кампаній
  * GET /api/search/campaigns
@@ -18,6 +15,8 @@ const {
  * Query params:
  * - q: Пошуковий запит (по назві/опису)
  * - system: Фільтр по системі (D&D 5e, Pathfinder тощо)
+ * - ownerUsername: Фільтр за юзернеймом власника
+ * - onlyMyParticipation: Тільки ті кампанії, в яких я беру участь
  * - limit: Кількість результатів (1-50, default: 20)
  * - offset: Offset для пагінації
  * - sortBy: 'newest' | 'popular' | 'title'

@@ -1,0 +1,58 @@
+components:
+  responses:
+    UnauthorizedError:
+      description: "Відмовлено в доступі (Не авторизований, або токен не дійсний/відсутній)"
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: string
+                example: "Unauthorized"
+              code:
+                type: string
+                example: "UNAUTHORIZED"
+
+    ValidationError:
+      description: "Помилка валідації вхідних даних (неправильний формат, відсутні поля тощо)"
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: string
+                example: "Помилка валідації даних"
+              code:
+                type: string
+                example: "VALIDATION_ERROR"
+              details:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    field:
+                      type: string
+                    message:
+                      type: string
+
+    RateLimitError:
+      description: "Забагато запитів. Перевищено ліміт (Rate Limit)"
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: "Забагато запитів. Спробуйте пізніше."

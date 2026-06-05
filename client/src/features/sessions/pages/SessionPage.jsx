@@ -1,19 +1,15 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 
-// Controller hook — вся логіка сторінки інкапсульована тут
 import useSessionPageController from '../hooks/useSessionPageController';
 import { useCallViewerSync } from '@/features/call/hooks/useCallViewerSync';
 
-// Layout & Navigation
 import SessionLayout from '../components/layout/SessionLayout';
 import SessionNavigation from '../components/navigation/SessionNavigation';
 import SessionTabRenderer from '../components/layout/SessionTabRenderer';
 
-// Widgets
 import SessionPagePreviewWidget from '../components/widgets/SessionPreviewWidget';
 
-// Shared
 import { 
   UserProfilePreview, 
   BrandLogo, 
@@ -33,6 +29,7 @@ import { useChatController } from '@/features/chat/hooks';
  * - вибір віджетів за станом
  */
 export default function SessionPage() {
+  const location = useLocation();
   const {
     id,
     user,
@@ -68,6 +65,8 @@ export default function SessionPage() {
     canNavigateToCampaignDirectly,
     campaignNavigationTarget,
     currentShareLink,
+    isUpdatingSettings,
+    isRegeneratingShareLink,
     handleJoin,
     handleLeave,
     handleStatusChange,
@@ -82,7 +81,6 @@ export default function SessionPage() {
     viewer,
   } = useSessionPageController();
 
-  // Синхронізація підключення до дзвінка для поточної сторінки
   useCallViewerSync(isPreviewMode ? null : id);
 
   const chatController = useChatController('session', Number.parseInt(id, 10), {
@@ -97,10 +95,10 @@ export default function SessionPage() {
   }, [chatController?.disconnect]);
 
   if (shouldRedirectToLogin) {
-    return <Navigate to="/login" replace />;
+    const returnTo = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/login?returnTo=${returnTo}`} replace />;
   }
 
-  // === Error state ===
   if (error) {
     return (
       <ErrorScreen
@@ -111,12 +109,10 @@ export default function SessionPage() {
     );
   }
 
-  // === Loading state ===
   if (!currentSession) {
     return <FullPageLoader text="Завантаження сесії..." />;
   }
 
-  // === Left panel ===
   const profilePreviewNode = viewingUserId ? (
     <UserProfilePreview
       userId={viewingUserId}
@@ -153,7 +149,8 @@ export default function SessionPage() {
     onRegenerateShareLink: handleRegenerateShareLink,
     onCopyShareLink: handleCopyShareLink,
     canDelete: canDeleteSession,
-    isLoading,
+    isLoading: isLoading || isUpdatingSettings,
+    isRegeneratingShareLink,
   };
 
   const participantsProps = {

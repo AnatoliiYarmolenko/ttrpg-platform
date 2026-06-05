@@ -1,0 +1,156 @@
+components:
+  schemas:
+    Session:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        date:
+          type: string
+          format: date-time
+        duration:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          enum: [PLANNED, ACTIVE, FINISHED, CANCELED]
+        visibility:
+          type: string
+          enum: [PUBLIC, PRIVATE, LINK_ONLY]
+        maxPlayers:
+          type: integer
+          nullable: true
+        price:
+          type: number
+          nullable: true
+        ownerId:
+          type: integer
+        campaignId:
+          type: integer
+          nullable: true
+        system:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SessionParticipant:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+          enum: [PENDING, CONFIRMED, DECLINED]
+        role:
+          type: string
+          enum: [GM, PLAYER]
+        userId:
+          type: integer
+        sessionId:
+          type: integer
+        joinedAt:
+          type: string
+          format: date-time
+
+    CreateSessionInput:
+      type: object
+      required:
+        - title
+        - date
+      properties:
+        title:
+          type: string
+          minLength: 3
+          maxLength: 150
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+        date:
+          type: string
+          format: date-time
+        duration:
+          type: integer
+          nullable: true
+        visibility:
+          type: string
+          enum: [PUBLIC, PRIVATE, LINK_ONLY]
+          default: "PUBLIC"
+        maxPlayers:
+          type: integer
+          nullable: true
+        price:
+          type: number
+          nullable: true
+        campaignId:
+          type: integer
+          nullable: true
+        system:
+          type: string
+          nullable: true
+        isGm:
+          type: boolean
+          default: true
+
+    UpdateSessionInput:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 3
+          maxLength: 150
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+        date:
+          type: string
+          format: date-time
+        duration:
+          type: integer
+          nullable: true
+        visibility:
+          type: string
+          enum: [PUBLIC, PRIVATE, LINK_ONLY]
+        maxPlayers:
+          type: integer
+          nullable: true
+        price:
+          type: number
+          nullable: true
+        status:
+          type: string
+          enum: [PLANNED, ACTIVE, FINISHED, CANCELED]
+        system:
+          type: string
+          nullable: true
+
+    JoinSessionInput:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [PLAYER, GM]
+        shareToken:
+          type: string
+          minLength: 10
+          maxLength: 255
+
+    UpdateParticipantStatusInput:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [PENDING, CONFIRMED, DECLINED]
