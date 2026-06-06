@@ -3,8 +3,7 @@ import { create } from 'zustand';
 const DEFAULT_DURATION = 4000;
 const MAX_VISIBLE_TOASTS = 5;
 
-const generateToastId = () =>
-  `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+const generateToastId = () => crypto.randomUUID();
 
 const normalizeToast = (payload = {}) => ({
   id: payload.id || generateToastId(),

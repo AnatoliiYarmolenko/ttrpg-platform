@@ -50,11 +50,9 @@ function CallWidgetInner({ sessionId }) {
   const [isLeaveModalOpen, setIsLeaveModalOpen] = React.useState(false);
   const [isEndModalOpen, setIsEndModalOpen] = React.useState(false);
 
-  // Queries
   const { data: sessionPage } = useSessionPageQuery({ sessionId });
   const actions = sessionPage?.actions || {};
 
-  // Store States
   const { 
     callState, 
     connectionState, 
@@ -66,12 +64,10 @@ function CallWidgetInner({ sessionId }) {
     localCamEnabled
   } = useCallStore();
 
-  // Connection from Global Provider
   const { rpcClient, callConfig } = useGlobalCall() || {};
   
   const { startCall, endCall, joinCall, leaveCall } = useCallController({ rpcClient, sessionId });
 
-  // Local Media 
   const { 
     initDevice, 
     initTransports, 
@@ -81,7 +77,6 @@ function CallWidgetInner({ sessionId }) {
     disableCam 
   } = useLocalMedia({ rpcClient, sessionId, callConfig });
 
-  // Remote Media
   const { consumeTrack } = useRemoteMedia({ rpcClient, sessionId });
 
   const isIdle = callState === 'IDLE' || callState === 'ENDED';
@@ -89,10 +84,8 @@ function CallWidgetInner({ sessionId }) {
   const isConnected = connectionState === 'CONNECTED';
   const isJoining = presenceState === 'JOINING';
   
-  // We consider the user "in call" if they have a device initialized and a send transport
   const isInCall = !!device && presenceState === 'JOINED';
 
-  // Render logic based on states
   if (!sessionPage) return null;
 
   const handleStartCall = () => {
@@ -105,25 +98,20 @@ function CallWidgetInner({ sessionId }) {
 
   const handleJoinCall = async () => {
     if (!rpcClient || !callConfig) return;
-    useCallStore.getState().joinCallSession(sessionId); // presenceState -> JOINING
+    useCallStore.getState().joinCallSession(sessionId);
     
     try {
-      const joinData = await joinCall(); // RPC join returning fresh state
+      const joinData = await joinCall();
       
-      const currentDevice = await initDevice(joinData.routerRtpCapabilities);
-      await initTransports(currentDevice);
-      
-      // Update store with fresh peers to ensure grid is up-to-date
       useCallStore.getState().setPeers((joinData.peers || []).map(peer => ({
         ...peer,
         micEnabled: peer.mediaState?.micEnabled || false,
         camEnabled: peer.mediaState?.camEnabled || false
       })));
 
-      // За замовчуванням мікрофон та камера вимкнені
-      // Користувач увімкне їх самостійно через кнопки UI
+      const currentDevice = await initDevice(joinData.routerRtpCapabilities);
+      await initTransports(currentDevice);
 
-      // Consume existing producers from fresh peers data
       for (const peer of joinData.peers || []) {
         if (peer.producers) {
           for (const producer of peer.producers) {
@@ -140,7 +128,6 @@ function CallWidgetInner({ sessionId }) {
   };
 
   const handleLeaveCall = () => {
-    // leaveCall already triggers cleanupCallMedia, call:leave event, and cleanupCallConnection
     leaveCall();
   };
 
@@ -155,7 +142,6 @@ function CallWidgetInner({ sessionId }) {
     );
   }
 
-  // State: IDLE / ENDED
   if (isIdle) {
     const isSessionActive = sessionPage?.entity?.status === 'ACTIVE';
 
@@ -189,7 +175,6 @@ function CallWidgetInner({ sessionId }) {
     );
   }
 
-  // State: ACTIVE but not joined
   if (isActive && !isInCall) {
     return (
       <div className="flex flex-col h-full min-h-[280px] items-center justify-center text-center p-2">
@@ -220,10 +205,8 @@ function CallWidgetInner({ sessionId }) {
     );
   }
 
-  // State: IN CALL
   return (
     <div className="flex flex-col h-full space-y-4">
-      {/* Grid */}
       <div className="flex-1 min-h-[300px]">
         {mediaPermissionError && (
           <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl mb-4 text-sm flex items-start gap-3">
@@ -246,7 +229,6 @@ function CallWidgetInner({ sessionId }) {
         <CallGrid />
       </div>
 
-      {/* Controls Bar */}
       <div className="flex items-center justify-between pt-2">
         <div className="flex items-center gap-2">
           <Button 
