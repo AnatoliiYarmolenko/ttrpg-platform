@@ -86,7 +86,7 @@ export default function VttPage() {
     const { total, details } = evaluateFormula(tokens, rawResults);
 
     addRollResult({
-      id: `roll-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      id: `roll-${crypto.randomUUID()}`,
       name: formulaInfo.name || null,
       formula: formulaInfo.formula,
       total,
