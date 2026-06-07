@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import useChatStore from '@/stores/useChatStore';
 import useVttStore from '@/stores/useVttStore';
+import useBattlefieldStore from '@/features/vtt/components/battlefield/useBattlefieldStore';
 import useAuthStore, { selectUser } from '@/stores/useAuthStore';
 import { getChatMessagesAfter, getChatMessagesBefore } from '../api/chatApi';
 import {
@@ -312,9 +313,25 @@ export default function useChatConnection(chatId, options = {}) {
 
     // VTT events — оновлюємо глобальний VTT store
     if (data.type === 'vtt:opened' || data.type === 'vtt:state') {
+      console.log('[VTT] Received:', data.type, {
+        sessionId: data.sessionId,
+        isOpen: data.isOpen,
+        activeSceneId: data.activeSceneId,
+        scenesCount: data.scenes ? Object.keys(data.scenes).length : 'no scenes field',
+        scenes: data.scenes,
+      });
       if (data.sessionId != null) {
         useVttStore.getState().setVttOpen(data.sessionId, Boolean(data.isOpen));
       }
+      // Оновлюємо сцени та стан поля
+      useBattlefieldStore.getState().setVttState({
+        activeSceneId: data.activeSceneId ?? null,
+        scenes: data.scenes ?? {},
+        backgroundUrl: data.backgroundUrl ?? null,
+        mapWidth: data.mapWidth ?? 2048,
+        mapHeight: data.mapHeight ?? 2048,
+      });
+      console.log('[VTT] BattlefieldStore after update:', useBattlefieldStore.getState().scenes);
     }
   }, [handleChatError, handleChatJoined, handleChatMessage]);
 
@@ -506,6 +523,76 @@ export default function useChatConnection(chatId, options = {}) {
     return sendEvent('vtt:getState', { chatId });
   }, [chatId, sendEvent]);
 
+  const sendVttTokenDrag = useCallback((tokenId, x, y) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:token_drag', { chatId, tokenId, x, y });
+  }, [chatId, sendEvent]);
+
+  const sendVttTokenDrop = useCallback((tokenId, x, y) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:token_drop', { chatId, tokenId, x, y });
+  }, [chatId, sendEvent]);
+
+  const sendVttSetBackground = useCallback((backgroundUrl, mapWidth, mapHeight) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:set_background', { chatId, backgroundUrl, mapWidth, mapHeight });
+  }, [chatId, sendEvent]);
+
+  const sendVttSceneCreate = useCallback((params) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:scene:create', { chatId, ...params });
+  }, [chatId, sendEvent]);
+
+  const sendVttSceneUpdate = useCallback((sceneId, updates) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:scene:update', { chatId, sceneId, updates });
+  }, [chatId, sendEvent]);
+
+  const sendVttSceneDelete = useCallback((sceneId) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:scene:delete', { chatId, sceneId });
+  }, [chatId, sendEvent]);
+
+  const sendVttSceneActivate = useCallback((sceneId) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:scene:activate', { chatId, sceneId });
+  }, [chatId, sendEvent]);
+
+  const sendVttLayerCreate = useCallback((sceneId, name, layerType) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:layer:create', { chatId, sceneId, name, layerType });
+  }, [chatId, sendEvent]);
+
+  const sendVttLayerUpdate = useCallback((sceneId, layerId, updates) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:layer:update', { chatId, sceneId, layerId, updates });
+  }, [chatId, sendEvent]);
+
+  const sendVttLayerReorder = useCallback((sceneId, layerIds) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:layer:reorder', { chatId, sceneId, layerIds });
+  }, [chatId, sendEvent]);
+
+  const sendVttLayerDelete = useCallback((sceneId, layerId) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:layer:delete', { chatId, sceneId, layerId });
+  }, [chatId, sendEvent]);
+
+  const sendVttSceneAddImage = useCallback((sceneId, imageUrl, imageWidth, imageHeight) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:scene:addImage', { chatId, sceneId, imageUrl, imageWidth, imageHeight });
+  }, [chatId, sendEvent]);
+
+  const sendVttSceneUpdateImage = useCallback((sceneId, imageId, updates) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:scene:updateImage', { chatId, sceneId, imageId, updates });
+  }, [chatId, sendEvent]);
+
+  const sendVttSceneRemoveImage = useCallback((sceneId, imageId) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:scene:removeImage', { chatId, sceneId, imageId });
+  }, [chatId, sendEvent]);
+
   return {
     connectionState,
     capabilities,
@@ -518,5 +605,19 @@ export default function useChatConnection(chatId, options = {}) {
     disconnect,
     sendVttOpen,
     sendVttGetState,
+    sendVttTokenDrag,
+    sendVttTokenDrop,
+    sendVttSetBackground,
+    sendVttSceneCreate,
+    sendVttSceneUpdate,
+    sendVttSceneDelete,
+    sendVttSceneActivate,
+    sendVttLayerCreate,
+    sendVttLayerUpdate,
+    sendVttLayerReorder,
+    sendVttLayerDelete,
+    sendVttSceneAddImage,
+    sendVttSceneUpdateImage,
+    sendVttSceneRemoveImage,
   };
 }

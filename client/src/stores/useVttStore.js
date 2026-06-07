@@ -26,6 +26,8 @@ const useVttStore = create(
       isChatOpen: false,
       /** Чи відкритий журнал кидків */
       isDiceLogOpen: false,
+      /** Чи відкритий менеджер сцен (карта, токени) */
+      isSceneManagerOpen: false,
 
       /** Останні 8 результатів кидків */
       rollHistory: [],
@@ -42,6 +44,7 @@ const useVttStore = create(
       toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
       toggleChat: () => set((state) => ({ isChatOpen: !state.isChatOpen })),
       toggleDiceLog: () => set((state) => ({ isDiceLogOpen: !state.isDiceLogOpen })),
+      toggleSceneManager: () => set((state) => ({ isSceneManagerOpen: !state.isSceneManagerOpen })),
 
       /** Додати результат кидка (макс 8, старіші витісняються) */
       addRollResult: (result) => set((state) => {
@@ -85,9 +88,15 @@ const useVttStore = create(
       floatingChatState: null,
       /** Стан вікна журналу кидків (x, y, w, h, isLocked) */
       diceLogState: null,
+      /** Стан вікна менеджера сцен (x, y, w, h, isLocked) */
+      sceneManagerState: null,
+      /** Стан вікна Roll Maker (x, y, w, h, isLocked) */
+      rollMakerState: null,
 
       setFloatingChatState: (newState) => set({ floatingChatState: newState }),
       setDiceLogState: (newState) => set({ diceLogState: newState }),
+      setSceneManagerState: (newState) => set({ sceneManagerState: newState }),
+      setRollMakerState: (newState) => set({ rollMakerState: newState }),
 
       reset: () => set({ sessionId: null, isVttOpen: false, isRollMakerOpen: false }),
     }),
@@ -98,8 +107,11 @@ const useVttStore = create(
         quickRollsBySession: state.quickRollsBySession,
         isChatOpen: state.isChatOpen,
         isDiceLogOpen: state.isDiceLogOpen,
+        isSceneManagerOpen: state.isSceneManagerOpen,
         floatingChatState: state.floatingChatState,
         diceLogState: state.diceLogState,
+        sceneManagerState: state.sceneManagerState,
+        rollMakerState: state.rollMakerState,
         rollHistory: state.rollHistory,
       }),
     }
