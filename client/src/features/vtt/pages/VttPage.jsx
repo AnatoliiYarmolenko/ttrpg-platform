@@ -131,7 +131,10 @@ export default function VttPage() {
           }}
         />
         {/* PixiJS Battlefield Canvas */}
-        <VttBattlefield chatController={chatController} />
+        <VttBattlefield 
+          chatController={chatController} 
+          isGM={Boolean(pageData?.viewer?.isSessionOwner || pageData?.viewer?.role === 'GM' || actions.canManageParticipants)} 
+        />
 
         {/* UI Overlays */}
         <SceneManager chatController={chatController} />

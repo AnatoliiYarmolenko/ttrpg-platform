@@ -34,22 +34,16 @@ function useMapUpload(sessionId, chatController) {
   const [isUploading, setIsUploading] = useState(false);
 
   const handleFileChange = useCallback(async (e) => {
-    console.log('[useMapUpload] handleFileChange triggered!', e.target.files);
     const file = e.target.files?.[0];
-    
-    if (!file) {
-      console.log('[useMapUpload] No file selected.');
-      return;
-    }
+    // Скидаємо значення input одразу, щоб можна було повторно вибрати той самий файл
+    e.target.value = '';
+
+    if (!file) return;
 
     if (!sessionId) {
-      console.log('[useMapUpload] Error: No sessionId.');
       alert('Помилка: не знайдено ID сесії');
       return;
     }
-
-    // Скидаємо значення input одразу, щоб можна було повторно вибрати той самий файл
-    e.target.value = '';
 
     // Визначаємо активну сцену для додавання зображення
     const activeSceneId = useBattlefieldStore.getState().gmViewSceneId
@@ -61,25 +55,12 @@ function useMapUpload(sessionId, chatController) {
     }
 
     try {
-      console.log('[useMapUpload] Starting map upload to session:', sessionId);
       setIsUploading(true);
       const result = await uploadVttMap(sessionId, file);
       const relativeUrl = result.data.url;
-      
-      console.log('[useMapUpload] Upload successful:', result.data);
-      console.log('[useMapUpload] Calling sendVttSceneAddImage with:', {
-        activeSceneId, relativeUrl, width: result.data.width, height: result.data.height,
-        hasFunction: !!chatController?.sendVttSceneAddImage
-      });
 
       // Додаємо зображення як оверлей на активну сцену
-      if (chatController?.sendVttSceneAddImage) {
-        chatController.sendVttSceneAddImage(activeSceneId, relativeUrl, result.data.width, result.data.height);
-        console.log('[useMapUpload] sendVttSceneAddImage called successfully');
-      } else {
-        console.error('[useMapUpload] ERROR: chatController.sendVttSceneAddImage is undefined!');
-        alert('Помилка: Функція відправки на сервер недоступна. Будь ласка, оновіть сторінку (F5).');
-      }
+      chatController?.sendVttSceneAddImage?.(activeSceneId, relativeUrl, result.data.width, result.data.height);
     } catch (error) {
       alert('Не вдалося завантажити карту: ' + (error.response?.data?.error || error.message));
     } finally {
@@ -109,6 +90,7 @@ export default function SceneManager({ chatController }) {
   const scenes = useBattlefieldStore((s) => s.scenes);
   const activeSceneId = useBattlefieldStore((s) => s.activeSceneId);
   const gmViewSceneId = useBattlefieldStore((s) => s.gmViewSceneId);
+  const setGmViewSceneId = useBattlefieldStore((s) => s.setGmViewSceneId);
 
   const [isCreateSceneModalOpen, setIsCreateSceneModalOpen] = useState(false);
   const [editingScene, setEditingScene] = useState(null);
@@ -146,7 +128,8 @@ export default function SceneManager({ chatController }) {
 
   const handleCreateLayer = useCallback(() => {
     if (!currentScene) return;
-    const name = globalThis.prompt('Назва нового шару:', 'New layer');
+    /* Модалка створення шару буде додана пізніше */
+    const name = globalThis.window?.prompt('Назва нового шару:', 'New layer');
     if (name?.trim()) {
       chatController?.sendVttLayerCreate?.(currentScene.id, name.trim(), 'GENERIC');
     }
@@ -187,13 +170,24 @@ export default function SceneManager({ chatController }) {
           <div className="p-3 border-b border-brand-light/10 bg-brand-medium/10">
             <div className="flex flex-col gap-2 mb-1">
               <div className="flex items-center justify-between">
-                <div className="text-xl font-bold text-white truncate pr-2" title={currentScene?.name || 'No scene selected'}>
-                  {currentScene?.name || 'No scene selected'}
-                </div>
+                <select
+                  value={viewedSceneId || ''}
+                  onChange={(e) => setGmViewSceneId(e.target.value)}
+                  className="bg-transparent text-xl font-bold text-white focus:outline-none appearance-none cursor-pointer"
+                >
+                  {Object.values(scenes).map((scene) => (
+                    <option key={scene.id} value={scene.id} className="bg-brand-dark text-base">
+                      {scene.name}
+                    </option>
+                  ))}
+                  {Object.keys(scenes).length === 0 && (
+                    <option value="" disabled>Немає сцен</option>
+                  )}
+                </select>
                 <button
                   type="button"
                   onClick={() => setIsBrowserOpen(true)}
-                  className="text-xs font-bold uppercase tracking-wider text-brand-light/60 hover:text-white transition-colors whitespace-nowrap"
+                  className="text-xs font-bold uppercase tracking-wider text-brand-light/60 hover:text-white transition-colors"
                 >
                   Scenes browser
                 </button>
@@ -205,7 +199,6 @@ export default function SceneManager({ chatController }) {
                   <input
                     type="file"
                     ref={fileInputRef}
-                    onClick={(e) => { e.target.value = null; }}
                     accept="image/jpeg, image/png, image/webp"
                     className="hidden"
                     onChange={handleFileChange}

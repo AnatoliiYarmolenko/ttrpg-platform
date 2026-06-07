@@ -99,6 +99,57 @@ const useBattlefieldStore = create((set) => ({
   }),
 
   /**
+   * Тимчасово оновити параметри зображення для плавного drag/resize (без збереження в БД)
+   * @param {string} sceneId
+   * @param {string} imageId
+   * @param {Object} updates
+   */
+  previewSceneImage: (sceneId, imageId, updates) => set((state) => {
+    if (!state.scenes?.[sceneId]) return state;
+    const scene = state.scenes[sceneId];
+    if (!scene.layers) return state;
+
+    let layerIndex = -1;
+    let itemIndex = -1;
+
+    for (let i = 0; i < scene.layers.length; i++) {
+      const items = scene.layers[i].items;
+      if (items) {
+        itemIndex = items.findIndex(item => item.id === imageId);
+        if (itemIndex !== -1) {
+          layerIndex = i;
+          break;
+        }
+      }
+    }
+
+    if (layerIndex === -1) return state;
+
+    const layer = scene.layers[layerIndex];
+    const item = layer.items[itemIndex];
+
+    const newLayers = [...scene.layers];
+    newLayers[layerIndex] = {
+      ...layer,
+      items: [
+        ...layer.items.slice(0, itemIndex),
+        { ...item, ...updates },
+        ...layer.items.slice(itemIndex + 1)
+      ]
+    };
+    
+    return {
+      scenes: {
+        ...state.scenes,
+        [sceneId]: {
+          ...scene,
+          layers: newLayers
+        }
+      }
+    };
+  }),
+
+  /**
    * Змінити сцену яку GM зараз переглядає локально.
    * @param {string} sceneId
    */
@@ -143,6 +194,10 @@ const useBattlefieldStore = create((set) => ({
     set((state) => ({
       tokens: state.tokens.filter((t) => t.id !== tokenId),
     })),
+
+  /** Виділене зображення-оверлей (тільки для локального UI, не синхронізується з сервером) */
+  selectedImageId: null,
+  setSelectedImageId: (id) => set({ selectedImageId: id }),
 
   /**
    * Змінити розмір клітинки сітки.

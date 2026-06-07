@@ -4,8 +4,10 @@ import { Layers, Search, Trash2, Eye, Users, X, Settings } from 'lucide-react';
 import DraggablePanel from './common/DraggablePanel';
 import useBattlefieldStore from './battlefield/useBattlefieldStore';
 
+const EMPTY_OBJECT = {};
+
 export default function ScenesBrowserModal({ isOpen, onClose, chatController, onEditScene }) {
-  const scenes = useBattlefieldStore(s => s.scenes) || {};
+  const scenes = useBattlefieldStore(s => s.scenes) || EMPTY_OBJECT;
   const activeSceneId = useBattlefieldStore(s => s.activeSceneId);
   const gmViewSceneId = useBattlefieldStore(s => s.gmViewSceneId);
   const setGmViewSceneId = useBattlefieldStore(s => s.setGmViewSceneId);
@@ -23,7 +25,7 @@ export default function ScenesBrowserModal({ isOpen, onClose, chatController, on
   };
 
   const handleDelete = (id, name) => {
-    if (globalThis.window.confirm(`Ви впевнені, що хочете видалити сцену "${name || 'Unnamed'}"? Це незворотна дія.`)) {
+    if (globalThis.window?.confirm(`Ви впевнені, що хочете видалити сцену "${name || 'Unnamed'}"? Це незворотна дія.`)) {
       chatController?.sendVttSceneDelete?.(id);
       if (gmViewSceneId === id) {
         setGmViewSceneId(null);
@@ -80,18 +82,18 @@ export default function ScenesBrowserModal({ isOpen, onClose, chatController, on
           filteredScenes.map(scene => {
             const isActive = scene.id === activeSceneId;
             const isViewed = scene.id === (gmViewSceneId || activeSceneId);
-            
-            let cardClasses = 'border-brand-light/10 bg-brand-dark/50 hover:bg-brand-medium/20 hover:border-brand-light/30';
+
+            let cardClass = 'border-brand-light/10 bg-brand-dark/50 hover:bg-brand-medium/20 hover:border-brand-light/30';
             if (isActive) {
-              cardClasses = 'border-brand-accent/50 bg-brand-accent/10 shadow-[0_0_15px_rgba(251,191,36,0.15)]';
+              cardClass = 'border-brand-accent/50 bg-brand-accent/10 shadow-[0_0_15px_rgba(251,191,36,0.15)]';
             } else if (isViewed) {
-              cardClasses = 'border-brand-light/30 bg-brand-medium/30';
+              cardClass = 'border-brand-light/30 bg-brand-medium/30';
             }
 
             return (
               <div 
                 key={scene.id}
-                className={`group flex flex-col gap-2 p-3 rounded-lg border transition-all ${cardClasses}`}
+                className={`group flex flex-col gap-2 p-3 rounded-lg border transition-all ${cardClass}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex flex-col flex-1 min-w-0">
