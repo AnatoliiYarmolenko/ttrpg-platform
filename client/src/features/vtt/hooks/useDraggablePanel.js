@@ -189,10 +189,10 @@ export default function useDraggablePanel({
     };
   }, [minWidth, minHeight, onSaveState, applyStyles]);
 
-  // Ensure styles are applied initially
+  // Застосовуємо стилі при першому рендері та при зміні applyStyles
   useEffect(() => {
     applyStyles();
-  });
+  }, [applyStyles]);
 
   return {
     containerRef,

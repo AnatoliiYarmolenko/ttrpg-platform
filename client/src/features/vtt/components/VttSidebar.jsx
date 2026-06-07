@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Menu, ChevronLeft, ChevronRight, MessageSquare, ScrollText } from 'lucide-react';
+import { ArrowLeft, Menu, ChevronLeft, ChevronRight, MessageSquare, ScrollText, Map } from 'lucide-react';
 import useVttStore from '@/stores/useVttStore';
 import Button from '@/components/ui/Button';
 
@@ -56,6 +56,18 @@ export default function VttSidebar() {
             >
               <ScrollText size={18} className="text-amber-400" />
               <span>Журнал кидків</span>
+            </Button>
+
+            <Button
+              onClick={() => {
+                useVttStore.getState().toggleSceneManager();
+                toggleSidebar();
+              }}
+              variant="outline"
+              className="w-full !border-brand-light/20 !text-brand-light hover:!bg-brand-medium/30 flex items-center justify-start gap-3 !px-4"
+            >
+              <Map size={18} className="text-emerald-400" />
+              <span>Менеджер сцени</span>
             </Button>
 
             {/* Тут в майбутньому будуть інші компоненти */}

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import BaseModal from '@/components/shared/BaseModal';
 import Button from '@/components/ui/Button';
-import { X } from 'lucide-react';
+import { X, Dices } from 'lucide-react';
 import { parseFormula } from '@/features/vtt/utils/diceFormulaEngine';
+import DraggablePanel from './common/DraggablePanel';
 
 const diceTypes = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20', 'd100'];
 
@@ -121,17 +121,21 @@ export default function QuickRollModal({
   if (!isOpen) return null;
 
   return (
-    <BaseModal
+    <DraggablePanel
       isOpen={isOpen}
       onClose={onClose}
-      panelClassName="max-w-md w-full"
+      title={initialData ? 'Редагувати кидок' : 'Новий швидкий кидок'}
+      icon={<Dices size={16} className="text-brand-accent pointer-events-none" />}
+      defaultWidth={450}
+      defaultHeight={420}
+      defaultX={globalThis.window?.innerWidth ? globalThis.window.innerWidth / 2 - 225 : 0}
+      defaultY={globalThis.window?.innerHeight ? globalThis.window.innerHeight / 2 - 210 : 0}
+      minWidth={420}
+      minHeight={350}
+      contentClassName="flex-1 flex flex-col min-h-0 bg-transparent text-white"
     >
-      <div className="rounded-2xl bg-brand-dark/95 backdrop-blur-md border border-brand-light/20 p-6 shadow-2xl text-white">
-        <h3 className="mb-4 text-xl font-bold text-brand-accent">
-          {initialData ? 'Редагувати кидок' : 'Новий швидкий кидок'}
-        </h3>
-
-        <form onSubmit={handleSave} className="flex flex-col gap-4">
+      <form onSubmit={handleSave} className="flex flex-col h-full">
+        <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
           <div>
             <label htmlFor="quick-roll-name" className="block text-sm text-brand-light mb-1 font-semibold">Назва кидка</label>
             <input
@@ -140,13 +144,13 @@ export default function QuickRollModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Напр., Атака мечем"
-              className="w-full bg-black/20 border border-brand-light/20 rounded-lg p-2 text-white placeholder:text-brand-light/30 focus:outline-none focus:border-brand-accent transition-colors"
+              className="w-full bg-brand-dark/50 border border-brand-light/20 rounded-lg p-2 text-white placeholder:text-brand-light/30 focus:outline-none focus:border-brand-accent transition-colors"
             />
           </div>
 
           <div>
             <label htmlFor="quick-roll-formula" className="block text-sm text-brand-light mb-1 font-semibold">Формула</label>
-            <div className="w-full bg-black/20 border border-brand-light/20 rounded-lg p-2 flex items-center gap-2 focus-within:border-brand-accent transition-colors">
+            <div className="w-full bg-brand-dark/50 border border-brand-light/20 rounded-lg p-2 flex items-center gap-2 focus-within:border-brand-accent transition-colors">
               <span className="text-brand-light/50 font-mono">/r</span>
               <input
                 id="quick-roll-formula"
@@ -186,30 +190,30 @@ export default function QuickRollModal({
           </div>
 
           {error && <p className="text-red-400 text-sm">{error}</p>}
+        </div>
 
-          <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-brand-light/10">
-            {initialData && (
-              <Button
-                type="button"
-                variant="outline"
-                className="mr-auto !text-red-400 !border-red-400/50 hover:!bg-red-400/10"
-                onClick={handleClear}
-              >
-                Очистити слот
-              </Button>
-            )}
-            
-            <Button type="button" variant="outline" onClick={onClose} className="!text-brand-light !border-brand-light/30 hover:!bg-brand-light/10">
-              Скасувати
+        <div className="p-4 border-t border-brand-light/10 flex justify-end gap-3 shrink-0 bg-brand-medium/20">
+          {initialData && (
+            <Button
+              type="button"
+              variant="outline"
+              className="mr-auto !text-red-400 !border-red-400/50 hover:!bg-red-400/10"
+              onClick={handleClear}
+            >
+              Очистити слот
             </Button>
-            
-            <Button type="submit" variant="primary" className="!bg-brand-accent !text-brand-dark hover:!bg-brand-accent/90">
-              Зберегти
-            </Button>
-          </div>
-        </form>
-      </div>
-    </BaseModal>
+          )}
+          
+          <Button type="button" variant="outline" onClick={onClose} className="!text-brand-light !border-brand-light/30 hover:!bg-brand-light/10">
+            Скасувати
+          </Button>
+          
+          <Button type="submit" variant="primary" className="!bg-brand-accent !text-brand-dark hover:!bg-brand-accent/90">
+            Зберегти
+          </Button>
+        </div>
+      </form>
+    </DraggablePanel>
   );
 }
 
