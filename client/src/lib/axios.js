@@ -242,6 +242,11 @@ const handleResponseError = async (error) => {
     return refreshAndRetryRequest(originalRequest);
   }
 
+  const code = error.response?.data?.code;
+  if (error.response?.status === 401 && (code === 'USER_BANNED' || code === 'USER_DELETED')) {
+    clearExpiredAuthState();
+  }
+
   throw error;
 };
 

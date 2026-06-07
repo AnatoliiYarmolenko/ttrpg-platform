@@ -5,6 +5,8 @@ const { ERROR_CODES } = require('../constants/errors');
 
 const DEFAULT_WS_PATH = '/ws/chat';
 
+const activeWssInstances = new Set();
+
 function resolveWsPath(request) {
   try {
     const url = new URL(request.url, `http://${request.headers.host}`);
@@ -38,6 +40,7 @@ function createWsServer({ server, path = DEFAULT_WS_PATH, logger, onConnection }
 
   const wsPath = path || DEFAULT_WS_PATH;
   const wss = new WebSocketServer({ noServer: true });
+  activeWssInstances.add(wss);
 
   const handleUpgrade = async (request, socket, head) => {
     if (resolveWsPath(request) !== wsPath) {
@@ -78,6 +81,7 @@ function createWsServer({ server, path = DEFAULT_WS_PATH, logger, onConnection }
     }
 
     wss.close(() => {
+      activeWssInstances.delete(wss);
       server.off('upgrade', handleUpgrade);
       logger?.info({ path: wsPath }, 'WS server closed');
       resolve();
@@ -91,6 +95,21 @@ function createWsServer({ server, path = DEFAULT_WS_PATH, logger, onConnection }
   };
 }
 
+function disconnectUser(userId) {
+  const userIdNumber = Number.parseInt(userId, 10);
+  for (const wss of activeWssInstances) {
+    for (const client of wss.clients) {
+      if (client.user?.id === userIdNumber) {
+        try {
+          client.send(JSON.stringify({ type: 'auth:expired', message: 'Ваш акаунт було заблоковано' }));
+        } catch {}
+        client.terminate();
+      }
+    }
+  }
+}
+
 module.exports = {
   createWsServer,
+  disconnectUser,
 };

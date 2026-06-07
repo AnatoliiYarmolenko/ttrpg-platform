@@ -26,7 +26,8 @@ build_server:
     - npx prisma generate
   artifacts:
     paths:
-      - server/node_modules/.prisma/
+      - node_modules/.prisma/
+      - node_modules/@prisma/client/
     expire_in: 1 hour
 
 build_client:

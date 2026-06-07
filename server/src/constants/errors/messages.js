@@ -15,6 +15,7 @@ const ERROR_MESSAGES = {
   [ERROR_CODES.USER_ALREADY_EXISTS]: 'Користувач вже існує',
   [ERROR_CODES.USER_USERNAME_TAKEN]: 'Цей нікнейм зайнятий',
   [ERROR_CODES.USER_EMAIL_TAKEN]: 'Цей email вже використовується',
+  [ERROR_CODES.USER_BANNED]: 'Ваш акаунт заблоковано',
 
   [ERROR_CODES.PASSWORD_INVALID]: 'Невірний пароль',
   [ERROR_CODES.PASSWORD_TOO_WEAK]: 'Пароль занадто слабкий',

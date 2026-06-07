@@ -5,6 +5,8 @@ const PUBLIC_PROFILE_FIELDS = {
   avatarUrl: true,
   bio: true,
   createdAt: true,
+  isBanned: true,
+  bannedAt: true,
 };
 
 const PRIVATE_PROFILE_FIELDS = {
