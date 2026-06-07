@@ -15,8 +15,6 @@ import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 // <container>, <graphics>, <sprite>
 extend({ Container, Graphics, Sprite });
 
-import { snapToGrid } from '@/features/vtt/utils/vttUtils';
-
 /**
  * BattlefieldContent — внутрішній Pixi-компонент.
  *
@@ -30,7 +28,7 @@ import { snapToGrid } from '@/features/vtt/utils/vttUtils';
  *   chatController?: object
  * }} props
  */
-function BattlefieldContent({ screenWidth, screenHeight, viewport, chatController }) {
+function BattlefieldContent({ screenWidth, screenHeight, viewport, chatController, isGM }) {
   const globalGridSize = useBattlefieldStore((s) => s.gridSize);
   const backgroundUrl = useBattlefieldStore((s) => s.backgroundUrl);
   const tokens = useBattlefieldStore((s) => s.tokens);
@@ -41,24 +39,25 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, chatControlle
   const activeSceneId = useBattlefieldStore((s) => s.activeSceneId);
   const gmViewSceneId = useBattlefieldStore((s) => s.gmViewSceneId);
   const scenes = useBattlefieldStore((s) => s.scenes);
+  const selectedImageId = useBattlefieldStore((s) => s.selectedImageId);
+  const setSelectedImageId = useBattlefieldStore((s) => s.setSelectedImageId);
 
-  const viewedSceneId = gmViewSceneId || activeSceneId;
+  // Гравці завжди бачать активну сцену. GM бачить те, що обрав (gmViewSceneId) або активну
+  const viewedSceneId = isGM ? (gmViewSceneId || activeSceneId) : activeSceneId;
   const currentScene = viewedSceneId ? scenes[viewedSceneId] : null;
 
-  const currentMapWidth = currentScene?.width ?? mapWidth;
-  const currentMapHeight = currentScene?.height ?? mapHeight;
   const currentGridSize = currentScene?.gridSize ?? globalGridSize;
-
-  /** @type {(worldX: number, worldY: number) => { x: number, y: number }} */
-  const snap = useCallback(
-    (worldX, worldY) => snapToGrid(worldX, worldY, currentGridSize, currentMapWidth, currentMapHeight),
-    [currentGridSize, currentMapWidth, currentMapHeight]
-  );
 
   /** Оновити позицію/масштаб зображення-оверлея через WebSocket */
   const handleImageUpdate = useCallback((imageId, updates) => {
     if (!currentScene) return;
     chatController?.sendVttSceneUpdateImage?.(currentScene.id, imageId, updates);
+  }, [currentScene, chatController]);
+
+  /** Плавне оновлення зображення без збереження в БД (для drag/resize) */
+  const handleImagePreview = useCallback((imageId, updates) => {
+    if (!currentScene) return;
+    chatController?.sendVttScenePreviewImage?.(currentScene.id, imageId, updates);
   }, [currentScene, chatController]);
 
   /** Витягуємо зображення з BACKGROUND шару */
@@ -68,8 +67,21 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, chatControlle
   /** Рендер сцени зі стану сцени (новий шлях) */
   const renderNewScene = () => (
     <>
-      {/* 1. Суцільний фон сцени */}
+      {/* 0. Безкінечний прозорий "стіл" (ловить кліки поза розміром сцени) */}
       <graphics
+        eventMode="static"
+        onPointerDown={() => setSelectedImageId(null)}
+        draw={(g) => {
+          g.clear();
+          g.rect(-100000, -100000, 200000, 200000);
+          g.fill({ color: 0x000000, alpha: 0.001 });
+        }}
+      />
+
+      {/* 1. Суцільний фон самої сцени */}
+      <graphics
+        eventMode="static"
+        onPointerDown={() => setSelectedImageId(null)}
         draw={(g) => {
           g.clear();
           g.rect(0, 0, currentScene.width, currentScene.height);
@@ -82,8 +94,12 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, chatControlle
         <DraggableImage
           key={item.id}
           item={item}
+          isSelected={item.id === selectedImageId}
+          onSelect={() => setSelectedImageId(item.id)}
           onUpdate={handleImageUpdate}
+          onPreview={handleImagePreview}
           viewport={viewport}
+          gridSize={currentGridSize}
         />
       ))}
 
@@ -97,7 +113,6 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, chatControlle
         onTokenDrop={(tokenId, x, y) => {
           chatController?.sendVttTokenDrop?.(currentScene.id, tokenId, x, y);
         }}
-        snapToGrid={snap}
         viewport={viewport}
       />
 
@@ -143,7 +158,6 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, chatControlle
           moveToken(tokenId, x, y);
           chatController?.sendVttTokenDrop?.(tokenId, x, y);
         }}
-        snapToGrid={snap}
         viewport={viewport}
       />
     </>
@@ -177,13 +191,38 @@ BattlefieldContent.propTypes = {
  *
  * @param {{ chatController?: object }} props
  */
-export default function VttBattlefield({ chatController }) {
+export default function VttBattlefield({ chatController, isGM }) {
   const containerRef = useRef(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   // useViewport тепер живе ТУТ і слухає DOM-події на containerRef
   // BattlefieldContent отримує viewport як prop (чистий стан, без DOM-доступу)
   const { viewport } = useViewport(containerRef);
+  
+  const selectedImageId = useBattlefieldStore((s) => s.selectedImageId);
+  const setSelectedImageId = useBattlefieldStore((s) => s.setSelectedImageId);
+
+  // Скидання виділення зображення-оверлея при кліку поза канвасом VTT
+  useEffect(() => {
+    if (!selectedImageId) return;
+
+    const handleOutsideClick = (e) => {
+      // Якщо клік був у межах контейнера (наприклад, сам canvas) — 
+      // ігноруємо, оскільки PixiJS має власну логіку (клік по фону).
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setSelectedImageId(null);
+      }
+    };
+
+    document.addEventListener('pointerdown', handleOutsideClick);
+    // Також на всяк випадок 'mousedown' для старих браузерів
+    document.addEventListener('mousedown', handleOutsideClick);
+    
+    return () => {
+      document.removeEventListener('pointerdown', handleOutsideClick);
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [selectedImageId, setSelectedImageId]);
 
   // Відстежуємо розмір контейнера через ResizeObserver
   useEffect(() => {
@@ -220,6 +259,7 @@ export default function VttBattlefield({ chatController }) {
               screenHeight={dimensions.height}
               viewport={viewport}
               chatController={chatController}
+              isGM={isGM}
             />
           </Application>
         </ErrorBoundary>
@@ -230,4 +270,17 @@ export default function VttBattlefield({ chatController }) {
 
 VttBattlefield.propTypes = {
   chatController: PropTypes.object,
+  isGM: PropTypes.bool,
+};
+
+BattlefieldContent.propTypes = {
+  screenWidth: PropTypes.number.isRequired,
+  screenHeight: PropTypes.number.isRequired,
+  viewport: PropTypes.shape({
+    x: PropTypes.number.isRequired,
+    y: PropTypes.number.isRequired,
+    scale: PropTypes.number.isRequired,
+  }).isRequired,
+  chatController: PropTypes.object,
+  isGM: PropTypes.bool,
 };

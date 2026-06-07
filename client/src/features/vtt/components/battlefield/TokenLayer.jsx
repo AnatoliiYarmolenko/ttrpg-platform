@@ -2,6 +2,7 @@ import React, { useRef, useCallback, useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { extend } from '@pixi/react';
 import { Graphics, Container } from 'pixi.js';
+import { snapObjectToGrid } from '../../utils/vttUtils';
 
 extend({ Graphics, Container });
 
@@ -28,7 +29,7 @@ extend({ Graphics, Container });
  *   handlePointerUp: () => void,
  * }}
  */
-function useTokenDrag({ token, viewport, snapToGrid, onDrag, onDrop }) {
+function useTokenDrag({ token, viewport, gridSize, onDrag, onDrop }) {
   const [pos, setPos] = useState({ x: token.x, y: token.y });
 
   // Зберігаємо поточну позицію у ref для доступу без stale closure
@@ -88,11 +89,14 @@ function useTokenDrag({ token, viewport, snapToGrid, onDrag, onDrop }) {
     draggingRef.current = false;
 
     // Використовуємо posRef.current щоб уникнути stale closure
-    const snapped = snapToGrid(posRef.current.x, posRef.current.y);
+    // Токен за замовчуванням має розмір 1x1 клітинку
+    const width = gridSize * (token.size || 1);
+    const height = gridSize * (token.size || 1);
+    const snapped = snapObjectToGrid(posRef.current.x, posRef.current.y, width, height, 1, 1, gridSize);
     setPos(snapped);
     posRef.current = snapped;
     onDrop?.(token.id, snapped.x, snapped.y);
-  }, [snapToGrid, onDrop, token.id]);
+  }, [gridSize, token.size, onDrop, token.id]);
 
   return { pos, handlePointerDown, handlePointerMove, handlePointerUp };
 }
@@ -105,11 +109,10 @@ function useTokenDrag({ token, viewport, snapToGrid, onDrag, onDrop }) {
  *   gridSize: number,
  *   onTokenDrag: (id: string, x: number, y: number) => void,
  *   onTokenDrop: (id: string, x: number, y: number) => void,
- *   snapToGrid: (x: number, y: number) => { x: number, y: number },
  *   viewport: import('../../types/vtt.types').Viewport,
  * }} props
  */
-export default function TokenLayer({ tokens, gridSize, onTokenDrag, onTokenDrop, snapToGrid, viewport }) {
+export default function TokenLayer({ tokens, gridSize, onTokenDrag, onTokenDrop, viewport }) {
   return (
     <container>
       {tokens.map((token) => (
@@ -119,7 +122,6 @@ export default function TokenLayer({ tokens, gridSize, onTokenDrag, onTokenDrop,
           gridSize={gridSize}
           onDrag={onTokenDrag}
           onDrop={onTokenDrop}
-          snapToGrid={snapToGrid}
           viewport={viewport}
         />
       ))}
@@ -137,7 +139,6 @@ TokenLayer.propTypes = {
   gridSize: PropTypes.number.isRequired,
   onTokenDrag: PropTypes.func.isRequired,
   onTokenDrop: PropTypes.func.isRequired,
-  snapToGrid: PropTypes.func.isRequired,
   viewport: PropTypes.shape({
     x: PropTypes.number.isRequired,
     y: PropTypes.number.isRequired,
@@ -153,15 +154,14 @@ TokenLayer.propTypes = {
  *   gridSize: number,
  *   onDrag: (id: string, x: number, y: number) => void,
  *   onDrop: (id: string, x: number, y: number) => void,
- *   snapToGrid: (x: number, y: number) => { x: number, y: number },
  *   viewport: import('../../types/vtt.types').Viewport,
  * }} props
  */
-function Token({ token, gridSize, onDrag, onDrop, snapToGrid, viewport }) {
+function Token({ token, gridSize, onDrag, onDrop, viewport }) {
   const { pos, handlePointerDown, handlePointerMove, handlePointerUp } = useTokenDrag({
     token,
     viewport,
-    snapToGrid,
+    gridSize,
     onDrag,
     onDrop,
   });
@@ -192,16 +192,16 @@ function Token({ token, gridSize, onDrag, onDrop, snapToGrid, viewport }) {
   );
 
   return (
-    <graphics // NOSONAR
-      draw={drawToken} // NOSONAR
+    <graphics
+      draw={drawToken /* NOSONAR */}
       x={pos.x}
       y={pos.y}
-      eventMode="static" // NOSONAR
+      eventMode="static" /* NOSONAR */
       cursor="pointer"
       onPointerDown={handlePointerDown}
-      onGlobalPointerMove={handlePointerMove} // NOSONAR
+      onGlobalPointerMove={handlePointerMove /* NOSONAR */}
       onPointerUp={handlePointerUp}
-      onPointerUpOutside={handlePointerUp} // NOSONAR
+      onPointerUpOutside={handlePointerUp /* NOSONAR */}
     />
   );
 }
@@ -212,11 +212,11 @@ Token.propTypes = {
     x: PropTypes.number.isRequired,
     y: PropTypes.number.isRequired,
     color: PropTypes.number,
+    size: PropTypes.number,
   }).isRequired,
   gridSize: PropTypes.number.isRequired,
   onDrag: PropTypes.func.isRequired,
   onDrop: PropTypes.func.isRequired,
-  snapToGrid: PropTypes.func.isRequired,
   viewport: PropTypes.shape({
     x: PropTypes.number.isRequired,
     y: PropTypes.number.isRequired,

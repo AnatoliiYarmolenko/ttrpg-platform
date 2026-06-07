@@ -38,6 +38,47 @@ export function snapToGrid(worldX, worldY, gridSize, mapWidth = null, mapHeight 
 }
 
 /**
+ * snapObjectToGrid — універсальна функція для примагнічування об'єктів (токенів, зображень) до сітки.
+ * Вирівнює верхній лівий кут об'єкта по лініях сітки, а також округлює його розмір до цілих клітинок.
+ * 
+ * @param {number} x - Координата X центру об'єкта
+ * @param {number} y - Координата Y центру об'єкта
+ * @param {number} width - Базова ширина об'єкта (до застосування масштабу)
+ * @param {number} height - Базова висота об'єкта (до застосування масштабу)
+ * @param {number} scaleX - Поточний масштаб по осі X
+ * @param {number} scaleY - Поточний масштаб по осі Y
+ * @param {number} gridSize - Розмір клітинки сітки
+ * @returns {{ x: number, y: number, scaleX: number, scaleY: number }} Новий центр та масштаб
+ */
+export function snapObjectToGrid(x, y, width, height, scaleX, scaleY, gridSize) {
+  if (!gridSize) return { x, y, scaleX, scaleY };
+
+  // Поточний екранний розмір (display size)
+  let displayWidth = width * scaleX;
+  let displayHeight = height * scaleY;
+  
+  // Примагнічуємо розміри до кратності gridSize (мінімум 1 клітинка)
+  displayWidth = Math.max(gridSize, Math.round(displayWidth / gridSize) * gridSize);
+  displayHeight = Math.max(gridSize, Math.round(displayHeight / gridSize) * gridSize);
+  
+  const newScaleX = displayWidth / width;
+  const newScaleY = displayHeight / height;
+  
+  // Знаходимо верхній лівий кут і вирівнюємо його по сітці
+  const topLeftX = x - displayWidth / 2;
+  const topLeftY = y - displayHeight / 2;
+  const snappedTopLeftX = Math.round(topLeftX / gridSize) * gridSize;
+  const snappedTopLeftY = Math.round(topLeftY / gridSize) * gridSize;
+  
+  return {
+    x: snappedTopLeftX + displayWidth / 2,
+    y: snappedTopLeftY + displayHeight / 2,
+    scaleX: newScaleX,
+    scaleY: newScaleY,
+  };
+}
+
+/**
  * worldToScreen — перетворює world-координати у screen-координати.
  *
  * @param {number} worldX

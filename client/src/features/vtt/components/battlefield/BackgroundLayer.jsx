@@ -17,27 +17,22 @@ extend({ Sprite });
  * @returns {import('pixi.js').Texture | null}
  */
 function usePixiTexture(imageUrl) {
-  const [texture, setTexture] = useState(null);
-  const [prevUrl, setPrevUrl] = useState(imageUrl);
+  const [state, setState] = useState({ url: imageUrl, texture: null });
 
-  // Derived state: скидаємо текстуру ОДРАЗУ, коли змінюється URL,
-  // щоб уникнути set-state-in-effect і зайвих рендерів.
-  if (imageUrl !== prevUrl) {
-    setPrevUrl(imageUrl);
-    setTexture(null);
+  // Скидаємо текстуру при зміні URL під час рендеру (рекомендований патерн React)
+  if (state.url !== imageUrl) {
+    setState({ url: imageUrl, texture: null });
   }
 
   useEffect(() => {
-    if (!imageUrl) {
-      return;
-    }
+    if (!imageUrl) return;
 
     let cancelled = false;
 
     Assets.load(imageUrl)
       .then((tex) => {
         if (!cancelled) {
-          setTexture(tex);
+          setState({ url: imageUrl, texture: tex });
         }
       })
       .catch((err) => {
@@ -51,7 +46,7 @@ function usePixiTexture(imageUrl) {
     };
   }, [imageUrl]);
 
-  return texture;
+  return state.texture;
 }
 
 /**
@@ -74,9 +69,9 @@ export default function BackgroundLayer({ imageUrl, width, height }) {
   return (
     <>
       {/* Тінь під картою */}
-      {Boolean(width && height) && (
+      {!!width && !!height && (
         <graphics
-          draw={(g) => { // NOSONAR
+          draw={(g) => { /* NOSONAR */
             g.clear();
             g.rect(12, 12, width, height);
             g.fill({ color: 0x000000, alpha: 0.4 });
@@ -87,11 +82,11 @@ export default function BackgroundLayer({ imageUrl, width, height }) {
       {/* Карта (спрайт) */}
       {texture && (
         <sprite
-          texture={texture} // NOSONAR
+          texture={texture /* NOSONAR */}
           x={0}
           y={0}
-          width={width || texture.width}
-          height={height || texture.height}
+          width={width ?? texture.width}
+          height={height ?? texture.height}
         />
       )}
     </>
