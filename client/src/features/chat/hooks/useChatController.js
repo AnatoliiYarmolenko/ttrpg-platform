@@ -129,6 +129,7 @@ export default function useChatController(entityType, entityId, options = {}) {
     sendVttLayerDelete: connectionHook.sendVttLayerDelete,
     sendVttSceneAddImage: connectionHook.sendVttSceneAddImage,
     sendVttSceneUpdateImage: connectionHook.sendVttSceneUpdateImage,
+    sendVttScenePreviewImage: connectionHook.sendVttScenePreviewImage,
     sendVttSceneRemoveImage: connectionHook.sendVttSceneRemoveImage,
     connectionState: connectionHook.connectionState,
     isConnected: connectionHook.isConnected,

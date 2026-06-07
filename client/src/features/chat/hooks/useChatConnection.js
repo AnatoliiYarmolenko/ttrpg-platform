@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import useChatStore from '@/stores/useChatStore';
 import useVttStore from '@/stores/useVttStore';
-import useBattlefieldStore from '@/features/vtt/components/battlefield/useBattlefieldStore';
 import useAuthStore, { selectUser } from '@/stores/useAuthStore';
+import useBattlefieldStore from '@/features/vtt/components/battlefield/useBattlefieldStore';
 import { getChatMessagesAfter, getChatMessagesBefore } from '../api/chatApi';
 import {
   DEFAULT_CHAT_MESSAGES_LIMIT,
@@ -12,6 +12,7 @@ import {
   buildChatCursor,
 } from './useChatMessages';
 import api from '@/lib/axios';
+import { resolveMediaUrl, resolveSceneUrls } from '@/lib/resolveMediaUrl';
 
 const MAX_RECONNECT_ATTEMPTS = 8;
 const INITIAL_RECONNECT_DELAY = 1000;
@@ -25,6 +26,55 @@ const createClientMessageId = () => {
   }
 
   return `tmp-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+};
+
+const handleVttStateOrOpened = (data) => {
+  if (data.sessionId != null) {
+    useVttStore.getState().setVttOpen(data.sessionId, Boolean(data.isOpen));
+  }
+  if (data.type === 'vtt:state') {
+    const resolvedData = {
+      ...data,
+      scenes: data.scenes ? resolveSceneUrls(structuredClone(data.scenes)) : data.scenes,
+      backgroundUrl: data.backgroundUrl ? resolveMediaUrl(data.backgroundUrl) : data.backgroundUrl,
+    };
+    useBattlefieldStore.getState().setVttState(resolvedData);
+  } else if (data.backgroundUrl) {
+    useBattlefieldStore.getState().setBackgroundUrl(
+      resolveMediaUrl(data.backgroundUrl) ?? data.backgroundUrl,
+      data.mapWidth,
+      data.mapHeight,
+    );
+  }
+};
+
+const handleVttMessage = (data) => {
+  const type = data.type;
+
+  if (type === 'vtt:scene:previewImage') {
+    useBattlefieldStore.getState().previewSceneImage(data.sceneId, data.imageId, data.updates);
+    return;
+  }
+
+  if (type === 'vtt:opened' || type === 'vtt:state') {
+    handleVttStateOrOpened(data);
+    return;
+  }
+
+  if (type === 'vtt:token_drag' || type === 'vtt:token_drop') {
+    if (data.tokenId != null && data.x != null && data.y != null) {
+      useBattlefieldStore.getState().moveToken(data.tokenId, data.x, data.y);
+    }
+    return;
+  }
+
+  if (type === 'vtt:set_background' && data.backgroundUrl !== undefined) {
+    useBattlefieldStore.getState().setBackgroundUrl(
+      resolveMediaUrl(data.backgroundUrl) ?? data.backgroundUrl,
+      data.mapWidth,
+      data.mapHeight,
+    );
+  }
 };
 
 export const resolveWsUrl = () => {
@@ -282,6 +332,8 @@ export default function useChatConnection(chatId, options = {}) {
     socketRef.current?.close();
   }, [markOptimisticFailed, setConnectionState]);
 
+
+
   const handleIncomingMessage = useCallback((event) => {
     let data;
 
@@ -311,27 +363,8 @@ export default function useChatConnection(chatId, options = {}) {
       return;
     }
 
-    // VTT events — оновлюємо глобальний VTT store
-    if (data.type === 'vtt:opened' || data.type === 'vtt:state') {
-      console.log('[VTT] Received:', data.type, {
-        sessionId: data.sessionId,
-        isOpen: data.isOpen,
-        activeSceneId: data.activeSceneId,
-        scenesCount: data.scenes ? Object.keys(data.scenes).length : 'no scenes field',
-        scenes: data.scenes,
-      });
-      if (data.sessionId != null) {
-        useVttStore.getState().setVttOpen(data.sessionId, Boolean(data.isOpen));
-      }
-      // Оновлюємо сцени та стан поля
-      useBattlefieldStore.getState().setVttState({
-        activeSceneId: data.activeSceneId ?? null,
-        scenes: data.scenes ?? {},
-        backgroundUrl: data.backgroundUrl ?? null,
-        mapWidth: data.mapWidth ?? 2048,
-        mapHeight: data.mapHeight ?? 2048,
-      });
-      console.log('[VTT] BattlefieldStore after update:', useBattlefieldStore.getState().scenes);
+    if (data.type?.startsWith('vtt:')) {
+      handleVttMessage(data);
     }
   }, [handleChatError, handleChatJoined, handleChatMessage]);
 
@@ -538,9 +571,9 @@ export default function useChatConnection(chatId, options = {}) {
     return sendEvent('vtt:set_background', { chatId, backgroundUrl, mapWidth, mapHeight });
   }, [chatId, sendEvent]);
 
-  const sendVttSceneCreate = useCallback((params) => {
+  const sendVttSceneCreate = useCallback((data) => {
     if (!isValidId(chatId)) return false;
-    return sendEvent('vtt:scene:create', { chatId, ...params });
+    return sendEvent('vtt:scene:create', { chatId, ...data });
   }, [chatId, sendEvent]);
 
   const sendVttSceneUpdate = useCallback((sceneId, updates) => {
@@ -588,6 +621,11 @@ export default function useChatConnection(chatId, options = {}) {
     return sendEvent('vtt:scene:updateImage', { chatId, sceneId, imageId, updates });
   }, [chatId, sendEvent]);
 
+  const sendVttScenePreviewImage = useCallback((sceneId, imageId, updates) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:scene:previewImage', { chatId, sceneId, imageId, updates });
+  }, [chatId, sendEvent]);
+
   const sendVttSceneRemoveImage = useCallback((sceneId, imageId) => {
     if (!isValidId(chatId)) return false;
     return sendEvent('vtt:scene:removeImage', { chatId, sceneId, imageId });
@@ -618,6 +656,7 @@ export default function useChatConnection(chatId, options = {}) {
     sendVttLayerDelete,
     sendVttSceneAddImage,
     sendVttSceneUpdateImage,
+    sendVttScenePreviewImage,
     sendVttSceneRemoveImage,
   };
 }

@@ -22,7 +22,7 @@ const ALLOWED_LAYER_UPDATE_FIELDS = new Set(['name', 'isVisible', 'isLocked', 'o
 /**
  * Дозволені поля для оновлення зображення-оверлея через updateSceneImage().
  */
-const ALLOWED_IMAGE_UPDATE_FIELDS = new Set(['x', 'y', 'scaleX', 'scaleY']);
+const ALLOWED_IMAGE_UPDATE_FIELDS = new Set(['x', 'y', 'scaleX', 'scaleY', 'rotation']);
 
 /**
  * filterUpdates — whitelist фільтр оновлень.
@@ -117,6 +117,10 @@ class VttStateManager {
     room.openedAt = new Date();
     room.openedBy = openedBy ? String(openedBy) : null;
 
+    if (Object.keys(room.scenes).length === 0) {
+      this.createScene(sessionId, { name: 'Default Scene', width: 2048, height: 2048 });
+    }
+
     logger.info({ sessionId, openedBy }, 'VTT opened');
   }
 
@@ -172,8 +176,8 @@ class VttStateManager {
    * @param {string | number | null} [gridColor] - Колір сітки: hex-рядок або число
    * @returns {Scene}
    */
-  createScene(sessionId, params) {
-    const { name, width, height, backgroundUrl = null, backgroundColor = null, gridEnabled = true, gridType = 'SQUARE', gridColor = null, gridSize = 64, gridOpacity = 0.4 } = params;
+  createScene(sessionId, data) {
+    const { name, width, height, backgroundUrl = null, backgroundColor = null, gridEnabled = true, gridType = 'SQUARE', gridColor = null, gridSize = 64, gridOpacity = 0.4 } = data || {};
     const room = this._ensureRoom(sessionId);
     const sceneId = `scene-${this._generateId()}`;
 
@@ -430,12 +434,14 @@ class VttStateManager {
       id: `img-${this._generateId()}`,
       type: 'IMAGE',
       url: imageUrl,
-      x: 0,
-      y: 0,
+      // Розміщуємо по центру сцени за замовчуванням
+      x: scene.width / 2,
+      y: scene.height / 2,
       width: width || 512,
       height: height || 512,
       scaleX: 1,
       scaleY: 1,
+      rotation: 0,
     };
 
     bgLayer.items.push(item);
@@ -508,12 +514,7 @@ class VttStateManager {
     let sceneId = room.activeSceneId;
 
     if (!sceneId) {
-      this.createScene(sessionId, { 
-        name: 'Imported Map', 
-        width: mapWidth, 
-        height: mapHeight, 
-        backgroundUrl 
-      });
+      this.createScene(sessionId, { name: 'Imported Map', width: mapWidth, height: mapHeight, backgroundUrl });
       return;
     }
 

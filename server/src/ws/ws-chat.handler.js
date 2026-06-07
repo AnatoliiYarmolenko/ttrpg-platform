@@ -31,11 +31,6 @@ async function handleChatJoin(socket, payload, roomManager) {
     capabilities: joinState.capabilities,
     snapshotCursor: joinState.snapshotCursor || null,
   });
-
-  // Автоматично відправляємо поточний стан VTT після підключення до кімнати
-  const sessionId = socket._chatSessionMap?.get(chatId) || null;
-  const vttState = sessionId ? vttStateManager.getVttState(sessionId) : { isOpen: false };
-  sendEvent(socket, 'vtt:state', { chatId, sessionId, ...vttState });
 }
 
 async function handleChatLeave(socket, payload, roomManager) {
@@ -150,7 +145,7 @@ async function handleVttStateChange(socket, payload, roomManager, actionType) {
 
   switch (actionType) {
     case 'vtt:scene:create':
-      vttStateManager.createScene(sessionId, payload);
+      vttStateManager.createScene(sessionId, { name, width, height, backgroundUrl, backgroundColor, gridEnabled, gridType, gridColor, gridSize, gridOpacity });
       break;
     case 'vtt:scene:update':
       vttStateManager.updateScene(sessionId, sceneId, updates);
@@ -249,6 +244,10 @@ function createChatHandler({ roomManager, logger } = {}) {
           case 'vtt:scene:updateImage':
           case 'vtt:scene:removeImage':
             await handleVttStateChange(socket, payload, roomManager, type);
+            break;
+          case 'vtt:scene:previewImage':
+            // Просто бродкастимо без збереження стану (для плавного drag/resize)
+            roomManager.broadcastExcept(parseChatId(payload.chatId), { type, ...payload }, socket);
             break;
           default:
             sendEvent(socket, 'chat:error', {
