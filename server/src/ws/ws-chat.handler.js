@@ -31,6 +31,11 @@ async function handleChatJoin(socket, payload, roomManager) {
     capabilities: joinState.capabilities,
     snapshotCursor: joinState.snapshotCursor || null,
   });
+
+  // Автоматично відправляємо поточний стан VTT після підключення до кімнати
+  const sessionId = socket._chatSessionMap?.get(chatId) || null;
+  const vttState = sessionId ? vttStateManager.getVttState(sessionId) : { isOpen: false };
+  sendEvent(socket, 'vtt:state', { chatId, sessionId, ...vttState });
 }
 
 async function handleChatLeave(socket, payload, roomManager) {
@@ -101,6 +106,94 @@ async function handleVttOpen(socket, payload, roomManager) {
   }, socket);
 }
 
+async function handleVttTokenMove(socket, payload, roomManager, eventType) {
+  const chatId = parseChatId(payload.chatId);
+  const { tokenId, x, y } = payload;
+  
+  if (!tokenId) return;
+
+  // Просто пересилаємо координати всім іншим у кімнаті
+  roomManager.broadcastExcept(chatId, {
+    type: eventType,
+    chatId,
+    tokenId,
+    x,
+    y,
+  }, socket);
+}
+
+async function handleVttSetBackground(socket, payload, roomManager) {
+  const chatId = parseChatId(payload.chatId);
+  const { backgroundUrl, mapWidth, mapHeight } = payload;
+
+  // Зберігаємо стан карти, щоб нові гравці отримали її при підключенні
+  const sessionId = socket._chatSessionMap?.get(chatId) || null;
+  if (sessionId) {
+    vttStateManager.setBackground(sessionId, backgroundUrl, mapWidth, mapHeight);
+  }
+  
+  roomManager.broadcastExcept(chatId, {
+    type: 'vtt:set_background',
+    chatId,
+    backgroundUrl,
+    mapWidth,
+    mapHeight,
+  }, socket);
+}
+
+async function handleVttStateChange(socket, payload, roomManager, actionType) {
+  const chatId = parseChatId(payload.chatId);
+  const sessionId = socket._chatSessionMap?.get(chatId) || null;
+  if (!sessionId) return;
+
+  const { sceneId, layerId, updates, name, width, height, backgroundUrl, backgroundColor, gridEnabled, gridType, gridColor, gridSize, gridOpacity, layerType, layerIds, imageUrl, imageId, imageWidth, imageHeight } = payload;
+
+  switch (actionType) {
+    case 'vtt:scene:create':
+      vttStateManager.createScene(sessionId, payload);
+      break;
+    case 'vtt:scene:update':
+      vttStateManager.updateScene(sessionId, sceneId, updates);
+      break;
+    case 'vtt:scene:delete':
+      vttStateManager.deleteScene(sessionId, sceneId);
+      break;
+    case 'vtt:scene:activate':
+      vttStateManager.activateScene(sessionId, sceneId);
+      break;
+    case 'vtt:layer:create':
+      vttStateManager.createLayer(sessionId, sceneId, name, layerType);
+      break;
+    case 'vtt:layer:update':
+      vttStateManager.updateLayer(sessionId, sceneId, layerId, updates);
+      break;
+    case 'vtt:layer:reorder':
+      vttStateManager.reorderLayers(sessionId, sceneId, layerIds);
+      break;
+    case 'vtt:layer:delete':
+      vttStateManager.deleteLayer(sessionId, sceneId, layerId);
+      break;
+    case 'vtt:scene:addImage':
+      vttStateManager.addImageToScene(sessionId, sceneId, imageUrl, imageWidth, imageHeight);
+      break;
+    case 'vtt:scene:updateImage':
+      vttStateManager.updateSceneImage(sessionId, sceneId, imageId, updates);
+      break;
+    case 'vtt:scene:removeImage':
+      vttStateManager.removeSceneImage(sessionId, sceneId, imageId);
+      break;
+  }
+
+  // Broadcast the updated state to everyone in the room, including the sender
+  const vttState = vttStateManager.getVttState(sessionId);
+  roomManager.broadcast(chatId, {
+    type: 'vtt:state',
+    chatId,
+    sessionId,
+    ...vttState
+  });
+}
+
 function createChatHandler({ roomManager, logger } = {}) {
   if (!roomManager) {
     throw new Error('Room manager is required for chat handler');
@@ -136,6 +229,26 @@ function createChatHandler({ roomManager, logger } = {}) {
             break;
           case 'vtt:open':
             await handleVttOpen(socket, payload, roomManager);
+            break;
+          case 'vtt:token_drag':
+          case 'vtt:token_drop':
+            await handleVttTokenMove(socket, payload, roomManager, type);
+            break;
+          case 'vtt:set_background':
+            await handleVttSetBackground(socket, payload, roomManager);
+            break;
+          case 'vtt:scene:create':
+          case 'vtt:scene:update':
+          case 'vtt:scene:delete':
+          case 'vtt:scene:activate':
+          case 'vtt:layer:create':
+          case 'vtt:layer:update':
+          case 'vtt:layer:reorder':
+          case 'vtt:layer:delete':
+          case 'vtt:scene:addImage':
+          case 'vtt:scene:updateImage':
+          case 'vtt:scene:removeImage':
+            await handleVttStateChange(socket, payload, roomManager, type);
             break;
           default:
             sendEvent(socket, 'chat:error', {
