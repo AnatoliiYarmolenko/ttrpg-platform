@@ -317,6 +317,26 @@ const sessionCrudController = {
       next(error);
     }
   },
+
+  async uploadVttMap(req, res, next) {
+    try {
+      const { id: sessionId } = req.params;
+      
+      if (!req.file) {
+        return res.status(400).json({ error: 'Файл зображення не знайдено' });
+      }
+
+      const { processAndSaveMap } = require('../../services/upload.service');
+      const result = await processAndSaveMap(req.file.buffer, sessionId);
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 
 module.exports = sessionCrudController;

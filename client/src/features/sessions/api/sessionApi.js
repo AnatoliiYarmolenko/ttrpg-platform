@@ -110,6 +110,23 @@ export const getSessionShareLink = async (sessionId) => {
   return response.data;
 };
 
+/**
+ * Завантажити файл фону (карту) для VTT
+ * @param {number} sessionId 
+ * @param {File} file 
+ */
+export const uploadVttMap = async (sessionId, file) => {
+  const formData = new FormData();
+  formData.append('map', file);
+  
+  const response = await api.post(`/sessions/${sessionId}/vtt/map`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
+
 
 /**
  * Отримати статистику календаря з фільтрами (новий API для Dashboard)
