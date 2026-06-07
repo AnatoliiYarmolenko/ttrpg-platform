@@ -5,6 +5,7 @@ const { logger } = require('../lib/logger');
 const { COOKIE_NAMES } = require('../utils/cookie.helper');
 const { jwtSecret, corsAllowedOrigins, nodeEnv } = require('../config/config');
 const { isUserDeleted } = require('../store/deleted-users');
+const { isUserBanned } = require('../store/banned-users');
 const prismaModule = require('../lib/prisma');
 
 const verifyJwt = promisify(jwt.verify);
@@ -100,6 +101,10 @@ async function authenticateWsRequest(request) {
 
     if (await isUserDeleted(decoded.id)) {
       throw new AppError(ERROR_CODES.AUTH_TOKEN_INVALID, 'Акаунт було видалено');
+    }
+
+    if (await isUserBanned(decoded.id)) {
+      throw new AppError(ERROR_CODES.USER_BANNED, 'Акаунт було заблоковано');
     }
 
     const user = await prismaModule.prisma.user.findUnique({

@@ -5,7 +5,6 @@ const { routerOptions } = require('../config/mediasoup.config');
 const { logger } = require('../lib/logger');
 const crypto = require('node:crypto');
 
-// Допоміжна функція для надсилання подій всім учасникам
 function broadcastCallEvent(room, event, payload, excludeSocket = null) {
   const message = JSON.stringify({
     type: 'call:event',
@@ -58,6 +57,16 @@ class CallService {
     callRoomManager.destroyRoom(sessionId);
   }
 
+  endCallIfActive(sessionId) {
+    const room = callRoomManager.getRoomIfExists(sessionId);
+    
+    if (room?.callState === CALL_STATES.ACTIVE) {
+      logger.info({ sessionId }, 'Ending active call automatically');
+      broadcastCallEvent(room, CALL_EVENTS.ENDED, { sessionId });
+      callRoomManager.destroyRoom(sessionId);
+    }
+  }
+
   joinCall(sessionId, userId, socket) {
     const room = callRoomManager.getRoomIfExists(sessionId);
 
@@ -65,16 +74,13 @@ class CallService {
       throw new Error('CALL_NOT_ACTIVE');
     }
 
-    // Додаємо сокет у кімнату
     callRoomManager.addSocket(sessionId, socket);
 
-    // Додаємо або оновлюємо peer
     const socketId = socket.id || crypto.randomUUID();
     socket.id = socketId;
     
     const peer = callRoomManager.addPeer(sessionId, userId, socketId, socket.user);
 
-    // Broadcast, що приєднався новий учасник
     broadcastCallEvent(room, CALL_EVENTS.PARTICIPANT_JOINED, {
       sessionId,
       participant: peer.summary

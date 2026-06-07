@@ -4,6 +4,8 @@ const {
   NotificationType,
 } = require('../../constants/notification.constants');
 const { vttStateManager } = require('../../vtt/vtt-state.manager');
+const { callService } = require('../../call/call.service');
+const { logger } = require('../../lib/logger');
 
 const SESSION_SETTINGS_FIELDS = [
   'title',
@@ -57,7 +59,6 @@ async function createNotificationSafely(notificationService, payload) {
   try {
     await notificationService.createNotification(payload);
   } catch {
-    // Notification delivery is best-effort.
   }
 }
 
@@ -657,9 +658,13 @@ function createSessionLifecycleService({
         });
       }
 
-      // Автоматично скидаємо VTT стан при завершенні або скасуванні сесії
       if (['FINISHED', 'CANCELED'].includes(normalizedUpdateData.status)) {
         vttStateManager.closeVtt(sessionId);
+        try {
+          callService.endCallIfActive(sessionId);
+        } catch (err) {
+          logger.error({ err, sessionId }, '[SessionLifecycle] Помилка автозакриття дзвінка при завершенні/скасуванні сесії');
+        }
       }
 
       return attachPublicShareToken(updated, shareTokenState);
@@ -730,8 +735,12 @@ function createSessionLifecycleService({
         requesterId: userId,
       });
 
-      // Автоматично скидаємо VTT стан при скасуванні сесії
       vttStateManager.closeVtt(sessionId);
+      try {
+        callService.endCallIfActive(sessionId);
+      } catch (err) {
+        logger.error({ err, sessionId }, '[SessionLifecycle] Помилка автозакриття дзвінка при скасуванні сесії');
+      }
 
       return { ...updated, startAt: updated.date };
     },

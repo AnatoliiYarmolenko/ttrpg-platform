@@ -13,6 +13,9 @@ const permissionHelpers = require('./campaign/campaign-permission.helpers');
 const createCampaignMembersService = require('./campaign/campaign-members.service');
 const createCampaignPageService = require('./campaign/campaign-page.service');
 const notificationService = require('./notification.service');
+const { vttStateManager } = require('../vtt/vtt-state.manager');
+const { callService } = require('../call/call.service');
+const { logger } = require('../lib/logger');
 
 class CampaignService {
   constructor() {
@@ -439,7 +442,7 @@ class CampaignService {
     const campaignIdInt = Number.parseInt(campaignId, 10);
     const isFinishingCampaign = campaign.status !== 'FINISHED' && nextStatus === 'FINISHED';
     
-    const updatedCampaign = await prisma.$transaction(async (tx) => {
+    const { result: updatedCampaign, sessionsToCleanup } = await prisma.$transaction(async (tx) => {
       const rows = await tx.$queryRaw`
         SELECT visibility, "shareTokenHash" 
         FROM "Campaign" 
@@ -466,8 +469,18 @@ class CampaignService {
       };
 
       let result;
+      let sessionsToCleanupList = [];
 
       if (isFinishingCampaign) {
+        const activeOrPlannedSessions = await tx.session.findMany({
+          where: {
+            campaignId: campaignIdInt,
+            status: { in: ['ACTIVE', 'PLANNED'] },
+          },
+          select: { id: true },
+        });
+        sessionsToCleanupList = activeOrPlannedSessions.map(s => s.id);
+
         await tx.session.updateMany({
           where: {
             campaignId: campaignIdInt,
@@ -507,8 +520,17 @@ class CampaignService {
         result.shareToken = shareTokenUpdate.rawToken;
       }
 
-      return result;
+      return { result, sessionsToCleanup: sessionsToCleanupList };
     });
+
+    for (const sessionId of sessionsToCleanup) {
+      try {
+        vttStateManager.closeVtt(sessionId);
+        callService.endCallIfActive(sessionId);
+      } catch (err) {
+        logger.error({ err, sessionId }, '[CampaignService] Помилка очищення VTT/дзвінка при завершенні кампанії');
+      }
+    }
 
     if (isFinishingCampaign) {
       prisma.campaignMember.findMany({

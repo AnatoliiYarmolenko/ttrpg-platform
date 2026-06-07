@@ -3,6 +3,8 @@ const { AppError, ERROR_CODES } = require('../constants/errors');
 const { markUserAsBanned, unmarkUserAsBanned } = require('../store/banned-users');
 const notificationService = require('./notification.service');
 const { vttStateManager } = require('../vtt/vtt-state.manager');
+const { callService } = require('../call/call.service');
+const { disconnectUser } = require('../ws/ws-server');
 const { logger } = require('../lib/logger');
 
 class AdminService {
@@ -394,12 +396,14 @@ class AdminService {
     });
 
     await markUserAsBanned(targetUserId);
+    disconnectUser(targetUserId);
 
     for (const sessionId of sessionsToCloseVtt) {
       try {
         vttStateManager.closeVtt(sessionId);
+        callService.endCallIfActive(sessionId);
       } catch (err) {
-        logger.error({ err, sessionId }, '[AdminService] Помилка закриття VTT для сесії');
+        logger.error({ err, sessionId }, '[AdminService] Помилка закриття VTT або дзвінка для сесії');
       }
     }
 
