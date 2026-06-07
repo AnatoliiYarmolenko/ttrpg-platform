@@ -510,6 +510,32 @@ class CampaignService {
       return result;
     });
 
+    if (isFinishingCampaign) {
+      prisma.campaignMember.findMany({
+        where: { campaignId: campaignIdInt, userId: { not: userId } },
+        select: { userId: true },
+      }).then((members) => {
+        const recipientIds = members.map((m) => m.userId);
+        if (recipientIds.length > 0) {
+          notificationService.createNotification({
+            eventKey: `campaign_finished:${campaignIdInt}`,
+            type: 'CAMPAIGN_FINISHED',
+            severity: 'INFO',
+            category: 'campaign',
+            title: 'Кампанію завершено',
+            body: `Кампанію "${updatedCampaign.title}" було завершено.`,
+            link: `/campaign/${campaignIdInt}`,
+            recipientIds,
+            metadata: {
+              campaignId: campaignIdInt,
+              campaignTitle: updatedCampaign.title,
+              status: 'FINISHED',
+            },
+          }).catch(() => {});
+        }
+      }).catch(() => {});
+    }
+
     delete updatedCampaign.shareTokenHash;
     delete updatedCampaign.shareTokenEncrypted;
     delete updatedCampaign.shareTokenCreatedAt;

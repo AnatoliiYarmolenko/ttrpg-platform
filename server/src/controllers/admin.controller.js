@@ -1,9 +1,3 @@
-/**
- * Admin Controller
- * Обробляє адміністративні запити
- * Всі ендпоінти захищені middleware authenticateToken + requireAdmin
- */
-
 const adminService = require('../services/admin.service');
 const { AppError, ERROR_CODES } = require('../constants/errors');
 
@@ -72,6 +66,24 @@ class AdminController {
   async deleteSession(req, res, next) {
     try {
       const result = await adminService.deleteSession(req.params.id);
+      res.json({ success: true, ...result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async banUser(req, res, next) {
+    try {
+      const result = await adminService.banUser(req.params.id, req.user.id);
+      res.json({ success: true, ...result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async unbanUser(req, res, next) {
+    try {
+      const result = await adminService.unbanUser(req.params.id);
       res.json({ success: true, ...result });
     } catch (error) {
       next(error);
