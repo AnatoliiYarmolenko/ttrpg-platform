@@ -41,8 +41,17 @@ export const getAdminSessions = async ({ page = 1, limit = 20, search = '', stat
   const response = await api.get(`/admin/sessions?${params}`);
   return response.data?.data ?? null;
 };
-
 export const deleteAdminSession = async (id) => {
   const response = await api.delete(`/admin/sessions/${id}`);
+  return response.data;
+};
+
+export const banAdminUser = async (id) => {
+  const response = await api.post(`/admin/users/${id}/ban`);
+  return response.data;
+};
+
+export const unbanAdminUser = async (id) => {
+  const response = await api.post(`/admin/users/${id}/unban`);
   return response.data;
 };

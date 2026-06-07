@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import { UserAvatar } from '@/components/shared';
 import Timer from '@/components/ui/icons/Timer';
 import Dice20 from '@/components/ui/icons/Dice20';
@@ -57,6 +58,13 @@ export default function ProfilePublicCard({
         {profile.username && (
           <p className="text-brand-medium">@{profile.username}</p>
         )}
+        {profile.isBanned && (
+          <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 border border-red-200 text-red-700 text-xs font-semibold uppercase tracking-wider">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+            {' '}
+            Заблокований
+          </div>
+        )}
         {shareButton && (
           <div className="mt-3 flex justify-center">
             {shareButton}
@@ -112,3 +120,12 @@ export default function ProfilePublicCard({
     </div>
   );
 }
+
+ProfilePublicCard.propTypes = {
+  profile: PropTypes.object,
+  isLoading: PropTypes.bool.isRequired,
+  error: PropTypes.string,
+  showStats: PropTypes.bool,
+  showContactInfo: PropTypes.bool,
+  shareButton: PropTypes.node,
+};
