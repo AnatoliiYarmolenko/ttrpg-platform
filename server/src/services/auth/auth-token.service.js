@@ -59,11 +59,15 @@ async function acquireUserRefreshLock({
 async function loadRefreshUser({ prisma, createError, isUserDeleted, userId }) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, username: true, email: true, role: true },
+    select: { id: true, username: true, email: true, role: true, isBanned: true },
   });
 
   if (!user || await isUserDeleted(user.id)) {
     throw createError.userNotFound();
+  }
+
+  if (user.isBanned) {
+    throw createError.userBanned();
   }
 
   return user;

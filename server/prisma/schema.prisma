@@ -32,6 +32,8 @@ model User {
   updatedAt               DateTime                 @updatedAt
   lastActiveAt            DateTime?
   isDeleted               Boolean                  @default(false)
+  isBanned                Boolean                  @default(false)
+  bannedAt                DateTime?
   passwordResetToken      String?                  @unique
   passwordResetExpiry     DateTime?
   telegramChatId          String?
@@ -164,6 +166,7 @@ model SessionParticipant {
   session   Session           @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@unique([userId, sessionId])
+  @@index([sessionId])
 }
 
 enum SessionRole {
@@ -207,6 +210,8 @@ model EmailVerificationToken {
   user      User     @relation(fields: [userId], references: [id])
   expiresAt DateTime
   createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model EmailChangeToken {
@@ -217,6 +222,8 @@ model EmailChangeToken {
   newEmail  String
   expiresAt DateTime
   createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 // ─── New Chat Domain ───────────────────────────────────────────────────────────
@@ -294,6 +301,8 @@ model RefreshToken {
   revoked   Boolean  @default(false)
   createdAt DateTime @default(now())
   expiresAt DateTime
+
+  @@index([userId])
 }
 
 model Notification {
