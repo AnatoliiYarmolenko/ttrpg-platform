@@ -135,7 +135,7 @@ export default function QuickBar({ onRoll }) {
       <QuickRollModal
         isOpen={editingSlotIndex !== null}
         onClose={() => setEditingSlotIndex(null)}
-        initialData={editingSlotIndex === null ? null : currentRolls[editingSlotIndex]}
+        initialData={editingSlotIndex == null ? null : currentRolls[editingSlotIndex]}
         onSave={handleSaveModal}
         onClear={handleClearModal}
       />

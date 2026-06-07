@@ -34,9 +34,10 @@ export function resolveMediaUrl(url) {
  * @returns {string}
  */
 export function getApiBaseUrl() {
-  const apiUrl = typeof import.meta === 'undefined'
-    ? null
-    : import.meta.env?.VITE_API_URL;
+  let apiUrl = null;
+  if (import.meta !== undefined) {
+    apiUrl = import.meta.env?.VITE_API_URL;
+  }
 
   return (apiUrl || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
 }
