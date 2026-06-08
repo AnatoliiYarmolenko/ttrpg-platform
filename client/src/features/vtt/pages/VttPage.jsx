@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Map } from 'lucide-react';
+import { VttBattlefield } from '../components/battlefield';
 import { useSessionPageQuery } from '@/features/sessions/hooks/useSessionQueries';
 import { useChatController } from '@/features/chat/hooks';
 import { FullPageLoader } from '@/components/shared';
@@ -11,6 +11,7 @@ import VttSidebar from '../components/VttSidebar';
 import VttFloatingChat from '../components/VttFloatingChat';
 import RollResultPopup from '../components/RollResultPopup';
 import DiceLogPanel from '../components/DiceLogPanel';
+import SceneManager from '../components/SceneManager';
 import useVttStore from '@/stores/useVttStore';
 import { parseFormula, evaluateFormula } from '../utils/diceFormulaEngine';
 
@@ -117,9 +118,10 @@ export default function VttPage() {
           rollTrigger={currentRollFormula} 
           onRollComplete={handleRollComplete} 
         />
+        
         {/* Animated grid background */}
         <div
-          className="absolute inset-0 opacity-10"
+          className="absolute inset-0 opacity-10 pointer-events-none"
           style={{
             backgroundImage: `
               linear-gradient(rgba(157, 200, 141, 0.3) 1px, transparent 1px),
@@ -128,34 +130,14 @@ export default function VttPage() {
             backgroundSize: '40px 40px',
           }}
         />
-
-        {/* Placeholder content */}
-        <div className="relative z-10 flex flex-col items-center gap-6 text-center max-w-md px-8">
-          <div className="relative">
-            <div className="absolute inset-0 rounded-full bg-brand-accent/20 animate-ping" />
-            <div className="relative w-20 h-20 rounded-full bg-brand-medium/40 border border-brand-accent/40 flex items-center justify-center shadow-lg shadow-brand-accent/10 backdrop-blur-sm">
-              <Map size={36} className="text-brand-accent" />
-            </div>
-          </div>
-
-          <div>
-            <h1 className="text-2xl font-bold text-white mb-2">Ігровий стіл</h1>
-            <p className="text-white/50 text-sm leading-relaxed">
-              Ця функція знаходиться в розробці.
-              <br />
-              Незабаром тут з'явиться інтерактивна карта, токени та інструменти для майстра.
-            </p>
-          </div>
-
-          {actions.canOpenVtt && (
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-brand-accent/10 border border-brand-accent/30 text-brand-accent text-xs">
-              <div className="w-2 h-2 rounded-full bg-brand-accent animate-pulse" />
-              Ігровий стіл відкрито для гравців
-            </div>
-          )}
-        </div>
+        {/* PixiJS Battlefield Canvas */}
+        <VttBattlefield 
+          chatController={chatController} 
+          isGM={Boolean(pageData?.viewer?.isSessionOwner || pageData?.viewer?.role === 'GM' || actions.canManageParticipants)} 
+        />
 
         {/* UI Overlays */}
+        <SceneManager chatController={chatController} />
         <RollMaker onRoll={handleRoll} />
         <QuickBar onRoll={handleRoll} />
       </main>

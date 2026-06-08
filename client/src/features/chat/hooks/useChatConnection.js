@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import useChatStore from '@/stores/useChatStore';
 import useVttStore from '@/stores/useVttStore';
 import useAuthStore, { selectUser } from '@/stores/useAuthStore';
+import useBattlefieldStore from '@/features/vtt/components/battlefield/useBattlefieldStore';
 import { getChatMessagesAfter, getChatMessagesBefore } from '../api/chatApi';
 import {
   DEFAULT_CHAT_MESSAGES_LIMIT,
@@ -11,6 +12,7 @@ import {
   buildChatCursor,
 } from './useChatMessages';
 import api from '@/lib/axios';
+import { resolveMediaUrl, resolveSceneUrls } from '@/lib/resolveMediaUrl';
 
 const MAX_RECONNECT_ATTEMPTS = 8;
 const INITIAL_RECONNECT_DELAY = 1000;
@@ -20,6 +22,55 @@ const isValidId = (value) => Number.isInteger(value) && value > 0;
 
 const createClientMessageId = () => {
   return `tmp-${crypto.randomUUID()}`;
+};
+
+const handleVttStateOrOpened = (data) => {
+  if (data.sessionId != null) {
+    useVttStore.getState().setVttOpen(data.sessionId, Boolean(data.isOpen));
+  }
+  if (data.type === 'vtt:state') {
+    const resolvedData = {
+      ...data,
+      scenes: data.scenes ? resolveSceneUrls(structuredClone(data.scenes)) : data.scenes,
+      backgroundUrl: data.backgroundUrl ? resolveMediaUrl(data.backgroundUrl) : data.backgroundUrl,
+    };
+    useBattlefieldStore.getState().setVttState(resolvedData);
+  } else if (data.backgroundUrl) {
+    useBattlefieldStore.getState().setBackgroundUrl(
+      resolveMediaUrl(data.backgroundUrl) ?? data.backgroundUrl,
+      data.mapWidth,
+      data.mapHeight,
+    );
+  }
+};
+
+const handleVttMessage = (data) => {
+  const type = data.type;
+
+  if (type === 'vtt:scene:previewImage') {
+    useBattlefieldStore.getState().previewSceneImage(data.sceneId, data.imageId, data.updates);
+    return;
+  }
+
+  if (type === 'vtt:opened' || type === 'vtt:state') {
+    handleVttStateOrOpened(data);
+    return;
+  }
+
+  if (type === 'vtt:token_drag' || type === 'vtt:token_drop') {
+    if (data.tokenId != null && data.x != null && data.y != null) {
+      useBattlefieldStore.getState().moveToken(data.tokenId, data.x, data.y);
+    }
+    return;
+  }
+
+  if (type === 'vtt:set_background' && data.backgroundUrl !== undefined) {
+    useBattlefieldStore.getState().setBackgroundUrl(
+      resolveMediaUrl(data.backgroundUrl) ?? data.backgroundUrl,
+      data.mapWidth,
+      data.mapHeight,
+    );
+  }
 };
 
 export const resolveWsUrl = () => {
@@ -277,6 +328,8 @@ export default function useChatConnection(chatId, options = {}) {
     socketRef.current?.close();
   }, [markOptimisticFailed, setConnectionState]);
 
+
+
   const handleIncomingMessage = useCallback((event) => {
     let data;
 
@@ -306,11 +359,8 @@ export default function useChatConnection(chatId, options = {}) {
       return;
     }
 
-    // VTT events — оновлюємо глобальний VTT store
-    if (data.type === 'vtt:opened' || data.type === 'vtt:state') {
-      if (data.sessionId != null) {
-        useVttStore.getState().setVttOpen(data.sessionId, Boolean(data.isOpen));
-      }
+    if (data.type?.startsWith('vtt:')) {
+      handleVttMessage(data);
     }
   }, [handleChatError, handleChatJoined, handleChatMessage]);
 
@@ -502,6 +552,81 @@ export default function useChatConnection(chatId, options = {}) {
     return sendEvent('vtt:getState', { chatId });
   }, [chatId, sendEvent]);
 
+  const sendVttTokenDrag = useCallback((tokenId, x, y) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:token_drag', { chatId, tokenId, x, y });
+  }, [chatId, sendEvent]);
+
+  const sendVttTokenDrop = useCallback((tokenId, x, y) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:token_drop', { chatId, tokenId, x, y });
+  }, [chatId, sendEvent]);
+
+  const sendVttSetBackground = useCallback((backgroundUrl, mapWidth, mapHeight) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:set_background', { chatId, backgroundUrl, mapWidth, mapHeight });
+  }, [chatId, sendEvent]);
+
+  const sendVttSceneCreate = useCallback((data) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:scene:create', { chatId, ...data });
+  }, [chatId, sendEvent]);
+
+  const sendVttSceneUpdate = useCallback((sceneId, updates) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:scene:update', { chatId, sceneId, updates });
+  }, [chatId, sendEvent]);
+
+  const sendVttSceneDelete = useCallback((sceneId) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:scene:delete', { chatId, sceneId });
+  }, [chatId, sendEvent]);
+
+  const sendVttSceneActivate = useCallback((sceneId) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:scene:activate', { chatId, sceneId });
+  }, [chatId, sendEvent]);
+
+  const sendVttLayerCreate = useCallback((sceneId, name, layerType) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:layer:create', { chatId, sceneId, name, layerType });
+  }, [chatId, sendEvent]);
+
+  const sendVttLayerUpdate = useCallback((sceneId, layerId, updates) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:layer:update', { chatId, sceneId, layerId, updates });
+  }, [chatId, sendEvent]);
+
+  const sendVttLayerReorder = useCallback((sceneId, layerIds) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:layer:reorder', { chatId, sceneId, layerIds });
+  }, [chatId, sendEvent]);
+
+  const sendVttLayerDelete = useCallback((sceneId, layerId) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:layer:delete', { chatId, sceneId, layerId });
+  }, [chatId, sendEvent]);
+
+  const sendVttSceneAddImage = useCallback((sceneId, imageUrl, imageWidth, imageHeight) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:scene:addImage', { chatId, sceneId, imageUrl, imageWidth, imageHeight });
+  }, [chatId, sendEvent]);
+
+  const sendVttSceneUpdateImage = useCallback((sceneId, imageId, updates) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:scene:updateImage', { chatId, sceneId, imageId, updates });
+  }, [chatId, sendEvent]);
+
+  const sendVttScenePreviewImage = useCallback((sceneId, imageId, updates) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:scene:previewImage', { chatId, sceneId, imageId, updates });
+  }, [chatId, sendEvent]);
+
+  const sendVttSceneRemoveImage = useCallback((sceneId, imageId) => {
+    if (!isValidId(chatId)) return false;
+    return sendEvent('vtt:scene:removeImage', { chatId, sceneId, imageId });
+  }, [chatId, sendEvent]);
+
   return {
     connectionState,
     capabilities,
@@ -514,5 +639,20 @@ export default function useChatConnection(chatId, options = {}) {
     disconnect,
     sendVttOpen,
     sendVttGetState,
+    sendVttTokenDrag,
+    sendVttTokenDrop,
+    sendVttSetBackground,
+    sendVttSceneCreate,
+    sendVttSceneUpdate,
+    sendVttSceneDelete,
+    sendVttSceneActivate,
+    sendVttLayerCreate,
+    sendVttLayerUpdate,
+    sendVttLayerReorder,
+    sendVttLayerDelete,
+    sendVttSceneAddImage,
+    sendVttSceneUpdateImage,
+    sendVttScenePreviewImage,
+    sendVttSceneRemoveImage,
   };
 }

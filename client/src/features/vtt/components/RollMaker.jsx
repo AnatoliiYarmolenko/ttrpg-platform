@@ -183,7 +183,6 @@ export default function RollMaker({ onRoll }) {
     </div>
   );
 }
-
 RollMaker.propTypes = {
   onRoll: PropTypes.func
 };

@@ -11,6 +11,7 @@ const {
   requireSessionOwnerOrGmOrCampaignOwner,
   requireSessionOwnerOrCampaignOwner,
 } = require('../middlewares/session-access.middleware');
+const { mapUploadMiddleware, handleMulterError } = require('../services/upload.service');
 const sessionCrudController = require('../controllers/session/session-crud.controller');
 const sessionCalendarController = require('../controllers/session/session-calendar.controller');
 const sessionParticipantsController = require('../controllers/session/session-participants.controller');
@@ -172,6 +173,20 @@ router.delete(
   '/:id/participants/:participantId',
   [authenticateToken, verifyCSRFToken, ...validateRemoveParticipant, loadSessionContext, requireSessionOwnerOrGm],
   (req, res, next) => sessionParticipantsController.removeParticipant(req, res, next)
+);
+
+router.post(
+  '/:id/vtt/map',
+  [
+    authenticateToken,
+    verifyCSRFToken,
+    ...validateSessionId,
+    loadSessionContext,
+    requireSessionOwnerOrGm,
+    mapUploadMiddleware,
+    handleMulterError,
+  ],
+  (req, res, next) => sessionCrudController.uploadVttMap(req, res, next)
 );
 
 module.exports = router;

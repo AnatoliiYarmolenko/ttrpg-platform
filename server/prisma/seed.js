@@ -10,7 +10,7 @@ const { createRawEncryptedAndHashedShareToken } = require('../src/utils/token.he
 const prisma = new PrismaClient();
 
 const SEED_PREFIX = '[SEED]';
-const TEST_PASSWORD = 'Test12345!';
+const TEST_PASSWORD = 'Test12345!'; // nosonar
 
 const usersSeed = [
   { key: 'admin', email: 'admin@seed.ttrpg.local', username: 'seed_admin', role: 'ADMIN', displayName: 'Seed Admin', timezone: 'Europe/Kyiv' },
