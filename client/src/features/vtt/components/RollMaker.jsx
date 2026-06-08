@@ -9,7 +9,7 @@ import useVttStore from '@/stores/useVttStore';
  * @param {function} onRoll - Callback функція (formula) => void, яка викликається при натисканні "Set"
  */
 export default function RollMaker({ onRoll }) {
-  const { isRollMakerOpen, setRollMakerOpen } = useVttStore();
+  const { isRollMakerOpen, setRollMakerOpen, rollStrength, setRollStrength } = useVttStore();
   const [formula, setFormula] = useState('1d20');
   const [errorMsg, setErrorMsg] = useState(null);
   const containerRef = useRef(null);
@@ -164,8 +164,25 @@ export default function RollMaker({ onRoll }) {
           </div>
         </div>
 
+        {/* Throw Strength Selection */}
+        <div>
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-xs text-white/50 uppercase tracking-wider font-semibold">Сила кидка</span>
+            <span className="text-xs font-mono text-brand-accent">{rollStrength}x</span>
+          </div>
+          <input 
+            type="range" 
+            min="0.1" 
+            max="3.0" 
+            step="0.1" 
+            value={rollStrength}
+            onChange={(e) => setRollStrength(e.target.value)}
+            className="w-full accent-brand-accent"
+          />
+        </div>
+
         {/* Visibility Mock */}
-        <div className="flex items-center gap-2 text-xs text-brand-light/70">
+        <div className="flex items-center gap-2 text-xs text-brand-light/70 mt-2">
           <div className="w-2 h-2 rounded-full bg-brand-accent animate-pulse" />
           Everyone can see
         </div>

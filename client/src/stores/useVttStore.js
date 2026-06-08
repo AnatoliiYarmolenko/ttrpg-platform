@@ -33,11 +33,17 @@ const useVttStore = create(
       rollHistory: [],
       /** Останній кидок (для popup) */
       latestRoll: null,
+      /** Кидок, що щойно надійшов (для тригеру 3D анімації) */
+      incomingRoll: null,
 
       /** Збережені кидки (Quick Rolls) для кожної сесії. Формат: { [sessionId]: Array(8) } */
       quickRollsBySession: {},
 
+      /** Сила кидка кубика (від 0.1 до 3.0), за замовчуванням 1 */
+      rollStrength: 1,
+
       setVttOpen: (sessionId, isOpen) => set({ sessionId: String(sessionId), isVttOpen: Boolean(isOpen) }),
+      setRollStrength: (strength) => set({ rollStrength: Number.parseFloat(strength) }),
       setRollMakerOpen: (isOpen) => set({ isRollMakerOpen: Boolean(isOpen) }),
       toggleRollMaker: () => set((state) => ({ isRollMakerOpen: !state.isRollMakerOpen })),
       toggleQuickBar: () => set((state) => ({ isQuickBarOpen: !state.isQuickBarOpen })),
@@ -48,13 +54,19 @@ const useVttStore = create(
 
       /** Додати результат кидка (макс 8, старіші витісняються) */
       addRollResult: (result) => set((state) => {
+        // Уникаємо дублювання (оскільки ми самі можемо отримати свій же кидок)
+        if (state.rollHistory.some(r => r.id === result.id)) return state;
         const newHistory = [result, ...state.rollHistory].slice(0, 8);
         return { rollHistory: newHistory, latestRoll: result };
       }),
+      /** Встановити подію вхідного кидка (для 3D) */
+      setIncomingRoll: (roll) => set({ incomingRoll: roll }),
+      /** Очистити подію вхідного кидка */
+      clearIncomingRoll: () => set({ incomingRoll: null }),
       /** Прибрати popup останнього кидка */
       clearLatestRoll: () => set({ latestRoll: null }),
       /** Очистити журнал */
-      clearRollHistory: () => set({ rollHistory: [], latestRoll: null }),
+      clearRollHistory: () => set({ rollHistory: [], latestRoll: null, incomingRoll: null }),
       
       /** Зберегти кидок у певний слот (0-7) для поточної сесії */
       setQuickRoll: (index, rollData) => set((state) => {

@@ -142,12 +142,22 @@ export default function RollResultPopup() {
           <X size={14} strokeWidth={2.5} />
         </button>
 
-        {/* Ім'я гравця */}
-        {name && (
-          <div className="text-brand-light/80 text-[13px] font-bold mb-1 truncate">
-            {name}
-          </div>
-        )}
+        {/* Гравець та Ім'я кидка */}
+        <div className="flex items-center gap-2 mb-1 truncate">
+          {latestRoll.player && (
+            <span className="text-brand-accent text-[12px] font-black uppercase tracking-widest">
+              {latestRoll.player}
+            </span>
+          )}
+          {name && (
+            <>
+              {latestRoll.player && <span className="text-brand-light/40">•</span>}
+              <span className="text-brand-light/80 text-[13px] font-bold">
+                {name}
+              </span>
+            </>
+          )}
+        </div>
 
         {/* Формула та результат */}
         <div className="flex items-center justify-between gap-3">
