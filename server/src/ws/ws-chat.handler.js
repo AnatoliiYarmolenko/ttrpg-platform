@@ -3,6 +3,7 @@ const chatService = require('../services/chat.service');
 const { checkRateLimit } = require('../services/rate-limit.service');
 const { vttStateManager } = require('../vtt/vtt-state.manager');
 const sessionService = require('../services/session.service');
+const { rollDice } = require('../vtt/dice-engine');
 const { parseIncomingMessage, sendEvent, resolveErrorCode, resolveErrorMessage } = require('./ws-utils');
 
 function parseChatId(value) {
@@ -136,6 +137,33 @@ async function handleVttSetBackground(socket, payload, roomManager) {
   }, socket);
 }
 
+async function handleVttDiceRoll(socket, payload, roomManager) {
+  const chatId = parseChatId(payload.chatId);
+  const sessionId = socket._chatSessionMap?.get(chatId) || null;
+  console.log('[WS] handleVttDiceRoll received:', { chatId, sessionId, payload });
+  if (!sessionId) {
+    console.error('[WS] Error: sessionId is missing for chatId:', chatId);
+    return;
+  }
+
+  const { formula, name, strength } = payload;
+  const player = socket.user?.username || 'Гравець';
+  
+  // Обчислюємо результати на сервері
+  const rollResult = { ...rollDice(formula, player), name, strength: strength || 1 };
+  
+  // Зберігаємо в стані кімнати
+  const entry = vttStateManager.addDiceRoll(sessionId, rollResult);
+
+  // Broadcast ВСІМ (включаючи відправника), щоб усі побачили однаковий кидок
+  roomManager.broadcast(chatId, {
+    type: 'vtt:dice:result',
+    chatId,
+    sessionId,
+    roll: entry
+  });
+}
+
 async function handleVttStateChange(socket, payload, roomManager, actionType) {
   const chatId = parseChatId(payload.chatId);
   const sessionId = socket._chatSessionMap?.get(chatId) || null;
@@ -201,6 +229,7 @@ function createChatHandler({ roomManager, logger } = {}) {
 
       try {
         ({ type, payload } = parseIncomingMessage(raw));
+        console.log('[WS RAW MSG IN]:', type, payload);
       } catch (error) {
         const code = resolveErrorCode(error);
         const message = resolveErrorMessage(error);
@@ -231,6 +260,9 @@ function createChatHandler({ roomManager, logger } = {}) {
             break;
           case 'vtt:set_background':
             await handleVttSetBackground(socket, payload, roomManager);
+            break;
+          case 'vtt:dice:roll':
+            await handleVttDiceRoll(socket, payload, roomManager);
             break;
           case 'vtt:scene:create':
           case 'vtt:scene:update':

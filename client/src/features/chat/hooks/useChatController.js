@@ -118,6 +118,7 @@ export default function useChatController(entityType, entityId, options = {}) {
     sendVttGetState: connectionHook.sendVttGetState,
     sendVttTokenDrag: connectionHook.sendVttTokenDrag,
     sendVttTokenDrop: connectionHook.sendVttTokenDrop,
+    sendVttDiceRoll: connectionHook.sendVttDiceRoll,
     sendVttSetBackground: connectionHook.sendVttSetBackground,
     sendVttSceneCreate: connectionHook.sendVttSceneCreate,
     sendVttSceneUpdate: connectionHook.sendVttSceneUpdate,

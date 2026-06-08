@@ -13,7 +13,6 @@ import RollResultPopup from '../components/RollResultPopup';
 import DiceLogPanel from '../components/DiceLogPanel';
 import SceneManager from '../components/SceneManager';
 import useVttStore from '@/stores/useVttStore';
-import { parseFormula, evaluateFormula } from '../utils/diceFormulaEngine';
 
 /**
  * VttPage — сторінка Ігрового столу (/session/:id/vtt).
@@ -29,10 +28,8 @@ import { parseFormula, evaluateFormula } from '../utils/diceFormulaEngine';
 export default function VttPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [currentRollFormula, setCurrentRollFormula] = React.useState(null);
-  
   const setVttOpen = useVttStore((state) => state.setVttOpen);
-  const addRollResult = useVttStore((state) => state.addRollResult);
+  const incomingRoll = useVttStore((state) => state.incomingRoll);
   
   useEffect(() => {
     if (id) {
@@ -76,25 +73,15 @@ export default function VttPage() {
 
   // Обробник кидка з QuickBar або RollMaker
   const handleRoll = useCallback((formula, name) => {
-    setCurrentRollFormula({ formula, name: name || null, ts: Date.now() });
-  }, []);
 
-  // Обробник завершення 3D кидка
-  const handleRollComplete = useCallback((rawResults, formulaInfo) => {
-    if (!formulaInfo?.formula) return;
-
-    const tokens = parseFormula(formulaInfo.formula);
-    const { total, details } = evaluateFormula(tokens, rawResults);
-
-    addRollResult({
-      id: `roll-${crypto.randomUUID()}`,
-      name: formulaInfo.name || null,
-      formula: formulaInfo.formula,
-      total,
-      details,
-      timestamp: Date.now(),
-    });
-  }, [addRollResult]);
+    console.log('[VttPage] handleRoll called with:', formula, name);
+    if (!chatController.sendVttDiceRoll) {
+      alert('Помилка: Функція sendVttDiceRoll недоступна. Будь ласка, оновіть сторінку (Ctrl+F5).');
+      return;
+    }
+    // Відправляємо кидок на сервер для синхронізації
+    chatController.sendVttDiceRoll(formula, name);
+  }, [chatController]);
 
   if (isLoading || !pageData) {
     return <FullPageLoader text="Завантаження Ігрового столу..." />;
@@ -114,10 +101,7 @@ export default function VttPage() {
       {/* Canvas Placeholder */}
       <main className="flex-1 flex flex-col items-center justify-center relative overflow-hidden">
         {/* 3D Dice Layer */}
-        <DiceRoller3D 
-          rollTrigger={currentRollFormula} 
-          onRollComplete={handleRollComplete} 
-        />
+        <DiceRoller3D incomingRoll={incomingRoll} />
         
         {/* Animated grid background */}
         <div

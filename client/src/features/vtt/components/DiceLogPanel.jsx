@@ -140,7 +140,7 @@ export default function DiceLogPanel() {
                 <div className="flex-1 min-w-0 flex flex-col">
                   <div className="flex items-center gap-2 w-full">
                     <span className="text-white font-bold text-[13px] uppercase truncate">
-                      {roll.name || 'UNTITLED'}
+                      {roll.player ? `${roll.player}: ` : ''}{roll.name || 'UNTITLED'}
                     </span>
                     <div className="h-[1px] flex-1 bg-brand-light/20 min-w-[10px]" />
                     <span className="text-white font-bold text-xl tabular-nums leading-none ml-1 flex-shrink-0">
