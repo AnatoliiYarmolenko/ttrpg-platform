@@ -39,6 +39,11 @@ const handleVttStateOrOpened = (data) => {
       backgroundUrl: data.backgroundUrl ? resolveMediaUrl(data.backgroundUrl) : data.backgroundUrl,
     };
     useBattlefieldStore.getState().setVttState(resolvedData);
+    
+    // Синхронізуємо історію кидків при повному завантаженні стану
+    if (Array.isArray(data.diceLog)) {
+      useVttStore.setState({ rollHistory: data.diceLog });
+    }
   } else if (data.backgroundUrl) {
     useBattlefieldStore.getState().setBackgroundUrl(
       resolveMediaUrl(data.backgroundUrl) ?? data.backgroundUrl,
@@ -58,6 +63,23 @@ const handleVttMessage = (data) => {
 
   if (type === 'vtt:opened' || type === 'vtt:state') {
     handleVttStateOrOpened(data);
+    return;
+  }
+
+  if (type === 'vtt:dice:result' && data.roll) {
+    // Встановлюємо кубики для 3D анімації
+    useVttStore.getState().setIncomingRoll(data.roll);
+    
+    // Результат в чат (addRollResult) тепер додається в DiceRoller3D.jsx після завершення анімації
+    // Якщо ми не на сторінці VTT, то кубики можуть не показатися, тому додамо тайм-аут про всяк випадок
+    setTimeout(() => {
+      const state = useVttStore.getState();
+      // Якщо результат ще не доданий (ідентифікатор), додамо його
+      if (!state.rollHistory.some(r => r.id === data.roll.id)) {
+        state.addRollResult(data.roll);
+      }
+    }, 6000); // Резервний таймер, якщо анімація не відпрацювала
+    
     return;
   }
 
@@ -566,6 +588,12 @@ export default function useChatConnection(chatId, options = {}) {
     return sendEvent('vtt:token_drop', { chatId, tokenId, x, y });
   }, [chatId, sendEvent]);
 
+  const sendVttDiceRoll = useCallback((formula, name) => {
+    if (!isValidId(chatId)) return false;
+    const strength = useVttStore.getState().rollStrength || 1;
+    return sendEvent('vtt:dice:roll', { chatId, formula, name, strength });
+  }, [chatId, sendEvent]);
+
   const sendVttSetBackground = useCallback((backgroundUrl, mapWidth, mapHeight) => {
     if (!isValidId(chatId)) return false;
     return sendEvent('vtt:set_background', { chatId, backgroundUrl, mapWidth, mapHeight });
@@ -645,6 +673,7 @@ export default function useChatConnection(chatId, options = {}) {
     sendVttGetState,
     sendVttTokenDrag,
     sendVttTokenDrop,
+    sendVttDiceRoll,
     sendVttSetBackground,
     sendVttSceneCreate,
     sendVttSceneUpdate,

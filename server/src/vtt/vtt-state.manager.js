@@ -72,6 +72,7 @@ class VttStateManager {
         openedBy: null,
         activeSceneId: null,
         scenes: {},
+        diceLog: [],
       });
     }
     return this.rooms.get(id);
@@ -154,10 +155,44 @@ class VttStateManager {
   getVttState(sessionId) {
     const room = this.rooms.get(String(sessionId));
     if (!room) {
-      return { isOpen: false, openedAt: null, openedBy: null, activeSceneId: null, scenes: {} };
+      return { isOpen: false, openedAt: null, openedBy: null, activeSceneId: null, scenes: {}, diceLog: [] };
     }
     // Повертаємо shallow copy щоб уникнути зовнішніх мутацій
     return { ...room };
+  }
+
+  // ─── Dice Log ─────────────────────────────────────────────────────────────
+
+  addDiceRoll(sessionId, rollResult) {
+    const room = this._ensureRoom(sessionId);
+    
+    const entry = {
+      id: rollResult.id || `roll-${this._generateId()}`,
+      timestamp: rollResult.timestamp || Date.now(),
+      ...rollResult
+    };
+
+    // Add to beginning of array
+    room.diceLog.unshift(entry);
+
+    // Limit to 50 rolls to prevent memory leaks
+    if (room.diceLog.length > 50) {
+      room.diceLog = room.diceLog.slice(0, 50);
+    }
+
+    return entry;
+  }
+
+  getDiceLog(sessionId) {
+    const room = this.rooms.get(String(sessionId));
+    return room ? [...room.diceLog] : [];
+  }
+  
+  clearDiceLog(sessionId) {
+    const room = this.rooms.get(String(sessionId));
+    if (room) {
+      room.diceLog = [];
+    }
   }
 
   // ─── Scene Management ─────────────────────────────────────────────────────
