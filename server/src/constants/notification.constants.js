@@ -1,8 +1,3 @@
-/**
- * Notification constants
- * MVP-01: Centralized notification keys and statuses
- */
-
 const NotificationSeverity = Object.freeze({
   INFO: 'INFO',
   SUCCESS: 'SUCCESS',
@@ -18,7 +13,6 @@ const RecipientStatus = Object.freeze({
 });
 
 const NotificationType = Object.freeze({
-  // Session notifications (MVP scope)
   SESSION_JOIN_REQUESTS_UPDATED: 'SESSION_JOIN_REQUESTS_UPDATED',
   SESSION_PARTICIPANT_JOINED: 'SESSION_PARTICIPANT_JOINED',
   SESSION_PARTICIPATION_CONFIRMED: 'SESSION_PARTICIPATION_CONFIRMED',
@@ -27,11 +21,11 @@ const NotificationType = Object.freeze({
   SESSION_TIME_CONFLICT: 'SESSION_TIME_CONFLICT',
   SESSION_CANCELLED: 'SESSION_CANCELLED',
 
-  // Campaign notifications (MVP scope)
   CAMPAIGN_JOIN_REQUESTS_UPDATED: 'CAMPAIGN_JOIN_REQUESTS_UPDATED',
   CAMPAIGN_PARTICIPATION_CONFIRMED: 'CAMPAIGN_PARTICIPATION_CONFIRMED',
   CAMPAIGN_PARTICIPATION_DECLINED: 'CAMPAIGN_PARTICIPATION_DECLINED',
   CAMPAIGN_MEMBER_REMOVED: 'CAMPAIGN_MEMBER_REMOVED',
+  CAMPAIGN_FINISHED: 'CAMPAIGN_FINISHED',
 });
 
 const NotificationCategory = Object.freeze({

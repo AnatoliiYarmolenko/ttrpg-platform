@@ -49,9 +49,7 @@ services:
       start_period: 10s
 
   server:
-    build:
-      context: .
-      dockerfile: server/Dockerfile
+    image: ghcr.io/kvarell/ttrpg-platform/server:latest
     container_name: ttrpg_server
     restart: always
     network_mode: host
@@ -105,9 +103,9 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:5000/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1))\""]
-      interval: 10s
+      interval: 60s
       timeout: 5s
-      retries: 12
+      retries: 3
       start_period: 60s
     volumes:
       - uploads_data:/app/server/uploads
@@ -124,13 +122,7 @@ services:
 
 
   client:
-    build:
-      context: .
-      dockerfile: client/Dockerfile
-      target: production
-      args:
-        VITE_API_URL: /api
-        VITE_TELEGRAM_BOT_USERNAME: ${VITE_TELEGRAM_BOT_USERNAME}
+    image: ghcr.io/kvarell/ttrpg-platform/client:latest
     container_name: ttrpg_client
     restart: always
     extra_hosts:

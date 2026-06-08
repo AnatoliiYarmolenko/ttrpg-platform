@@ -73,6 +73,7 @@ export default function VttPage() {
 
   // Обробник кидка з QuickBar або RollMaker
   const handleRoll = useCallback((formula, name) => {
+
     console.log('[VttPage] handleRoll called with:', formula, name);
     if (!chatController.sendVttDiceRoll) {
       alert('Помилка: Функція sendVttDiceRoll недоступна. Будь ласка, оновіть сторінку (Ctrl+F5).');

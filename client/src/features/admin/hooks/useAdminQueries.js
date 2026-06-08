@@ -8,6 +8,8 @@ import {
   getAdminSessions,
   deleteAdminCampaign,
   deleteAdminSession,
+  banAdminUser,
+  unbanAdminUser,
 } from '../api/adminApi';
 
 export const useAdminStatsQuery = (options = {}) => {
@@ -76,8 +78,20 @@ export const useAdminMutations = () => {
     ...handleMutation('Сесію видалено', [['admin', 'sessions'], ['admin', 'stats']]),
   });
 
+  const banUserMutation = useMutation({
+    mutationFn: (id) => banAdminUser(id),
+    ...handleMutation('Користувача забанено', [['admin', 'users']]),
+  });
+
+  const unbanUserMutation = useMutation({
+    mutationFn: (id) => unbanAdminUser(id),
+    ...handleMutation('Користувача розбанено', [['admin', 'users']]),
+  });
+
   return {
     deleteCampaign: deleteCampaignMutation.mutateAsync,
     deleteSession: deleteSessionMutation.mutateAsync,
+    banUser: banUserMutation.mutateAsync,
+    unbanUser: unbanUserMutation.mutateAsync,
   };
 };

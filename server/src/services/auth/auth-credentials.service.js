@@ -83,6 +83,7 @@ function createAuthCredentialsService({
           password: true,
           emailVerified: true,
           role: true,
+          isBanned: true,
         },
       });
 
@@ -92,6 +93,10 @@ function createAuthCredentialsService({
 
       if (!user.emailVerified) {
         throw createError.emailNotVerified();
+      }
+
+      if (user.isBanned) {
+        throw createError.userBanned();
       }
 
       const isValid = await bcrypt.compare(password, user.password);
@@ -132,7 +137,6 @@ function createAuthCredentialsService({
         data: { token: refreshTokenHash, userId: user.id, expiresAt },
       });
 
-      // Create welcome notification (fire and forget)
       notificationService.createNotification({
         eventKey: 'welcome_login',
         type: 'WELCOME_LOGIN',
@@ -143,7 +147,6 @@ function createAuthCredentialsService({
         recipientIds: [user.id],
         metadata: { isWelcome: true },
       }).catch(() => {
-        // Silently fail - don't block login if notification fails
       });
 
       return {

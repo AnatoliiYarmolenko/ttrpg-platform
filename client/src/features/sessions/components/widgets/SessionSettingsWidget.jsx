@@ -356,7 +356,7 @@ function SessionSettingsWidgetContent({
                     fullWidth={true}
                     disabled={isRegeneratingShareLink}
                     isLoading={isRegeneratingShareLink}
-                    loadingText="╨Ю╨╜╨╛╨▓╨╗╨╡╨╜╨╜╤П..."
+                    loadingText="Оновлення..."
                     className="w-full min-h-[44px] !shadow-none"
                   >
                     {currentShareLink ? 'Оновити share-посилання' : 'Згенерувати share-посилання'}

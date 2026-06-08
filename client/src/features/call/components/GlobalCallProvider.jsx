@@ -53,7 +53,6 @@ export function GlobalCallProvider({ children }) {
     const newRpcClient = new CallRpcClient(wsUrl);
     rpcClientRef.current = newRpcClient;
     
-    // Щоб уникнути каскадних рендерів
     Promise.resolve().then(() => setRpcClient(newRpcClient));
 
     const mapPeer = (peer) => ({
@@ -66,7 +65,7 @@ export function GlobalCallProvider({ children }) {
       setConnectionState('CONNECTING');
       try {
         await newRpcClient.connect();
-        if (rpcClientRef.current !== newRpcClient) return; // Запобігання гонкам
+        if (rpcClientRef.current !== newRpcClient) return;
         
         setConnectionState('CONNECTED');
         
@@ -88,14 +87,12 @@ export function GlobalCallProvider({ children }) {
       }
     };
 
-    // Обробники подій
     newRpcClient.on('call:started', (payload) => {
       setCallState(payload.callState || 'ACTIVE');
     });
 
     newRpcClient.on('call:ended', () => {
       setCallState('ENDED');
-      // Завершення дзвінка для всіх: очищаємо локальний стейт
       disconnectAndCleanup();
       toast.info('Дзвінок завершено');
     });
@@ -144,7 +141,7 @@ export function GlobalCallProvider({ children }) {
     setConnectionState,
     setPeers,
     updatePeerMedia
-  ]); // Всі ці залежності керують підключенням
+  ]);
 
   const contextValue = useMemo(() => ({
     rpcClient,

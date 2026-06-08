@@ -11,6 +11,8 @@ router.use(requireAdmin);
 router.get('/stats', adminController.getStats);
 
 router.get('/users', adminController.getUsers);
+router.post('/users/:id/ban', verifyCSRFToken, adminController.banUser);
+router.post('/users/:id/unban', verifyCSRFToken, adminController.unbanUser);
 
 router.get('/campaigns', adminController.getCampaigns);
 

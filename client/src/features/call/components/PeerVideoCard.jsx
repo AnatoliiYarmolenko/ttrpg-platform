@@ -14,7 +14,6 @@ export function PeerVideoCard({
   const videoRef = useRef(null);
   const videoStreamRef = useRef(new MediaStream());
 
-  // Attach video track to videoStreamRef
   useEffect(() => {
     const stream = videoStreamRef.current;
     stream.getVideoTracks().forEach(t => stream.removeTrack(t));
@@ -26,7 +25,6 @@ export function PeerVideoCard({
     }
   }, [videoTrack]);
 
-  // Use active speaker detection (pass audioTrack directly to avoid stream recreation loops)
   const isSpeaking = useActiveSpeaker(audioTrack);
 
   return (
@@ -36,17 +34,15 @@ export function PeerVideoCard({
         ${isSpeaking && micEnabled ? 'ring-2 ring-brand-accent' : 'ring-1 ring-neutral-800'}
       `}
     >
-      {/* Video Element */}
       <video
         ref={videoRef}
         autoPlay
         playsInline
-        muted // Always muted to pass browser autoplay policies!
+        muted 
         className={`w-full h-full object-cover ${camEnabled ? 'opacity-100' : 'opacity-0'}`}
-        style={{ transform: isLocal ? 'scaleX(-1)' : 'none' }} // Mirror local video
+        style={{ transform: isLocal ? 'scaleX(-1)' : 'none' }} 
       />
 
-      {/* Avatar Placeholder when Camera is off */}
       {!camEnabled && (
         <div className="absolute inset-0 flex items-center justify-center bg-neutral-800">
           <div className="w-20 h-20 rounded-full bg-neutral-700 flex items-center justify-center text-2xl font-bold text-neutral-400">
@@ -55,7 +51,6 @@ export function PeerVideoCard({
         </div>
       )}
 
-      {/* Top-Right Mute/Camera Status Indicators */}
       <div className="absolute top-3 right-3 flex items-center gap-1.5">
         {!micEnabled && (
           <div className="bg-red-500/80 backdrop-blur-sm text-white p-1.5 rounded-full shadow-md" title="Мікрофон вимкнено">
@@ -69,7 +64,6 @@ export function PeerVideoCard({
         )}
       </div>
 
-      {/* Bottom-Left Username Badge */}
       <div className="absolute bottom-3 left-3 max-w-[calc(100%-24px)] flex items-center bg-black/60 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-sm font-medium shadow-md">
         <span className="truncate">{username}</span>
         {isLocal && <span className="text-neutral-400 text-xs shrink-0 ml-1.5">(Ви)</span>}
