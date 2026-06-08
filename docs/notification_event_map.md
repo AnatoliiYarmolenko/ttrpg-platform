@@ -155,7 +155,7 @@
 | `CAMPAIGN_MEMBER_LEFT` | `campaign.member.left` | `campaign_managers` | `INFO` | Агрегувати по `campaignId` вікном 15 хв | `/campaign/:id` | 🔄 Future | **Менеджерам:** учасник самовільно покинув кампанію |
 | `CAMPAIGN_ROLE_UPDATED` | `campaign.member.role.updated` | `target_user` | `INFO` | Миттєво; body містить нову роль | `/campaign/:id` | ❌ NOTIF-034 | **Учаснику:** вашу роль в кампанії змінено — перевірте нові права |
 | `CAMPAIGN_OWNERSHIP_TRANSFERRED` | `campaign.ownership.transferred` | `target_user` для нового власника, опційно попередній власник | `SUCCESS` для нового власника, `INFO` для попереднього | Не дублювати, якщо це було явно підтверджено в UI actor-ом; для нового власника лишити обов'язково | `/campaign/:id` | 🔄 Future | **Новому власнику:** вам передали право власності на кампанію — ви тепер головний організатор |
-| `CAMPAIGN_STATUS_CHANGED` | `campaign.status.changed` | `campaign_members` | `INFO` або `WARNING` | Слати тільки на суттєві зміни, наприклад `ACTIVE -> FINISHED`; без спаму на дрібні edit-и | `/campaign/:id` | 🔄 Future | **Учасникам:** статус кампанії змінився — наприклад, кампанію завершено |
+| `CAMPAIGN_FINISHED` | `campaign.finished` | `campaign_members` | `INFO` | Надсилається при переході статусу кампанії у `FINISHED`. | `/campaign/:id` | ✅ MVP | **Учасникам:** кампанію завершено |
 | `CAMPAIGN_SESSION_PUBLISHED` | `campaign.session.created` | `campaign_members` | `INFO` | Опційно; краще як low-priority event, не слати якщо є окремий widget/list update | `/session/:id` | 🔄 Future | **Учасникам:** в кампанії створено нову сесію — можете приєднатися |
 | `CAMPAIGN_SESSION_UPDATED` | `campaign.session.updated`, `campaign.session.rescheduled` | `campaign_members`, яких стосується сесія | `INFO` або `WARNING` | Краще покладатися на session-level templates; campaign-level дубль не робити за замовчуванням | `/session/:id` | 🔄 Future | **Учасникам:** змінилась сесія в кампанії — перевірте деталі |
 | `CAMPAIGN_SESSION_CANCELLED` | `campaign.session.canceled` | `campaign_members`, яких стосується сесія | `ERROR` | Також краще не дублювати зверху campaign-level, якщо вже є `SESSION_CANCELLED` | `/session/:id` або `/campaign/:id` | 🔄 Future | **Учасникам:** сесію в кампанії скасовано — вона не відбудеться |
@@ -224,6 +224,7 @@
 - `CAMPAIGN_PARTICIPATION_DECLINED`
 - `CAMPAIGN_MEMBER_REMOVED`
 - `CAMPAIGN_ROLE_UPDATED`
+- `CAMPAIGN_FINISHED`
 
 ### Phase 4
 

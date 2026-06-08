@@ -37,6 +37,9 @@ const logger = pino(
 
 const httpLogger = pinoHttp({
   logger,
+  autoLogging: {
+    ignore: (req) => req.url?.startsWith('/health'),
+  },
   customProps: (req) => ({
     correlationId: req.correlationId,
     sessionId: req.sessionId,

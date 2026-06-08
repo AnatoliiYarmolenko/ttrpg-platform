@@ -63,8 +63,8 @@ function resolveSessionStatus({ now, currentDayIndex, day, sessionDate, pastDayS
 
 function buildWeeklyCampaignSessions({ now, currentDayIndex, usersByKey, campaigns }) {
   return Array.from({ length: 7 }, (_, day) => {
-    const dndDate = getDayOfCurrentWeek(day, 18, 0);
-    const cocDate = getDayOfCurrentWeek(day, 20, 30);
+    const dndDate = getDayOfCurrentWeek(day, 14, 0);
+    const cocDate = getDayOfCurrentWeek(day, 18, 0);
 
     return [
       {
@@ -76,6 +76,15 @@ function buildWeeklyCampaignSessions({ now, currentDayIndex, usersByKey, campaig
         system: 'D&D 5e',
         campaignId: campaigns[0].id,
         ownerId: usersByKey.gm1.id,
+        extraParticipants: [
+          { userId: usersByKey.gm1.id, role: 'GM', status: 'CONFIRMED' },
+          { userId: usersByKey.player1.id, role: 'PLAYER', status: 'CONFIRMED' },
+          {
+            userId: usersByKey.player2.id,
+            role: 'PLAYER',
+            status: resolveSessionStatus({ now, currentDayIndex, day, sessionDate: dndDate }) === 'FINISHED' ? 'DECLINED' : 'PENDING',
+          },
+        ],
       },
       {
         title: `${SEED_PREFIX} CoC Session (Day ${day + 1})`,
@@ -92,6 +101,21 @@ function buildWeeklyCampaignSessions({ now, currentDayIndex, usersByKey, campaig
         system: 'Call of Cthulhu',
         campaignId: campaigns[1].id,
         ownerId: usersByKey.gm2.id,
+        extraParticipants: [
+          { userId: usersByKey.gm2.id, role: 'GM', status: 'CONFIRMED' },
+          { userId: usersByKey.player3.id, role: 'PLAYER', status: 'CONFIRMED' },
+          {
+            userId: usersByKey.player4.id,
+            role: 'PLAYER',
+            status: resolveSessionStatus({
+              now,
+              currentDayIndex,
+              day,
+              sessionDate: cocDate,
+              pastDayStatus: (dayIndex) => (dayIndex % 2 === 0 ? 'FINISHED' : 'CANCELED'),
+            }) === 'FINISHED' ? 'DECLINED' : 'PENDING',
+          },
+        ],
       },
     ];
   }).flat();
@@ -154,7 +178,17 @@ async function upsertUsersAndProfiles(passwordHash) {
     const user = await prisma.user.upsert({
       where: { email: seedUser.email },
       update: { username: seedUser.username, password: passwordHash, role: seedUser.role },
-      create: { email: seedUser.email, username: seedUser.username, password: passwordHash, role: seedUser.role, displayName: seedUser.displayName, timezone: seedUser.timezone, emailVerified: true },
+      create: { 
+        email: seedUser.email, 
+        username: seedUser.username, 
+        password: passwordHash, 
+        role: seedUser.role, 
+        displayName: seedUser.displayName, 
+        timezone: seedUser.timezone, 
+        emailVerified: true,
+        wallet: { create: { balance: 0 } },
+        stats: { create: { hoursPlayed: 0, sessionsPlayed: 0 } },
+      },
     });
     usersByKey[seedUser.key] = user;
   }
@@ -163,11 +197,11 @@ async function upsertUsersAndProfiles(passwordHash) {
 
 async function createCampaigns(usersByKey) {
   const campaign1 = await prisma.campaign.create({
-    data: { title: `${SEED_PREFIX} Curse of the Emerald Crown`, description: 'D&D 5e кампанія', system: 'D&D 5e', visibility: 'PUBLIC', ownerId: usersByKey.gm1.id },
+    data: { title: `${SEED_PREFIX} Curse of the Emerald Crown`, description: 'D&D 5e кампанія', system: 'D&D 5e', visibility: 'PUBLIC', ownerId: usersByKey.gm1.id, chat: { create: {} } },
   });
 
   const campaign2 = await prisma.campaign.create({
-    data: { title: `${SEED_PREFIX} Shadows over Kyiv`, description: 'Містика', system: 'Call of Cthulhu', visibility: 'PUBLIC', ownerId: usersByKey.gm2.id },
+    data: { title: `${SEED_PREFIX} Shadows over Kyiv`, description: 'Містика', system: 'Call of Cthulhu', visibility: 'PUBLIC', ownerId: usersByKey.gm2.id, chat: { create: {} } },
   });
 
   const campaign3ShareToken = createRawEncryptedAndHashedShareToken();
@@ -181,6 +215,7 @@ async function createCampaigns(usersByKey) {
       shareTokenEncrypted: campaign3ShareToken.tokenEncrypted,
       shareTokenCreatedAt: new Date(),
       ownerId: usersByKey.gm1.id,
+      chat: { create: {} },
     },
   });
 
@@ -192,6 +227,7 @@ async function createCampaigns(usersByKey) {
       visibility: 'PUBLIC',
       status: 'FINISHED',
       ownerId: usersByKey.gm2.id,
+      chat: { create: {} },
     },
   });
 
@@ -203,6 +239,7 @@ async function createCampaigns(usersByKey) {
       { campaignId: campaign1.id, userId: usersByKey.player2.id, role: 'PLAYER' },
       { campaignId: campaign2.id, userId: usersByKey.gm2.id, role: 'OWNER' },
       { campaignId: campaign2.id, userId: usersByKey.player3.id, role: 'PLAYER' },
+      { campaignId: campaign2.id, userId: usersByKey.player4.id, role: 'PLAYER' },
       { campaignId: campaign3.id, userId: usersByKey.gm1.id, role: 'OWNER' },
       { campaignId: campaign3.id, userId: usersByKey.player4.id, role: 'PLAYER' },
       { campaignId: campaign4.id, userId: usersByKey.gm2.id, role: 'OWNER' },
@@ -220,7 +257,7 @@ async function createDynamicWeekSessions(usersByKey, campaigns) {
     ...buildWeeklyCampaignSessions({ now, currentDayIndex, usersByKey, campaigns }),
     {
       title: `${SEED_PREFIX} One-shot Public`,
-      date: getDayOfCurrentWeek((currentDayIndex + 1) % 7, 15, 0),
+      date: getDayOfCurrentWeek((currentDayIndex + 1) % 7, 10, 0),
       duration: 180,
       status: 'PLANNED',
       visibility: 'PUBLIC',
@@ -233,7 +270,7 @@ async function createDynamicWeekSessions(usersByKey, campaigns) {
     },
     {
       title: `${SEED_PREFIX} One-shot Private`,
-      date: getDayOfCurrentWeek((currentDayIndex + 2) % 7, 16, 30),
+      date: getDayOfCurrentWeek((currentDayIndex + 2) % 7, 10, 0),
       duration: 180,
       status: 'PLANNED',
       visibility: 'PRIVATE',
@@ -246,7 +283,7 @@ async function createDynamicWeekSessions(usersByKey, campaigns) {
     },
     {
       title: `${SEED_PREFIX} One-shot Link Only`,
-      date: getDayOfCurrentWeek((currentDayIndex + 3) % 7, 19, 0),
+      date: getDayOfCurrentWeek((currentDayIndex + 3) % 7, 9, 0),
       duration: 240,
       status: 'PLANNED',
       visibility: 'LINK_ONLY',
@@ -259,7 +296,7 @@ async function createDynamicWeekSessions(usersByKey, campaigns) {
     },
     {
       title: `${SEED_PREFIX} Ref Campaign Private Planned`,
-      date: getDayOfCurrentWeek((currentDayIndex + 1) % 7, 21, 0),
+      date: getDayOfCurrentWeek((currentDayIndex + 4) % 7, 10, 0),
       duration: 180,
       status: 'PLANNED',
       visibility: 'PRIVATE',
@@ -275,7 +312,7 @@ async function createDynamicWeekSessions(usersByKey, campaigns) {
     },
     {
       title: `${SEED_PREFIX} Ref Campaign Public Active`,
-      date: getDayOfCurrentWeek(currentDayIndex, 12, 0),
+      date: getDayOfCurrentWeek(currentDayIndex, 10, 0),
       duration: 180,
       status: 'ACTIVE',
       visibility: 'PUBLIC',
@@ -333,7 +370,12 @@ async function createDynamicWeekSessions(usersByKey, campaigns) {
       };
     }
     
-    const session = await prisma.session.create({ data: sessionCreateData });
+    const session = await prisma.session.create({
+      data: {
+        ...sessionCreateData,
+        chat: { create: {} },
+      },
+    });
 
     const participants = buildParticipantsForSession({
       data: { ...sessionData, extraParticipants },

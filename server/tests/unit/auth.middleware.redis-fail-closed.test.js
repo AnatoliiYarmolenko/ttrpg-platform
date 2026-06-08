@@ -5,6 +5,7 @@ const authMiddlewarePath = require.resolve('../../src/middlewares/auth.middlewar
 const jwtPath = require.resolve('jsonwebtoken');
 const configPath = require.resolve('../../src/config/config');
 const deletedUsersPath = require.resolve('../../src/store/deleted-users');
+const bannedUsersPath = require.resolve('../../src/store/banned-users');
 
 function createMockResponse() {
   return {
@@ -26,11 +27,12 @@ function createMockResponse() {
   };
 }
 
-function loadAuthMiddlewareWithMocks({ jwtVerifyMock, isUserDeletedMock }) {
+function loadAuthMiddlewareWithMocks({ jwtVerifyMock, isUserDeletedMock, isUserBannedMock = async () => false }) {
   const originalAuthMiddlewareCache = require.cache[authMiddlewarePath];
   const originalJwtCache = require.cache[jwtPath];
   const originalConfigCache = require.cache[configPath];
   const originalDeletedUsersCache = require.cache[deletedUsersPath];
+  const originalBannedUsersCache = require.cache[bannedUsersPath];
 
   delete require.cache[authMiddlewarePath];
 
@@ -64,6 +66,15 @@ function loadAuthMiddlewareWithMocks({ jwtVerifyMock, isUserDeletedMock }) {
     },
   };
 
+  require.cache[bannedUsersPath] = {
+    id: bannedUsersPath,
+    filename: bannedUsersPath,
+    loaded: true,
+    exports: {
+      isUserBanned: isUserBannedMock,
+    },
+  };
+
   try {
     return require('../../src/middlewares/auth.middleware');
   } finally {
@@ -85,6 +96,12 @@ function loadAuthMiddlewareWithMocks({ jwtVerifyMock, isUserDeletedMock }) {
       require.cache[deletedUsersPath] = originalDeletedUsersCache;
     } else {
       delete require.cache[deletedUsersPath];
+    }
+
+    if (originalBannedUsersCache) {
+      require.cache[bannedUsersPath] = originalBannedUsersCache;
+    } else {
+      delete require.cache[bannedUsersPath];
     }
 
     if (originalAuthMiddlewareCache) {
@@ -183,5 +200,72 @@ test('authenticateToken denies access when user is deleted', async () => {
   assert.equal(nextCalled, false);
   assert.equal(res.statusCode, 401);
   assert.equal(res.body?.code, 'AUTH_TOKEN_INVALID');
+  assert.equal(res.body?.canRefresh, false);
+});
+
+test('authenticateToken returns 503 when banned-user status check is unavailable', async () => {
+  const { authenticateToken } = loadAuthMiddlewareWithMocks({
+    jwtVerifyMock: (token, secret, callback) => callback(null, { id: 42, username: 'user' }),
+    isUserDeletedMock: async () => false,
+    isUserBannedMock: async () => {
+      const error = new Error('Redis unavailable');
+      error.status = 503;
+      throw error;
+    },
+  });
+
+  const req = {
+    cookies: {
+      token: 'access-token',
+    },
+    headers: {},
+  };
+  const res = createMockResponse();
+
+  let nextCalled = false;
+
+  await new Promise((resolve) => {
+    authenticateToken(req, res, () => {
+      nextCalled = true;
+      resolve();
+    });
+
+    setImmediate(resolve);
+  });
+
+  assert.equal(nextCalled, false);
+  assert.equal(res.statusCode, 503);
+  assert.equal(res.body?.code, 'SERVER_UNAVAILABLE');
+});
+
+test('authenticateToken denies access when user is banned', async () => {
+  const { authenticateToken } = loadAuthMiddlewareWithMocks({
+    jwtVerifyMock: (token, secret, callback) => callback(null, { id: 42, username: 'user' }),
+    isUserDeletedMock: async () => false,
+    isUserBannedMock: async () => true,
+  });
+
+  const req = {
+    cookies: {
+      token: 'valid-token',
+    },
+    headers: {},
+  };
+  const res = createMockResponse();
+
+  let nextCalled = false;
+
+  await new Promise((resolve) => {
+    authenticateToken(req, res, () => {
+      nextCalled = true;
+      resolve();
+    });
+
+    setImmediate(resolve);
+  });
+
+  assert.equal(nextCalled, false);
+  assert.equal(res.statusCode, 401);
+  assert.equal(res.body?.code, 'USER_BANNED');
   assert.equal(res.body?.canRefresh, false);
 });

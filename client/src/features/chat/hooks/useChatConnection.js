@@ -21,11 +21,7 @@ const MAX_RECONNECT_DELAY = 20000;
 const isValidId = (value) => Number.isInteger(value) && value > 0;
 
 const createClientMessageId = () => {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return `tmp-${crypto.randomUUID()}`;
-  }
-
-  return `tmp-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+  return `tmp-${crypto.randomUUID()}`;
 };
 
 const handleVttStateOrOpened = (data) => {

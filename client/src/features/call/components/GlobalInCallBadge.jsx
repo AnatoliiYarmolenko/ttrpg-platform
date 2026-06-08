@@ -7,13 +7,10 @@ export function GlobalInCallBadge() {
   const { activeSessionId, presenceState, localMicEnabled } = useCallStore();
   const location = useLocation();
 
-  // Показуємо віджет тільки якщо юзер приєднаний до дзвінка
   if (!activeSessionId || presenceState !== 'JOINED') {
     return null;
   }
 
-  // Якщо користувач вже знаходиться на сторінці сесії (там де є віджет), не показуємо плаваючу панель.
-  // Припускаємо, що роут сесії виглядає як /session/:id
   const isCurrentlyOnSessionPage = location.pathname.includes(`/session/${activeSessionId}`);
   if (isCurrentlyOnSessionPage) {
     return null;

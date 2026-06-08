@@ -24,7 +24,6 @@ import {
   updateSearchParams,
 } from '@/utils/urlState';
 
-// Вкладки адмін-панелі
 const TABS = {
   DASHBOARD: 'dashboard',
   USERS: 'users',
@@ -48,23 +47,18 @@ export default function AdminPage() {
     });
   }, [setSearchParams]);
 
-  // Users state
   const [usersSearchInput, setUsersSearchInput] = useState('');
   const [usersParams, setUsersParams] = useState({ page: 1, search: '' });
 
-  // Campaigns state
   const [campaignsSearchInput, setCampaignsSearchInput] = useState('');
   const [campaignsParams, setCampaignsParams] = useState({ page: 1, search: '' });
 
-  // Sessions state
   const [sessionsSearchInput, setSessionsSearchInput] = useState('');
   const [sessionsStatusFilter, setSessionsStatusFilter] = useState('');
   const [sessionsParams, setSessionsParams] = useState({ page: 1, search: '', status: '' });
 
-  // Delete modal
   const [deleteModal, setDeleteModal] = useState({ open: false, type: '', id: null, title: '' });
 
-  // Queries
   const { data: stats, isLoading: statsLoading } = useAdminStatsQuery({ enabled: activeTab === TABS.DASHBOARD });
   
   const { data: usersData, isLoading: usersLoading } = useAdminUsersQuery(usersParams, { enabled: activeTab === TABS.USERS });
@@ -92,7 +86,6 @@ export default function AdminPage() {
     }, { replace: true });
   }, [activeTab, searchParams, setSearchParams]);
 
-  // ============== Видалення ==============
 
   const handleDelete = async () => {
     try {
@@ -107,7 +100,37 @@ export default function AdminPage() {
     }
   };
 
-  // ============== Logout ==============
+  const handleBanClick = (targetUser) => {
+    openConfirm({
+      title: `Заблокувати користувача @${targetUser.username}?`,
+      message: `Ви впевнені, що хочете забанити користувача "${targetUser.displayName || targetUser.username}"? Його власні активні сесії буде скасовано, кампанії завершено, а Telegram відв'язано.`,
+      variant: 'danger',
+      confirmText: 'Заблокувати',
+      onConfirm: async () => {
+        try {
+          await mutations.banUser(targetUser.id);
+        } catch {
+          // Помилка вже виведена у toast
+        }
+      },
+    });
+  };
+
+  const handleUnbanClick = (targetUser) => {
+    openConfirm({
+      title: `Розблокувати користувача @${targetUser.username}?`,
+      message: `Це поверне користувачу "${targetUser.displayName || targetUser.username}" доступ до платформи. Його старі членства в іграх не відновляться автоматично.`,
+      variant: 'success',
+      confirmText: 'Розблокувати',
+      onConfirm: async () => {
+        try {
+          await mutations.unbanUser(targetUser.id);
+        } catch {
+          // Помилка вже виведена у toast
+        }
+      },
+    });
+  };
 
   const handleLogout = async () => {
     try {
@@ -128,7 +151,6 @@ export default function AdminPage() {
     });
   };
 
-  // ============== Форматування ==============
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '—';
@@ -162,7 +184,6 @@ export default function AdminPage() {
     { key: TABS.SESSIONS, label: 'Сесії', to: '/admin?tab=sessions' },
   ];
 
-  // ============== Рендер таблиць ==============
 
   const renderUsersTable = () => (
     <div>
@@ -184,6 +205,8 @@ export default function AdminPage() {
               <th className="text-left py-2 px-3 text-brand-dark font-semibold">Рєстрація</th>
               <th className="text-left py-2 px-3 text-brand-dark font-semibold">Кампанії</th>
               <th className="text-left py-2 px-3 text-brand-dark font-semibold">Сесії</th>
+              <th className="text-left py-2 px-3 text-brand-dark font-semibold">Статус</th>
+              <th className="text-left py-2 px-3 text-brand-dark font-semibold">Дії</th>
             </tr>
           </thead>
           <tbody>
@@ -202,13 +225,56 @@ export default function AdminPage() {
                 <td className="py-2 px-3 text-gray-500">{formatDate(u.createdAt)}</td>
                 <td className="py-2 px-3 text-gray-500">{u._count?.campaignsOwned ?? 0}</td>
                 <td className="py-2 px-3 text-gray-500">{u._count?.ownedSessions ?? 0}</td>
+                <td className="py-2 px-3">
+                  {u.isBanned ? (
+                    <span className="inline-flex flex-col">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 w-fit">
+                        Забанений
+                      </span>
+                      {u.bannedAt && (
+                        <span className="text-[10px] text-gray-400 mt-0.5">
+                          {formatDate(u.bannedAt)}
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                      Активний
+                    </span>
+                  )}
+                </td>
+                <td className="py-2 px-3">
+                  {u.id !== user?.id && u.role !== 'ADMIN' && (
+                    u.isBanned ? (
+                      <Button
+                        onClick={() => handleUnbanClick(u)}
+                        variant="secondary"
+                        size="sm"
+                        fullWidth={false}
+                        className="px-2 py-1 border-brand-light text-brand-dark hover:bg-brand-light/20"
+                      >
+                        Розбанити
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => handleBanClick(u)}
+                        variant="danger"
+                        size="sm"
+                        fullWidth={false}
+                        className="px-2 py-1 border-red-300 text-red-600 hover:bg-red-500"
+                      >
+                        Бан
+                      </Button>
+                    )
+                  )}
+                </td>
               </tr>
             ))}
             {users.length === 0 && !usersLoading && (
-              <tr><td colSpan={7} className="py-8 text-center text-gray-400">Нічого не знайдено</td></tr>
+              <tr><td colSpan={9} className="py-8 text-center text-gray-400">Нічого не знайдено</td></tr>
             )}
             {usersLoading && (
-              <tr><td colSpan={7} className="py-8 text-center text-gray-400">Завантаження...</td></tr>
+              <tr><td colSpan={9} className="py-8 text-center text-gray-400">Завантаження...</td></tr>
             )}
           </tbody>
         </table>
@@ -391,7 +457,6 @@ export default function AdminPage() {
     </div>
   );
 
-  // ============== Контент вкладки ==============
 
   const renderTabContent = () => {
     if (activeTab === TABS.DASHBOARD && statsLoading && !stats) {
@@ -423,7 +488,6 @@ export default function AdminPage() {
     }
   };
 
-  // ============== Top Bar ==============
 
   const topBar = (
     <>
@@ -526,7 +590,6 @@ export default function AdminPage() {
     </>
   );
 
-  // ============== Main Content ==============
 
   const mainContent = (
     <div className="bg-white border-2 border-brand-light/30 rounded-2xl shadow-xl h-full overflow-y-auto p-6">

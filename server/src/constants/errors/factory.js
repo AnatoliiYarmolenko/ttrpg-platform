@@ -15,6 +15,7 @@ const createError = {
   userNotFound: () => new AppError(ERROR_CODES.USER_NOT_FOUND),
   usernameTaken: () => new AppError(ERROR_CODES.USER_USERNAME_TAKEN),
   emailTaken: () => new AppError(ERROR_CODES.USER_EMAIL_TAKEN),
+  userBanned: () => new AppError(ERROR_CODES.USER_BANNED),
 
   passwordInvalid: () => new AppError(ERROR_CODES.PASSWORD_INVALID),
   passwordSameAsCurrent: () => new AppError(ERROR_CODES.PASSWORD_SAME_AS_CURRENT),

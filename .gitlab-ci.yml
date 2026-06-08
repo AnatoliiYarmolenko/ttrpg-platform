@@ -26,7 +26,8 @@ build_server:
     - npx prisma generate
   artifacts:
     paths:
-      - server/node_modules/.prisma/
+      - node_modules/.prisma/
+      - node_modules/@prisma/client/
     expire_in: 1 hour
 
 build_client:
@@ -118,6 +119,8 @@ sonarcloud_scan:
     - coverage_server
   variables:
     GIT_DEPTH: "0"
+    SONAR_USER_HOME: "$CI_PROJECT_DIR/.sonar"
+    SONAR_SCANNER_SKIP_JRE_PROVISIONING: "true"
   script:
     - $ErrorActionPreference = "Stop"
     - $toolsDir = "$env:CI_PROJECT_DIR\.ci-tools"
@@ -130,7 +133,8 @@ sonarcloud_scan:
     - $env:Path = "$env:JAVA_HOME\bin;$env:Path"
     - java -version
     - $env:CI_MERGE_REQUEST_IID = ""
-    - npx sonarqube-scanner "-Dsonar.host.url=https://sonarcloud.io" "-Dsonar.token=$env:SONAR_TOKEN" "-Dsonar.branch.name=$env:CI_COMMIT_REF_NAME"
+    - $env:SONAR_SCANNER_JAVA_EXE_PATH = "$javaHome\bin\java.exe"
+    - npx sonarqube-scanner "-Dsonar.host.url=https://sonarcloud.io" "-Dsonar.token=$env:SONAR_TOKEN" "-Dsonar.branch.name=$env:CI_COMMIT_REF_NAME" "-Dsonar.scanner.javaExePath=$javaHome\bin\java.exe"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH == "main"'

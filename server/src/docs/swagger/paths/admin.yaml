@@ -148,3 +148,71 @@ paths:
       responses:
         200:
           description: Сесію успішно видалено
+
+  /api/admin/users/{id}/ban:
+    post:
+      summary: Заблокувати користувача
+      description: Додає користувача в Redis-блекліст, завершує його кампанії, скасовує ігри, відв'язує Telegram та анулює токени.
+      tags: [Admin]
+      security:
+        - cookieAuth: []
+          csrfAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Користувача успішно заблоковано
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Користувача "username" успішно заблоковано
+        400:
+          description: Помилка валідації (наприклад, бан самого себе)
+        403:
+          description: Недостатньо прав (не адмін або спроба забанити іншого адміна)
+        404:
+          description: Користувача не знайдено
+
+  /api/admin/users/{id}/unban:
+    post:
+      summary: Розблокувати користувача
+      description: Знімає блокування та прибирає користувача з Redis-блекліста.
+      tags: [Admin]
+      security:
+        - cookieAuth: []
+          csrfAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Користувача успішно розблоковано
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Користувача "username" успішно розблоковано
+        403:
+          description: Недостатньо прав
+        404:
+          description: Користувача не знайдено
