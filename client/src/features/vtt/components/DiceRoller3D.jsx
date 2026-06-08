@@ -1,46 +1,42 @@
 import React, { useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
-import DiceBox from '@3d-dice/dice-box';
+import DiceBox from '@3d-dice/dice-box-threejs';
+import useVttStore from '../../../stores/useVttStore';
 
 /**
  * 3D Dice Roller Wrapper
  * 
  * Creates a full-screen transparent canvas for rolling 3D physics-based dice.
- * Uses @3d-dice/dice-box library.
+ * Uses @3d-dice/dice-box-threejs library.
  * 
- * @param {string} rollTrigger - A formula string (e.g. "1d20", "2d6+2") that triggers a roll when changed.
- * @param {function} onRollComplete - Callback fired when dice stop rolling, passing the final result.
+ * @param {object} incomingRoll - The incoming roll object from the server containing formula and precalculated details.
  */
-export default function DiceRoller3D({ rollTrigger, onRollComplete }) {
+export default function DiceRoller3D({ incomingRoll }) {
   const diceBoxRef = useRef(null);
-  const onRollCompleteRef = useRef(onRollComplete);
   const clearTimerRef = useRef(null);
   const initializedRef = useRef(false);
+  const lastRollIdRef = useRef(null);
+  const announceTimerRef = useRef(null);
 
-  // Оновлюємо ref при зміні колбеку
-  useEffect(() => {
-    onRollCompleteRef.current = onRollComplete;
-  }, [onRollComplete]);
-
-  // Зберігаємо оригінальну формулу, щоб передати її разом з результатами
-  const lastFormulaRef = useRef(null);
-
-  // Обробник завершення кидка винесено окремо, щоб уникнути глибокої вкладеності (SonarQube)
-  const handleRollComplete = (results) => {
-    if (onRollCompleteRef.current) {
-      // Передаємо оригінальну формулу разом з результатами 3D кубиків
-      onRollCompleteRef.current(results, lastFormulaRef.current);
-    }
-    
-    // Автоматично очищаємо кубики через 4 секунди
+  // Обробник завершення кидка (очищення кубиків)
+  const handleRollComplete = () => {
+    // Автоматично очищаємо кубики через 3 секунди після того як вони зупинились
     if (clearTimerRef.current) {
       clearTimeout(clearTimerRef.current);
     }
     clearTimerRef.current = setTimeout(() => {
       if (diceBoxRef.current) {
-        diceBoxRef.current.clear();
+        try {
+          if (typeof diceBoxRef.current.clear === 'function') {
+            diceBoxRef.current.clear();
+          } else if (typeof diceBoxRef.current.clearDice === 'function') {
+            diceBoxRef.current.clearDice();
+          }
+        } catch (e) {
+          console.warn('Error clearing dice in timeout:', e);
+        }
       }
-    }, 4000);
+    }, 3000);
   };
 
   // Ініціалізація DiceBox
@@ -50,42 +46,29 @@ export default function DiceRoller3D({ rollTrigger, onRollComplete }) {
 
     // Створюємо інстанс DiceBox
     const diceBox = new DiceBox('#dice-canvas-container', {
-      assetPath: '/assets/dice-box/', // шлях до асетів у public folder
-      theme: 'default',
-      themeColor: '#8a0303', // Чорно-кровавий / темно-червоний колір
-      scale: 7, // Зменшено масштаб (половина від попереднього 14)
-      spinForce: 6,
-      throwForce: 6,
-      gravity: 3,
-      mass: 2,
-      friction: 0.8,
-      restitution: 0.6,
-      linearDamping: 0.4,
-      angularDamping: 0.4,
-      startingHeight: 8,
-      settleTimeout: 5000,
-      enableTopSettle: true
+      assetPath: '/assets/dice-box-threejs/', // шлях до асетів у public folder
+      theme_customColorset: {
+        background: "#8a0303", // Темно-червоний / кровавий
+        foreground: "#ffffff", // Білі цифри
+        texture: "marble",     // Текстура мармуру
+        material: "wood"       // Змінюємо матеріал на дерево
+      },
+      shadows: false, // Вимикаємо динамічні тіні для продуктивності
+      baseScale: 110, // Зменшили масштаб для оптимізації масових кидків
+      gravity_multiplier: 330, // Злегка збільшена гравітація
+      strength: 0.5, // Значно зменшена сила кидка (~ 30% від попередньої)
+      onRollComplete: handleRollComplete
     });
 
     // Ініціалізація фізичного рушія
-    diceBox.init().then(() => {
-      console.log('DiceBox successfully initialized! Ready to roll.');
+    diceBox.initialize().then(() => {
+      console.log('DiceBox-threejs successfully initialized! Ready to roll.');
       diceBoxRef.current = diceBox;
       
-      // Примусово викликаємо подію resize, щоб рушій Babylon зрозумів, що контейнер на весь екран
+      // Примусово викликаємо подію resize
       setTimeout(() => {
         globalThis.dispatchEvent(new Event('resize'));
-        
-        // Додатковий фікс: якщо канвас не розтягнувся
-        const canvas = document.querySelector('#dice-canvas-container canvas');
-        if (canvas) {
-          canvas.style.width = '100%';
-          canvas.style.height = '100%';
-        }
       }, 100);
-      
-      // Підписка на подію завершення кидка
-      diceBox.onRollComplete = handleRollComplete;
     }).catch((err) => {
       console.error('Failed to initialize DiceBox:', err);
     });
@@ -95,48 +78,99 @@ export default function DiceRoller3D({ rollTrigger, onRollComplete }) {
       if (clearTimerRef.current) {
         clearTimeout(clearTimerRef.current);
       }
+      if (announceTimerRef.current) {
+        clearTimeout(announceTimerRef.current);
+      }
       if (diceBoxRef.current) {
-        diceBoxRef.current.clear();
+        try {
+          if (typeof diceBoxRef.current.clear === 'function') {
+            diceBoxRef.current.clear();
+          } else if (typeof diceBoxRef.current.clearDice === 'function') {
+            diceBoxRef.current.clearDice();
+          }
+        } catch (e) {
+          console.warn('Error clearing dice on unmount:', e);
+        }
         diceBoxRef.current = null;
       }
     };
   }, []); // Пустий масив залежностей, щоб ініціалізувати лише раз
 
-  // Тригер кидка при зміні rollTrigger
+  // Тригер кидка при зміні incomingRoll
   useEffect(() => {
-    if (rollTrigger?.formula && diceBoxRef.current) {
-      // Видаляємо "/r " або "/roll " з початку рядка, якщо юзер це ввів
-      let cleanFormula = rollTrigger.formula.replace(/^\/r(oll)?\s+/i, '');
+    if (incomingRoll && incomingRoll.id !== lastRollIdRef.current && diceBoxRef.current) {
+      lastRollIdRef.current = incomingRoll.id;
       
-      // Зберігаємо оригінальну формулу з іменем для використання в handleRollComplete
-      lastFormulaRef.current = {
-        formula: cleanFormula,
-        name: rollTrigger.name || null,
-      };
-
-      // Знаходимо всі кубики у формулі (наприклад "3d20", "1d6") і відкидаємо статичні числа (+5)
-      // diceBox.roll() краще працює з масивом груп кубиків, коли їх декілька
-      const diceGroups = cleanFormula.match(/\d*d\d+/gi) || [];
+      const diceGroups = [];
+      const forcedValues = [];
+      incomingRoll.details.forEach(detail => {
+        // Collect dice notation, e.g. 1d20 or 2d6
+        diceGroups.push(`${detail.qty}d${detail.sides}`);
+        // Collect all rolled values for these dice
+        if (detail.values && detail.values.length > 0) {
+          forcedValues.push(...detail.values);
+        }
+      });
       
       if (diceGroups.length === 0) {
-        console.warn('No valid dice found in formula:', cleanFormula);
+        console.warn('No valid dice found in incoming roll:', incomingRoll);
         return;
       }
 
-      console.log('Executing diceBox.roll for groups:', diceGroups);
+      // For dice-box-threejs, we pass a single string, e.g. '1d20+2d6@15,4,2'
+      let rollString = diceGroups.join('+');
+      if (forcedValues.length > 0) {
+        rollString += `@${forcedValues.join(',')}`;
+      }
       
-      // Якщо ми кидаємо нові кубики, скасовуємо таймер очищення попередніх
+      console.log('Executing diceBox.roll with forced values string:', rollString);
+      
       if (clearTimerRef.current) {
         clearTimeout(clearTimerRef.current);
         clearTimerRef.current = null;
       }
+
+      if (announceTimerRef.current) {
+        clearTimeout(announceTimerRef.current);
+      }
       
-      // Очищаємо попередні кубики і кидаємо нові (передаємо масив)
-      diceBoxRef.current.roll(diceGroups).catch(err => {
-        console.error('Roll failed:', err);
-      });
+      // Оголошуємо результат через 2.50 секунди після початку кидка 
+      announceTimerRef.current = setTimeout(() => {
+        const state = useVttStore.getState();
+        if (!state.rollHistory.some(r => r.id === incomingRoll.id)) {
+          state.addRollResult(incomingRoll);
+        }
+      }, 2500);
+      
+      try {
+        // Оскільки гравітація дуже висока (330), горизонтальна сила швидко гаситься тертям об стіл.
+        // Тому ми використовуємо нелінійний множник, щоб сила дійсно відчувалась:
+        // Якщо гравець обрав 3.0, ми множимо це на 4 (буде 12.0). 
+        // Якщо 0.1 — буде 0.4.
+        const baseStrength = incomingRoll.strength || 1;
+        const scaledStrength = baseStrength * 4; 
+        
+        console.log(`[DiceRoller3D] Raw strength: ${baseStrength}, Scaled: ${scaledStrength}`);
+        
+        // Змінюємо безпосередньо властивість (updateConfig не оновлює силу на льоту)
+        diceBoxRef.current.strength = scaledStrength;
+        
+        diceBoxRef.current.roll(rollString).then(() => {
+          console.log('Roll animation completed successfully.');
+        }).catch(err => {
+          console.error('Roll failed with forced values, attempting fallback:', err);
+          // Fallback: unforced string e.g. '2d12+1d100'
+          const fallbackString = incomingRoll.details.map(d => `${d.qty}d${d.sides}`).join('+');
+          console.log('Fallback string:', fallbackString);
+          diceBoxRef.current.roll(fallbackString).catch(fallbackErr => {
+            console.error('Fallback roll also failed:', fallbackErr);
+          });
+        });
+      } catch (e) {
+        console.error('Error invoking roll:', e);
+      }
     }
-  }, [rollTrigger]);
+  }, [incomingRoll]);
 
   return (
     <div 
@@ -148,10 +182,10 @@ export default function DiceRoller3D({ rollTrigger, onRollComplete }) {
 }
 
 DiceRoller3D.propTypes = {
-  rollTrigger: PropTypes.shape({
+  incomingRoll: PropTypes.shape({
+    id: PropTypes.string,
     formula: PropTypes.string,
-    ts: PropTypes.number,
-    name: PropTypes.string,
+    strength: PropTypes.number,
+    details: PropTypes.arrayOf(PropTypes.object),
   }),
-  onRollComplete: PropTypes.func
 };
