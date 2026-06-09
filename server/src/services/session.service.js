@@ -16,6 +16,7 @@ const createSessionLifecycleService = require('./session/session-lifecycle.servi
 const createSessionParticipantsService = require('./session/session-participants.service');
 const createSessionPageService = require('./session/session-page.service');
 const notificationService = require('./notification.service');
+const walletService = require('./wallet.service');
 
 class SessionService {
   constructor(customPrisma = null) {
@@ -35,6 +36,7 @@ class SessionService {
       config,
       selectNextRelevantSession,
       createRawEncryptedAndHashedShareToken,
+      walletService,
       assertNoSessionTimeConflict: (userId, targetStart, targetDuration, options = {}) => {
         return this._assertNoSessionTimeConflict(userId, targetStart, targetDuration, options);
       },

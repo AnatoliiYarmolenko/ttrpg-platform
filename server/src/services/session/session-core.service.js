@@ -1,4 +1,5 @@
 const { canOpenCampaign: canOpenCampaignByAccess } = require('../../domain/access/access-rules');
+const { Prisma } = require('@prisma/client');
 
 function createSessionCoreService({
   prisma,
@@ -10,6 +11,7 @@ function createSessionCoreService({
   sessionQueryService,
   assertNoSessionTimeConflict,
   createRawEncryptedAndHashedShareToken,
+  walletService,
 }) {
   const assertSessionVisibilityForCreation = ({ campaignId, visibility }) => {
     if (campaignId && visibility === 'LINK_ONLY') {
@@ -173,48 +175,66 @@ function createSessionCoreService({
         ? createRawEncryptedAndHashedShareToken()
         : null;
 
-      const session = await prisma.session.create({
-        data: {
-          title,
-          description: description || null,
-          date,
-          duration,
-          maxPlayers,
-          price,
-          system: sessionSystem || null,
-          campaignId: campaignId ? sessionQueryService.parsePositiveInt(campaignId, 'Campaign ID') : null,
-          ownerId,
-          visibility,
-          shareTokenHash: shareTokenData?.tokenHash || null,
-          shareTokenEncrypted: shareTokenData?.tokenEncrypted || null,
-          shareTokenCreatedAt: shareTokenData ? new Date() : null,
-          participants: {
-            create: {
-              userId: ownerId,
-              role: isGm ? 'GM' : 'PLAYER',
-              status: 'CONFIRMED',
-              isGuest: false,
+      const session = await prisma.$transaction(async (tx) => {
+        const newSession = await tx.session.create({
+          data: {
+            title,
+            description: description || null,
+            date,
+            duration,
+            maxPlayers,
+            price,
+            platformFeePercent: 0,
+            system: sessionSystem || null,
+            campaignId: campaignId ? sessionQueryService.parsePositiveInt(campaignId, 'Campaign ID') : null,
+            ownerId,
+            visibility,
+            shareTokenHash: shareTokenData?.tokenHash || null,
+            shareTokenEncrypted: shareTokenData?.tokenEncrypted || null,
+            shareTokenCreatedAt: shareTokenData ? new Date() : null,
+            participants: {
+              create: {
+                userId: ownerId,
+                role: isGm ? 'GM' : 'PLAYER',
+                status: 'CONFIRMED',
+                isGuest: false,
+              },
+            },
+            chat: {
+              create: {},
             },
           },
-          chat: {
-            create: {},
-          },
-        },
-        include: {
-          owner: {
-            select: { id: true, username: true, displayName: true, avatarUrl: true },
-          },
-          campaign: {
-            select: { id: true, title: true, status: true, system: true },
-          },
-          participants: {
-            include: {
-              user: {
-                select: { id: true, username: true, displayName: true, avatarUrl: true },
+          include: {
+            owner: {
+              select: { id: true, username: true, displayName: true, avatarUrl: true },
+            },
+            campaign: {
+              select: { id: true, title: true, status: true, system: true },
+            },
+            participants: {
+              include: {
+                user: {
+                  select: { id: true, username: true, displayName: true, avatarUrl: true },
+                },
               },
             },
           },
-        },
+        });
+
+        const isLfg = !isGm;
+        const decPrice = new Prisma.Decimal(price || 0);
+        if (isLfg && decPrice.gt(0)) {
+          await walletService.reserveFunds(ownerId, newSession.id, decPrice, tx);
+          
+          await tx.session.update({
+            where: { id: newSession.id },
+            data: { heldAmount: decPrice },
+          });
+
+          newSession.heldAmount = decPrice;
+        }
+
+        return newSession;
       });
 
       if (shareTokenData) {
