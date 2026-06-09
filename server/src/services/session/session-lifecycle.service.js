@@ -13,7 +13,6 @@ const SESSION_SETTINGS_FIELDS = [
   'date',
   'duration',
   'maxPlayers',
-  'price',
   'visibility',
   'system',
 ];
@@ -460,7 +459,6 @@ function buildSessionUpdatePayload({
     date: hasOwnField(normalizedUpdateData, 'date') ? normalizedUpdateData.date : undefined,
     duration: hasOwnField(normalizedUpdateData, 'duration') ? normalizedUpdateData.duration : undefined,
     maxPlayers: hasOwnField(normalizedUpdateData, 'maxPlayers') ? normalizedUpdateData.maxPlayers : undefined,
-    price: hasOwnField(normalizedUpdateData, 'price') ? normalizedUpdateData.price : undefined,
     visibility: hasOwnField(normalizedUpdateData, 'visibility') ? normalizedUpdateData.visibility : undefined,
     shareTokenHash: resolveShareTokenFieldValue({
       shareTokenData: shareTokenState.shareTokenData,
