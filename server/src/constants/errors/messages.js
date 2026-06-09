@@ -73,6 +73,7 @@ const ERROR_MESSAGES = {
   [ERROR_CODES.SESSION_STATUS_TRANSITION_INVALID]: 'Недопустимий перехід статусу сесії',
   [ERROR_CODES.SESSION_LINK_ONLY_ONE_SHOT_ONLY]: 'Режим LINK_ONLY дозволений лише для одиночних сесій',
   [ERROR_CODES.SESSION_DELETE_FORBIDDEN]: 'Видаляти можна лише заплановані сесії',
+  [ERROR_CODES.SESSION_DELETE_FORBIDDEN_HAS_FUNDS]: 'Неможливо видалити сесію із зарезервованими коштами. Спочатку скасуйте її для повернення грошей гравцям.',
 
   [ERROR_CODES.CALL_NOT_AVAILABLE]: 'Відеодзвінок недоступний для цієї сесії',
   [ERROR_CODES.CALL_NOT_STARTED]: 'Відеодзвінок ще не розпочався',

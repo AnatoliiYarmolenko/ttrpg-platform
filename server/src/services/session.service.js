@@ -47,6 +47,7 @@ class SessionService {
       sessionQueryService: this.queryService,
       createRawEncryptedAndHashedShareToken,
       notificationService,
+      walletService,
     });
     this.participantsService = createSessionParticipantsService({
       ...this.sessionDeps,
