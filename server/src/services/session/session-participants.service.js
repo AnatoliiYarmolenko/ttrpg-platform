@@ -1,3 +1,5 @@
+const { Prisma } = require('@prisma/client');
+const { logger } = require('../../lib/logger');
 const VALID_PARTICIPANT_STATUSES = new Set(['PENDING', 'CONFIRMED', 'DECLINED']);
 const JOINABLE_SESSION_STATUSES = new Set(['PLANNED']);
 
@@ -141,45 +143,62 @@ async function declinePendingParticipant({
   AppError,
   ERROR_CODES,
   notificationService,
+  walletService,
 }) {
   if (participant.status !== 'PENDING') {
     throw new AppError(ERROR_CODES.SESSION_PARTICIPANT_DECLINE_PENDING_ONLY);
   }
 
-  // NOTIF-024: Get session info before deleting participant
-  const session = await prisma.session.findUnique({
-    where: { id: participant.sessionId },
-    select: { id: true, title: true },
-  });
-
-  await prisma.sessionParticipant.delete({
-    where: { id: parseId(participantId) },
-  });
-
-  // NOTIF-024: Notify user about declined participation
-  if (notificationService && session) {
-    notificationService.createNotification({
-      eventKey: `session_declined:${participant.userId}:${session.id}`,
-      type: 'SESSION_PARTICIPATION_DECLINED',
-      severity: 'ERROR',
-      category: 'session',
-      title: 'Заявку відхилено',
-      body: `Вашу заявку на сесію "${session.title || 'Нова сесія'}" відхилено.`,
-      link: session ? `/session/${session.id}` : '/',
-      recipientIds: [participant.userId],
-      metadata: {
-        sessionId: session.id,
-        userId: participant.userId,
-      },
-    }).catch(() => {
-      // Silently fail
+  return await prisma.$transaction(async (tx) => {
+    const session = await tx.session.findUnique({
+      where: { id: participant.sessionId },
+      select: { id: true, title: true, price: true },
     });
-  }
 
-  return {
-    ...participant,
-    status: 'DECLINED',
-  };
+    if (!session) {
+      throw new AppError(ERROR_CODES.SESSION_PARTICIPANT_NOT_FOUND);
+    }
+
+    await tx.sessionParticipant.delete({
+      where: { id: parseId(participantId) },
+    });
+
+    const decPrice = new Prisma.Decimal(session.price || 0);
+    if (participant.role === 'PLAYER' && decPrice.gt(0)) {
+      await walletService.refundFunds(participant.userId, session.id, decPrice, tx);
+
+      await tx.session.update({
+        where: { id: session.id },
+        data: {
+          heldAmount: { decrement: decPrice },
+        },
+      });
+    }
+
+    if (notificationService) {
+      notificationService.createNotification({
+        eventKey: `session_declined:${participant.userId}:${session.id}`,
+        type: 'SESSION_PARTICIPATION_DECLINED',
+        severity: 'ERROR',
+        category: 'session',
+        title: 'Заявку відхилено',
+        body: `Вашу заявку на сесію "${session.title || 'Нова сесія'}" відхилено.`,
+        link: `/session/${session.id}`,
+        recipientIds: [participant.userId],
+        metadata: {
+          sessionId: session.id,
+          userId: participant.userId,
+        },
+      }).catch((err) => {
+        logger.error({ err, userId: participant.userId, sessionId: session.id }, 'Помилка відправки сповіщення про відхилення заявки');
+      });
+    }
+
+    return {
+      ...participant,
+      status: 'DECLINED',
+    };
+  });
 }
 
 async function confirmGmParticipant({
@@ -211,7 +230,6 @@ async function confirmGmParticipant({
     }),
   ]);
 
-  // MVP-20: Notify user about confirmation
   if (notificationService && updatedParticipant) {
     const session = await prisma.session.findUnique({
       where: { id: sessionIdInt },
@@ -232,8 +250,8 @@ async function confirmGmParticipant({
           participantId: updatedParticipant.id,
           role: updatedParticipant.role,
         },
-      }).catch(() => {
-        // Silently fail
+      }).catch((err) => {
+        logger.error({ err, userId: updatedParticipant.userId, sessionId: sessionIdInt }, 'Помилка відправки сповіщення про підтвердження GM');
       });
     }
   }
@@ -251,7 +269,6 @@ async function updateParticipantStatusRecord({ prisma, participantId, status, no
     },
   });
 
-  // MVP-20: Notify user when confirmed
   if (notificationService && status === 'CONFIRMED' && participant.session) {
     notificationService.createNotification({
       eventKey: `session_confirmed:${participant.userId}:${participant.sessionId}`,
@@ -267,8 +284,8 @@ async function updateParticipantStatusRecord({ prisma, participantId, status, no
         participantId: participant.id,
         role: participant.role,
       },
-    }).catch(() => {
-      // Silently fail
+    }).catch((err) => {
+      logger.error({ err, userId: participant.userId, sessionId: participant.sessionId }, 'Помилка відправки сповіщення про підтвердження учасника');
     });
   }
 
@@ -286,6 +303,7 @@ function createSessionParticipantsService({
   assertNoSessionTimeConflict,
   permissionHelpers,
   notificationService,
+  walletService,
 }) {
   const resolveGetSessionById = sessionQueryService?.getSessionById || getSessionById;
   const resolveSessionContextFn = sessionQueryService?.resolveSessionContext || resolveSessionContext;
@@ -309,19 +327,13 @@ function createSessionParticipantsService({
 
 
 
-  // MVP-19: Send summary notification to session managers about new join requests
   async function notifyManagersAboutJoinRequest(session, participant) {
     if (!notificationService) return;
-
-    // Count existing pending + the new participant if they're pending
-    // (new participant is not yet in session.participants list)
     const existingPending = session.participants.filter(
       (p) => p.status === 'PENDING'
     ).length;
     const pendingCount = participant.status === 'PENDING' ? existingPending + 1 : existingPending;
 
-    const roleLabel = participant.role === 'GM' ? 'гравець-майстер' : 'гравець';
-    const userName = participant.user?.displayName || participant.user?.username || 'Новий учасник';
 
     const sessionTitle = session.title || 'Нова сесія';
 
@@ -343,12 +355,11 @@ function createSessionParticipantsService({
         requesterId: participant.userId,
         role: participant.role,
       },
-    }).catch(() => {
-      // Silently fail
+    }).catch((err) => {
+      logger.error({ err, sessionId: session.id }, 'Помилка відправки сповіщення менеджерам про нову заявку');
     });
   }
 
-  // Notify managers about auto-confirmed participant (PUBLIC sessions)
   async function notifyManagersAboutConfirmedJoin(session, participant) {
     if (!notificationService) return;
 
@@ -372,33 +383,11 @@ function createSessionParticipantsService({
         userId: participant.userId,
         role: participant.role,
       },
-    }).catch(() => {
-      // Silently fail
+    }).catch((err) => {
+      logger.error({ err, userId: participant.userId, sessionId: session.id }, 'Помилка відправки сповіщення менеджерам про приєднання учасника');
     });
   }
 
-  // MVP-20: Send confirmation notification to user
-  async function notifyUserAboutConfirmation(participant, session) {
-    if (!notificationService) return;
-
-    notificationService.createNotification({
-      eventKey: `session_confirmed:${participant.userId}:${session.id}`,
-      type: 'SESSION_PARTICIPATION_CONFIRMED',
-      severity: 'SUCCESS',
-      category: 'session',
-      title: 'Ви додані до сесії',
-      body: `Вас додано до сесії "${session.title || 'Нова сесія'}".`,
-      link: `/session/${session.id}`,
-      recipientIds: [participant.userId],
-      metadata: {
-        sessionId: session.id,
-        participantId: participant.id,
-        role: participant.role,
-      },
-    }).catch(() => {
-      // Silently fail
-    });
-  }
 
   return {
     async joinSession(sessionId, userId, options = {}) {
@@ -423,21 +412,35 @@ function createSessionParticipantsService({
       assertGmCanJoin({ normalizedRole, session, permissionHelpers, AppError, ERROR_CODES });
       assertCampaignPlayerAccess({ normalizedRole, session, AppError, ERROR_CODES });
 
-      const participant = await prisma.sessionParticipant.create({
-        data: {
-          userId,
-          sessionId: parseId(sessionId),
-          role: normalizedRole,
-          status: resolveJoinStatus({ normalizedRole, session }),
-          isGuest: resolveGuestFlag({ normalizedRole, session }),
-        },
-        include: {
-          user: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-        },
+      const participant = await prisma.$transaction(async (tx) => {
+        const newParticipant = await tx.sessionParticipant.create({
+          data: {
+            userId,
+            sessionId: parseId(sessionId),
+            role: normalizedRole,
+            status: resolveJoinStatus({ normalizedRole, session }),
+            isGuest: resolveGuestFlag({ normalizedRole, session }),
+          },
+          include: {
+            user: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+          },
+        });
+
+        const decPrice = new Prisma.Decimal(session.price || 0);
+        if (normalizedRole === 'PLAYER' && decPrice.gt(0)) {
+          await walletService.reserveFunds(userId, session.id, decPrice, tx);
+
+          await tx.session.update({
+            where: { id: session.id },
+            data: {
+              heldAmount: { increment: decPrice },
+            },
+          });
+        }
+
+        return newParticipant;
       });
 
-      // MVP-19: Notify managers about new join request (if status is PENDING)
-      // For auto-confirmed: notify managers about new confirmed participant
       if (participant.status === 'PENDING') {
         notifyManagersAboutJoinRequest(session, participant);
       } else if (participant.status === 'CONFIRMED') {
@@ -455,9 +458,11 @@ function createSessionParticipantsService({
         include: {
           session: {
             select: {
+              id: true,
               ownerId: true,
               status: true,
               date: true,
+              price: true,
             },
           },
         },
@@ -479,13 +484,27 @@ function createSessionParticipantsService({
         throw new AppError(ERROR_CODES.SESSION_OWNER_GM_LEAVE_FORBIDDEN);
       }
 
-      await prisma.sessionParticipant.delete({
-        where: {
-          userId_sessionId: { userId, sessionId: parseId(sessionId) },
-        },
-      });
+      return await prisma.$transaction(async (tx) => {
+        await tx.sessionParticipant.delete({
+          where: {
+            userId_sessionId: { userId, sessionId: parseId(sessionId) },
+          },
+        });
 
-      return participant;
+        const decPrice = new Prisma.Decimal(participant.session.price || 0);
+        if (participant.role === 'PLAYER' && (participant.status === 'PENDING' || participant.status === 'CONFIRMED') && decPrice.gt(0)) {
+          await walletService.refundFunds(userId, participant.session.id, decPrice, tx);
+
+          await tx.session.update({
+            where: { id: participant.session.id },
+            data: {
+              heldAmount: { decrement: decPrice },
+            },
+          });
+        }
+
+        return participant;
+      });
     },
 
     async getSessionParticipants(sessionId, userId = null) {
@@ -516,6 +535,7 @@ function createSessionParticipantsService({
           AppError,
           ERROR_CODES,
           notificationService,
+          walletService,
         });
       }
 
@@ -578,8 +598,22 @@ function createSessionParticipantsService({
         throw new AppError(ERROR_CODES.SESSION_PARTICIPANTS_REMOVAL_OWNER_OR_CONFIRMED_GM_ONLY);
       }
 
-      await prisma.sessionParticipant.delete({
-        where: { id: parseId(participantId) },
+      await prisma.$transaction(async (tx) => {
+        await tx.sessionParticipant.delete({
+          where: { id: parseId(participantId) },
+        });
+
+        const decPrice = new Prisma.Decimal(session.price || 0);
+        if (participant.role === 'PLAYER' && (participant.status === 'PENDING' || participant.status === 'CONFIRMED') && decPrice.gt(0)) {
+          await walletService.refundFunds(participant.userId, session.id, decPrice, tx);
+
+          await tx.session.update({
+            where: { id: session.id },
+            data: {
+              heldAmount: { decrement: decPrice },
+            },
+          });
+        }
       });
     },
 

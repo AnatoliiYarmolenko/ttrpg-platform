@@ -52,6 +52,7 @@ class SessionService {
       ...this.sessionDeps,
       sessionQueryService: this.queryService,
       notificationService,
+      walletService,
       assertNoSessionTimeConflict: (userId, targetStart, targetDuration, options = {}) => {
         return this._assertNoSessionTimeConflict(userId, targetStart, targetDuration, options);
       },

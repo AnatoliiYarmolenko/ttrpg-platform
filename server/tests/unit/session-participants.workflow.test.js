@@ -33,9 +33,16 @@ function buildModerationContext(options = {}) {
     deleteCalls: [],
     deleteManyCalls: [],
     updateCalls: [],
+    createCalls: [],
+    sessionUpdateCalls: [],
+    refundCalls: [],
+    reserveCalls: [],
   };
 
   const session = options.session || buildSession();
+  if (options.sessionPrice !== undefined) {
+    session.price = options.sessionPrice;
+  }
   const participantsById = new Map(
     (options.participants || []).map((participant) => [participant.id, { ...participant }])
   );
@@ -47,18 +54,86 @@ function buildModerationContext(options = {}) {
           return null;
         }
 
-        return { id: session.id, title: session.title ?? null };
+        return {
+          id: session.id,
+          title: session.title ?? null,
+          price: session.price ?? null,
+          heldAmount: session.heldAmount ?? 0,
+        };
+      },
+      update: async ({ where, data }) => {
+        state.sessionUpdateCalls.push({ where, data });
+        if (data.heldAmount?.decrement) {
+          session.heldAmount = (session.heldAmount || 0) - Number(data.heldAmount.decrement);
+        } else if (data.heldAmount?.increment) {
+          session.heldAmount = (session.heldAmount || 0) + Number(data.heldAmount.increment);
+        }
+        return {
+          ...session,
+        };
       },
     },
     sessionParticipant: {
       findUnique: async ({ where }) => {
-        const participant = participantsById.get(where.id);
-        return participant ? { ...participant } : null;
+        let p;
+        if (where.id) {
+          p = participantsById.get(where.id);
+        } else if (where.userId_sessionId) {
+          const { userId, sessionId } = where.userId_sessionId;
+          for (const item of participantsById.values()) {
+            if (item.userId === userId && item.sessionId === sessionId) {
+              p = item;
+              break;
+            }
+          }
+        }
+        if (p) {
+          return {
+            ...p,
+            session: {
+              id: session.id,
+              ownerId: session.ownerId,
+              status: session.status,
+              date: session.date,
+              price: session.price,
+              heldAmount: session.heldAmount,
+            },
+          };
+        }
+        return null;
+      },
+      create: async ({ data, include }) => {
+        const id = Math.floor(Math.random() * 1000) + 100;
+        const participant = { id, status: 'PENDING', ...data };
+        participantsById.set(id, participant);
+        state.createCalls.push(participant);
+        return {
+          ...participant,
+          user: {
+            id: participant.userId,
+            username: `user_${participant.userId}`,
+            displayName: null,
+            avatarUrl: null,
+          },
+        };
       },
       delete: async ({ where }) => {
-        state.deleteCalls.push(where.id);
-        participantsById.delete(where.id);
-        return { id: where.id };
+        if (where.id) {
+          state.deleteCalls.push(where.id);
+          participantsById.delete(where.id);
+          return { id: where.id };
+        }
+        if (where.userId_sessionId) {
+          const { userId, sessionId } = where.userId_sessionId;
+          for (const [id, p] of participantsById.entries()) {
+            if (p.userId === userId && p.sessionId === sessionId) {
+              state.deleteCalls.push(id);
+              participantsById.delete(id);
+              return { id };
+            }
+          }
+        }
+        return { id: null };
       },
       deleteMany: async ({ where }) => {
         state.deleteManyCalls.push(where);
@@ -99,7 +174,21 @@ function buildModerationContext(options = {}) {
         };
       },
     },
-    $transaction: async (operations) => Promise.all(operations),
+    $transaction: async (arg) => {
+      if (typeof arg === 'function') {
+        return arg(prisma);
+      }
+      return Promise.all(arg);
+    },
+  };
+
+  const walletService = {
+    refundFunds: async (userId, sessionId, amount, tx) => {
+      state.refundCalls.push({ userId, sessionId, amount });
+    },
+    reserveFunds: async (userId, sessionId, amount, tx) => {
+      state.reserveCalls.push({ userId, sessionId, amount });
+    },
   };
 
   const service = createSessionParticipantsService({
@@ -110,14 +199,15 @@ function buildModerationContext(options = {}) {
     resolveSessionContext: async () => session,
     assertNoSessionTimeConflict: async () => true,
     permissionHelpers: {
-      _getConfirmedGm: () => null,
+      _getConfirmedGm: () => options.confirmedGm ?? null,
       _isSessionOwner: (_session, userId) => userId === (options.ownerId ?? 1),
       _isCampaignOwnerOverride: () => false,
-      _canManageParticipants: () => options.canManageParticipants ?? true,
+      _canManageParticipants: (session, userId) => userId === (options.ownerId ?? 1) || (options.canManageParticipants ?? true),
     },
+    walletService,
   });
 
-  return { service, state, participantsById };
+  return { service, state, participantsById, session };
 }
 
 test('declining a pending player application removes participant record', async () => {
