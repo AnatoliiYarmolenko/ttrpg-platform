@@ -151,7 +151,37 @@ class AdminService {
       throw new AppError(ERROR_CODES.ADMIN_RESOURCE_NOT_FOUND, 'Кампанію не знайдено');
     }
 
-    await prisma.campaign.delete({ where: { id } });
+    const walletService = require('./wallet.service');
+    const { Decimal } = require('@prisma/client').Prisma;
+
+    await prisma.$transaction(async (tx) => {
+      const campaignSessions = await tx.session.findMany({
+        where: {
+          campaignId: id,
+          heldAmount: { gt: 0 },
+        },
+        select: { id: true, price: true, heldAmount: true },
+      });
+
+      for (const session of campaignSessions) {
+        const players = await tx.sessionParticipant.findMany({
+          where: {
+            sessionId: session.id,
+            role: 'PLAYER',
+            status: { in: ['CONFIRMED', 'PENDING'] },
+          },
+        });
+
+        const decPrice = new Decimal(session.price || 0);
+        if (decPrice.gt(0)) {
+          for (const player of players) {
+            await walletService.refundFunds(player.userId, session.id, decPrice, tx);
+          }
+        }
+      }
+
+      await tx.campaign.delete({ where: { id } });
+    });
 
     return { message: `Кампанію "${campaign.title}" видалено` };
   }
@@ -230,14 +260,37 @@ class AdminService {
 
     const session = await prisma.session.findUnique({
       where: { id },
-      select: { id: true, title: true },
+      select: { id: true, title: true, price: true, heldAmount: true },
     });
 
     if (!session) {
       throw new AppError(ERROR_CODES.ADMIN_RESOURCE_NOT_FOUND, 'Сесію не знайдено');
     }
 
-    await prisma.session.delete({ where: { id } });
+    const walletService = require('./wallet.service');
+    const { Decimal } = require('@prisma/client').Prisma;
+
+    await prisma.$transaction(async (tx) => {
+      const decHeldAmount = new Decimal(session.heldAmount || 0);
+      if (decHeldAmount.gt(0)) {
+        const players = await tx.sessionParticipant.findMany({
+          where: {
+            sessionId: id,
+            role: 'PLAYER',
+            status: { in: ['CONFIRMED', 'PENDING'] },
+          },
+        });
+
+        const decPrice = new Decimal(session.price || 0);
+        if (decPrice.gt(0)) {
+          for (const player of players) {
+            await walletService.refundFunds(player.userId, id, decPrice, tx);
+          }
+        }
+      }
+
+      await tx.session.delete({ where: { id } });
+    });
 
     return { message: `Сесію "${session.title}" видалено` };
   }
@@ -249,6 +302,8 @@ class AdminService {
     if (targetUserId === requestingAdminId) {
       throw new AppError(ERROR_CODES.ADMIN_ACCESS_DENIED, 'Неможливо заблокувати самого себе');
     }
+
+    const walletService = require('./wallet.service');
 
     const targetUser = await prisma.user.findUnique({
       where: { id: targetUserId },
@@ -263,7 +318,6 @@ class AdminService {
       throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'Неможливо заблокувати адміністратора');
     }
 
-    const sessionsToCloseVtt = [];
     const notificationsToSend = [];
 
     await prisma.$transaction(async (tx) => {
@@ -298,6 +352,45 @@ class AdminService {
         data: { status: 'REJECTED' },
       });
 
+      const playerParticipations = await tx.sessionParticipant.findMany({
+        where: {
+          userId: targetUserId,
+          role: 'PLAYER',
+          status: { in: ['CONFIRMED', 'PENDING'] },
+          session: {
+            status: { in: ['PLANNED', 'ACTIVE'] },
+          },
+        },
+        include: {
+          session: {
+            select: {
+              id: true,
+              price: true,
+              heldAmount: true,
+            },
+          },
+        },
+      });
+
+      const { Decimal } = require('@prisma/client').Prisma;
+      for (const part of playerParticipations) {
+        await tx.sessionParticipant.delete({
+          where: { id: part.id },
+        });
+
+        const decPrice = new Decimal(part.session.price || 0);
+        if (decPrice.gt(0)) {
+          await walletService.refundFunds(targetUserId, part.session.id, decPrice, tx);
+
+          await tx.session.update({
+            where: { id: part.session.id },
+            data: {
+              heldAmount: { decrement: decPrice },
+            },
+          });
+        }
+      }
+
       const ownedCampaigns = await tx.campaign.findMany({
         where: { ownerId: targetUserId },
         select: { id: true, title: true },
@@ -323,71 +416,53 @@ class AdminService {
             recipientIds: memberIds,
           });
         }
-
-        const campaignSessions = await tx.session.findMany({
-          where: {
-            campaignId: campaign.id,
-            status: { in: ['PLANNED', 'ACTIVE'] },
-          },
-          select: { id: true, title: true },
-        });
-
-        for (const session of campaignSessions) {
-          await tx.session.update({
-            where: { id: session.id },
-            data: { status: 'CANCELED' },
-          });
-
-          sessionsToCloseVtt.push(session.id);
-
-          const participants = await tx.sessionParticipant.findMany({
-            where: { sessionId: session.id, userId: { not: targetUserId } },
-            select: { userId: true },
-          });
-
-          const participantIds = participants.map((p) => p.userId);
-          if (participantIds.length > 0) {
-            notificationsToSend.push({
-              type: 'session',
-              targetId: session.id,
-              title: session.title,
-              recipientIds: participantIds,
-            });
-          }
-        }
       }
+      
 
-      const ownedOneShots = await tx.session.findMany({
+      const sessionsToCancel = await tx.session.findMany({
         where: {
-          ownerId: targetUserId,
-          campaignId: null,
           status: { in: ['PLANNED', 'ACTIVE'] },
+          OR: [
+            { ownerId: targetUserId },
+            { campaign: { ownerId: targetUserId } },
+            {
+              participants: {
+                some: {
+                  userId: targetUserId,
+                  role: 'GM',
+                  status: 'CONFIRMED',
+                },
+              },
+            },
+          ],
         },
-        select: { id: true, title: true },
+        include: {
+          campaign: {
+            select: {
+              id: true,
+              ownerId: true,
+              status: true,
+            },
+          },
+          participants: {
+            select: {
+              id: true,
+              userId: true,
+              role: true,
+              status: true,
+            },
+          },
+        },
       });
 
-      for (const session of ownedOneShots) {
-        await tx.session.update({
-          where: { id: session.id },
-          data: { status: 'CANCELED' },
-        });
+      const sessionService = require('./session.service');
 
-        sessionsToCloseVtt.push(session.id);
-
-        const participants = await tx.sessionParticipant.findMany({
-          where: { sessionId: session.id, userId: { not: targetUserId } },
-          select: { userId: true },
-        });
-
-        const participantIds = participants.map((p) => p.userId);
-        if (participantIds.length > 0) {
-          notificationsToSend.push({
-            type: 'session',
-            targetId: session.id,
-            title: session.title,
-            recipientIds: participantIds,
-          });
-        }
+      for (const session of sessionsToCancel) {
+        await sessionService.lifecycleService.cancelSession(
+          session.id,
+          requestingAdminId,
+          { preloadedSession: session, bypassPermissions: true, tx }
+        );
       }
 
       await tx.refreshToken.deleteMany({
@@ -397,15 +472,6 @@ class AdminService {
 
     await markUserAsBanned(targetUserId);
     disconnectUser(targetUserId);
-
-    for (const sessionId of sessionsToCloseVtt) {
-      try {
-        vttStateManager.closeVtt(sessionId);
-        callService.endCallIfActive(sessionId);
-      } catch (err) {
-        logger.error({ err, sessionId }, '[AdminService] Помилка закриття VTT або дзвінка для сесії');
-      }
-    }
 
     for (const notif of notificationsToSend) {
       try {
@@ -423,22 +489,6 @@ class AdminService {
               campaignId: notif.targetId,
               campaignTitle: notif.title,
               status: 'FINISHED',
-            },
-          });
-        } else if (notif.type === 'session') {
-          await notificationService.createNotification({
-            eventKey: `session_cancelled:${notif.targetId}`,
-            type: 'SESSION_CANCELLED',
-            severity: 'ERROR',
-            category: 'session',
-            title: 'Сесію скасовано',
-            body: `Сесію "${notif.title}" скасовано.`,
-            link: `/session/${notif.targetId}`,
-            recipientIds: notif.recipientIds,
-            metadata: {
-              sessionId: notif.targetId,
-              sessionTitle: notif.title,
-              status: 'CANCELED',
             },
           });
         }

@@ -6,6 +6,8 @@ const prismaPath = require.resolve('../../src/lib/prisma');
 const bcryptPath = require.resolve('bcryptjs');
 const deletedUsersPath = require.resolve('../../src/store/deleted-users');
 const uploadServicePath = require.resolve('../../src/services/upload.service');
+const sessionServicePath = require.resolve('../../src/services/session.service');
+const walletServicePath = require.resolve('../../src/services/wallet.service');
 const { createError } = require('../../src/constants/errors');
 
 function buildTxMock() {
@@ -17,7 +19,15 @@ function buildTxMock() {
       updateMany: async () => ({ count: 0 }),
       deleteMany: async () => ({ count: 0 }),
     },
-    session: { updateMany: async () => ({ count: 0 }) },
+    session: {
+      updateMany: async () => ({ count: 0 }),
+      findMany: async () => [],
+      update: async () => ({}),
+    },
+    sessionParticipant: {
+      findMany: async () => [],
+      delete: async () => ({}),
+    },
     campaign: { updateMany: async () => ({ count: 0 }) },
     wallet: {
       findUnique: async () => null,
@@ -35,6 +45,8 @@ function loadSecurityServiceWithMocks({ prismaMock, bcryptMock, deletedUsersMock
   const originalBcryptCache = require.cache[bcryptPath];
   const originalDeletedUsersCache = require.cache[deletedUsersPath];
   const originalUploadServiceCache = require.cache[uploadServicePath];
+  const originalSessionServiceCache = require.cache[sessionServicePath];
+  const originalWalletServiceCache = require.cache[walletServicePath];
 
   delete require.cache[securityServicePath];
 
@@ -66,6 +78,27 @@ function loadSecurityServiceWithMocks({ prismaMock, bcryptMock, deletedUsersMock
     exports: uploadMock,
   };
 
+  require.cache[sessionServicePath] = {
+    id: sessionServicePath,
+    filename: sessionServicePath,
+    loaded: true,
+    exports: {
+      lifecycleService: {
+        cancelSession: async () => ({}),
+      },
+    },
+  };
+
+  require.cache[walletServicePath] = {
+    id: walletServicePath,
+    filename: walletServicePath,
+    loaded: true,
+    exports: {
+      _getOrCreateLockedWallet: async () => ({ id: 1, balance: 0 }),
+      burnFunds: async () => ({}),
+    },
+  };
+
   try {
     return require('../../src/services/security.service');
   } finally {
@@ -93,6 +126,18 @@ function loadSecurityServiceWithMocks({ prismaMock, bcryptMock, deletedUsersMock
       require.cache[uploadServicePath] = originalUploadServiceCache;
     } else {
       delete require.cache[uploadServicePath];
+    }
+
+    if (originalSessionServiceCache) {
+      require.cache[sessionServicePath] = originalSessionServiceCache;
+    } else {
+      delete require.cache[sessionServicePath];
+    }
+
+    if (originalWalletServiceCache) {
+      require.cache[walletServicePath] = originalWalletServiceCache;
+    } else {
+      delete require.cache[walletServicePath];
     }
 
     if (originalSecurityServiceCache) {
@@ -145,14 +190,40 @@ test('deleteAccount fails closed and rolls back transaction when Redis mark fail
     },
   });
 
-  await assert.rejects(
-    () => service.deleteAccount(42, 'valid-password'),
-    (error) => {
-      assert.equal(error.code, 'SERVER_UNAVAILABLE');
-      assert.equal(error.status, 503);
-      return true;
-    }
-  );
+  require.cache[sessionServicePath] = {
+    id: sessionServicePath,
+    filename: sessionServicePath,
+    loaded: true,
+    exports: {
+      lifecycleService: {
+        cancelSession: async () => ({}),
+      },
+    },
+  };
+
+  require.cache[walletServicePath] = {
+    id: walletServicePath,
+    filename: walletServicePath,
+    loaded: true,
+    exports: {
+      _getOrCreateLockedWallet: async () => ({ id: 1, balance: 0 }),
+      burnFunds: async () => ({}),
+    },
+  };
+
+  try {
+    await assert.rejects(
+      () => service.deleteAccount(42, 'valid-password'),
+      (error) => {
+        assert.equal(error.code, 'SERVER_UNAVAILABLE');
+        assert.equal(error.status, 503);
+        return true;
+      }
+    );
+  } finally {
+    delete require.cache[sessionServicePath];
+    delete require.cache[walletServicePath];
+  }
 
   assert.equal(markCalled, 1);
   assert.equal(rollbackTriggered, true);

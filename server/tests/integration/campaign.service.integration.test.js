@@ -94,6 +94,9 @@ async function cleanDatabase() {
   await prisma.campaign.deleteMany({
     where: { id: { in: campaignIds } },
   });
+  await prisma.userStats.deleteMany({
+    where: { userId: { in: userIds } },
+  });
   await prisma.user.deleteMany({
     where: { id: { in: userIds } },
   });
