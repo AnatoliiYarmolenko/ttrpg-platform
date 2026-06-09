@@ -205,6 +205,16 @@ const telegramLinkLimiter = createRedisLimiter({
   keyGenerator: (req) => String(req.user?.id || getClientIp(req)),
 });
 
+// Ліміт для поповнення балансу гаманця
+const walletTopUpLimiter = createRedisLimiter({
+  type: 'wallet_top_up',
+  windowMs: 15 * 60 * 1000, // 15 хвилин
+  max: 10, // 10 спроб за 15 хвилин
+  message: { message: 'Занадто багато спроб поповнення гаманця. Спробуйте через 15 хвилин.' },
+  statusCode: 429,
+  keyGenerator: (req) => String(req.user?.id || getClientIp(req)),
+});
+
 // Ліміт для доступу по share токену (захист від brute-force токенів)
 const shareTokenLimiter = createRedisLimiter({
   type: 'share_token_access',
@@ -235,4 +245,5 @@ module.exports = {
   chatSendMessageLimiter,
   telegramLinkLimiter,
   shareTokenLimiter,
+  walletTopUpLimiter,
 };

@@ -108,6 +108,10 @@ const ERROR_MESSAGES = {
   [ERROR_CODES.SECURITY_CORS_BLOCKED]: 'Доступ заборонено',
   [ERROR_CODES.SECURITY_ACCESS_DENIED]: 'Недостатньо доступу',
 
+  [ERROR_CODES.WALLET_NOT_FOUND]: 'Гаманець не знайдено',
+  [ERROR_CODES.WALLET_INSUFFICIENT_FUNDS]: 'Недостатньо коштів на балансі гаманця',
+  [ERROR_CODES.WALLET_INVALID_AMOUNT]: 'Некоректна сума операції',
+
   [ERROR_CODES.SERVER_ERROR]: 'Помилка сервера. Спробуйте пізніше.',
   [ERROR_CODES.SERVER_UNAVAILABLE]: 'Сервіс тимчасово недоступний',
   [ERROR_CODES.DATABASE_ERROR]: 'Помилка бази даних',

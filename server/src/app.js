@@ -17,6 +17,7 @@ const chatRoutes = require('./routes/chat.routes');
 const searchRoutes = require('./routes/search.routes');
 const clientLogsRoutes = require('./routes/client-logs.routes');
 const notificationRoutes = require('./routes/notification.routes');
+const walletRoutes = require('./routes/wallet.routes');
 
 const { errorHandler } = require('./middlewares/error.middleware');
 const { addCorrelationId } = require('./middlewares/correlation.middleware');
@@ -63,6 +64,7 @@ function createApp() {
     app.use(`${prefix}/search`, searchRoutes);
     app.use(`${prefix}/client-logs`, clientLogsRoutes);
     app.use(`${prefix}/notifications`, notificationRoutes);
+    app.use(`${prefix}/wallet`, walletRoutes);
 
     if (process.env.NODE_ENV === 'development' && process.env.ENABLE_DEV_AUTH === 'true') {
       const devRoutes = require('./routes/dev.routes');
