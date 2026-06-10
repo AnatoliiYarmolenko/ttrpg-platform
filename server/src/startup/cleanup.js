@@ -31,7 +31,7 @@ function initTokenCleanup(schedule) {
 
 /**
  * Ініціалізує session cleanup job
- * - Автоскасовує PLANNED сесії старше 30 днів
+ * - Автоскасовує PLANNED сесії старше 3 днів
  * - Soft Auto-Finish для "зомбі" ACTIVE сесій
  * - Автовидаляє CANCELED сесії через 7 днів
  * @param {string} schedule - Cron schedule (за замовчуванням: '0,15,30,45 * * * *' - кожні 15 хвилин)

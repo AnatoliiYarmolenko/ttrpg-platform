@@ -77,18 +77,19 @@ class WalletService {
       throw createError.invalidAmount();
     }
 
-    return await prisma.$transaction(async (tx) => {
+    let transactionRecord;
+    const updatedWallet = await prisma.$transaction(async (tx) => {
       const wallet = await this._getOrCreateLockedWallet(targetUserId, tx);
 
       const balance = new Prisma.Decimal(wallet.balance);
       const newBalance = balance.plus(decAmount);
 
-      const updatedWallet = await tx.wallet.update({
+      const walletUpdate = await tx.wallet.update({
         where: { id: wallet.id },
         data: { balance: newBalance },
       });
 
-      await tx.transaction.create({
+      transactionRecord = await tx.transaction.create({
         data: {
           walletId: wallet.id,
           amount: decAmount,
@@ -96,8 +97,28 @@ class WalletService {
         },
       });
 
-      return updatedWallet;
+      return walletUpdate;
     });
+
+    notificationService.createNotification({
+      eventKey: `wallet_top_up:${targetUserId}:${transactionRecord.id}`,
+      type: 'WALLET_TOPPED_UP',
+      severity: 'SUCCESS',
+      category: 'payment',
+      title: 'Баланс поповнено',
+      body: `Ваш гаманець успішно поповнено на ${decAmount.toString()} Demo Coins.`,
+      link: '/profile',
+      recipientIds: [targetUserId],
+      metadata: {
+        userId: targetUserId,
+        transactionId: transactionRecord.id,
+        amount: decAmount.toString(),
+      },
+    }).catch((err) => {
+      logger.error({ err, userId: targetUserId, amount: decAmount.toString() }, 'Помилка відправки сповіщення WALLET_TOPPED_UP');
+    });
+
+    return updatedWallet;
   }
 
   /**
@@ -361,6 +382,21 @@ class WalletService {
         where: { walletId: wallet.id },
       }),
     ]);
+    
+    const historySessionIds = [...new Set(history.map((tx) => tx.sessionId).filter(Boolean))];
+    let historySessionsMap = new Map();
+    if (historySessionIds.length > 0) {
+      const historySessions = await prisma.session.findMany({
+        where: { id: { in: historySessionIds } },
+        select: { id: true, title: true },
+      });
+      historySessions.forEach((s) => historySessionsMap.set(s.id, s));
+    }
+
+    const historyWithSessions = history.map((tx) => ({
+      ...tx,
+      session: tx.sessionId ? (historySessionsMap.get(tx.sessionId) || null) : null,
+    }));
 
     const reserveTransactions = await prisma.transaction.findMany({
       where: {
@@ -395,7 +431,7 @@ class WalletService {
     }
 
     return {
-      history,
+      history: historyWithSessions,
       activeTransactions,
       pagination: {
         total,

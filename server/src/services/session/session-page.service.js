@@ -340,6 +340,10 @@ function createSessionPageService({ sessionQueryService }) {
         owner: mapOwner(session.owner),
         campaignId: session.campaignId,
         campaign: campaignData,
+        ...(viewerState.isConfirmedGm || viewerState.isOwner ? {
+          heldAmount: session.heldAmount,
+          platformFeePercent: session.platformFeePercent,
+        } : {}),
       },
       viewer: {
         role: viewer.role || (viewerState.isOwner ? 'OWNER' : null),

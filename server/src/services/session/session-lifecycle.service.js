@@ -297,16 +297,30 @@ async function notifySessionCancelled({
   notificationService,
   session,
   requesterId,
+  reason = null,
 }) {
   const sessionTitle = getSessionTitle(session);
+  let title = 'Сесію скасовано';
+  let body = `Сесію "${sessionTitle}" скасовано.`;
+
+  if (reason === 'no_gm') {
+    title = 'Гру скасовано: немає Майстра';
+    body = `Сесію "${sessionTitle}" автоматично скасовано, оскільки жоден Майстер не підтвердив участь.`;
+  } else if (reason === 'stale_planned') {
+    title = 'Гру скасовано: застаріла';
+    body = `Сесію "${sessionTitle}" автоматично скасовано через тривалу неактивність.`;
+  } else if (reason === 'gm_forgot') {
+    title = 'Гру скасовано: Майстер не з\'явився';
+    body = `Сесію "${sessionTitle}" автоматично скасовано, оскільки Майстер не почав гру вчасно.`;
+  }
 
   await createNotificationSafely(notificationService, {
     eventKey: `session_cancelled:${session.id}`,
     type: NotificationType.SESSION_CANCELLED,
     severity: NotificationSeverity.ERROR,
     category: NotificationCategory.SESSION,
-    title: 'Сесію скасовано',
-    body: `Сесію "${sessionTitle}" скасовано.`,
+    title,
+    body,
     link: `/session/${session.id}`,
     audience: ['session_confirmed_participants', 'session_pending_participants'],
     context: { sessionId: session.id, excludeUserId: requesterId },
@@ -314,6 +328,7 @@ async function notifySessionCancelled({
       sessionId: session.id,
       sessionTitle: session.title,
       status: 'CANCELED',
+      reason,
     },
   });
 }
@@ -713,6 +728,7 @@ function createSessionLifecycleService({
           notificationService,
           session,
           requesterId,
+          reason: options.reason,
         });
       } else if (normalizedUpdateData.status !== 'FINISHED' && scheduleChanged) {
         await notifySessionRescheduled({
@@ -856,6 +872,7 @@ function createSessionLifecycleService({
         notificationService,
         session: updated,
         requesterId: userId,
+        reason: options.reason,
       });
 
       vttStateManager.closeVtt(sessionId);
