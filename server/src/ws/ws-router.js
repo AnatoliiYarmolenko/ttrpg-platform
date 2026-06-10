@@ -1,7 +1,7 @@
 const { AppError, ERROR_CODES } = require('../constants/errors');
 const { parseIncomingMessage, sendEvent, resolveErrorCode, resolveErrorMessage } = require('./ws-utils');
 const { chatHandler } = require('./ws-chat.handler');
-const { vttHandler } = require('../vtt/ws-vtt.handler');
+const { vttHandler } = require('./ws-vtt.handler');
 
 function createMainWsHandler({ roomManager, logger }) {
   if (!roomManager) {

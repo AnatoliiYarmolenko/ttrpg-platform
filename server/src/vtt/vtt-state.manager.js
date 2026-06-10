@@ -212,7 +212,7 @@ class VttStateManager {
    * @returns {Scene}
    */
   createScene(sessionId, data) {
-    console.log('>>> createScene data:', data);
+    logger.info({ data }, '>>> createScene data');
     const { name, width, height, backgroundUrl = null, backgroundColor = null, gridEnabled = true, gridType = 'SQUARE', gridColor = null, gridSize = 64, gridOpacity = 0.4, gridScale = 5 } = data || {};
     const room = this._ensureRoom(sessionId);
     const sceneId = `scene-${this._generateId()}`;
@@ -307,7 +307,7 @@ class VttStateManager {
     if (!room.scenes[sceneId]) return null;
 
     const safeUpdates = filterUpdates(updates, ALLOWED_SCENE_UPDATE_FIELDS);
-    console.log('>>> updateScene safeUpdates:', safeUpdates);
+    logger.info({ safeUpdates }, '>>> updateScene safeUpdates');
     room.scenes[sceneId] = { ...room.scenes[sceneId], ...safeUpdates };
     return room.scenes[sceneId];
   }

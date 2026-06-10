@@ -3,7 +3,7 @@ require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 const { PrismaClient } = require('@prisma/client');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createChatHandler } = require('../../src/ws/ws-chat.handler');
+const { createMainWsHandler } = require('../../src/ws/ws-router');
 const { createRoomManager } = require('../../src/ws/ws-room.manager');
 
 const testDbUrl = process.env.DATABASE_URL_TEST || process.env.DATABASE_URL;
@@ -128,7 +128,7 @@ async function waitForEvent(socket, type, timeout = 2000) {
 
 test('WS Chat lifecycle: joining, sending messages, and broadcasting', async () => {
   const chatRoomManager = createRoomManager();
-  const handleConnection = createChatHandler({ roomManager: chatRoomManager });
+  const handleConnection = createMainWsHandler({ roomManager: chatRoomManager });
 
   const owner = await createTestUser();
   const player = await createTestUser();
