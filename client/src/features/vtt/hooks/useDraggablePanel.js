@@ -9,19 +9,46 @@ export default function useDraggablePanel({
   minWidth,
   minHeight,
   onSaveState,
+  storageKey,
   isOpen
 }) {
   const containerRef = useRef(null);
 
+  const getSavedState = () => {
+    if (!storageKey || globalThis.window === undefined) return null;
+    try {
+      const saved = globalThis.window.localStorage.getItem(storageKey);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.warn('Failed to load panel state', e);
+    }
+    return null;
+  };
+
+  const savedState = getSavedState() || initialState || {};
+
   const stateRef = useRef({
-    x: initialState?.x ?? (globalThis.window === undefined ? 0 : (defaultX ?? 0)),
-    y: initialState?.y ?? (globalThis.window === undefined ? 0 : (defaultY ?? 0)),
-    w: initialState?.w ?? defaultWidth,
-    h: initialState?.h ?? defaultHeight,
-    isLocked: initialState?.isLocked ?? false,
+    x: savedState.x ?? (globalThis.window === undefined ? 0 : (defaultX ?? 0)),
+    y: savedState.y ?? (globalThis.window === undefined ? 0 : (defaultY ?? 0)),
+    w: savedState.w ?? defaultWidth,
+    h: savedState.h ?? defaultHeight,
+    isLocked: savedState.isLocked ?? false,
+    isCollapsed: savedState.isCollapsed ?? false,
   });
 
-  const [isLocked, setIsLocked] = useState(initialState?.isLocked ?? false);
+  const [isLocked, setIsLocked] = useState(savedState.isLocked ?? false);
+  const [isCollapsed, setIsCollapsed] = useState(savedState.isCollapsed ?? false);
+
+  const saveStateToStorage = useCallback((state) => {
+    if (storageKey && globalThis.window !== undefined) {
+      try {
+        globalThis.window.localStorage.setItem(storageKey, JSON.stringify(state));
+      } catch (e) {
+        console.warn('Failed to save panel state', e);
+      }
+    }
+    if (onSaveState) onSaveState(state);
+  }, [storageKey, onSaveState]);
 
   const action = useRef(null);
   const start = useRef({ mx: 0, my: 0, ox: 0, oy: 0, w: 0, h: 0 });
@@ -29,10 +56,10 @@ export default function useDraggablePanel({
 
   const applyStyles = useCallback(() => {
     if (!containerRef.current) return;
-    const { x, y, w, h } = stateRef.current;
+    const { x, y, w, h, isCollapsed } = stateRef.current;
     containerRef.current.style.transform = `translate3d(${x}px, ${y}px, 0)`;
     containerRef.current.style.width = `${w}px`;
-    containerRef.current.style.height = `${h}px`;
+    containerRef.current.style.height = isCollapsed ? 'auto' : `${h}px`;
   }, []);
 
   const onDragMouseDown = useCallback((e) => {
@@ -54,8 +81,16 @@ export default function useDraggablePanel({
     const newLocked = !isLocked;
     setIsLocked(newLocked);
     stateRef.current.isLocked = newLocked;
-    if (onSaveState) onSaveState({ ...stateRef.current });
-  }, [isLocked, onSaveState]);
+    saveStateToStorage({ ...stateRef.current });
+  }, [isLocked, saveStateToStorage]);
+
+  const toggleCollapse = useCallback(() => {
+    const newCollapsed = !isCollapsed;
+    setIsCollapsed(newCollapsed);
+    stateRef.current.isCollapsed = newCollapsed;
+    applyStyles();
+    saveStateToStorage({ ...stateRef.current });
+  }, [isCollapsed, applyStyles, saveStateToStorage]);
 
   // Window resize handler to keep panel within bounds
   useEffect(() => {
@@ -96,13 +131,13 @@ export default function useDraggablePanel({
 
       if (changed) {
         applyStyles();
-        if (onSaveState) onSaveState({ ...stateRef.current });
+        saveStateToStorage({ ...stateRef.current });
       }
     };
 
     globalThis.addEventListener('resize', handleWindowResize);
     return () => globalThis.removeEventListener('resize', handleWindowResize);
-  }, [minWidth, minHeight, onSaveState, applyStyles]);
+  }, [minWidth, minHeight, saveStateToStorage, applyStyles]);
 
   // Handle panel toggle (bring back into bounds if it was moved while closed)
   useEffect(() => {
@@ -136,8 +171,9 @@ export default function useDraggablePanel({
         const winH = globalThis.window.innerHeight;
         
         if (action.current === 'drag') {
+          const currentHeight = stateRef.current.isCollapsed ? (containerRef.current?.offsetHeight || 42) : stateRef.current.h;
           const max_x = Math.max(0, winW - stateRef.current.w);
-          const max_y = Math.max(0, winH - stateRef.current.h);
+          const max_y = Math.max(0, winH - currentHeight);
           
           stateRef.current.x = Math.max(0, Math.min(max_x, start.current.ox + dx));
           stateRef.current.y = Math.max(0, Math.min(max_y, start.current.oy + dy));
@@ -177,7 +213,7 @@ export default function useDraggablePanel({
       action.current = null;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       
-      if (onSaveState) onSaveState({ ...stateRef.current });
+      saveStateToStorage({ ...stateRef.current });
     };
 
     globalThis.addEventListener('mousemove', onMouseMove, { passive: true });
@@ -187,7 +223,7 @@ export default function useDraggablePanel({
       globalThis.removeEventListener('mouseup', onMouseUp); 
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [minWidth, minHeight, onSaveState, applyStyles]);
+  }, [minWidth, minHeight, saveStateToStorage, applyStyles]);
 
   // Застосовуємо стилі при першому рендері та при зміні applyStyles
   useEffect(() => {
@@ -197,7 +233,9 @@ export default function useDraggablePanel({
   return {
     containerRef,
     isLocked,
+    isCollapsed,
     toggleLock,
+    toggleCollapse,
     onDragMouseDown,
     onResizeMouseDown
   };
