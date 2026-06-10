@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import PropTypes from 'prop-types';
 
 export default function BaseModal({
   isOpen,
@@ -58,7 +59,7 @@ export default function BaseModal({
   if (!isOpen || typeof document === 'undefined') return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
       {closeOnBackdrop && (
         <button
           type="button"
@@ -84,3 +85,17 @@ export default function BaseModal({
     document.body
   );
 }
+
+BaseModal.propTypes = {
+  isOpen: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  closeOnEscape: PropTypes.bool,
+  closeOnBackdrop: PropTypes.bool,
+  closeWhileLoading: PropTypes.bool,
+  isLoading: PropTypes.bool,
+  initialFocusRef: PropTypes.shape({ current: PropTypes.instanceOf(Element) }),
+  labelledBy: PropTypes.string,
+  describedBy: PropTypes.string,
+  panelClassName: PropTypes.string,
+  children: PropTypes.node.isRequired,
+};
