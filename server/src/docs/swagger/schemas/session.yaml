@@ -28,6 +28,12 @@ components:
         price:
           type: number
           nullable: true
+        platformFeePercent:
+          type: number
+          description: Відсоток комісії платформи (повертається лише Майстру або власнику)
+        heldAmount:
+          type: number
+          description: Сума заблокованих в escrow коштів сесії (повертається лише Майстру або власнику)
         ownerId:
           type: integer
         campaignId:
@@ -124,9 +130,6 @@ components:
           enum: [PUBLIC, PRIVATE, LINK_ONLY]
         maxPlayers:
           type: integer
-          nullable: true
-        price:
-          type: number
           nullable: true
         status:
           type: string
