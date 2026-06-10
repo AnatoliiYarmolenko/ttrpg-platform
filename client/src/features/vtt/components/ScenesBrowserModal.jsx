@@ -1,18 +1,22 @@
 import React, { useState, useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { Layers, Search, Trash2, Eye, Users, X, Settings } from 'lucide-react';
+import { Layers, Search, Trash2, Eye, Users, X, Settings, Edit2 } from 'lucide-react';
 import DraggablePanel from './common/DraggablePanel';
 import useBattlefieldStore from './battlefield/useBattlefieldStore';
+import ConfirmModal from '@/components/shared/ConfirmModal';
+import InputModal from '@/components/shared/InputModal';
 
 const EMPTY_OBJECT = {};
 
-export default function ScenesBrowserModal({ isOpen, onClose, chatController, onEditScene }) {
+export default function ScenesBrowserModal({ isOpen, onClose, vttConnection, onEditScene }) {
   const scenes = useBattlefieldStore(s => s.scenes) || EMPTY_OBJECT;
   const activeSceneId = useBattlefieldStore(s => s.activeSceneId);
   const gmViewSceneId = useBattlefieldStore(s => s.gmViewSceneId);
   const setGmViewSceneId = useBattlefieldStore(s => s.setGmViewSceneId);
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [sceneToDelete, setSceneToDelete] = useState(null);
+  const [renameTarget, setRenameTarget] = useState(null);
 
   const filteredScenes = useMemo(() => {
     return Object.values(scenes).filter(scene => 
@@ -21,16 +25,24 @@ export default function ScenesBrowserModal({ isOpen, onClose, chatController, on
   }, [scenes, searchTerm]);
 
   const handleActivate = (id) => {
-    chatController?.sendVttSceneActivate?.(id);
+    vttConnection?.sendVttSceneActivate?.(id);
   };
 
-  const handleDelete = (id, name) => {
-    if (globalThis.window?.confirm(`Ви впевнені, що хочете видалити сцену "${name || 'Unnamed'}"? Це незворотна дія.`)) {
-      chatController?.sendVttSceneDelete?.(id);
-      if (gmViewSceneId === id) {
+  const confirmRename = (newName) => {
+    if (newName?.trim() && renameTarget) {
+      vttConnection?.sendVttSceneUpdate?.(renameTarget.id, { name: newName.trim() });
+    }
+    setRenameTarget(null);
+  };
+
+  const confirmDelete = () => {
+    if (sceneToDelete) {
+      vttConnection?.sendVttSceneDelete?.(sceneToDelete.id);
+      if (gmViewSceneId === sceneToDelete.id) {
         setGmViewSceneId(null);
       }
     }
+    setSceneToDelete(null);
   };
 
   const handleView = (id) => {
@@ -41,8 +53,9 @@ export default function ScenesBrowserModal({ isOpen, onClose, chatController, on
     <DraggablePanel
       isOpen={isOpen}
       onClose={onClose}
-      title="Scenes browser"
+      title="Браузер сцен"
       icon={<Layers size={16} className="text-brand-light" />}
+      storageKey="vtt_scenesBrowserState"
       defaultWidth={450}
       defaultHeight={550}
       defaultX={globalThis.window?.innerWidth ? globalThis.window.innerWidth / 2 - 225 : 0}
@@ -96,19 +109,28 @@ export default function ScenesBrowserModal({ isOpen, onClose, chatController, on
                 className={`group flex flex-col gap-2 p-3 rounded-lg border transition-all ${cardClass}`}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <span className="font-semibold text-white truncate" title={scene.name}>
-                      {scene.name || 'Unnamed Scene'}
-                    </span>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <div className="flex-1 min-w-0 pr-4">
+                    <div className="flex flex-col gap-1 w-full max-w-[200px]">
+                      <div className="flex items-center gap-2 max-w-full">
+                        <span className="font-bold text-sm text-brand-light truncate">{scene.name || 'Без назви'}</span>
+                        <button
+                          onClick={() => setRenameTarget(scene)}
+                          className="p-1 text-brand-light/0 group-hover:text-brand-light/40 hover:!text-white transition-colors"
+                          title="Перейменувати сцену"
+                        >
+                          <Edit2 size={12} />
+                        </button>
+                      </div>
+                      
+                      <div className="flex flex-wrap items-center gap-2">
                       {isActive && (
                         <span className="text-[10px] font-bold uppercase tracking-wider text-brand-dark bg-brand-accent px-1.5 py-0.5 rounded shadow-sm">
-                          Active for Players
+                          Активно для гравців
                         </span>
                       )}
                       {isViewed && !isActive && (
                         <span className="text-[10px] font-bold uppercase tracking-wider text-brand-light bg-brand-light/20 px-1.5 py-0.5 rounded">
-                          Currently Viewing
+                          Зараз переглядається
                         </span>
                       )}
                       <span className="text-xs text-brand-light/50">
@@ -116,6 +138,7 @@ export default function ScenesBrowserModal({ isOpen, onClose, chatController, on
                       </span>
                     </div>
                   </div>
+                </div>
 
                   <div className="flex items-center gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity shrink-0 bg-brand-dark/80 backdrop-blur rounded-md p-1 border border-brand-light/10">
                     <button
@@ -140,7 +163,7 @@ export default function ScenesBrowserModal({ isOpen, onClose, chatController, on
                       <Settings size={16} />
                     </button>
                     <button
-                      onClick={() => handleDelete(scene.id, scene.name)}
+                      onClick={() => setSceneToDelete(scene)}
                       className="p-1.5 rounded-md text-brand-light hover:text-red-400 hover:bg-red-400/10 transition-colors"
                       title="Видалити сцену"
                     >
@@ -153,6 +176,29 @@ export default function ScenesBrowserModal({ isOpen, onClose, chatController, on
           })
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={!!sceneToDelete}
+        title="Видалити сцену?"
+        message={`Ви впевнені, що хочете видалити сцену "${sceneToDelete?.name || 'Без назви'}"? Це незворотна дія.`}
+        confirmText="Видалити"
+        cancelText="Скасувати"
+        variant="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setSceneToDelete(null)}
+      />
+
+      <InputModal
+        isOpen={!!renameTarget}
+        title="Перейменувати сцену"
+        message="Введіть нову назву:"
+        placeholder="Нова назва..."
+        defaultValue={renameTarget?.name || ''}
+        confirmText="Зберегти"
+        cancelText="Скасувати"
+        onConfirm={confirmRename}
+        onCancel={() => setRenameTarget(null)}
+      />
     </DraggablePanel>
   );
 }
@@ -160,6 +206,10 @@ export default function ScenesBrowserModal({ isOpen, onClose, chatController, on
 ScenesBrowserModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
-  chatController: PropTypes.object,
   onEditScene: PropTypes.func,
+  vttConnection: PropTypes.shape({
+    sendVttSceneActivate: PropTypes.func,
+    sendVttSceneUpdate: PropTypes.func,
+    sendVttSceneDelete: PropTypes.func,
+  }),
 };
