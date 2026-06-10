@@ -12,7 +12,7 @@ const { port, wsChatPath, wsCallPath } = require('./src/config/config');
 const { createApp } = require('./src/app');
 const { createWsServer } = require('./src/ws/ws-server');
 const { createRoomManager } = require('./src/ws/ws-room.manager');
-const { createChatHandler } = require('./src/ws/ws-chat.handler');
+const { createMainWsHandler } = require('./src/ws/ws-router');
 const { createCallHandler } = require('./src/ws/ws-call.handler');
 const { initWorkers, closeWorkers } = require('./src/lib/mediasoup');
 
@@ -125,13 +125,13 @@ async function startServer() {
   });
 
   roomManager = createRoomManager();
-  const chatHandler = createChatHandler({ roomManager, logger });
+  const mainWsHandler = createMainWsHandler({ roomManager, logger });
 
   wsServer = createWsServer({
     server,
     path: wsChatPath,
     logger,
-    onConnection: chatHandler,
+    onConnection: mainWsHandler,
   });
   logger.info({ path: wsChatPath }, 'WS сервер запущено (Chat)');
 

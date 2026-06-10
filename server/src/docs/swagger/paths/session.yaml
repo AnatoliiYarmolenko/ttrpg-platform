@@ -515,3 +515,57 @@ paths:
       responses:
         200:
           description: Учасника видалено
+
+  /api/sessions/{id}/vtt/map:
+    post:
+      summary: Завантажити карту для VTT
+      tags: [Sessions]
+      security: 
+        - cookieAuth: []
+          csrfAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - map
+              properties:
+                map:
+                  type: string
+                  format: binary
+                  description: Зображення карти (JPG, PNG, GIF, WebP)
+      responses:
+        200:
+          description: Карту успішно завантажено
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      url:
+                        type: string
+                      width:
+                        type: integer
+                      height:
+                        type: integer
+        400:
+          description: Неправильний формат файлу або перевищено ліміт розміру (15MB)
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        403:
+          $ref: '#/components/responses/ForbiddenError'
+        404:
+          description: Сесію не знайдено
