@@ -26,7 +26,7 @@ class SharedWsManager {
 
   connect(isReconnect = false) {
     if (this.ws?.readyState === WebSocket.OPEN || this.ws?.readyState === WebSocket.CONNECTING) {
-      if (this.ws.readyState === WebSocket.OPEN && !isReconnect) {
+      if (this.ws?.readyState === WebSocket.OPEN && !isReconnect) {
         this.notifyConnectionState('connected');
       }
       return;

@@ -26,7 +26,7 @@ vi.mock('@/components/shared', () => {
   return { ConfirmModal };
 });
 vi.mock('@/components/ui/Button', () => ({
-  default: ({ children, onClick, disabled, title, className, ...props }) => (
+  default: ({ children, onClick, disabled, title, className, fullWidth, ...props }) => (
     <button onClick={onClick} disabled={disabled} title={title} className={className} {...props}>
       {children}
     </button>
