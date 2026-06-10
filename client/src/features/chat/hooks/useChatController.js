@@ -37,7 +37,7 @@ export default function useChatController(entityType, entityId, options = {}) {
     lastKnownCursor: messagesQuery.data?.latestCursor || null,
   });
 
-  const { readonly: storeReadonly } = useChatStore();
+  const storeReadonly = useChatStore((s) => s.readonly);
 
   const isLoading = metaQuery.isLoading || messagesQuery.isLoading;
   const hasError = metaQuery.isError || messagesQuery.isError || connectionHook.hasError;
@@ -114,24 +114,7 @@ export default function useChatController(entityType, entityId, options = {}) {
     connect: connectionHook.connect,
     disconnect: connectionHook.disconnect,
     sendMessage: connectionHook.sendMessage,
-    sendVttOpen: connectionHook.sendVttOpen,
-    sendVttGetState: connectionHook.sendVttGetState,
-    sendVttTokenDrag: connectionHook.sendVttTokenDrag,
-    sendVttTokenDrop: connectionHook.sendVttTokenDrop,
-    sendVttDiceRoll: connectionHook.sendVttDiceRoll,
-    sendVttSetBackground: connectionHook.sendVttSetBackground,
-    sendVttSceneCreate: connectionHook.sendVttSceneCreate,
-    sendVttSceneUpdate: connectionHook.sendVttSceneUpdate,
-    sendVttSceneDelete: connectionHook.sendVttSceneDelete,
-    sendVttSceneActivate: connectionHook.sendVttSceneActivate,
-    sendVttLayerCreate: connectionHook.sendVttLayerCreate,
-    sendVttLayerUpdate: connectionHook.sendVttLayerUpdate,
-    sendVttLayerReorder: connectionHook.sendVttLayerReorder,
-    sendVttLayerDelete: connectionHook.sendVttLayerDelete,
-    sendVttSceneAddImage: connectionHook.sendVttSceneAddImage,
-    sendVttSceneUpdateImage: connectionHook.sendVttSceneUpdateImage,
-    sendVttScenePreviewImage: connectionHook.sendVttScenePreviewImage,
-    sendVttSceneRemoveImage: connectionHook.sendVttSceneRemoveImage,
+
     connectionState: connectionHook.connectionState,
     isConnected: connectionHook.isConnected,
 
