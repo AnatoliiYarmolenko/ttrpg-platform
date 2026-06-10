@@ -107,7 +107,7 @@ class WalletService {
       category: 'payment',
       title: 'Баланс поповнено',
       body: `Ваш гаманець успішно поповнено на ${decAmount.toString()} Demo Coins.`,
-      link: '/profile',
+      link: '/?tab=profile&section=balance',
       recipientIds: [targetUserId],
       metadata: {
         userId: targetUserId,
@@ -166,23 +166,25 @@ class WalletService {
       },
     });
 
-    notificationService.createNotification({
-      eventKey: `payment_reserved:${targetUserId}:${targetSessionId}`,
-      type: 'PAYMENT_RESERVED',
-      severity: 'SUCCESS',
-      category: 'payment',
-      title: 'Кошти зарезервовано',
-      body: `Зарезервовано ${decAmount.toString()} Demo Coins для участі у сесії.`,
-      link: `/session/${targetSessionId}`,
-      recipientIds: [targetUserId],
-      metadata: {
-        userId: targetUserId,
-        sessionId: targetSessionId,
-        amount: decAmount.toString(),
-      },
-    }).catch((err) => {
+    try {
+      await notificationService.createNotification({
+        eventKey: `payment_reserved:${targetUserId}:${targetSessionId}`,
+        type: 'PAYMENT_RESERVED',
+        severity: 'SUCCESS',
+        category: 'payment',
+        title: 'Кошти зарезервовано',
+        body: `Зарезервовано ${decAmount.toString()} Demo Coins для участі у сесії.`,
+        link: '/?tab=profile&section=balance',
+        recipientIds: [targetUserId],
+        metadata: {
+          userId: targetUserId,
+          sessionId: targetSessionId,
+          amount: decAmount.toString(),
+        },
+      }, tx);
+    } catch (err) {
       logger.error({ err, userId: targetUserId, sessionId: targetSessionId }, 'Помилка відправки сповіщення PAYMENT_RESERVED');
-    });
+    }
 
     return updatedWallet;
   }
@@ -228,23 +230,25 @@ class WalletService {
       },
     });
 
-    notificationService.createNotification({
-      eventKey: `payment_refunded:${targetUserId}:${targetSessionId}`,
-      type: 'PAYMENT_REFUNDED',
-      severity: 'SUCCESS',
-      category: 'payment',
-      title: 'Повернення коштів',
-      body: `Повернуто ${decAmount.toString()} Demo Coins на ваш гаманець.`,
-      link: `/session/${targetSessionId}`,
-      recipientIds: [targetUserId],
-      metadata: {
-        userId: targetUserId,
-        sessionId: targetSessionId,
-        amount: decAmount.toString(),
-      },
-    }).catch((err) => {
+    try {
+      await notificationService.createNotification({
+        eventKey: `payment_refunded:${targetUserId}:${targetSessionId}`,
+        type: 'PAYMENT_REFUNDED',
+        severity: 'SUCCESS',
+        category: 'payment',
+        title: 'Повернення коштів',
+        body: `Повернуто ${decAmount.toString()} Demo Coins на ваш гаманець.`,
+        link: '/?tab=profile&section=balance',
+        recipientIds: [targetUserId],
+        metadata: {
+          userId: targetUserId,
+          sessionId: targetSessionId,
+          amount: decAmount.toString(),
+        },
+      }, tx);
+    } catch (err) {
       logger.error({ err, userId: targetUserId, sessionId: targetSessionId }, 'Помилка відправки сповіщення PAYMENT_REFUNDED');
-    });
+    }
 
     return updatedWallet;
   }
@@ -290,23 +294,25 @@ class WalletService {
       },
     });
 
-    notificationService.createNotification({
-      eventKey: `payout_received:${targetGmId}:${targetSessionId}`,
-      type: 'PAYOUT_RECEIVED',
-      severity: 'SUCCESS',
-      category: 'payment',
-      title: 'Отримано виплату',
-      body: `Вам нараховано виплату ${decAmount.toString()} Demo Coins за проведення сесії.`,
-      link: `/session/${targetSessionId}`,
-      recipientIds: [targetGmId],
-      metadata: {
-        gmId: targetGmId,
-        sessionId: targetSessionId,
-        amount: decAmount.toString(),
-      },
-    }).catch((err) => {
+    try {
+      await notificationService.createNotification({
+        eventKey: `payout_received:${targetGmId}:${targetSessionId}`,
+        type: 'PAYOUT_RECEIVED',
+        severity: 'SUCCESS',
+        category: 'payment',
+        title: 'Отримано виплату',
+        body: `Вам нараховано виплату ${decAmount.toString()} Demo Coins за проведення сесії.`,
+        link: '/?tab=profile&section=balance',
+        recipientIds: [targetGmId],
+        metadata: {
+          gmId: targetGmId,
+          sessionId: targetSessionId,
+          amount: decAmount.toString(),
+        },
+      }, tx);
+    } catch (err) {
       logger.error({ err, gmId: targetGmId, sessionId: targetSessionId }, 'Помилка відправки сповіщення PAYOUT_RECEIVED');
-    });
+    }
 
     return updatedWallet;
   }
@@ -398,17 +404,41 @@ class WalletService {
       session: tx.sessionId ? (historySessionsMap.get(tx.sessionId) || null) : null,
     }));
 
-    const reserveTransactions = await prisma.transaction.findMany({
+    const relevantTransactions = await prisma.transaction.findMany({
       where: {
         walletId: wallet.id,
-        type: 'RESERVE',
+        type: { in: ['RESERVE', 'REFUND'] },
         sessionId: { not: null },
       },
       orderBy: { date: 'desc' },
     });
 
+    const sessionBalances = new Map();
+    const activeReserveTxs = [];
+
+    for (const tx of relevantTransactions) {
+      if (!sessionBalances.has(tx.sessionId)) {
+        sessionBalances.set(tx.sessionId, { netAmount: new Prisma.Decimal(0), lastReserveTx: null });
+      }
+      const data = sessionBalances.get(tx.sessionId);
+      if (tx.type === 'RESERVE') {
+        data.netAmount = data.netAmount.plus(tx.amount);
+        if (!data.lastReserveTx) {
+          data.lastReserveTx = tx;
+        }
+      } else if (tx.type === 'REFUND') {
+        data.netAmount = data.netAmount.minus(tx.amount);
+      }
+    }
+
+    for (const data of sessionBalances.values()) {
+      if (data.netAmount.gt(0) && data.lastReserveTx) {
+        activeReserveTxs.push(data.lastReserveTx);
+      }
+    }
+
     let activeTransactions = [];
-    const sessionIds = reserveTransactions.map((tx) => tx.sessionId).filter(Boolean);
+    const sessionIds = activeReserveTxs.map((tx) => tx.sessionId).filter(Boolean);
 
     if (sessionIds.length > 0) {
       const activeSessions = await prisma.session.findMany({
@@ -422,7 +452,7 @@ class WalletService {
       const activeSessionIds = new Set(activeSessions.map((s) => s.id));
       const activeSessionsMap = new Map(activeSessions.map((s) => [s.id, s]));
 
-      activeTransactions = reserveTransactions
+      activeTransactions = activeReserveTxs
         .filter((tx) => activeSessionIds.has(tx.sessionId))
         .map((tx) => ({
           ...tx,

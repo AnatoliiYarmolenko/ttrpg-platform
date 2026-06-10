@@ -318,6 +318,7 @@ class CampaignService {
             system: true,
             status: true,
             visibility: true,
+            price: true,
             maxPlayers: true,
             ownerId: true,
             participants: {

@@ -22,11 +22,11 @@ class WalletController {
   async getMyTransactions(req, res, next) {
     try {
       const userId = req.user.id;
-      const { limit = 20, offset = 0 } = req.query;
+      const { limit, offset } = req.query;
 
       const data = await walletService.getTransactionHistory(userId, {
-        limit: Number.parseInt(limit, 10),
-        offset: Number.parseInt(offset, 10),
+        limit,
+        offset,
       });
 
       res.json({ success: true, ...data });
