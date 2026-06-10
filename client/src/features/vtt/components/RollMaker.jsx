@@ -12,6 +12,7 @@ export default function RollMaker({ onRoll }) {
   const { isRollMakerOpen, setRollMakerOpen, rollStrength, setRollStrength } = useVttStore();
   const [formula, setFormula] = useState('1d20');
   const [errorMsg, setErrorMsg] = useState(null);
+  const [visibility, setVisibility] = useState('PUBLIC');
   const containerRef = useRef(null);
   
   // Для спрощеної версії поки що лише базові типи кубиків
@@ -60,7 +61,7 @@ export default function RollMaker({ onRoll }) {
         return; // Зупиняємо кидок, щоб користувач побачив виправлення
       }
 
-      onRoll(newFormula, 'Fast Roll');
+      onRoll(newFormula, 'Швидкий кидок', rollStrength, visibility);
       setRollMakerOpen(false); // Автоматичне закриття після кидка
     }
   };
@@ -97,11 +98,12 @@ export default function RollMaker({ onRoll }) {
   return (
     <div 
       ref={containerRef}
-      className={`absolute left-1/2 -translate-x-1/2 w-96 bg-brand-dark/95 backdrop-blur-md border border-brand-light/20 rounded-xl shadow-[0_8px_30px_rgba(22,74,65,0.6)] z-50 overflow-hidden flex flex-col text-sm text-white transition-all duration-300 ease-in-out ${
+      className={`absolute left-1/2 -translate-x-1/2 w-96 border border-brand-light/20 rounded-xl shadow-[0_8px_30px_rgba(22,74,65,0.6)] z-50 overflow-hidden flex flex-col text-sm text-white transition-all duration-300 ease-in-out ${
         isRollMakerOpen 
           ? 'bottom-24 opacity-100 pointer-events-auto translate-y-0' 
           : 'bottom-24 opacity-0 pointer-events-none translate-y-12'
       }`}
+      style={{ background: 'rgba(22, 36, 34, 0.5)', backdropFilter: 'blur(24px)' }}
     >
       {/* Toast Notification */}
       <div 
@@ -115,7 +117,7 @@ export default function RollMaker({ onRoll }) {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-brand-light/10 bg-brand-medium/40">
         <h3 className="font-semibold flex items-center gap-2 text-brand-light">
-          <Dices size={16} /> Roll Maker
+          <Dices size={16} /> Конструктор кидка
         </h3>
         <button 
           onClick={setRollMakerOpen.bind(null, false)}
@@ -150,7 +152,7 @@ export default function RollMaker({ onRoll }) {
 
         {/* Dice Selection */}
         <div>
-          <div className="text-xs text-white/50 mb-2 uppercase tracking-wider font-semibold">Dice Types</div>
+          <div className="text-xs text-white/50 mb-2 uppercase tracking-wider font-semibold">Типи кубиків</div>
           <div className="flex flex-wrap gap-2">
             {diceTypes.map((dice) => (
               <button
@@ -181,10 +183,17 @@ export default function RollMaker({ onRoll }) {
           />
         </div>
 
-        {/* Visibility Mock */}
-        <div className="flex items-center gap-2 text-xs text-brand-light/70 mt-2">
-          <div className="w-2 h-2 rounded-full bg-brand-accent animate-pulse" />
-          Everyone can see
+        {/* Visibility Selection */}
+        <div className="mt-2">
+          <div className="text-xs text-white/50 mb-2 uppercase tracking-wider font-semibold">Видимість</div>
+          <select 
+            value={visibility}
+            onChange={(e) => setVisibility(e.target.value)}
+            className="w-full bg-brand-dark/50 border border-brand-light/20 rounded-md p-2 text-brand-light text-sm focus:border-brand-accent outline-none appearance-none"
+          >
+            <option value="PUBLIC">Усі бачать цей кидок</option>
+            <option value="GM_ONLY">Тільки Майстер (Закритий кидок)</option>
+          </select>
         </div>
       </div>
 
@@ -194,7 +203,7 @@ export default function RollMaker({ onRoll }) {
           onClick={handleRoll}
           className="px-6 py-2 bg-brand-accent hover:bg-[#d99f41] text-brand-dark font-bold rounded-lg transition-colors shadow-lg shadow-brand-accent/20"
         >
-          Roll
+          Кинути
         </button>
       </div>
     </div>

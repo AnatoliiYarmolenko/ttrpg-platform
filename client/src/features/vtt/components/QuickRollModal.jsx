@@ -16,6 +16,8 @@ export default function QuickRollModal({
 }) {
   const [name, setName] = useState('');
   const [formula, setFormula] = useState('');
+  const [rollStrength, setRollStrength] = useState(1);
+  const [visibility, setVisibility] = useState('PUBLIC');
   const [error, setError] = useState('');
 
   // Заповнюємо форму при відкритті (асинхронно для запобігання каскадним рендерам)
@@ -25,9 +27,13 @@ export default function QuickRollModal({
         if (initialData) {
           setName(initialData.name || '');
           setFormula(initialData.formula || '');
+          setRollStrength(initialData.rollStrength ?? 1);
+          setVisibility(initialData.visibility || 'PUBLIC');
         } else {
           setName('');
           setFormula('');
+          setRollStrength(1);
+          setVisibility('PUBLIC');
         }
         setError('');
       }, 0);
@@ -109,7 +115,7 @@ export default function QuickRollModal({
       return;
     }
 
-    onSave({ name: name.trim(), formula: cleanFormula });
+    onSave({ name: name.trim(), formula: cleanFormula, rollStrength: Number(rollStrength), visibility });
     onClose();
   };
 
@@ -127,11 +133,11 @@ export default function QuickRollModal({
       title={initialData ? 'Редагувати кидок' : 'Новий швидкий кидок'}
       icon={<Dices size={16} className="text-brand-accent pointer-events-none" />}
       defaultWidth={450}
-      defaultHeight={420}
+      defaultHeight={550}
       defaultX={globalThis.window?.innerWidth ? globalThis.window.innerWidth / 2 - 225 : 0}
-      defaultY={globalThis.window?.innerHeight ? globalThis.window.innerHeight / 2 - 210 : 0}
+      defaultY={globalThis.window?.innerHeight ? globalThis.window.innerHeight / 2 - 275 : 0}
       minWidth={420}
-      minHeight={350}
+      minHeight={500}
       contentClassName="flex-1 flex flex-col min-h-0 bg-transparent text-white"
     >
       <form onSubmit={handleSave} className="flex flex-col h-full">
@@ -165,7 +171,7 @@ export default function QuickRollModal({
                   type="button"
                   onClick={() => setFormula('')}
                   className="text-brand-light/50 hover:text-white transition-colors flex-shrink-0"
-                  title="Clear formula"
+                  title="Очистити формулу"
                 >
                   <X size={16} />
                 </button>
@@ -186,6 +192,36 @@ export default function QuickRollModal({
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Throw Strength Selection */}
+            <div className="mt-4 border-t border-brand-light/10 pt-3">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs text-white/50 uppercase tracking-wider font-semibold">Сила кидка</span>
+                <span className="text-xs font-mono text-brand-accent">{rollStrength}x</span>
+              </div>
+              <input 
+                type="range" 
+                min="0.1" 
+                max="3.0" 
+                step="0.1" 
+                value={rollStrength}
+                onChange={(e) => setRollStrength(e.target.value)}
+                className="w-full accent-brand-accent"
+              />
+            </div>
+
+            {/* Visibility Selection */}
+            <div className="mt-4 border-t border-brand-light/10 pt-3">
+              <div className="text-xs text-white/50 mb-2 uppercase tracking-wider font-semibold">Видимість</div>
+              <select 
+                value={visibility}
+                onChange={(e) => setVisibility(e.target.value)}
+                className="w-full bg-brand-dark/50 border border-brand-light/20 rounded-md p-2 text-brand-light text-sm focus:border-brand-accent outline-none appearance-none"
+              >
+                <option value="PUBLIC">Усі бачать цей кидок</option>
+                <option value="GM_ONLY">Тільки Майстер (Закритий кидок)</option>
+              </select>
             </div>
           </div>
 
@@ -225,5 +261,7 @@ QuickRollModal.propTypes = {
   initialData: PropTypes.shape({
     name: PropTypes.string,
     formula: PropTypes.string,
+    rollStrength: PropTypes.number,
+    visibility: PropTypes.string,
   }),
 };

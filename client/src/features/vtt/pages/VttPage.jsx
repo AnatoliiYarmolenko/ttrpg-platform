@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { VttBattlefield } from '../components/battlefield';
 import { useSessionPageQuery } from '@/features/sessions/hooks/useSessionQueries';
 import { useChatController } from '@/features/chat/hooks';
+import useVttConnection from '../hooks/useVttConnection';
 import { FullPageLoader } from '@/components/shared';
 import DiceRoller3D from '../components/DiceRoller3D';
 import QuickBar from '../components/QuickBar';
@@ -30,6 +31,7 @@ export default function VttPage() {
   const navigate = useNavigate();
   const setVttOpen = useVttStore((state) => state.setVttOpen);
   const incomingRoll = useVttStore((state) => state.incomingRoll);
+  const rollStrength = useVttStore((state) => state.rollStrength);
   
   useEffect(() => {
     if (id) {
@@ -40,8 +42,11 @@ export default function VttPage() {
   const { data: pageData, isLoading } = useSessionPageQuery({ sessionId: id ? Number(id) : null });
   const actions = pageData?.actions || {};
 
-  // Chat WS — для відправки vtt:open при першому заході GM
   const chatController = useChatController('session', Number.parseInt(id, 10), {
+    enabled: Boolean(id && pageData),
+  });
+
+  const vttConnection = useVttConnection(id, {
     enabled: Boolean(id && pageData),
   });
 
@@ -51,18 +56,12 @@ export default function VttPage() {
   useEffect(() => {
     if (!pageData || !chatController.isConnected) return;
     if (actions.canOpenVtt) {
-      chatController.sendVttOpen?.();
+      vttConnection.sendVttOpen?.();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageData?.actions?.canOpenVtt, chatController.isConnected]);
 
-  // Cleanup chat WS при виході
-  useEffect(() => {
-    const disconnect = chatController?.disconnect;
-    return () => {
-      disconnect?.();
-    };
-  }, [chatController?.disconnect]);
+
 
   // Редірект якщо немає доступу
   useEffect(() => {
@@ -72,16 +71,14 @@ export default function VttPage() {
   }, [isLoading, pageData, canAccess, id, navigate]);
 
   // Обробник кидка з QuickBar або RollMaker
-  const handleRoll = useCallback((formula, name) => {
-
-    console.log('[VttPage] handleRoll called with:', formula, name);
-    if (!chatController.sendVttDiceRoll) {
+  const handleRoll = useCallback((formula, name, customStrength, visibility) => {
+    if (!vttConnection.sendVttDiceRoll) {
       alert('Помилка: Функція sendVttDiceRoll недоступна. Будь ласка, оновіть сторінку (Ctrl+F5).');
       return;
     }
     // Відправляємо кидок на сервер для синхронізації
-    chatController.sendVttDiceRoll(formula, name);
-  }, [chatController]);
+    vttConnection.sendVttDiceRoll(formula, name, customStrength ?? rollStrength, visibility);
+  }, [vttConnection, rollStrength]);
 
   if (isLoading || !pageData) {
     return <FullPageLoader text="Завантаження Ігрового столу..." />;
@@ -116,12 +113,12 @@ export default function VttPage() {
         />
         {/* PixiJS Battlefield Canvas */}
         <VttBattlefield 
-          chatController={chatController} 
+          vttConnection={vttConnection} 
           isGM={Boolean(pageData?.viewer?.isSessionOwner || pageData?.viewer?.role === 'GM' || actions.canManageParticipants)} 
         />
 
         {/* UI Overlays */}
-        <SceneManager chatController={chatController} />
+        <SceneManager vttConnection={vttConnection} />
         <RollMaker onRoll={handleRoll} />
         <QuickBar onRoll={handleRoll} />
       </main>

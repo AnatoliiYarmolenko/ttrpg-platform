@@ -12,7 +12,7 @@ const DEFAULT_WIDTH = 360;
 const DEFAULT_HEIGHT = 500;
 
 export default function VttFloatingChat({ chatController }) {
-  const { isChatOpen, toggleChat, floatingChatState, setFloatingChatState } = useVttStore();
+  const { isChatOpen, toggleChat } = useVttStore();
   
   const { chatPanelProps } = chatController;
 
@@ -31,15 +31,14 @@ export default function VttFloatingChat({ chatController }) {
       isOpen={isChatOpen}
       onClose={toggleChat}
       title={
-        <div className={`flex items-center gap-2 ${floatingChatState?.isLocked ? 'opacity-50' : ''}`}>
+        <div className="flex items-center gap-2">
           <MessageSquare size={16} className="text-brand-accent pointer-events-none" />
           <span className="text-white font-semibold text-sm pointer-events-none">Ігровий Чат</span>
           <div className={`w-2 h-2 rounded-full ml-1 ${getStatusDot()}`} title={chatController.connectionState} />
         </div>
       }
       icon={<GripVertical size={14} className="text-brand-light/30 pointer-events-none" />}
-      initialState={floatingChatState}
-      onSaveState={setFloatingChatState}
+      storageKey="vtt_floatingChatState"
       defaultWidth={DEFAULT_WIDTH}
       defaultHeight={DEFAULT_HEIGHT}
       defaultX={globalThis.window?.innerWidth ? globalThis.window.innerWidth - DEFAULT_WIDTH - 24 : 0}

@@ -94,7 +94,7 @@ const DEFAULT_HEIGHT = 450;
  * Відкривається/закривається через бокове меню. Можна перетягувати та змінювати розмір.
  */
 export default function DiceLogPanel() {
-  const { isDiceLogOpen, toggleDiceLog, rollHistory, clearRollHistory, diceLogState, setDiceLogState } = useVttStore();
+  const { isDiceLogOpen, toggleDiceLog, rollHistory, clearRollHistory } = useVttStore();
 
   return (
     <DraggablePanel
@@ -102,8 +102,7 @@ export default function DiceLogPanel() {
       onClose={toggleDiceLog}
       title="Журнал кидків"
       icon={<GripVertical size={14} className="text-brand-light/30" />}
-      initialState={diceLogState}
-      onSaveState={setDiceLogState}
+      storageKey="vtt_diceLogState"
       defaultWidth={DEFAULT_WIDTH}
       defaultHeight={DEFAULT_HEIGHT}
       defaultX={globalThis.window?.innerWidth ? globalThis.window.innerWidth - DEFAULT_WIDTH - 16 : 0}
@@ -140,7 +139,7 @@ export default function DiceLogPanel() {
                 <div className="flex-1 min-w-0 flex flex-col">
                   <div className="flex items-center gap-2 w-full">
                     <span className="text-white font-bold text-[13px] uppercase truncate">
-                      {roll.player ? `${roll.player}: ` : ''}{roll.name || 'UNTITLED'}
+                      {roll.player ? `${roll.player}: ` : ''}{roll.name || 'БЕЗ НАЗВИ'}
                     </span>
                     <div className="h-[1px] flex-1 bg-brand-light/20 min-w-[10px]" />
                     <span className="text-white font-bold text-xl tabular-nums leading-none ml-1 flex-shrink-0">
