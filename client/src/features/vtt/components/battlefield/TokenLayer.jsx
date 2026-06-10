@@ -112,7 +112,7 @@ function useTokenDrag({ token, viewport, gridSize, onDrag, onDrop }) {
  *   viewport: import('../../types/vtt.types').Viewport,
  * }} props
  */
-export default function TokenLayer({ tokens, gridSize, onTokenDrag, onTokenDrop, viewport }) {
+export default function TokenLayer({ tokens, gridSize, onTokenDrag, onTokenDrop, viewport, isLocked = false }) {
   return (
     <container>
       {tokens.map((token) => (
@@ -123,6 +123,7 @@ export default function TokenLayer({ tokens, gridSize, onTokenDrag, onTokenDrop,
           onDrag={onTokenDrag}
           onDrop={onTokenDrop}
           viewport={viewport}
+          isLocked={isLocked}
         />
       ))}
     </container>
@@ -144,6 +145,7 @@ TokenLayer.propTypes = {
     y: PropTypes.number.isRequired,
     scale: PropTypes.number.isRequired,
   }).isRequired,
+  isLocked: PropTypes.bool,
 };
 
 /**
@@ -157,7 +159,7 @@ TokenLayer.propTypes = {
  *   viewport: import('../../types/vtt.types').Viewport,
  * }} props
  */
-function Token({ token, gridSize, onDrag, onDrop, viewport }) {
+function Token({ token, gridSize, onDrag, onDrop, viewport, isLocked = false }) {
   const { pos, handlePointerDown, handlePointerMove, handlePointerUp } = useTokenDrag({
     token,
     viewport,
@@ -196,9 +198,9 @@ function Token({ token, gridSize, onDrag, onDrop, viewport }) {
       draw={drawToken /* NOSONAR */}
       x={pos.x}
       y={pos.y}
-      eventMode="static" /* NOSONAR */
-      cursor="pointer"
-      onPointerDown={handlePointerDown}
+      eventMode={isLocked ? 'none' : 'static'} /* NOSONAR */
+      cursor={isLocked ? 'default' : 'pointer'}
+      onPointerDown={isLocked ? undefined : handlePointerDown}
       onGlobalPointerMove={handlePointerMove /* NOSONAR */}
       onPointerUp={handlePointerUp}
       onPointerUpOutside={handlePointerUp /* NOSONAR */}
@@ -222,4 +224,5 @@ Token.propTypes = {
     y: PropTypes.number.isRequired,
     scale: PropTypes.number.isRequired,
   }).isRequired,
+  isLocked: PropTypes.bool,
 };
