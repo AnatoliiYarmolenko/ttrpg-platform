@@ -426,6 +426,7 @@ export default function SceneManager({ vttConnection }) {
         message="Введіть назву для нового шару:"
         placeholder="Наприклад: Пастки, Ефекти..."
         defaultValue="Новий шар"
+        theme="dark"
         confirmText="Створити"
         cancelText="Скасувати"
         onConfirm={confirmCreateLayer}
@@ -438,6 +439,7 @@ export default function SceneManager({ vttConnection }) {
         message="Введіть нову назву:"
         placeholder="Нова назва..."
         defaultValue={renameTarget?.name || ''}
+        theme="dark"
         confirmText="Зберегти"
         cancelText="Скасувати"
         onConfirm={confirmRename}

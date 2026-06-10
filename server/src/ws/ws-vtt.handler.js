@@ -1,8 +1,8 @@
 const { AppError, ERROR_CODES } = require('../constants/errors');
-const { vttStateManager } = require('./vtt-state.manager');
+const { vttStateManager } = require('../vtt/vtt-state.manager');
 const sessionService = require('../services/session.service');
-const { rollDice } = require('./dice-engine');
-const { sendEvent } = require('../ws/ws-utils');
+const { rollDice } = require('../vtt/dice-engine');
+const { sendEvent } = require('./ws-utils');
 
 function parseSessionId(value) {
   const parsed = Number.parseInt(value, 10);

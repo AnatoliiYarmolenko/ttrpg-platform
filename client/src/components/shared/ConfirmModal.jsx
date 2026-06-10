@@ -11,6 +11,7 @@ export default function ConfirmModal({
   confirmText = 'Підтвердити',
   cancelText = 'Скасувати',
   variant = 'primary',
+  theme = 'light',
   isLoading = false,
   onConfirm,
   onCancel,
@@ -23,6 +24,13 @@ export default function ConfirmModal({
   const confirmVariant = variant === 'danger' ? 'danger' : 'primary';
   const modalActionButtonClass = 'w-full';
 
+  const isDark = theme === 'dark';
+  const bgClass = isDark 
+    ? 'bg-[#162422] border border-brand-light/10 shadow-black/50' 
+    : 'bg-white shadow-xl';
+  const titleClass = isDark ? 'text-white' : 'text-brand-dark';
+  const textClass = isDark ? 'text-brand-light/80' : 'text-brand-medium';
+
   return (
     <BaseModal
       isOpen={isOpen}
@@ -33,12 +41,12 @@ export default function ConfirmModal({
       labelledBy={titleId}
       panelClassName="max-w-md"
     >
-      <div className="rounded-2xl bg-[#162422] border border-brand-light/10 p-6 shadow-2xl shadow-black/50 animate-in fade-in zoom-in-95">
-        <h3 id={titleId} className="mb-2 text-lg font-bold text-white">
+      <div className={`rounded-2xl p-6 shadow-2xl animate-in fade-in zoom-in-95 ${bgClass}`}>
+        <h3 id={titleId} className={`mb-2 text-lg font-bold ${titleClass}`}>
           {title}
         </h3>
 
-        {message && <p className="mb-6 text-brand-light/80">{message}</p>}
+        {message && <p className={`mb-6 ${textClass}`}>{message}</p>}
 
         <div className="mx-auto grid w-full max-w-[380px] grid-cols-2 gap-3">
           <Button
@@ -77,6 +85,7 @@ ConfirmModal.propTypes = {
   confirmText: PropTypes.string,
   cancelText: PropTypes.string,
   variant: PropTypes.oneOf(['primary', 'danger']),
+  theme: PropTypes.oneOf(['light', 'dark']),
   isLoading: PropTypes.bool,
   onConfirm: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,

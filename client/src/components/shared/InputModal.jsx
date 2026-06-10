@@ -14,6 +14,7 @@ export default function InputModal({
   placeholder = '',
   confirmText = 'Зберегти',
   cancelText = 'Скасувати',
+  theme = 'light',
   isLoading = false,
   onConfirm,
   onCancel,
@@ -39,6 +40,16 @@ export default function InputModal({
     }
   };
 
+  const isDark = theme === 'dark';
+  const bgClass = isDark 
+    ? 'bg-[#162422] border border-brand-light/10 shadow-black/50' 
+    : 'bg-white shadow-xl';
+  const titleClass = isDark ? 'text-white' : 'text-brand-dark';
+  const textClass = isDark ? 'text-brand-light/80 text-sm' : 'text-brand-medium text-sm';
+  const inputClass = isDark 
+    ? 'bg-black/30 border-brand-light/10 text-white placeholder-brand-light/30'
+    : 'bg-white border-gray-300 text-brand-dark placeholder-gray-400 focus:border-brand-primary focus:ring-brand-primary';
+
   return (
     <BaseModal
       isOpen={isOpen}
@@ -49,12 +60,12 @@ export default function InputModal({
       labelledBy={titleId}
       panelClassName="max-w-md"
     >
-      <form onSubmit={handleSubmit} className="rounded-2xl bg-[#162422] border border-brand-light/10 p-6 shadow-2xl shadow-black/50 animate-in fade-in zoom-in-95">
-        <h3 id={titleId} className="mb-2 text-lg font-bold text-white">
+      <form onSubmit={handleSubmit} className={`rounded-2xl p-6 shadow-2xl animate-in fade-in zoom-in-95 ${bgClass}`}>
+        <h3 id={titleId} className={`mb-2 text-lg font-bold ${titleClass}`}>
           {title}
         </h3>
 
-        {message && <p className="mb-4 text-brand-light/80 text-sm">{message}</p>}
+        {message && <p className={`mb-4 ${textClass}`}>{message}</p>}
 
         <input
           ref={inputRef}
@@ -62,7 +73,7 @@ export default function InputModal({
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder={placeholder}
-          className="w-full mb-6 px-3 py-2.5 bg-black/30 border border-brand-light/10 rounded-lg text-white placeholder-brand-light/30 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary"
+          className={`w-full mb-6 px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-1 ${inputClass}`}
         />
 
         <div className="mx-auto grid w-full max-w-[380px] grid-cols-2 gap-3">
@@ -101,6 +112,7 @@ InputModal.propTypes = {
   placeholder: PropTypes.string,
   confirmText: PropTypes.string,
   cancelText: PropTypes.string,
+  theme: PropTypes.oneOf(['light', 'dark']),
   isLoading: PropTypes.bool,
   onConfirm: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,

@@ -184,6 +184,7 @@ export default function ScenesBrowserModal({ isOpen, onClose, vttConnection, onE
         confirmText="Видалити"
         cancelText="Скасувати"
         variant="danger"
+        theme="dark"
         onConfirm={confirmDelete}
         onCancel={() => setSceneToDelete(null)}
       />
@@ -194,6 +195,7 @@ export default function ScenesBrowserModal({ isOpen, onClose, vttConnection, onE
         message="Введіть нову назву:"
         placeholder="Нова назва..."
         defaultValue={renameTarget?.name || ''}
+        theme="dark"
         confirmText="Зберегти"
         cancelText="Скасувати"
         onConfirm={confirmRename}
