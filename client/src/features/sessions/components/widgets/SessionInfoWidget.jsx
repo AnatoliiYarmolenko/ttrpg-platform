@@ -16,6 +16,7 @@ import Data from '@/components/ui/icons/Data';
 import Timer from '@/components/ui/icons/Timer';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
 import { getSessionStartState } from '../../utils/sessionStartRules';
+import { HandCoins } from 'lucide-react';
 
 const UI_LOCALE = 'uk-UA';
 
@@ -74,12 +75,10 @@ export default function SessionInfoWidget({
   const { openConfirm, confirmModalProps } = useConfirmDialog();
 
   const getPlayerCount = () => {
-    // Prefer server-provided summary count (most reliable when participants list is partial)
     if (Number.isFinite(Number(session?.participantsSummaryCount))) {
       return Number(session.participantsSummaryCount);
     }
 
-    // Fall back to counting directly from participants array
     if (Array.isArray(session?.participants)) {
       return session.participants.filter((participant) => participant.role === 'PLAYER').length;
     }
@@ -223,6 +222,12 @@ export default function SessionInfoWidget({
             </div>
           ) : (
             <div className="hidden sm:block" />
+          )}
+          {session.price > 0 && (
+            <div className="flex items-center gap-2 text-brand-medium text-sm">
+              <HandCoins size={14} className="text-brand-primary" />
+              <span>{session.price} Demo Coins</span>
+            </div>
           )}
         </div>
 

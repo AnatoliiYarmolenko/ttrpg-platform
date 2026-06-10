@@ -11,6 +11,8 @@ import {
   invalidateCampaignCollectionQueries,
   invalidateSessionCollectionQueries,
 } from '@/lib/queryInvalidation';
+import useConfirmDialog from '@/hooks/useConfirmDialog';
+import ConfirmModal from '@/components/shared/ConfirmModal';
 
 const DATE_ERROR_MESSAGES = {
   empty: 'Дата сесії обовʼязкова',
@@ -30,6 +32,7 @@ export default function CreateSessionForm({
   const queryClient = useQueryClient();
   const isCampaignSession = Boolean(campaignId);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { openConfirm, confirmModalProps } = useConfirmDialog();
 
   const createMutation = useMutation({
     mutationFn: (data) => createSession(data),
@@ -155,14 +158,28 @@ export default function CreateSessionForm({
     }
   };
 
+  const executeSubmit = async (payload) => {
+    setIsSubmitting(true);
+    try {
+      const result = await createMutation.mutateAsync(payload);
+      if (result.success) {
+        onSuccess?.();
+      } else if (result.error) {
+        toast.error(result.error);
+      }
+    } catch {
+      // помилка вже обробляється
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
     if (!validateForm()) {
       return;
     }
-
-    setIsSubmitting(true);
 
     try {
       const sessionDateIso = toIsoDateTimeLocalValue(formData.date);
@@ -192,17 +209,20 @@ export default function CreateSessionForm({
         payload.system = formData.system;
       }
 
-      const result = await createMutation.mutateAsync(payload);
-
-      if (result.success) {
-        onSuccess?.();
-      } else if (result.error) {
-        toast.error(result.error);
+      const isGmVal = requireGmRole ? true : formData.isGm;
+      if (!isGmVal && formData.price > 0) {
+        openConfirm({
+          title: 'Створення платної сесії',
+          message: `Ви створюєте платну сесію з пошуком Майстра. Оскільки ви виступаєте організатором, повна сума (${formData.price} Demo Coins) буде зарезервована на вашому балансі одразу після створення. У разі скасування сесії кошти буде повернуто. Бажаєте продовжити?`,
+          confirmText: 'Продовжити',
+          cancelText: 'Скасувати',
+          onConfirm: () => executeSubmit(payload),
+        });
+      } else {
+        await executeSubmit(payload);
       }
     } catch {
-      // toast handled in mutation.onError
-    } finally {
-      setIsSubmitting(false);
+      // помилка вже обробляється
     }
   };
 
@@ -215,7 +235,8 @@ export default function CreateSessionForm({
   `;
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div>
         <label htmlFor="title" className="block text-sm font-medium text-brand-dark mb-1">
           Назва сесії *
@@ -407,7 +428,13 @@ export default function CreateSessionForm({
         </div>
       </div>
 
-      <div className="text-xs text-brand-medium bg-brand-light/10 border border-brand-light/30 rounded-lg px-3 py-2">
+      {formData.price > 0 && (
+        <div className="w-full text-xs text-brand-medium bg-brand-light/10 border border-brand-light/30 rounded-lg px-3 py-2">
+          Ціну гри неможливо буде змінити після її створення.
+        </div>
+      )}
+
+      <div className="w-full text-xs text-brand-medium bg-brand-light/10 border border-brand-light/30 rounded-lg px-3 py-2">
         {visibilityHint}
       </div>
 
@@ -437,7 +464,9 @@ export default function CreateSessionForm({
         </Button>
       </div>
     </form>
-  );
+    <ConfirmModal {...confirmModalProps} />
+  </>
+);
 }
 
 CreateSessionForm.propTypes = {

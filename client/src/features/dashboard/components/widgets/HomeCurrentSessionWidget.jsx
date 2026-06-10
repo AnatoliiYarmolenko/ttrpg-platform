@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import DashboardCard from '@/components/ui/DashboardCard';
 import Button from '@/components/ui/Button';
-import { DateTimeDisplay, EmptyState, RoleBadge, SessionTimeBadge } from '@/components/shared';
+import { DateTimeDisplay, EmptyState, RoleBadge, SessionTimeBadge, VisibilityBadge } from '@/components/shared';
 import Dice20 from '@/components/ui/icons/Dice20';
 import Data from '@/components/ui/icons/Data';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
@@ -10,7 +10,7 @@ import Timer from '@/components/ui/icons/Timer';
 import { DASHBOARD_URL_PARAMS, VIEW_MODES } from '@/features/dashboard/constants';
 import { useNextRelevantSessionQuery } from '../../hooks/useDashboardQueries';
 import { setOrDeleteParam, updateSearchParams } from '@/utils/urlState';
-import { VisibilityBadge } from '@/components/shared';
+import { HandCoins } from 'lucide-react';
 
 const UI_LOCALE = 'uk-UA';
 
@@ -59,7 +59,6 @@ export default function HomeCurrentSessionWidget() {
     refetch,
   } = useNextRelevantSessionQuery(true);
 
-  // Автоматично оновити запит, якщо запланована сесія вже почалась (за часом)
   useEffect(() => {
     if (!(session?.startAt || session?.date) || session.status !== 'PLANNED') {
       return;
@@ -145,7 +144,6 @@ export default function HomeCurrentSessionWidget() {
           <h3 className="text-xl font-bold text-brand-dark leading-tight truncate flex-1 min-w-0">
             {session.title}
           </h3>
-          {/* SessionTimeBadge manages its own update timer internally */}
           <SessionTimeBadge session={session} />
         </div>
 
@@ -209,6 +207,12 @@ export default function HomeCurrentSessionWidget() {
         ) : (
           <div className="hidden sm:block" />
         )}
+        {session.price > 0 && (
+          <div className="flex items-center gap-2 text-brand-medium text-sm">
+            <HandCoins size={14} className="text-brand-primary" />
+            <span>{session.price} Demo Coins</span>
+          </div>
+         )}
       </div>
 
       <div className="border-t border-brand-light/20 pt-3">
