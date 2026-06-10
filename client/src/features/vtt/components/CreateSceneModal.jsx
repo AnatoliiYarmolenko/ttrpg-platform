@@ -39,6 +39,13 @@ ToggleRow.propTypes = {
   label: PropTypes.string.isRequired,
 };
 
+function numToHex(color) {
+  if (typeof color === 'number') {
+    return '#' + color.toString(16).padStart(6, '0');
+  }
+  return color;
+}
+
 /**
  * CreateSceneModal — розширене модальне вікно для створення нової сцени.
  *
@@ -70,21 +77,24 @@ export default function CreateSceneModal({ isOpen, onClose, onCreate, onUpdate, 
   const [gridColor, setGridColor] = useState('#9dc88d');
   const [gridSize, setGridSize] = useState(64);
   const [gridOpacity, setGridOpacity] = useState(0.4);
+  const [gridScale, setGridScale] = useState(5);
 
   // Скидаємо або заповнюємо стан при кожному відкритті
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => {
+        console.log('>>> CreateSceneModal initialData:', initialData);
         if (initialData) {
           setName(initialData.name || '');
           setWidth(initialData.width || 1920);
           setHeight(initialData.height || 1080);
-          setBackgroundColor(initialData.backgroundColor || '#3d5a3e');
+          setBackgroundColor(numToHex(initialData.backgroundColor) || '#3d5a3e');
           setGridEnabled(initialData.gridEnabled ?? true);
           setGridType(initialData.gridType || 'SQUARE');
-          setGridColor(initialData.gridColor || '#9dc88d');
+          setGridColor(numToHex(initialData.gridColor) || '#9dc88d');
           setGridSize(initialData.gridSize || 64);
           setGridOpacity(initialData.gridOpacity || 0.4);
+          setGridScale(initialData.gridScale || 5);
         } else {
           setName('');
           setWidth(1920);
@@ -95,6 +105,7 @@ export default function CreateSceneModal({ isOpen, onClose, onCreate, onUpdate, 
           setGridColor('#9dc88d');
           setGridSize(64);
           setGridOpacity(0.4);
+          setGridScale(5);
         }
       }, 0);
     }
@@ -120,12 +131,14 @@ export default function CreateSceneModal({ isOpen, onClose, onCreate, onUpdate, 
         gridColor,
         gridSize: Number(gridSize),
         gridOpacity: Number(gridOpacity),
+        gridScale: Number(gridScale),
       });
+      console.log('>>> CreateSceneModal auto-saving with gridScale:', Number(gridScale));
     }, 400); // 400мс затримка щоб не перевантажувати мережу
 
     return () => clearTimeout(timeoutId);
   }, [
-    name, width, height, backgroundColor, gridEnabled, gridType, gridColor, gridSize, gridOpacity,
+    name, width, height, backgroundColor, gridEnabled, gridType, gridColor, gridSize, gridOpacity, gridScale,
     isOpen, initialData, onUpdate
   ]);
 
@@ -151,6 +164,7 @@ export default function CreateSceneModal({ isOpen, onClose, onCreate, onUpdate, 
       gridColor,
       gridSize: Number(gridSize),
       gridOpacity: Number(gridOpacity),
+      gridScale: Number(gridScale),
     };
 
     if (initialData && onUpdate) {
@@ -166,26 +180,28 @@ export default function CreateSceneModal({ isOpen, onClose, onCreate, onUpdate, 
     <DraggablePanel
       isOpen={isOpen}
       onClose={onClose}
-      title={initialData ? "Edit scene parameters" : "Scene parameters"}
+      title={initialData ? "Налаштування сцени" : "Створити сцену"}
+      storageKey="vtt_createSceneState"
       defaultWidth={520}
       defaultHeight={580}
       defaultX={globalThis.window?.innerWidth ? globalThis.window.innerWidth / 2 - 260 : 0}
       defaultY={globalThis.window?.innerHeight ? globalThis.window.innerHeight / 2 - 290 : 0}
       minWidth={400}
       minHeight={450}
+      zIndex={250}
     >
       {/* Form */}
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-5 overflow-y-auto min-h-0 flex-1">
 
           {/* Name */}
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="sceneName" className="text-xs font-bold text-brand-light/80 uppercase tracking-widest">Name</label>
+            <label htmlFor="sceneName" className="text-xs font-bold text-brand-light/80 uppercase tracking-widest">Назва</label>
             <input
               id="sceneName"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Scene name..."
+              placeholder="Назва сцени..."
               maxLength={100}
               required
               className="w-full px-3 py-2.5 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/50 border border-brand-light/10 hover:border-brand-light/30 transition-colors"
@@ -196,7 +212,7 @@ export default function CreateSceneModal({ isOpen, onClose, onCreate, onUpdate, 
           {/* Width / Height / Color */}
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2 flex-1 min-w-[100px]">
-              <label htmlFor="sceneWidth" className="text-sm font-semibold text-brand-light/70 whitespace-nowrap">Width</label>
+              <label htmlFor="sceneWidth" className="text-sm font-semibold text-brand-light/70 whitespace-nowrap">Ширина</label>
               <input
                 id="sceneWidth"
                 type="number"
@@ -211,7 +227,7 @@ export default function CreateSceneModal({ isOpen, onClose, onCreate, onUpdate, 
             </div>
 
             <div className="flex items-center gap-2 flex-1 min-w-[100px]">
-              <label htmlFor="sceneHeight" className="text-sm font-semibold text-brand-light/70 whitespace-nowrap">Height</label>
+              <label htmlFor="sceneHeight" className="text-sm font-semibold text-brand-light/70 whitespace-nowrap">Висота</label>
               <input
                 id="sceneHeight"
                 type="number"
@@ -226,7 +242,7 @@ export default function CreateSceneModal({ isOpen, onClose, onCreate, onUpdate, 
             </div>
 
             <div className="flex items-center gap-2">
-              <label htmlFor="sceneColor" className="text-sm font-semibold text-brand-light/70 whitespace-nowrap">Color</label>
+              <label htmlFor="sceneColor" className="text-sm font-semibold text-brand-light/70 whitespace-nowrap">Колір</label>
               <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-brand-light/10" style={{ background: 'rgba(0,0,0,0.35)' }}>
                 <input
                   id="sceneColor"
@@ -234,7 +250,7 @@ export default function CreateSceneModal({ isOpen, onClose, onCreate, onUpdate, 
                   value={backgroundColor}
                   onChange={(e) => setBackgroundColor(e.target.value)}
                   className="w-6 h-6 rounded cursor-pointer border-0 bg-transparent"
-                  title="Background color"
+                  title="Колір фону"
                 />
                 <span className="text-brand-light/80 text-xs font-mono uppercase">{backgroundColor}</span>
               </div>
@@ -246,7 +262,7 @@ export default function CreateSceneModal({ isOpen, onClose, onCreate, onUpdate, 
 
           {/* Feature Toggles (stubs and active Grid) */}
           <div className="flex flex-col gap-2">
-            <ToggleRow label="Dynamic Lighting" />
+            <ToggleRow label="Динамічне освітлення" />
             
             {/* Active Grid Control */}
             <div className="flex flex-col gap-2 py-3 px-4 border border-brand-light/10 rounded-lg bg-black/30">
@@ -257,7 +273,7 @@ export default function CreateSceneModal({ isOpen, onClose, onCreate, onUpdate, 
                   className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-brand-accent/50 ${
                     gridEnabled ? 'bg-brand-accent' : 'bg-brand-light/20'
                   }`}
-                  aria-label="Toggle Grid"
+                  aria-label="Перемкнути сітку"
                 >
                   <span
                     className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
@@ -265,34 +281,34 @@ export default function CreateSceneModal({ isOpen, onClose, onCreate, onUpdate, 
                     }`}
                   />
                 </button>
-                <span className="font-semibold text-brand-light text-sm">Grid</span>
+                <span className="font-semibold text-brand-light text-sm">Сітка</span>
               </div>
 
               {gridEnabled && (
                 <div className="flex items-center gap-4 mt-2 pt-2 border-t border-brand-light/5 flex-wrap">
                   {/* Grid Type */}
                   <div className="flex items-center gap-2 flex-1 min-w-[140px]">
-                    <span className="text-xs font-semibold text-brand-light/70 whitespace-nowrap">Type</span>
+                    <span className="text-xs font-semibold text-brand-light/70 whitespace-nowrap">Тип</span>
                     <select
                       value={gridType}
                       onChange={(e) => setGridType(e.target.value)}
                       className="flex-1 bg-black/40 text-white text-xs rounded-lg px-2 py-1 border border-brand-light/10 focus:outline-none focus:ring-1 focus:ring-brand-accent/50 cursor-pointer"
                     >
-                      <option value="SQUARE" className="bg-brand-dark">Square</option>
-                      <option value="HEXAGONAL" className="bg-brand-dark">Hexagonal</option>
+                      <option value="SQUARE" className="bg-brand-dark">Квадратна</option>
+                      <option value="HEXAGONAL" className="bg-brand-dark">Гексагональна</option>
                     </select>
                   </div>
 
                   {/* Grid Color */}
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-brand-light/70 whitespace-nowrap">Color</span>
+                    <span className="text-xs font-semibold text-brand-light/70 whitespace-nowrap">Колір</span>
                     <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-brand-light/10 bg-black/40">
                       <input
                         type="color"
                         value={gridColor}
                         onChange={(e) => setGridColor(e.target.value)}
                         className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent"
-                        title="Grid color"
+                        title="Колір сітки"
                       />
                       <span className="text-brand-light/80 text-[10px] font-mono uppercase">{gridColor}</span>
                     </div>
@@ -300,7 +316,7 @@ export default function CreateSceneModal({ isOpen, onClose, onCreate, onUpdate, 
 
                   {/* Grid Opacity */}
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-brand-light/70 whitespace-nowrap">Opacity</span>
+                    <span className="text-xs font-semibold text-brand-light/70 whitespace-nowrap">Прозорість</span>
                     <input
                       type="range"
                       min="0"
@@ -315,7 +331,7 @@ export default function CreateSceneModal({ isOpen, onClose, onCreate, onUpdate, 
 
                   {/* Grid Size */}
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-brand-light/70 whitespace-nowrap">Size</span>
+                    <span className="text-xs font-semibold text-brand-light/70 whitespace-nowrap">Розмір</span>
                     <input
                       type="number"
                       value={gridSize}
@@ -325,11 +341,27 @@ export default function CreateSceneModal({ isOpen, onClose, onCreate, onUpdate, 
                       className="w-14 bg-black/40 text-white text-xs rounded-lg px-2 py-1 border border-brand-light/10 focus:outline-none focus:ring-1 focus:ring-brand-accent/50"
                     />
                   </div>
+
+                  {/* Grid Scale */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-brand-light/70 whitespace-nowrap">Фут. еквівалент</span>
+                    <select
+                      value={gridScale}
+                      onChange={(e) => setGridScale(Number(e.target.value))}
+                      className="bg-black/40 text-white text-xs rounded-lg px-2 py-1 border border-brand-light/10 focus:outline-none focus:ring-1 focus:ring-brand-accent/50 cursor-pointer"
+                    >
+                      <option value="5" className="bg-brand-dark">5</option>
+                      <option value="7.5" className="bg-brand-dark">7.5</option>
+                      <option value="10" className="bg-brand-dark">10</option>
+                      <option value="15" className="bg-brand-dark">15</option>
+                      <option value="30" className="bg-brand-dark">30</option>
+                    </select>
+                  </div>
                 </div>
               )}
             </div>
 
-            <ToggleRow label="Fog of War" />
+            <ToggleRow label="Туман війни" />
           </div>
 
           {/* Divider */}
@@ -342,14 +374,14 @@ export default function CreateSceneModal({ isOpen, onClose, onCreate, onUpdate, 
               onClick={onClose}
               className="px-4 py-2 rounded-lg text-brand-light/70 hover:text-white hover:bg-brand-medium/20 transition-colors text-sm font-medium"
             >
-              Cancel
+              Скасувати
             </button>
             <button
               type="submit"
               disabled={!name.trim()}
               className="px-5 py-2 rounded-lg bg-brand-accent text-brand-dark font-bold text-sm hover:bg-amber-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {initialData ? 'Save' : 'Create Scene'}
+              {initialData ? 'Зберегти' : 'Створити сцену'}
             </button>
           </div>
       </form>
@@ -373,5 +405,6 @@ CreateSceneModal.propTypes = {
     gridColor: PropTypes.string,
     gridSize: PropTypes.number,
     gridOpacity: PropTypes.number,
+    gridScale: PropTypes.number,
   }),
 };
