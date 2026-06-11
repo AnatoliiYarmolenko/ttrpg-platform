@@ -4,7 +4,7 @@ const { callRoomManager } = require('../call/call-room.manager');
 const { webRtcTransportOptions } = require('../config/mediasoup.config');
 const { CALL_STATES } = require('../call/call-events');
 const sessionService = require('../services/session.service');
-const { checkRateLimit } = require('../services/rate-limit.service');
+const rateLimitService = require('../services/rate-limit.service');
 const { parseIncomingMessage, sendEvent, resolveErrorCode, resolveErrorMessage } = require('./ws-utils');
 
 function sendError(socket, error, type) {
@@ -257,10 +257,11 @@ function createCallHandler({ logger } = {}) {
 
       try {
         const rateLimitKey = String(socket.user?.id || 'unknown_ws_call_client');
-        await checkRateLimit('call_signaling_messages', rateLimitKey, {
+        await rateLimitService.checkRateLimit('call_signaling_messages', rateLimitKey, {
           maxRequests: 50,
           windowMs: 10 * 1000,
-          blockDurationMs: 15 * 1000,
+          blockDurationMs: 60 * 1000,
+          failClosed: false,
         });
 
         if (await handleSessionAction({ socket, type: actualType, payload: actualPayload, sessionId, userId, sendResponse, sendEvent })) {

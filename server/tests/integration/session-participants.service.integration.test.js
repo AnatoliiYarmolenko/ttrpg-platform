@@ -3,8 +3,10 @@ require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 const { PrismaClient } = require('@prisma/client');
 
 const test = require('node:test');
+const { mock } = require('node:test');
 const assert = require('node:assert/strict');
 const { SessionService } = require('../../src/services/session.service');
+const notificationService = require('../../src/services/notification.service');
 
 async function withTestDatabase(callback) {
   const testDbUrl = process.env.DATABASE_URL_TEST || process.env.DATABASE_URL;
@@ -68,6 +70,16 @@ async function createTestSession(tx, ownerId, overrides = {}) {
 }
 
 test('SessionParticipantsService Integration Tests', async (t) => {
+  t.beforeEach(() => {
+    mock.method(notificationService, 'createNotification', async () => {});
+  });
+
+  t.afterEach(() => {
+    if (notificationService.createNotification.mock) {
+      notificationService.createNotification.mock.restore();
+    }
+  });
+
   await t.test('joinSession as GM always creates PENDING request', async () => {
     await withTestDatabase(async (tx) => {
       const service = new SessionService(tx);

@@ -1,4 +1,4 @@
-const { test, describe, beforeEach, mock } = require('node:test');
+const { test, describe, beforeEach, afterEach, mock } = require('node:test');
 const assert = require('node:assert');
 const path = require('node:path');
 const { createCallHandler, parseIncomingMessage } = require(path.resolve(
@@ -8,6 +8,7 @@ const { createCallHandler, parseIncomingMessage } = require(path.resolve(
 const { callService } = require('../../src/call/call.service');
 const { callRoomManager } = require('../../src/call/call-room.manager');
 const sessionService = require('../../src/services/session.service');
+const rateLimitService = require('../../src/services/rate-limit.service');
 const { ERROR_CODES } = require('../../src/constants/errors');
 
 describe('WS Call Handler', () => {
@@ -35,6 +36,13 @@ describe('WS Call Handler', () => {
         readyState: 1 // ВІДКРИТО
       };
       handler = createCallHandler();
+      mock.method(rateLimitService, 'checkRateLimit', async () => true);
+    });
+
+    afterEach(() => {
+      if (rateLimitService.checkRateLimit.mock) {
+        rateLimitService.checkRateLimit.mock.restore();
+      }
     });
 
     test('attaches message and close listeners', () => {
