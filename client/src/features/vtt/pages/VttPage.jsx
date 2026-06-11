@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { VttBattlefield } from '../components/battlefield';
 import { useSessionPageQuery } from '@/features/sessions/hooks/useSessionQueries';
 import { useChatController } from '@/features/chat/hooks';
+import { useCallViewerSync } from '@/features/call/hooks/useCallViewerSync';
 import useVttConnection from '../hooks/useVttConnection';
 import { FullPageLoader } from '@/components/shared';
 import DiceRoller3D from '../components/DiceRoller3D';
@@ -10,6 +11,7 @@ import QuickBar from '../components/QuickBar';
 import RollMaker from '../components/RollMaker';
 import VttSidebar from '../components/VttSidebar';
 import VttFloatingChat from '../components/VttFloatingChat';
+import VttFloatingCall from '../components/VttFloatingCall';
 import RollResultPopup from '../components/RollResultPopup';
 import DiceLogPanel from '../components/DiceLogPanel';
 import SceneManager from '../components/SceneManager';
@@ -29,6 +31,10 @@ import useVttStore from '@/stores/useVttStore';
 export default function VttPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  
+  // Ініціалізуємо підключення до сигнального сервера дзвінків
+  useCallViewerSync(id);
+
   const setVttOpen = useVttStore((state) => state.setVttOpen);
   const incomingRoll = useVttStore((state) => state.incomingRoll);
   const rollStrength = useVttStore((state) => state.rollStrength);
@@ -92,6 +98,7 @@ export default function VttPage() {
     <div className="flex flex-col h-screen bg-brand-dark text-white overflow-hidden">
       <VttSidebar />
       <VttFloatingChat chatController={chatController} />
+      <VttFloatingCall sessionId={id} />
       <RollResultPopup />
       <DiceLogPanel />
       

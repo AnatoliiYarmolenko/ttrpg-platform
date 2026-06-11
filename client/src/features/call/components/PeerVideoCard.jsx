@@ -10,19 +10,20 @@ export function PeerVideoCard({
   isLocal = false, 
   micEnabled = false, 
   camEnabled = false,
+  className = '',
 }) {
   const videoRef = useRef(null);
-  const videoStreamRef = useRef(new MediaStream());
-
   useEffect(() => {
-    const stream = videoStreamRef.current;
-    stream.getVideoTracks().forEach(t => stream.removeTrack(t));
-    if (videoTrack) stream.addTrack(videoTrack);
-    
-    if (videoRef.current && videoRef.current.srcObject !== stream) {
-      videoRef.current.srcObject = stream;
-      videoRef.current.play().catch(e => console.error("Video play failed:", e));
+    if (!videoRef.current) return;
+
+    if (!videoTrack) {
+      videoRef.current.srcObject = null;
+      return;
     }
+
+    const stream = new MediaStream([videoTrack]);
+    videoRef.current.srcObject = stream;
+    videoRef.current.play().catch(e => console.error("Video play failed:", e));
   }, [videoTrack]);
 
   const isSpeaking = useActiveSpeaker(audioTrack);
@@ -30,8 +31,9 @@ export function PeerVideoCard({
   return (
     <div 
       className={`
-        relative w-full aspect-video bg-neutral-900 rounded-xl overflow-hidden shadow-lg transition-all
+        relative w-full h-full bg-neutral-900 rounded-xl overflow-hidden shadow-lg transition-all
         ${isSpeaking && micEnabled ? 'ring-2 ring-brand-accent' : 'ring-1 ring-neutral-800'}
+        ${className}
       `}
     >
       <video
@@ -39,14 +41,14 @@ export function PeerVideoCard({
         autoPlay
         playsInline
         muted 
-        className={`w-full h-full object-cover ${camEnabled ? 'opacity-100' : 'opacity-0'}`}
+        className={`w-full h-full object-contain ${camEnabled ? 'opacity-100' : 'opacity-0'}`}
         style={{ transform: isLocal ? 'scaleX(-1)' : 'none' }} 
       />
 
-      {!camEnabled && (
+      {(!camEnabled || !videoTrack) && (
         <div className="absolute inset-0 flex items-center justify-center bg-neutral-800">
-          <div className="w-20 h-20 rounded-full bg-neutral-700 flex items-center justify-center text-2xl font-bold text-neutral-400">
-            {username.charAt(0).toUpperCase()}
+          <div className="w-20 h-20 rounded-full bg-neutral-700 flex items-center justify-center text-2xl font-bold text-neutral-400 shadow-inner">
+            {username ? username.charAt(0).toUpperCase() : '?'}
           </div>
         </div>
       )}

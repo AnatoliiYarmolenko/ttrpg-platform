@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Menu, ChevronLeft, ChevronRight, MessageSquare, ScrollText, Map } from 'lucide-react';
+import { ArrowLeft, Menu, ChevronLeft, ChevronRight, MessageSquare, ScrollText, Map, Video } from 'lucide-react';
 import useVttStore from '@/stores/useVttStore';
 import Button from '@/components/ui/Button';
 
@@ -34,6 +34,18 @@ export default function VttSidebar() {
           </div>
 
           <div className="p-4 flex-1 overflow-y-auto flex flex-col gap-2">
+            <Button
+              onClick={() => {
+                useVttStore.getState().toggleCall();
+                toggleSidebar();
+              }}
+              variant="outline"
+              className="w-full !border-brand-light/20 !text-brand-light hover:!bg-brand-medium/30 flex items-center justify-start gap-3 !px-4"
+            >
+              <Video size={18} className="text-blue-400" />
+              <span>Голосовий зв'язок</span>
+            </Button>
+
             <Button
               onClick={() => {
                 useVttStore.getState().toggleChat();

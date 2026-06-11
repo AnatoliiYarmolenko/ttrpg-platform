@@ -43,7 +43,7 @@ export function CallWidget({ sessionId }) {
     );
   }
 
-  return <CallWidgetInner sessionId={sessionId} />;
+  return <CallWidgetInner sessionId={numericSessionId} />;
 }
 
 function CallWidgetInner({ sessionId }) {
@@ -206,8 +206,8 @@ function CallWidgetInner({ sessionId }) {
   }
 
   return (
-    <div className="flex flex-col h-full space-y-4">
-      <div className="flex-1 min-h-[300px]">
+    <div className="flex flex-col h-full space-y-2">
+      <div className="flex-1 min-h-0 relative">
         {mediaPermissionError && (
           <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl mb-4 text-sm flex items-start gap-3">
             <AlertCircle className="shrink-0 mt-0.5" size={20} />
@@ -226,10 +226,12 @@ function CallWidgetInner({ sessionId }) {
             </div>
           </div>
         )}
-        <CallGrid />
+        <div className="absolute inset-0">
+          <CallGrid />
+        </div>
       </div>
 
-      <div className="flex items-center justify-between pt-2">
+      <div className="flex items-center justify-between pt-2 pb-1 shrink-0">
         <div className="flex items-center gap-2">
           <Button 
             variant={localMicEnabled ? "secondary" : "danger"} 

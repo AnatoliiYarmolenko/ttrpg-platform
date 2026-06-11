@@ -24,6 +24,8 @@ const useVttStore = create(
       isSidebarOpen: false,
       /** Чи відкритий плаваючий чат */
       isChatOpen: false,
+      /** Чи відкритий плаваючий віджет дзвінка */
+      isCallOpen: false,
       /** Чи відкритий журнал кидків */
       isDiceLogOpen: false,
       /** Чи відкритий менеджер сцен (карта, токени) */
@@ -49,6 +51,7 @@ const useVttStore = create(
       toggleQuickBar: () => set((state) => ({ isQuickBarOpen: !state.isQuickBarOpen })),
       toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
       toggleChat: () => set((state) => ({ isChatOpen: !state.isChatOpen })),
+      toggleCall: () => set((state) => ({ isCallOpen: !state.isCallOpen })),
       toggleDiceLog: () => set((state) => ({ isDiceLogOpen: !state.isDiceLogOpen })),
       toggleSceneManager: () => set((state) => ({ isSceneManagerOpen: !state.isSceneManagerOpen })),
 
@@ -104,6 +107,7 @@ const useVttStore = create(
       partialize: (state) => ({ 
         quickRollsBySession: state.quickRollsBySession,
         isChatOpen: state.isChatOpen,
+        isCallOpen: state.isCallOpen,
         isDiceLogOpen: state.isDiceLogOpen,
         isSceneManagerOpen: state.isSceneManagerOpen,
         rollHistory: state.rollHistory,

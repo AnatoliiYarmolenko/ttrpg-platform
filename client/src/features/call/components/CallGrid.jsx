@@ -47,35 +47,31 @@ export function CallGrid() {
 
   if (total === 1) {
     return (
-      <div className="flex items-center justify-center w-full h-full min-h-[300px]">
-        <div className="w-full max-w-2xl aspect-video">
-          <PeerVideoCard {...items[0]} />
-        </div>
+      <div className="w-full h-full p-1">
+        <PeerVideoCard {...items[0]} />
       </div>
     );
   }
 
   if (total === 2) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center justify-center w-full">
-        {items.map(item => (
-          <div key={item.id} className="w-full aspect-video">
-            <PeerVideoCard {...item} />
-          </div>
-        ))}
+      <div className="grid grid-rows-2 gap-2 w-full h-full p-1">
+        <PeerVideoCard {...items[0]} />
+        <PeerVideoCard {...items[1]} />
       </div>
     );
   }
 
   if (total === 3) {
     return (
-      <div className="grid grid-cols-12 gap-4 w-full items-center justify-center">
-        {items.slice(0, 2).map(item => (
-          <div key={item.id} className="col-span-12 md:col-span-6 w-full aspect-video">
-            <PeerVideoCard {...item} />
-          </div>
-        ))}
-        <div className="col-span-12 md:col-span-6 md:col-start-4 w-full aspect-video">
+      <div className="grid grid-rows-2 grid-cols-2 gap-2 w-full h-full p-1">
+        <div className="col-span-2 row-span-1 h-full">
+          <PeerVideoCard {...items[0]} />
+        </div>
+        <div className="col-span-1 row-span-1 h-full">
+          <PeerVideoCard {...items[1]} />
+        </div>
+        <div className="col-span-1 row-span-1 h-full">
           <PeerVideoCard {...items[2]} />
         </div>
       </div>
@@ -84,9 +80,9 @@ export function CallGrid() {
 
   if (total === 4) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+      <div className="grid grid-cols-2 grid-rows-2 gap-2 w-full h-full p-1">
         {items.map(item => (
-          <div key={item.id} className="w-full aspect-video">
+          <div key={item.id} className="w-full h-full">
             <PeerVideoCard {...item} />
           </div>
         ))}
@@ -95,9 +91,9 @@ export function CallGrid() {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
+    <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 w-full h-full auto-rows-fr p-1 overflow-y-auto">
       {items.map(item => (
-        <div key={item.id} className="w-full aspect-video">
+        <div key={item.id} className="w-full h-full min-h-[150px]">
           <PeerVideoCard {...item} />
         </div>
       ))}
