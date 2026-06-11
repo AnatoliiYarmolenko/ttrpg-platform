@@ -55,47 +55,58 @@ function loadEmailServiceWithMocks({ createTransporter, verifyTransporter, logge
 }
 
 test('sendTemplateEmail reinitializes transporter after Connection closed and retries once', async () => {
-  const logs = [];
-  const logger = {
-    info: (...args) => logs.push(['info', args]),
-    warn: (...args) => logs.push(['warn', args]),
-    error: (...args) => logs.push(['error', args]),
-  };
+  const originalEmailProvider = process.env.EMAIL_PROVIDER;
+  process.env.EMAIL_PROVIDER = 'smtp';
 
-  let createTransporterCalls = 0;
-  const firstTransporter = {
-    sendMail: async () => {
-      const error = new Error('Connection closed');
-      error.code = 'ECONNECTION';
-      throw error;
-    },
-  };
-  const secondTransporter = {
-    sendMail: async () => ({ messageId: 'retry-message-id' }),
-  };
+  try {
+    const logs = [];
+    const logger = {
+      info: (...args) => logs.push(['info', args]),
+      warn: (...args) => logs.push(['warn', args]),
+      error: (...args) => logs.push(['error', args]),
+    };
 
-  const emailService = loadEmailServiceWithMocks({
-    createTransporter: () => {
-      createTransporterCalls += 1;
-      return createTransporterCalls === 1 ? firstTransporter : secondTransporter;
-    },
-    verifyTransporter: async () => {},
-    logger,
-  });
+    let createTransporterCalls = 0;
+    const firstTransporter = {
+      sendMail: async () => {
+        const error = new Error('Connection closed');
+        error.code = 'ECONNECTION';
+        throw error;
+      },
+    };
+    const secondTransporter = {
+      sendMail: async () => ({ messageId: 'retry-message-id' }),
+    };
 
-  const result = await emailService.sendTemplateEmail({
-    to: 'user@example.com',
-    templateType: 'password-reset',
-    payload: {
-      resetUrl: 'https://example.com/reset?token=test',
-      userName: 'User',
-      link: 'https://example.com/reset?token=test',
-    },
-    successMessage: 'Email надіслано',
-    mockLogLabel: 'Password reset',
-  });
+    const emailService = loadEmailServiceWithMocks({
+      createTransporter: () => {
+        createTransporterCalls += 1;
+        return createTransporterCalls === 1 ? firstTransporter : secondTransporter;
+      },
+      verifyTransporter: async () => {},
+      logger,
+    });
 
-  assert.equal(result.success, true);
-  assert.equal(createTransporterCalls, 2);
-  assert.ok(logs.some(([level, args]) => level === 'warn' && String(args[1]).includes('transient')));
+    const result = await emailService.sendTemplateEmail({
+      to: 'user@example.com',
+      templateType: 'password-reset',
+      payload: {
+        resetUrl: 'https://example.com/reset?token=test',
+        userName: 'User',
+        link: 'https://example.com/reset?token=test',
+      },
+      successMessage: 'Email надіслано',
+      mockLogLabel: 'Password reset',
+    });
+
+    assert.equal(result.success, true);
+    assert.equal(createTransporterCalls, 2);
+    assert.ok(logs.some(([level, args]) => level === 'warn' && String(args[1]).includes('transient')));
+  } finally {
+    if (originalEmailProvider === undefined) {
+      delete process.env.EMAIL_PROVIDER;
+    } else {
+      process.env.EMAIL_PROVIDER = originalEmailProvider;
+    }
+  }
 });

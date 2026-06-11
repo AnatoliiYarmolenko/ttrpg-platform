@@ -104,10 +104,11 @@ async function cleanDatabase() {
 
 async function createTestUser(overrides = {}) {
   const timestamp = Date.now();
+  const random = Math.random().toString(36).slice(2, 7);
   return prisma.user.create({
     data: {
-      username: `${TEST_USER_PREFIX}${timestamp}_${Math.random().toString(36).slice(2, 7)}`,
-      email: `test_campaign_${timestamp}@example.com`,
+      username: `${TEST_USER_PREFIX}${timestamp}_${random}`,
+      email: `test_campaign_${timestamp}_${random}@example.com`,
       password: 'password123',
       displayName: 'Test User',
       ...overrides,
