@@ -186,6 +186,6 @@ test('SessionParticipantsService Integration Tests', async (t) => {
 
       const dbParticipant = await tx.sessionParticipant.findUnique({ where: { id: p.id } });
       assert.equal(dbParticipant, null);
-    });
   });
+});
 });

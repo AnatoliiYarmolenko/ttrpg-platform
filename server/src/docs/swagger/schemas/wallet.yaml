@@ -1,0 +1,72 @@
+components:
+  schemas:
+    Wallet:
+      type: object
+      description: Баланс віртуального гаманця користувача
+      properties:
+        id:
+          type: integer
+          example: 1
+        userId:
+          type: integer
+          example: 10
+        balance:
+          type: number
+          format: double
+          example: 150.00
+          description: Поточний баланс у Demo Coins (не може бути від'ємним)
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Transaction:
+      type: object
+      description: Запис фінансової транзакції в історії гаманця
+      properties:
+        id:
+          type: integer
+          example: 1
+        walletId:
+          type: integer
+          example: 1
+        amount:
+          type: number
+          format: double
+          example: 50.00
+          description: Сума транзакції (позитивна для зарахування, негативна для списання/резервування)
+        type:
+          type: string
+          enum: [TOP_UP, RESERVE, REFUND, PAYOUT, SYSTEM_WRITE_OFF]
+          example: "TOP_UP"
+          description: Тип транзакції
+        sessionId:
+          type: integer
+          nullable: true
+          example: 42
+          description: ID ігрової сесії, до якої відноситься транзакція (якщо є)
+        date:
+          type: string
+          format: date-time
+        session:
+          type: object
+          nullable: true
+          description: Короткі деталі сесії
+          properties:
+            title:
+              type: string
+              example: "Драконячий хаос"
+
+    TopUpInput:
+      type: object
+      required:
+        - amount
+      properties:
+        amount:
+          type: number
+          minimum: 1
+          maximum: 10000
+          example: 100.00
+          description: Сума поповнення в Demo Coins (від 1 до 10000)

@@ -318,6 +318,7 @@ class CampaignService {
             system: true,
             status: true,
             visibility: true,
+            price: true,
             maxPlayers: true,
             ownerId: true,
             participants: {
@@ -477,25 +478,44 @@ class CampaignService {
             campaignId: campaignIdInt,
             status: { in: ['ACTIVE', 'PLANNED'] },
           },
-          select: { id: true },
+          include: {
+            campaign: {
+              select: {
+                id: true,
+                ownerId: true,
+                status: true,
+              },
+            },
+            participants: {
+              select: {
+                id: true,
+                userId: true,
+                role: true,
+                status: true,
+              },
+            },
+          },
         });
         sessionsToCleanupList = activeOrPlannedSessions.map(s => s.id);
 
-        await tx.session.updateMany({
-          where: {
-            campaignId: campaignIdInt,
-            status: 'ACTIVE',
-          },
-          data: { status: 'FINISHED' },
-        });
+        const sessionService = require('./session.service');
 
-        await tx.session.updateMany({
-          where: {
-            campaignId: campaignIdInt,
-            status: 'PLANNED',
-          },
-          data: { status: 'CANCELED' },
-        });
+        for (const session of activeOrPlannedSessions) {
+          if (session.status === 'ACTIVE') {
+            await sessionService.lifecycleService.updateSession(
+              session.id,
+              userId,
+              { status: 'FINISHED' },
+              { preloadedSession: session, bypassPermissions: true, tx }
+            );
+          } else if (session.status === 'PLANNED') {
+            await sessionService.lifecycleService.cancelSession(
+              session.id,
+              userId,
+              { preloadedSession: session, bypassPermissions: true, tx }
+            );
+          }
+        }
 
         result = await tx.campaign.update({
           where: { id: campaignIdInt },

@@ -1,3 +1,4 @@
+const { Prisma } = require('@prisma/client');
 const {
   NotificationCategory,
   NotificationSeverity,
@@ -13,7 +14,6 @@ const SESSION_SETTINGS_FIELDS = [
   'date',
   'duration',
   'maxPlayers',
-  'price',
   'visibility',
   'system',
 ];
@@ -297,16 +297,30 @@ async function notifySessionCancelled({
   notificationService,
   session,
   requesterId,
+  reason = null,
 }) {
   const sessionTitle = getSessionTitle(session);
+  let title = 'Сесію скасовано';
+  let body = `Сесію "${sessionTitle}" скасовано.`;
+
+  if (reason === 'no_gm') {
+    title = 'Гру скасовано: немає Майстра';
+    body = `Сесію "${sessionTitle}" автоматично скасовано, оскільки жоден Майстер не підтвердив участь.`;
+  } else if (reason === 'stale_planned') {
+    title = 'Гру скасовано: застаріла';
+    body = `Сесію "${sessionTitle}" автоматично скасовано через тривалу неактивність.`;
+  } else if (reason === 'gm_forgot') {
+    title = 'Гру скасовано: Майстер не з\'явився';
+    body = `Сесію "${sessionTitle}" автоматично скасовано, оскільки Майстер не почав гру вчасно.`;
+  }
 
   await createNotificationSafely(notificationService, {
     eventKey: `session_cancelled:${session.id}`,
     type: NotificationType.SESSION_CANCELLED,
     severity: NotificationSeverity.ERROR,
     category: NotificationCategory.SESSION,
-    title: 'Сесію скасовано',
-    body: `Сесію "${sessionTitle}" скасовано.`,
+    title,
+    body,
     link: `/session/${session.id}`,
     audience: ['session_confirmed_participants', 'session_pending_participants'],
     context: { sessionId: session.id, excludeUserId: requesterId },
@@ -314,6 +328,7 @@ async function notifySessionCancelled({
       sessionId: session.id,
       sessionTitle: session.title,
       status: 'CANCELED',
+      reason,
     },
   });
 }
@@ -460,7 +475,6 @@ function buildSessionUpdatePayload({
     date: hasOwnField(normalizedUpdateData, 'date') ? normalizedUpdateData.date : undefined,
     duration: hasOwnField(normalizedUpdateData, 'duration') ? normalizedUpdateData.duration : undefined,
     maxPlayers: hasOwnField(normalizedUpdateData, 'maxPlayers') ? normalizedUpdateData.maxPlayers : undefined,
-    price: hasOwnField(normalizedUpdateData, 'price') ? normalizedUpdateData.price : undefined,
     visibility: hasOwnField(normalizedUpdateData, 'visibility') ? normalizedUpdateData.visibility : undefined,
     shareTokenHash: resolveShareTokenFieldValue({
       shareTokenData: shareTokenState.shareTokenData,
@@ -501,22 +515,30 @@ function createSessionLifecycleService({
   sessionQueryService,
   createRawEncryptedAndHashedShareToken,
   notificationService = null,
+  walletService,
 }) {
   return {
     async updateSession(sessionId, requesterId, updateData, options = {}) {
-      const { preloadedSession = null } = options;
+      const { preloadedSession = null, bypassPermissions = false, tx: externalTx = null } = options;
       const session = await sessionQueryService.resolveSessionContext(sessionId, requesterId, preloadedSession);
       const normalizedUpdateData = { ...updateData };
+
+      if (normalizedUpdateData.status === 'CANCELED') {
+        return this.cancelSession(sessionId, requesterId, options);
+      }
+
       const updateMeta = buildSessionUpdateMeta(session, normalizedUpdateData);
 
-      assertSessionUpdatePermissions({
-        session,
-        requesterId,
-        updateMeta,
-        permissionHelpers,
-        AppError,
-        ERROR_CODES,
-      });
+      if (!bypassPermissions) {
+        assertSessionUpdatePermissions({
+          session,
+          requesterId,
+          updateMeta,
+          permissionHelpers,
+          AppError,
+          ERROR_CODES,
+        });
+      }
 
       removePastSessionSettingsUpdates({
         normalizedUpdateData,
@@ -526,7 +548,7 @@ function createSessionLifecycleService({
       });
 
       const conflictingParticipants = await resolveTimingConflicts({
-        prisma,
+        prisma: externalTx || prisma,
         AppError,
         ERROR_CODES,
         datetimeHelpers,
@@ -535,7 +557,7 @@ function createSessionLifecycleService({
       });
 
       await assertStatusTransitionRules({
-        prisma,
+        prisma: externalTx || prisma,
         AppError,
         ERROR_CODES,
         datetimeHelpers,
@@ -555,9 +577,9 @@ function createSessionLifecycleService({
 
       const sessionIdInt = sessionQueryService.parsePositiveInt(sessionId, 'Session ID');
 
-      const transactionResult = await prisma.$transaction(async (tx) => {
+      const executeUpdate = async (tx) => {
         const rows = await tx.$queryRaw`
-          SELECT visibility, "shareTokenHash" 
+          SELECT visibility, "shareTokenHash", status, price, "heldAmount", "platformFeePercent" 
           FROM "Session" 
           WHERE id = ${sessionIdInt} 
           FOR UPDATE
@@ -577,12 +599,54 @@ function createSessionLifecycleService({
           ERROR_CODES,
         });
 
+        let currentHeldAmount = new Prisma.Decimal(lockedSession.heldAmount || 0);
+
+        if (['ACTIVE', 'FINISHED'].includes(normalizedUpdateData.status) && lockedSession.status !== normalizedUpdateData.status) {
+          const pendingParticipants = tx.sessionParticipant?.findMany
+            ? await tx.sessionParticipant.findMany({
+                where: {
+                  sessionId: sessionIdInt,
+                  status: 'PENDING',
+                },
+              })
+            : [];
+
+          if (pendingParticipants.length > 0) {
+            const decPrice = new Prisma.Decimal(lockedSession.price || 0);
+
+            if (tx.sessionParticipant?.deleteMany) {
+              await tx.sessionParticipant.deleteMany({
+                where: {
+                  id: { in: pendingParticipants.map(p => p.id) },
+                },
+              });
+            }
+
+            if (decPrice.gt(0) && walletService) {
+              for (const p of pendingParticipants) {
+                if (p.role === 'PLAYER') {
+                  await walletService.refundFunds(p.userId, sessionIdInt, decPrice, tx);
+                  currentHeldAmount = currentHeldAmount.minus(decPrice);
+                }
+              }
+            }
+          }
+        }
+
+        let updatedHeldAmount = currentHeldAmount;
+        if (normalizedUpdateData.status === 'FINISHED' && lockedSession.status !== 'FINISHED') {
+          updatedHeldAmount = new Prisma.Decimal(0);
+        }
+
         const sessionUpdateResult = await tx.session.update({
           where: { id: sessionIdInt },
-          data: buildSessionUpdatePayload({
-            normalizedUpdateData,
-            shareTokenState,
-          }),
+          data: {
+            ...buildSessionUpdatePayload({
+              normalizedUpdateData,
+              shareTokenState,
+            }),
+            heldAmount: updatedHeldAmount,
+          },
           include: {
             owner: {
               select: { id: true, username: true, displayName: true, avatarUrl: true },
@@ -600,7 +664,7 @@ function createSessionLifecycleService({
           },
         });
 
-        if (normalizedUpdateData.status === 'FINISHED' && session.status !== 'FINISHED') {
+        if (normalizedUpdateData.status === 'FINISHED' && lockedSession.status !== 'FINISHED') {
           const hoursToAdd = Math.round((session.duration || 180) / 60);
           
           const participantIds = session.participants
@@ -623,10 +687,33 @@ function createSessionLifecycleService({
               },
             });
           }
+
+          const confirmedGm = tx.sessionParticipant?.findFirst
+            ? await tx.sessionParticipant.findFirst({
+                where: {
+                  sessionId: sessionIdInt,
+                  role: 'GM',
+                  status: 'CONFIRMED',
+                },
+              })
+            : null;
+
+          if (confirmedGm && currentHeldAmount.gt(0) && walletService) {
+            const feePercent = new Prisma.Decimal(lockedSession.platformFeePercent || 0);
+            const payoutAmount = currentHeldAmount.mul(
+              new Prisma.Decimal(1).minus(feePercent.div(100))
+            );
+
+            await walletService.payoutFunds(confirmedGm.userId, sessionIdInt, payoutAmount, tx);
+          }
         }
 
         return { sessionUpdateResult, shareTokenState };
-      });
+      };
+
+      const transactionResult = externalTx
+        ? await executeUpdate(externalTx)
+        : await prisma.$transaction(executeUpdate);
 
       const { sessionUpdateResult: updated, shareTokenState } = transactionResult;
 
@@ -641,6 +728,7 @@ function createSessionLifecycleService({
           notificationService,
           session,
           requesterId,
+          reason: options.reason,
         });
       } else if (normalizedUpdateData.status !== 'FINISHED' && scheduleChanged) {
         await notifySessionRescheduled({
@@ -685,54 +773,106 @@ function createSessionLifecycleService({
         throw new AppError(ERROR_CODES.SESSION_DELETE_FORBIDDEN);
       }
 
+      if (session.heldAmount && new Prisma.Decimal(session.heldAmount).gt(0)) {
+        throw new AppError(ERROR_CODES.SESSION_DELETE_FORBIDDEN_HAS_FUNDS);
+      }
+
       await prisma.session.delete({
         where: { id: sessionQueryService.parsePositiveInt(sessionId, 'Session ID') },
       });
     },
 
     async cancelSession(sessionId, userId, options = {}) {
-      const { preloadedSession = null } = options;
+      const { preloadedSession = null, bypassPermissions = false, tx: externalTx = null } = options;
       const session = await sessionQueryService.resolveSessionContext(sessionId, userId, preloadedSession);
 
-      if (session.status === 'FINISHED') {
-        throw new AppError(ERROR_CODES.SESSION_CANCEL_FINISHED_FORBIDDEN);
+      if (!bypassPermissions) {
+        const isOwner = permissionHelpers._isSessionOwner(session, userId);
+        const isCampaignOwner = permissionHelpers._isCampaignOwnerOverride(session, userId);
+        const isConfirmedGm = permissionHelpers._canChangeSessionStatus(session, userId);
+
+        let canCancel = false;
+        if (session.status === 'PLANNED') {
+          canCancel = isOwner || isCampaignOwner;
+        } else if (session.status === 'ACTIVE') {
+          canCancel = isConfirmedGm;
+        }
+
+        if (!canCancel) {
+          const errorCode = session.status === 'ACTIVE'
+            ? ERROR_CODES.SESSION_GM_ONLY
+            : ERROR_CODES.SESSION_OWNER_ONLY;
+          throw new AppError(errorCode);
+        }
       }
 
-      if (session.status === 'CANCELED') {
-        throw new AppError(ERROR_CODES.SESSION_ALREADY_CANCELED);
-      }
+      const sessionIdInt = sessionQueryService.parsePositiveInt(sessionId, 'Session ID');
 
-      const isOwner = permissionHelpers._isSessionOwner(session, userId);
-      const isCampaignOwner = permissionHelpers._isCampaignOwnerOverride(session, userId);
-      const isConfirmedGm = permissionHelpers._canChangeSessionStatus(session, userId);
-      const canCancel = isOwner || isCampaignOwner || (session.status === 'ACTIVE' && isConfirmedGm);
+      const runCancelTransaction = async (tx) => {
+        const rows = await tx.$queryRaw`
+          SELECT status, price, "heldAmount"
+          FROM "Session"
+          WHERE id = ${sessionIdInt}
+          FOR UPDATE
+        `;
 
-      if (!canCancel) {
-        const errorCode = session.status === 'ACTIVE'
-          ? ERROR_CODES.SESSION_GM_ONLY
-          : ERROR_CODES.SESSION_OWNER_ONLY;
-        throw new AppError(errorCode);
-      }
+        if (!rows || rows.length === 0) {
+          throw new AppError(ERROR_CODES.SESSION_NOT_FOUND);
+        }
 
-      const updated = await prisma.session.update({
-        where: { id: sessionQueryService.parsePositiveInt(sessionId, 'Session ID') },
-        data: {
-          status: 'CANCELED',
-        },
-        include: {
-          owner: { select: { id: true, username: true } },
-          participants: {
-            include: {
-              user: { select: { id: true, email: true, username: true } },
+        const lockedSession = rows[0];
+
+        if (lockedSession.status === 'FINISHED') {
+          throw new AppError(ERROR_CODES.SESSION_CANCEL_FINISHED_FORBIDDEN);
+        }
+
+        if (lockedSession.status === 'CANCELED') {
+          throw new AppError(ERROR_CODES.SESSION_ALREADY_CANCELED);
+        }
+
+        const players = tx.sessionParticipant?.findMany
+          ? await tx.sessionParticipant.findMany({
+              where: {
+                sessionId: sessionIdInt,
+                role: 'PLAYER',
+                status: { in: ['CONFIRMED', 'PENDING'] },
+              },
+            })
+          : [];
+
+        const decPrice = new Prisma.Decimal(lockedSession.price || 0);
+        if (decPrice.gt(0) && walletService) {
+          for (const player of players) {
+            await walletService.refundFunds(player.userId, sessionIdInt, decPrice, tx);
+          }
+        }
+
+        return await tx.session.update({
+          where: { id: sessionIdInt },
+          data: {
+            status: 'CANCELED',
+            heldAmount: 0,
+          },
+          include: {
+            owner: { select: { id: true, username: true } },
+            participants: {
+              include: {
+                user: { select: { id: true, email: true, username: true } },
+              },
             },
           },
-        },
-      });
+        });
+      };
+
+      const updated = externalTx
+        ? await runCancelTransaction(externalTx)
+        : await prisma.$transaction(runCancelTransaction);
 
       await notifySessionCancelled({
         notificationService,
         session: updated,
         requesterId: userId,
+        reason: options.reason,
       });
 
       vttStateManager.closeVtt(sessionId);

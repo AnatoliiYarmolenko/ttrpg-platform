@@ -14,6 +14,7 @@ import {
 import Data from "@/components/ui/icons/Data";
 import Timer from "@/components/ui/icons/Timer";
 import GroupPeople from "@/components/ui/icons/GroupPeople";
+import { HandCoins } from 'lucide-react';
 
 function getEntityType(session) {
   return session?.campaign ? 'campaignSession' : 'oneShot';
@@ -65,6 +66,7 @@ async function submitJoinRequest({ onJoin, role, setJoinError, setShowJoinModal 
 }
 
 function SessionJoinModal({
+  session,
   hasConfirmedGm,
   canJoin,
   canApplyAsGm,
@@ -85,6 +87,13 @@ function SessionJoinModal({
       <div className="rounded-2xl bg-white p-6 shadow-xl">
         <h3 className="mb-2 text-lg font-bold text-brand-dark">Приєднатись до сесії</h3>
         <p className="mb-6 text-brand-medium">{getJoinModalMessage({ hasConfirmedGm, canApplyAsGm })}</p>
+
+        {session?.price > 0 && canJoin && (
+          <p className="mb-6 text-brand-medium">
+            Участь у цій сесії платна і коштує {session.price} Demo Coins. Цю суму буде зарезервовано на вашому балансі при подачі заявки. У разі скасування або відхилення заявки кошти буде повністю повернуто.
+          </p>
+        )}
+
         <div className="flex flex-row flex-wrap justify-center gap-3">
           <Button
             onClick={closeModal}
@@ -140,6 +149,7 @@ function SessionJoinModal({
 }
 
 SessionJoinModal.propTypes = {
+  session: PropTypes.object,
   hasConfirmedGm: PropTypes.bool.isRequired,
   canJoin: PropTypes.bool.isRequired,
   canApplyAsGm: PropTypes.bool.isRequired,
@@ -359,6 +369,12 @@ export default function SessionPagePreviewWidget({
           ) : (
             <div className="hidden sm:block" />
           )}
+          {session.price > 0 && (
+            <div className="flex items-center gap-2 text-brand-medium text-sm">
+              <HandCoins size={14} className="text-brand-primary" />
+              <span>{session.price} Demo Coins</span>
+            </div>
+          )}
         </div>
 
         {session.description && (
@@ -381,6 +397,7 @@ export default function SessionPagePreviewWidget({
 
       {showJoinModal && (
         <SessionJoinModal
+          session={session}
           hasConfirmedGm={hasConfirmedGm}
           canJoin={canJoin}
           canApplyAsGm={canApplyAsGm}
@@ -442,6 +459,7 @@ SessionPagePreviewWidget.propTypes = {
     id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     title: PropTypes.string,
     status: PropTypes.string,
+    startAt: PropTypes.oneOfType([PropTypes.string, PropTypes.instanceOf(Date)]),
     date: PropTypes.oneOfType([PropTypes.string, PropTypes.instanceOf(Date)]),
     duration: PropTypes.number,
     maxPlayers: PropTypes.number,
@@ -470,6 +488,7 @@ SessionPagePreviewWidget.propTypes = {
     ),
     participantsSummaryCount: PropTypes.number,
     hasConfirmedGm: PropTypes.bool,
+    heldAmount: PropTypes.number,
   }),
   viewer: PropTypes.shape({
     pendingJoinRequestStatus: PropTypes.string,

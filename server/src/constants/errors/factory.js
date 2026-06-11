@@ -17,6 +17,10 @@ const createError = {
   emailTaken: () => new AppError(ERROR_CODES.USER_EMAIL_TAKEN),
   userBanned: () => new AppError(ERROR_CODES.USER_BANNED),
 
+  walletNotFound: () => new AppError(ERROR_CODES.WALLET_NOT_FOUND),
+  insufficientFunds: () => new AppError(ERROR_CODES.WALLET_INSUFFICIENT_FUNDS),
+  invalidAmount: () => new AppError(ERROR_CODES.WALLET_INVALID_AMOUNT),
+
   passwordInvalid: () => new AppError(ERROR_CODES.PASSWORD_INVALID),
   passwordSameAsCurrent: () => new AppError(ERROR_CODES.PASSWORD_SAME_AS_CURRENT),
   passwordResetTokenInvalid: () => new AppError(ERROR_CODES.PASSWORD_RESET_TOKEN_INVALID),

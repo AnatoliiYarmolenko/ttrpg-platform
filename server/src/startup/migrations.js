@@ -1,7 +1,3 @@
-/**
- * Модуль для виконання міграцій Prisma при старті сервера
- */
-
 const { execSync } = require('node:child_process');
 const path = require('node:path');
 const { Client } = require('pg');
@@ -25,9 +21,6 @@ async function pingDatabase() {
   }
 }
 
-/**
- * Чекає, поки база даних стане повністю готовою до запитів.
- */
 async function waitForDatabaseReady(options = {}) {
   const maxAttempts = options.maxAttempts || DEFAULT_DB_WAIT_ATTEMPTS;
   const delayMs = options.delayMs || DEFAULT_DB_WAIT_DELAY_MS;
@@ -63,12 +56,10 @@ async function runMigrations() {
   try {
     logger.info('Виконуємо міграції Prisma');
     const prismaDir = path.resolve(__dirname, '../..');
-    // Use npx to run prisma migrate deploy
     execSync('npx prisma migrate deploy', { 
       stdio: 'inherit', 
       cwd: prismaDir, 
-      env: { ...process.env },
-      shell: '/bin/sh'
+      env: { ...process.env }
     });
     logger.info('Міграції виконано успішно');
     return true;
@@ -78,11 +69,6 @@ async function runMigrations() {
   }
 }
 
-/**
- * Ініціалізує міграції при старті сервера
- * Виконується в Docker або якщо встановлено змінну оточення
- * В development можна вимкнути через RUN_MIGRATIONS=false
- */
 async function initMigrations() {
   await waitForDatabaseReady();
 

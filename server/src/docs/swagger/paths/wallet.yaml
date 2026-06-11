@@ -1,0 +1,130 @@
+paths:
+  /api/wallet/me:
+    get:
+      summary: Отримати свій віртуальний гаманець
+      description: Повертає поточний баланс користувача в Demo Coins.
+      tags: [Wallet]
+      security:
+        - cookieAuth: []
+      responses:
+        200:
+          description: Інформація про гаманець успішно отримана
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  wallet:
+                    $ref: '#/components/schemas/Wallet'
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/wallet/transactions:
+    get:
+      summary: Отримати історію транзакцій гаманця
+      description: Повертає пагіновану історію транзакцій користувача та список активних резервацій (наприклад, зарезервовані кошти на майбутні плановані чи активні сесії).
+      tags: [Wallet]
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+          description: Ліміт кількості записів для повернення
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+          description: Зсув для пагінації
+      responses:
+        200:
+          description: Історія транзакцій отримана
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  history:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Transaction'
+                  activeTransactions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Transaction'
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        example: 25
+                      limit:
+                        type: integer
+                        example: 10
+                      offset:
+                        type: integer
+                        example: 0
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/wallet/top-up:
+    post:
+      summary: Поповнити баланс гаманця
+      description: Збільшує баланс Demo Coins гаманця поточного користувача. Обмежено лімітом запитів (rate-limit).
+      tags: [Wallet]
+      security:
+        - cookieAuth: []
+          csrfAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TopUpInput'
+      responses:
+        200:
+          description: Баланс успішно поповнено
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Баланс успішно поповнено"
+                  wallet:
+                    $ref: '#/components/schemas/Wallet'
+        400:
+          description: Некоректні вхідні дані (наприклад, сума виходить за дозволені межі)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "INVALID_AMOUNT"
+                  message:
+                    type: string
+                    example: "Сума поповнення має бути більшою за нуль та не більше 10,000 Demo Coins."
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        403:
+          description: Невірний CSRF токен
+        429:
+          description: Занадто багато запитів (rate-limit перевищено)

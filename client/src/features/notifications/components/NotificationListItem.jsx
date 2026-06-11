@@ -121,7 +121,7 @@ export default function NotificationListItem({ notification, onMarkAsRead }) {
             </span>
           </div>
 
-          <p className="text-sm text-brand-medium mt-1 line-clamp-2">
+          <p className="text-sm text-brand-medium mt-1 whitespace-pre-wrap break-words">
             {body}
           </p>
         </div>

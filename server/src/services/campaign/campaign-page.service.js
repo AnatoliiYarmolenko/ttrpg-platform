@@ -64,6 +64,7 @@ function createCampaignPageService({ getCampaignById, getCampaignByShareToken, g
       status: session.status,
       visibility: session.visibility,
       system: session.system || null,
+      price: session.price,
       ownerId: session.ownerId,
       owner: mapOwner(session.owner),
       organizerName: ownerDisplayName,

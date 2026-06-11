@@ -33,21 +33,23 @@ function createLifecycleService(overrides = {}) {
     createNotification: mock.fn(async () => null),
   };
 
+  const sessionUpdateMock = mock.fn(async ({ data } = {}) => ({
+    id: 101,
+    title: 'Test Session',
+    date: new Date('2026-05-10T10:00:00.000Z'),
+    duration: 180,
+    ownerId: 1,
+    campaign: null,
+    participants: [],
+    status: data?.status || 'PLANNED',
+    ...data,
+  }));
+
   const prisma = overrides.prisma || {
     $transaction: mock.fn(async (callback) => callback({
       $queryRaw: mock.fn(async () => [{ visibility: 'LINK_ONLY', shareTokenHash: 'mocked' }]),
       session: {
-        update: mock.fn(async ({ data }) => ({
-          id: 101,
-          title: 'Test Session',
-          date: new Date('2026-05-10T10:00:00.000Z'),
-          duration: 180,
-          ownerId: 1,
-          campaign: null,
-          participants: [],
-          status: data?.status || 'PLANNED',
-          ...data,
-        })),
+        update: sessionUpdateMock,
       },
       sessionParticipant: {
         updateMany: mock.fn(async () => ({ count: 0 })),
@@ -57,17 +59,7 @@ function createLifecycleService(overrides = {}) {
       },
     })),
     session: {
-      update: mock.fn(async ({ data } = {}) => ({
-        id: 101,
-        title: 'Test Session',
-        date: new Date('2026-05-10T10:00:00.000Z'),
-        duration: 180,
-        ownerId: 1,
-        campaign: null,
-        participants: [],
-        status: data?.status || 'PLANNED',
-        ...data,
-      })),
+      update: sessionUpdateMock,
       delete: mock.fn(async () => null),
     },
     user: {

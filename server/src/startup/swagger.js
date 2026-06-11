@@ -48,6 +48,7 @@ const options = {
       { name: 'Notifications', description: 'Сповіщення' },
       { name: 'Admin', description: 'Адмін-панель' },
       { name: 'Client Logs', description: 'Логування клієнтських помилок' },
+      { name: 'Wallet', description: 'Віртуальний гаманець та фінансові транзакції' },
     ],
   },
   apis: [path.join(__dirname, '../docs/swagger/**/*.yaml')],

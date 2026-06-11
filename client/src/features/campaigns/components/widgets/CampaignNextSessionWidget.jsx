@@ -2,30 +2,18 @@ import React, { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import DashboardCard from '@/components/ui/DashboardCard';
 import Button from '@/components/ui/Button';
-import { EmptyState, DateTimeDisplay, SessionTimeBadge, StatusBadge } from '@/components/shared';
+import { EmptyState, DateTimeDisplay, SessionTimeBadge, StatusBadge, VisibilityBadge } from '@/components/shared';
 import Data from '@/components/ui/icons/Data';
 import Timer from '@/components/ui/icons/Timer';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
 import Dice20 from '@/components/ui/icons/Dice20';
-import { VisibilityBadge } from '@/components/shared';
+import { HandCoins } from 'lucide-react';
+import propTypes from 'prop-types';
 
 const UI_LOCALE = 'uk-UA';
 
-/**
- * Допуск для PLANNED сесій — відповідає серверному `plannedToleranceMinutes`.
- * Сесія не вважається "минулою", якщо запізнення менше 2 хвилин.
- */
 const PLANNED_TOLERANCE_MS = 2 * 60 * 1000;
 
-/**
- * Знаходить найрелевантнішу сесію для відображення:
- * 1. Перша ACTIVE сесія (якщо є)
- * 2. Найближча майбутня PLANNED сесія (з допуском 2 хв на запізнення старту)
- * 3. null — якщо жодна актуальна сесія не знайдена
- *
- * На відміну від попередньої реалізації, НЕ повертає минулі PLANNED сесії —
- * щоб уникнути показу "наступної сесії", яка вже не відбудеться.
- */
 function findNextRelevantSession(sessions) {
   if (!Array.isArray(sessions) || sessions.length === 0) return null;
 
@@ -44,10 +32,6 @@ function findNextRelevantSession(sessions) {
 
 
 
-/**
- * CampaignNextSessionWidget — ліва панель таба "Сесії".
- * Відображає найближчу (ACTIVE або найближча PLANNED) сесію кампанії.
- */
 export default function CampaignNextSessionWidget({
   sessions = [],
   campaignTitle = '',
@@ -93,7 +77,6 @@ export default function CampaignNextSessionWidget({
   return (
     <DashboardCard title="Наступна сесія">
       <div className="flex flex-col gap-4 h-full">
-        {/* Заголовок */}
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-xl font-bold text-brand-dark leading-tight truncate flex-1 min-w-0">
             {session.title}
@@ -116,7 +99,6 @@ export default function CampaignNextSessionWidget({
           </div>
         )}
 
-        {/* Деталі */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 p-4 bg-brand-light/10 rounded-xl">
           <div className="flex items-center gap-2 text-brand-medium text-sm">
             <Data className="w-4 h-4 shrink-0" />
@@ -149,9 +131,15 @@ export default function CampaignNextSessionWidget({
             <span className="font-medium">Організатор:</span>
             <span>{organizerName}</span>
           </div>
+          {session.price > 0 && (
+            <div className="flex items-center gap-2 text-brand-medium text-sm">
+              <HandCoins size={14} className="text-brand-primary" />
+              <span>{session.price} Demo Coins</span>
+            </div>
+            )}
+        
         </div>
 
-        {/* Опис */}
         <div className="border-t border-brand-light/20 pt-3">
           <h4 className="text-sm font-bold text-brand-dark mb-3">Опис</h4>
           <p className="text-sm text-brand-medium whitespace-pre-wrap leading-relaxed">
@@ -159,7 +147,6 @@ export default function CampaignNextSessionWidget({
           </p>
         </div>
 
-        {/* CTA */}
         <div className="mt-auto pt-2">
           <Button
             onClick={() => navigate(sessionTarget)}
@@ -173,3 +160,23 @@ export default function CampaignNextSessionWidget({
     </DashboardCard>
   );
 }
+
+CampaignNextSessionWidget.propTypes = {
+  sessions: propTypes.arrayOf(propTypes.shape({
+    id: propTypes.string.isRequired,
+    title: propTypes.string.isRequired,
+    startAt: propTypes.string,
+    date: propTypes.string,
+    status: propTypes.oneOf(['PLANNED', 'ACTIVE', 'FINISHED', 'CANCELED']).isRequired,
+    system: propTypes.string,
+    organizerName: propTypes.string,
+    participantsSummaryCount: propTypes.number,
+    maxPlayers: propTypes.number,
+    visibility: propTypes.oneOf(['PUBLIC', 'PRIVATE']),
+    price: propTypes.number,
+    description: propTypes.string,
+  })).isRequired,
+  campaignTitle: propTypes.string,
+  campaignNavigationTarget: propTypes.string,
+  campaignShareToken: propTypes.string,
+};

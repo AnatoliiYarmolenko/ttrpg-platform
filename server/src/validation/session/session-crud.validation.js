@@ -104,11 +104,6 @@ const updateSessionBodySchema = Joi.object({
     'number.min': 'Max players must be between 1 and 20',
     'number.max': 'Max players must be between 1 and 20',
   }),
-  price: Joi.number().min(0).max(10000).optional().messages({
-    'number.base': 'Price must be between 0 and 10000',
-    'number.min': 'Price must be between 0 and 10000',
-    'number.max': 'Price must be between 0 and 10000',
-  }),
   visibility: Joi.string().trim().valid(...VISIBILITY_VALUES).optional().messages({
     'any.only': 'Invalid visibility value',
   }),

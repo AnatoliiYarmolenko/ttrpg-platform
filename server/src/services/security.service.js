@@ -259,13 +259,89 @@ async function deleteAccount(userId, password) {
       data: { reviewedBy: null }
     });
 
-    await tx.session.updateMany({
-      where: { 
-        ownerId: userId,
-        status: { not: 'CANCELED' }
+    const playerParticipations = await tx.sessionParticipant.findMany({
+      where: {
+        userId,
+        role: 'PLAYER',
+        status: { in: ['CONFIRMED', 'PENDING'] },
+        session: {
+          status: { in: ['PLANNED', 'ACTIVE'] },
+        },
       },
-      data: { status: 'CANCELED' }
+      include: {
+        session: {
+          select: {
+            id: true,
+            price: true,
+            heldAmount: true,
+          },
+        },
+      },
     });
+
+    const walletService = require('./wallet.service');
+    const { Prisma } = require('@prisma/client');
+    for (const part of playerParticipations) {
+      await tx.sessionParticipant.delete({
+        where: { id: part.id },
+      });
+
+      const decPrice = new Prisma.Decimal(part.session.price || 0);
+      if (decPrice.gt(0)) {
+        await walletService.refundFunds(userId, part.session.id, decPrice, tx);
+
+        await tx.session.update({
+          where: { id: part.session.id },
+          data: {
+            heldAmount: { decrement: decPrice },
+          },
+        });
+      }
+    }
+
+    const sessionsToCancel = await tx.session.findMany({
+      where: {
+        status: { in: ['PLANNED', 'ACTIVE'] },
+        OR: [
+          { ownerId: userId },
+          {
+            participants: {
+              some: {
+                userId,
+                role: 'GM',
+                status: 'CONFIRMED',
+              },
+            },
+          },
+        ],
+      },
+      include: {
+        campaign: {
+          select: {
+            id: true,
+            ownerId: true,
+            status: true,
+          },
+        },
+        participants: {
+          select: {
+            id: true,
+            userId: true,
+            role: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    const sessionService = require('./session.service');
+    for (const session of sessionsToCancel) {
+      await sessionService.lifecycleService.cancelSession(
+        session.id,
+        userId,
+        { preloadedSession: session, bypassPermissions: true, tx }
+      );
+    }
 
     await tx.campaign.updateMany({
       where: {
@@ -275,10 +351,12 @@ async function deleteAccount(userId, password) {
       data: { status: 'FINISHED' }
     });
 
-    const wallet = await tx.wallet.findUnique({ where: { userId } });
-    if (wallet) {
-      await tx.transaction.deleteMany({ where: { walletId: wallet.id } });
-      await tx.wallet.delete({ where: { userId } });
+    const lockedWallet = await walletService._getOrCreateLockedWallet(userId, tx);
+    if (lockedWallet?.balance) {
+      const balance = new Prisma.Decimal(lockedWallet.balance);
+      if (balance.gt(0)) {
+        await walletService.burnFunds(userId, balance, tx);
+      }
     }
 
     await tx.joinRequest.deleteMany({

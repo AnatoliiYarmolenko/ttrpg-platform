@@ -14,7 +14,7 @@ class NotificationService {
     * @param {Object} input - Вхідні дані повідомлення
     * @returns {Promise<Object>} Створене повідомлення
    */
-  async createNotification(input) {
+  async createNotification(input, externalTx = null) {
     const {
       eventKey,
       type,
@@ -44,8 +44,7 @@ class NotificationService {
       return null;
     }
 
-      // Створюємо повідомлення та отримувачів у транзакції
-    const result = await this.prisma.$transaction(async (tx) => {
+    const execute = async (tx) => {
       const existingNotification = await this._findExistingNotificationForDedupe(tx, {
         dedupeKey,
         dedupeWindowMs,
@@ -78,16 +77,21 @@ class NotificationService {
 
       const attachedRecipientIds = await this._attachRecipients(tx, notification.id, resolvedRecipientIds);
 
-      // Створюємо події в Outbox для Telegram
       await this._createTelegramOutboxEvents(tx, notification, attachedRecipientIds);
 
       return {
         notification,
         attachedRecipientIds,
       };
-    });
+    };
 
-    // Відправляємо підключеним користувачам через SSE (поза транзакцією)
+    let result;
+    if (externalTx) {
+      result = await execute(externalTx);
+    } else {
+      result = await this.prisma.$transaction(execute);
+    }
+
     this.pushToConnectedUsers(result.notification, result.attachedRecipientIds);
 
     return result.notification;
@@ -112,7 +116,6 @@ class NotificationService {
       });
     }
 
-    // Виключаємо актора якщо вказано (правило анти-спам)
     if (context.excludeUserId) {
       const excludedId = Number.parseInt(context.excludeUserId, 10);
       resolvedIds.delete(context.excludeUserId);
@@ -179,7 +182,6 @@ class NotificationService {
   async _createTelegramOutboxEvents(tx, notification, recipientIds) {
     if (!recipientIds || recipientIds.length === 0) return;
 
-    // Знаходимо користувачів, у яких є telegramChatId
     const users = await tx.user.findMany({
       where: {
         id: { in: recipientIds },

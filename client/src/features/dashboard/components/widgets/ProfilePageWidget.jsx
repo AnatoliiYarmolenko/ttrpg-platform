@@ -14,6 +14,8 @@ import { getTelegramLinkToken, unlinkTelegram, getMyProfile } from '@/features/p
 import { toast } from '@/stores/useToastStore';
 import { useQueryClient } from '@tanstack/react-query';
 import ConfirmModal from '@/components/shared/ConfirmModal';
+import { useMyWalletQuery, useWalletTransactionsQuery } from '@/features/wallet/hooks/useWalletQueries';
+import TopUpModal from '@/features/wallet/components/TopUpModal';
 
 const MENU_ITEMS = [
   { id: PROFILE_SECTIONS.INFO, label: 'Інформація', description: 'Перегляд профілю' },
@@ -54,6 +56,12 @@ export function ProfileContentWidget({ currentSection, user, onProfileUpdate }) 
   const [isLinkingTelegram, setIsLinkingTelegram] = useState(false);
   const [showUnlinkModal, setShowUnlinkModal] = useState(false);
   const pollingIntervalRef = useRef(null);
+
+  const [limit, setLimit] = useState(10);
+  const [isTopUpOpen, setIsTopUpOpen] = useState(false);
+
+  const { data: wallet, isLoading: isWalletLoading } = useMyWalletQuery();
+  const { data: transactionsData, isLoading: isTransactionsLoading, isFetching: isTransactionsFetching } = useWalletTransactionsQuery({ limit });
 
   useEffect(() => {
     return () => {
@@ -183,21 +191,116 @@ export function ProfileContentWidget({ currentSection, user, onProfileUpdate }) 
         </DashboardCard>
       );
     
-    case PROFILE_SECTIONS.BALANCE:
+    case PROFILE_SECTIONS.BALANCE: {
+      const txTypeLabels = {
+        TOP_UP: 'Поповнення',
+        RESERVE: 'Резервування',
+        REFUND: 'Повернення',
+        PAYOUT: 'Виплата',
+        SYSTEM_WRITE_OFF: 'Системне списання',
+      };
+
+      const isTxPositive = (type) => ['TOP_UP', 'REFUND', 'PAYOUT'].includes(type);
+      const hasTransactions = transactionsData?.history?.length > 0;
+
+      let transactionsContent;
+
+      if (isTransactionsLoading && limit === 10) {
+        transactionsContent = (
+          <div className="flex justify-center py-8">
+            <span className="text-brand-medium">Завантаження транзакцій...</span>
+          </div>
+        );
+      } else if (hasTransactions === false) {
+        transactionsContent = (
+          <div className="text-center py-8 text-brand-medium border-2 border-dashed border-brand-light/30 rounded-xl">
+            Транзакцій не знайдено
+          </div>
+        );
+      } else {
+        transactionsContent = (
+          <div className="flex flex-col gap-3">
+            <div className="border border-brand-light/30 rounded-2xl overflow-hidden bg-white divide-y divide-brand-light/20">
+              {transactionsData.history.map((tx) => {
+                const isPositive = isTxPositive(tx.type);
+                return (
+                  <div key={tx.id} className="flex items-center justify-between p-4 transition-colors hover:bg-brand-light/5">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-bold text-brand-dark text-sm">
+                        {txTypeLabels[tx.type] || tx.type}
+                      </span>
+                      {tx.session?.title && (
+                        <span className="text-xs text-brand-medium">
+                          Гра: {tx.session.title}
+                        </span>
+                      )}
+                      <span className="text-[10px] text-brand-light">
+                        {new Date(tx.date).toLocaleString('uk-UA')}
+                      </span>
+                    </div>
+                    <div className={`font-bold text-sm ${isPositive ? 'text-green-600' : 'text-brand-dark'}`}>
+                      {isPositive ? '+' : '-'}{Number(tx.amount).toFixed(2)} Demo Coins
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {transactionsData.history.length < transactionsData.pagination.total && (
+              <button
+                type="button"
+                onClick={() => setLimit((prev) => prev + 10)}
+                disabled={isTransactionsFetching}
+                className="
+                  w-full py-3 px-4 rounded-xl
+                  bg-brand-light/10 text-brand-dark font-medium
+                  hover:bg-brand-light/20
+                  disabled:opacity-50 disabled:cursor-not-allowed
+                  transition-colors
+                  flex items-center justify-center gap-2
+                  shadow-none hover:shadow-none
+                "
+              >
+                {isTransactionsFetching ? 'Завантаження...' : 'Завантажити ще'}
+              </button>
+            )}
+          </div>
+        );
+      }
+
+      const balanceDisplay = wallet?.balance ? `${Number(wallet.balance).toFixed(2)} Demo Coins` : '0.00 Demo Coins';
+
       return (
         <DashboardCard title="Баланс та платежі">
-          <div className="text-center py-12">
-            <h3 className="text-xl font-bold text-brand-dark mb-2">Поповнення балансу</h3>
-            <p className="text-brand-medium mb-6">
-              Ця функція буде доступна найближчим часом
-            </p>
-            <div className="bg-brand-light/20 rounded-xl p-4 inline-block">
-              <span className="text-brand-dark">Поточний баланс: </span>
-              <span className="font-bold text-xl text-brand-dark">0 ₴</span>
+          <div className="flex flex-col gap-6">
+            <div className="rounded-2xl p-6 text-center">
+              <h3 className="text-sm font-semibold text-brand-medium uppercase tracking-wider mb-2">Поточний баланс</h3>
+              <div className="text-3xl font-extrabold text-brand-dark mb-4">
+                {isWalletLoading ? (
+                  <span className="text-brand-light text-2xl">Завантаження...</span>
+                ) : (
+                  balanceDisplay
+                )}
+              </div>
+              <Button
+                variant="primary"
+                fullWidth={false}
+                onClick={() => setIsTopUpOpen(true)}
+                className="px-6 py-2.5 rounded-xl font-bold min-h-[44px]"
+              >
+                Поповнити баланс
+              </Button>
+            </div>
+
+            <div>
+              <h4 className="font-bold text-brand-dark text-lg mb-4">Історія транзакцій</h4>
+              {transactionsContent}
             </div>
           </div>
+          <TopUpModal isOpen={isTopUpOpen} onClose={() => setIsTopUpOpen(false)} />
         </DashboardCard>
       );
+    }
     
     case PROFILE_SECTIONS.CHARACTERS:
       return (

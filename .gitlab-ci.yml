@@ -1,7 +1,15 @@
 stages:
-  - build
+  - fast_checks
   - test
+  - e2e
   - sonar
+
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+
 
 variables:
   GIT_CLEAN_FLAGS: "-ffdx -e .npm/ -e .ci-tools/"
@@ -17,7 +25,7 @@ cache:
     - .npm/
 
 build_server:
-  stage: build
+  stage: fast_checks
   tags: [student]
   script:
     - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline
@@ -31,7 +39,7 @@ build_server:
     expire_in: 1 hour
 
 build_client:
-  stage: build
+  stage: fast_checks
   tags: [student]
   script:
     - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline
@@ -39,29 +47,23 @@ build_client:
     - npm run build --workspace=client
 
 lint_client:
-  stage: test
+  stage: fast_checks
   tags: [student]
-  dependencies: []
   script:
     - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline
     - npm run lint --workspace=client
 
 lint_server:
-  stage: test
+  stage: fast_checks
   tags: [student]
-  dependencies: []
   script:
     - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline
     - npm run lint --workspace=server
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_COMMIT_BRANCH == "main"'
-    - if: '$CI_COMMIT_BRANCH == "develop"'
 
 coverage_client:
   stage: test
   tags: [student]
-  dependencies: []
+  needs: [build_client, lint_client]
   script:
     - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline
     - npm run test:coverage --workspace=client
@@ -70,21 +72,14 @@ coverage_client:
     paths:
       - client/coverage/
     expire_in: 7 days
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_COMMIT_BRANCH == "main"'
-    - if: '$CI_COMMIT_BRANCH == "develop"'
 
 coverage_server:
   stage: test
   tags: [student]
-  dependencies: []
+  needs: [build_server, lint_server]
   variables:
-    # Справжні підключення для тестового прогону
     DATABASE_URL: "postgresql://testuser:testpass@localhost:5433/ttrpg_test?schema=public"
     REDIS_URL: "redis://localhost:6380"
-    
-    # Фейкові значення-заглушки для парсингу docker-compose.yml
     COOKIE_SECRET: "dummy_cookie"
     JWT_SECRET: "dummy_jwt"
     SHARE_TOKEN_SECRET: "dummy_share"
@@ -94,10 +89,19 @@ coverage_server:
   script:
     - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline
     - docker compose --profile test up -d db_test redis_test
-    - Start-Sleep -Seconds 10
+    - |
+      $timeout = 60; $elapsed = 0
+      do {
+        $db    = (Test-NetConnection -ComputerName localhost -Port 5433 -WarningAction SilentlyContinue).TcpTestSucceeded
+        $redis = (Test-NetConnection -ComputerName localhost -Port 6380 -WarningAction SilentlyContinue).TcpTestSucceeded
+        if ($db -and $redis) { Write-Host "DB and Redis ready"; break }
+        Start-Sleep -Seconds 3; $elapsed += 3
+        if ($elapsed -ge $timeout) { Write-Error "Timeout waiting for test services"; exit 1 }
+      } while ($true)
     - cd server
     - npx prisma generate
     - npx prisma db push --accept-data-loss
+    - cd ..
     - npm run test:coverage --workspace=server
   after_script:
     - docker compose --profile test down -v
@@ -106,15 +110,78 @@ coverage_server:
     paths:
       - server/coverage/
     expire_in: 7 days
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_COMMIT_BRANCH == "main"'
-    - if: '$CI_COMMIT_BRANCH == "develop"'
+
+e2e_tests:
+  stage: e2e
+  tags: [student]
+  needs: [coverage_client, coverage_server]
+  variables:
+    DATABASE_URL: "postgresql://testuser:testpass@localhost:5433/ttrpg_test?schema=public"
+    REDIS_URL: "redis://localhost:6380"
+    COOKIE_SECRET: "dummy_cookie"
+    JWT_SECRET: "dummy_jwt"
+    SHARE_TOKEN_SECRET: "dummy_share"
+    POSTGRES_USER: "dummy_user"
+    POSTGRES_PASSWORD: "dummy_pass"
+    POSTGRES_DB: "dummy_db"
+    PORT: "3000"
+    RUN_MIGRATIONS: "false"
+  script:
+    - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline
+    - cd client
+    - npx playwright install --with-deps
+    - cd ..
+    - docker compose --profile test up -d db_test redis_test
+    - |
+      $timeout = 60; $elapsed = 0
+      do {
+        $db    = (Test-NetConnection -ComputerName localhost -Port 5433 -WarningAction SilentlyContinue).TcpTestSucceeded
+        $redis = (Test-NetConnection -ComputerName localhost -Port 6380 -WarningAction SilentlyContinue).TcpTestSucceeded
+        if ($db -and $redis) { Write-Host "DB and Redis ready"; break }
+        Start-Sleep -Seconds 3; $elapsed += 3
+        if ($elapsed -ge $timeout) { Write-Error "Timeout waiting for test services"; exit 1 }
+      } while ($true)
+    - cd server
+    - npx prisma generate
+    - npx prisma db push --accept-data-loss
+    - cd ..
+
+    - Start-Process -FilePath "cmd.exe" -ArgumentList "/c", "npm run dev --workspace=server" -WindowStyle Hidden -RedirectStandardOutput "server.log" -RedirectStandardError "server_err.log"
+    - |
+      $timeout = 60; $elapsed = 0
+      do {
+        try {
+          $r = Invoke-WebRequest -Uri "http://localhost:3000/health" -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop
+          if ($r.StatusCode -eq 200) { Write-Host "Server ready"; break }
+        } catch {}
+        Start-Sleep -Seconds 3; $elapsed += 3
+        if ($elapsed -ge $timeout) { Write-Error "Timeout waiting for server"; exit 1 }
+      } while ($true)
+
+    - cd client
+    - npm run build
+
+    - Start-Process -FilePath "cmd.exe" -ArgumentList "/c", "npx vite preview --port 4173" -WindowStyle Hidden -RedirectStandardOutput "preview.log" -RedirectStandardError "preview_err.log"
+    - Start-Sleep -Seconds 3
+    - cd ..
+    - |
+      npm run test:e2e --workspace=client
+      $exitCode = $LASTEXITCODE
+      Stop-Process -Name node -Force -ErrorAction SilentlyContinue
+      if ($exitCode -ne 0) { exit $exitCode }
+  after_script:
+    - docker compose --profile test down -v
+    - Stop-Process -Name node -Force -ErrorAction SilentlyContinue
+  artifacts:
+    when: on_failure
+    paths:
+      - client/playwright-report/
+    expire_in: 30 days
 
 sonarcloud_scan:
   stage: sonar
   tags: [student]
-  dependencies:
+  needs:
     - coverage_client
     - coverage_server
   variables:
@@ -135,12 +202,3 @@ sonarcloud_scan:
     - $env:CI_MERGE_REQUEST_IID = ""
     - $env:SONAR_SCANNER_JAVA_EXE_PATH = "$javaHome\bin\java.exe"
     - npx sonarqube-scanner "-Dsonar.host.url=https://sonarcloud.io" "-Dsonar.token=$env:SONAR_TOKEN" "-Dsonar.branch.name=$env:CI_COMMIT_REF_NAME" "-Dsonar.scanner.javaExePath=$javaHome\bin\java.exe"
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - if: '$CI_COMMIT_BRANCH == "main"'
-    - if: '$CI_COMMIT_BRANCH == "develop"'
-
-#include:
-#  - template: Security/SAST.gitlab-ci.yml
-#  - template: Security/Secret-Detection.gitlab-ci.yml
-#  - template: Security/Dependency-Scanning.gitlab-ci.yml

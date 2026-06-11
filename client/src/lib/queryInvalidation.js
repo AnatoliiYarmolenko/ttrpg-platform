@@ -70,3 +70,6 @@ export const invalidateCampaignCollectionQueries = (
 
   return Promise.allSettled(tasks);
 };
+
+export const invalidateWalletQuery = (queryClient) =>
+  queryClient.invalidateQueries({ queryKey: ['wallet'] });

@@ -70,12 +70,6 @@ function buildUpdatePayload(session, formData) {
     data.visibility = formData.visibility;
   }
 
-  if (String(formData.price) !== String(initial.price)) {
-    if (formData.price !== '') {
-      data.price = Number(formData.price);
-    }
-  }
-
   return data;
 }
 
@@ -307,19 +301,7 @@ function SessionSettingsWidgetContent({
               {visibilityHelpByValue[formData.visibility] || 'Оберіть режим доступу до сесії.'}
             </p>
 
-            <FormField id="price" label="Ціна (грн)">
-              <input
-                id="price"
-                type="number"
-                name="price"
-                value={formData.price}
-                onChange={handleChange}
-                className={inputClasses}
-                disabled={isReadOnly}
-                min={0}
-                placeholder="0"
-              />
-            </FormField>
+
 
             {canManageShareLink && (
               <div className="border-t border-brand-light/20 pt-4 flex flex-col gap-2">
