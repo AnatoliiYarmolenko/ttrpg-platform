@@ -20,7 +20,7 @@ export default function QuickBar({ onRoll }) {
     if (rollData) {
       // Якщо слот заповнений, робимо кидок
       if (onRoll) {
-        onRoll(rollData.formula, rollData.name);
+        onRoll(rollData.formula, rollData.name, rollData.rollStrength, rollData.visibility);
       }
     } else {
       // Якщо порожній, відкриваємо модалку створення
@@ -93,10 +93,10 @@ export default function QuickBar({ onRoll }) {
                         {roll.name}
                       </div>
                       <div className="text-brand-light text-xs font-mono mb-2">
-                        Click to roll: <span className="text-brand-accent">[{roll.formula}]</span>
+                        Клік щоб кинути: <span className="text-brand-accent">[{roll.formula}]</span>
                       </div>
                       <div className="text-white/40 text-[10px] italic">
-                        Right click to edit
+                        Правий клік щоб редагувати
                       </div>
                       {/* Хвостик тултіпа */}
                       <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-brand-dark/95 border-b border-r border-brand-light/20 rotate-45" />
@@ -125,7 +125,7 @@ export default function QuickBar({ onRoll }) {
                 ? 'bg-brand-accent text-brand-dark shadow-[0_0_15px_rgba(241,178,74,0.4)]' 
                 : 'bg-brand-medium/30 text-brand-light hover:bg-brand-medium/60 hover:text-white'
             }`}
-            title="Roll Maker (Свій кидок)"
+            title="Конструктор кидка (Свій кидок)"
           >
             <Dices size={24} />
           </button>

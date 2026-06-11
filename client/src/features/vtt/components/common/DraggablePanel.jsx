@@ -1,6 +1,7 @@
+/* eslint-disable jsx-a11y/no-static-element-interactions */
 import React from 'react';
 import PropTypes from 'prop-types';
-import { X, Lock, Unlock } from 'lucide-react';
+import { X, Lock, Unlock, ChevronUp, ChevronDown } from 'lucide-react';
 import useDraggablePanel from '../../hooks/useDraggablePanel';
 
 export default function DraggablePanel({
@@ -12,6 +13,7 @@ export default function DraggablePanel({
   headerContent,
   initialState,
   onSaveState,
+  storageKey,
   defaultWidth = 400,
   defaultHeight = 500,
   defaultX,
@@ -22,16 +24,20 @@ export default function DraggablePanel({
   containerStyle = {},
   headerClassName = '',
   contentClassName = 'flex flex-col flex-1 overflow-y-auto min-h-0 bg-transparent',
+  zIndex = 200,
 }) {
   const {
     isLocked,
+    isCollapsed,
     toggleLock,
+    toggleCollapse,
     onDragMouseDown,
     onResizeMouseDown,
     containerRef
   } = useDraggablePanel({
     initialState,
     onSaveState,
+    storageKey,
     defaultWidth,
     defaultHeight,
     defaultX: defaultX ?? (globalThis.window ? globalThis.window.innerWidth / 2 - defaultWidth / 2 : 0),
@@ -48,8 +54,9 @@ export default function DraggablePanel({
   return (
     <div
       ref={containerRef}
-      className={`fixed z-[200] flex flex-col rounded-xl overflow-hidden will-change-transform border border-brand-light/20 shadow-[0_12px_40px_rgba(0,0,0,0.8)] ${containerClassName}`}
+      className={`fixed flex flex-col rounded-xl overflow-hidden will-change-transform border border-brand-light/20 ${containerClassName}`}
       style={{
+        zIndex,
         left: 0,
         top: 0,
         background: 'rgba(22, 36, 34, 0.5)',
@@ -60,14 +67,18 @@ export default function DraggablePanel({
       {/* Resize handles */}
       {!isLocked && (
         <>
-          <div onMouseDown={onResizeMouseDown('se')} className={`${rh} bottom-0 right-0 w-4 h-4 cursor-se-resize`} />
-          <div onMouseDown={onResizeMouseDown('sw')} className={`${rh} bottom-0 left-0 w-4 h-4 cursor-sw-resize`} />
-          <div onMouseDown={onResizeMouseDown('ne')} className={`${rh} top-0 right-0 w-4 h-4 cursor-ne-resize`} />
-          <div onMouseDown={onResizeMouseDown('nw')} className={`${rh} top-0 left-0 w-4 h-4 cursor-nw-resize`} />
-          <div onMouseDown={onResizeMouseDown('e')}  className={`${rh} top-4 right-0 bottom-4 w-2 cursor-e-resize`} />
-          <div onMouseDown={onResizeMouseDown('w')}  className={`${rh} top-4 left-0 bottom-4 w-2 cursor-w-resize`} />
-          <div onMouseDown={onResizeMouseDown('s')}  className={`${rh} left-4 right-4 bottom-0 h-2 cursor-s-resize`} />
-          <div onMouseDown={onResizeMouseDown('n')}  className={`${rh} left-4 right-4 top-0 h-2 cursor-n-resize`} />
+          {!isCollapsed && (
+            <>
+              <div onMouseDown={onResizeMouseDown('se')} className={`${rh} bottom-0 right-0 w-4 h-4 cursor-se-resize`} />
+              <div onMouseDown={onResizeMouseDown('sw')} className={`${rh} bottom-0 left-0 w-4 h-4 cursor-sw-resize`} />
+              <div onMouseDown={onResizeMouseDown('ne')} className={`${rh} top-0 right-0 w-4 h-4 cursor-ne-resize`} />
+              <div onMouseDown={onResizeMouseDown('nw')} className={`${rh} top-0 left-0 w-4 h-4 cursor-nw-resize`} />
+              <div onMouseDown={onResizeMouseDown('s')}  className={`${rh} left-4 right-4 bottom-0 h-2 cursor-s-resize`} />
+              <div onMouseDown={onResizeMouseDown('n')}  className={`${rh} left-4 right-4 top-0 h-2 cursor-n-resize`} />
+            </>
+          )}
+          <div onMouseDown={onResizeMouseDown('e')}  className={`${rh} ${isCollapsed ? 'top-0 bottom-0' : 'top-4 bottom-4'} right-0 w-2 cursor-e-resize`} />
+          <div onMouseDown={onResizeMouseDown('w')}  className={`${rh} ${isCollapsed ? 'top-0 bottom-0' : 'top-4 bottom-4'} left-0 w-2 cursor-w-resize`} />
         </>
       )}
 
@@ -84,6 +95,15 @@ export default function DraggablePanel({
         </div>
         <div className="flex items-center gap-1">
           {headerContent}
+          <button
+            type="button"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={toggleCollapse}
+            className="transition-all duration-300 p-1 rounded text-brand-light/70 hover:text-white hover:bg-brand-light/10"
+            title={isCollapsed ? 'Розгорнути' : 'Згорнути'}
+          >
+            {isCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+          </button>
           <button
             type="button"
             onMouseDown={(e) => e.stopPropagation()}
@@ -108,9 +128,11 @@ export default function DraggablePanel({
       </div>
 
       {/* Content */}
-      <div className={contentClassName}>
-        {children}
-      </div>
+      {!isCollapsed && (
+        <div className={contentClassName}>
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -124,6 +146,7 @@ DraggablePanel.propTypes = {
   headerContent: PropTypes.node,
   initialState: PropTypes.object,
   onSaveState: PropTypes.func,
+  storageKey: PropTypes.string,
   defaultWidth: PropTypes.number,
   defaultHeight: PropTypes.number,
   defaultX: PropTypes.number,
@@ -134,4 +157,5 @@ DraggablePanel.propTypes = {
   containerStyle: PropTypes.object,
   headerClassName: PropTypes.string,
   contentClassName: PropTypes.string,
+  zIndex: PropTypes.number,
 };

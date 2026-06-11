@@ -55,14 +55,13 @@ export default function DiceRoller3D({ incomingRoll }) {
       },
       shadows: false, // Вимикаємо динамічні тіні для продуктивності
       baseScale: 110, // Зменшили масштаб для оптимізації масових кидків
-      gravity_multiplier: 330, // Злегка збільшена гравітація
+      gravity_multiplier: 450, // Злегка збільшена гравітація
       strength: 0.5, // Значно зменшена сила кидка (~ 30% від попередньої)
       onRollComplete: handleRollComplete
     });
 
     // Ініціалізація фізичного рушія
     diceBox.initialize().then(() => {
-      console.log('DiceBox-threejs successfully initialized! Ready to roll.');
       diceBoxRef.current = diceBox;
       
       // Примусово викликаємо подію resize
@@ -123,8 +122,6 @@ export default function DiceRoller3D({ incomingRoll }) {
         rollString += `@${forcedValues.join(',')}`;
       }
       
-      console.log('Executing diceBox.roll with forced values string:', rollString);
-      
       if (clearTimerRef.current) {
         clearTimeout(clearTimerRef.current);
         clearTimerRef.current = null;
@@ -150,18 +147,13 @@ export default function DiceRoller3D({ incomingRoll }) {
         const baseStrength = incomingRoll.strength || 1;
         const scaledStrength = baseStrength * 4; 
         
-        console.log(`[DiceRoller3D] Raw strength: ${baseStrength}, Scaled: ${scaledStrength}`);
-        
         // Змінюємо безпосередньо властивість (updateConfig не оновлює силу на льоту)
         diceBoxRef.current.strength = scaledStrength;
         
-        diceBoxRef.current.roll(rollString).then(() => {
-          console.log('Roll animation completed successfully.');
-        }).catch(err => {
+        diceBoxRef.current.roll(rollString).catch(err => {
           console.error('Roll failed with forced values, attempting fallback:', err);
           // Fallback: unforced string e.g. '2d12+1d100'
           const fallbackString = incomingRoll.details.map(d => `${d.qty}d${d.sides}`).join('+');
-          console.log('Fallback string:', fallbackString);
           diceBoxRef.current.roll(fallbackString).catch(fallbackErr => {
             console.error('Fallback roll also failed:', fallbackErr);
           });

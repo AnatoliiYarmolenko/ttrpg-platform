@@ -12,7 +12,7 @@ const crypto = require('node:crypto');
  * Дозволені поля для оновлення сцени через updateScene().
  * Клієнт не може перезаписати id, layers або type напряму.
  */
-const ALLOWED_SCENE_UPDATE_FIELDS = new Set(['name', 'width', 'height', 'gridSize', 'backgroundColor', 'gridEnabled', 'gridType', 'gridColor', 'gridOpacity']);
+const ALLOWED_SCENE_UPDATE_FIELDS = new Set(['name', 'width', 'height', 'gridSize', 'backgroundColor', 'gridEnabled', 'gridType', 'gridColor', 'gridOpacity', 'gridScale']);
 
 /**
  * Дозволені поля для оновлення шару через updateLayer().
@@ -22,7 +22,7 @@ const ALLOWED_LAYER_UPDATE_FIELDS = new Set(['name', 'isVisible', 'isLocked', 'o
 /**
  * Дозволені поля для оновлення зображення-оверлея через updateSceneImage().
  */
-const ALLOWED_IMAGE_UPDATE_FIELDS = new Set(['x', 'y', 'scaleX', 'scaleY', 'rotation']);
+const ALLOWED_IMAGE_UPDATE_FIELDS = new Set(['x', 'y', 'scaleX', 'scaleY', 'rotation', 'layerId']);
 
 /**
  * filterUpdates — whitelist фільтр оновлень.
@@ -212,7 +212,8 @@ class VttStateManager {
    * @returns {Scene}
    */
   createScene(sessionId, data) {
-    const { name, width, height, backgroundUrl = null, backgroundColor = null, gridEnabled = true, gridType = 'SQUARE', gridColor = null, gridSize = 64, gridOpacity = 0.4 } = data || {};
+    logger.info({ data }, '>>> createScene data');
+    const { name, width, height, backgroundUrl = null, backgroundColor = null, gridEnabled = true, gridType = 'SQUARE', gridColor = null, gridSize = 64, gridOpacity = 0.4, gridScale = 5 } = data || {};
     const room = this._ensureRoom(sessionId);
     const sceneId = `scene-${this._generateId()}`;
 
@@ -248,6 +249,7 @@ class VttStateManager {
       gridType: gridType === 'HEXAGONAL' ? 'HEXAGONAL' : 'SQUARE',
       gridColor: gColor,
       gridOpacity: gridOpacity ?? 0.4,
+      gridScale: gridScale ?? 5,
       layers: [
         {
           id: `layer-${this._generateId()}`,
@@ -305,6 +307,7 @@ class VttStateManager {
     if (!room.scenes[sceneId]) return null;
 
     const safeUpdates = filterUpdates(updates, ALLOWED_SCENE_UPDATE_FIELDS);
+    logger.info({ safeUpdates }, '>>> updateScene safeUpdates');
     room.scenes[sceneId] = { ...room.scenes[sceneId], ...safeUpdates };
     return room.scenes[sceneId];
   }
@@ -498,15 +501,38 @@ class VttStateManager {
     const scene = room.scenes[sceneId];
     if (!scene) return null;
 
-    const bgLayer = scene.layers.find((l) => l.type === 'BACKGROUND');
-    if (!bgLayer) return null;
+    let currentLayer = null;
+    let itemIndex = -1;
 
-    const itemIndex = bgLayer.items.findIndex((item) => item.id === imageId);
-    if (itemIndex === -1) return null;
+    for (const layer of scene.layers) {
+      itemIndex = layer.items.findIndex((item) => item.id === imageId);
+      if (itemIndex !== -1) {
+        currentLayer = layer;
+        break;
+      }
+    }
+
+    if (!currentLayer) return null;
 
     const safeUpdates = filterUpdates(updates, ALLOWED_IMAGE_UPDATE_FIELDS);
-    bgLayer.items[itemIndex] = { ...bgLayer.items[itemIndex], ...safeUpdates };
-    return bgLayer.items[itemIndex];
+    
+    // Якщо змінюється шар
+    if (safeUpdates.layerId && safeUpdates.layerId !== currentLayer.id) {
+      const newLayer = scene.layers.find((l) => l.id === safeUpdates.layerId);
+      if (newLayer) {
+        // Забираємо з поточного
+        const [item] = currentLayer.items.splice(itemIndex, 1);
+        // Оновлюємо і додаємо в новий
+        const updatedItem = { ...item, ...safeUpdates };
+        delete updatedItem.layerId; // Не зберігаємо layerId в самому об'єкті
+        newLayer.items.push(updatedItem);
+        return updatedItem;
+      }
+    }
+
+    delete safeUpdates.layerId;
+    currentLayer.items[itemIndex] = { ...currentLayer.items[itemIndex], ...safeUpdates };
+    return currentLayer.items[itemIndex];
   }
 
   /**
@@ -522,12 +548,17 @@ class VttStateManager {
     const scene = room.scenes[sceneId];
     if (!scene) return false;
 
-    const bgLayer = scene.layers.find((l) => l.type === 'BACKGROUND');
-    if (!bgLayer) return false;
-
-    const before = bgLayer.items.length;
-    bgLayer.items = bgLayer.items.filter((item) => item.id !== imageId);
-    if (bgLayer.items.length < before) {
+    let removed = false;
+    for (const layer of scene.layers) {
+      const before = layer.items.length;
+      layer.items = layer.items.filter((item) => item.id !== imageId);
+      if (layer.items.length < before) {
+        removed = true;
+        break;
+      }
+    }
+    
+    if (removed) {
       logger.info({ sessionId, sceneId, imageId }, 'Image removed from scene');
       return true;
     }

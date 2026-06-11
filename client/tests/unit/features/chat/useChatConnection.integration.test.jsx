@@ -33,15 +33,19 @@ vi.mock('@/features/chat/api/chatApi', () => ({
 
 // WebSocket Mock
 class MockWebSocket {
+  static CONNECTING = 0;
+  static OPEN = 1;
+  static CLOSING = 2;
+  static CLOSED = 3;
+  static instances = [];
+
   constructor(url) {
     this.url = url;
-    this.readyState = 0; // CONNECTING
+    this.readyState = MockWebSocket.CONNECTING;
     this.send = vi.fn();
     this.close = vi.fn();
     MockWebSocket.instances.push(this);
   }
-  
-  static instances = [];
   
   triggerOpen() {
     this.readyState = 1; // OPEN
@@ -111,6 +115,7 @@ describe('useChatConnection Integration', () => {
       await act(async () => {
         ws.simulateMessage({
           type: 'chat:joined',
+          chatId,
           snapshotCursor: 'new-cursor',
           readonly: false
         });
@@ -147,6 +152,7 @@ describe('useChatConnection Integration', () => {
       await act(async () => {
         ws.simulateMessage({
           type: 'chat:error',
+          chatId,
           clientMessageId,
           code: 'MESSAGE_REJECTED',
           message: 'Bad words'
@@ -178,7 +184,7 @@ describe('useChatConnection Integration', () => {
       });
 
       // State should be 'reconnecting' immediately
-      expect(chatStoreMock.setConnectionState).toHaveBeenCalledWith('reconnecting');
+      expect(chatStoreMock.setConnectionState).toHaveBeenCalledWith('reconnecting', null);
 
       await act(async () => {
         vi.advanceTimersByTime(1000);

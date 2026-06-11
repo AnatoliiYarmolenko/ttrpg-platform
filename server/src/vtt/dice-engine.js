@@ -1,4 +1,5 @@
 const crypto = require('node:crypto');
+const { logger } = require('../lib/logger');
 
 function randomInt(min, max) {
   return crypto.randomInt(min, max + 1);
@@ -66,7 +67,7 @@ function rollDice(formula, player = 'Anonymous') {
       total = totalDiceSum;
     }
   } catch (e) {
-    console.error('Failed to evaluate dice formula:', e);
+    logger.error({ err: e, formula }, 'Failed to evaluate dice formula');
     total = totalDiceSum;
   }
   

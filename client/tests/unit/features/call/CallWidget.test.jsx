@@ -26,7 +26,8 @@ vi.mock('@/components/shared', () => {
   return { ConfirmModal };
 });
 vi.mock('@/components/ui/Button', () => ({
-  default: ({ children, onClick, disabled, title, className, ...props }) => (
+  // eslint-disable-next-line no-unused-vars
+  default: ({ children, onClick, disabled, title, className, fullWidth, ...props }) => (
     <button onClick={onClick} disabled={disabled} title={title} className={className} {...props}>
       {children}
     </button>

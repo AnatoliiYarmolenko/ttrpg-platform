@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import useChatStore from '@/stores/useChatStore';
-import useVttStore from '@/stores/useVttStore';
 import useAuthStore, { selectUser } from '@/stores/useAuthStore';
-import useBattlefieldStore from '@/features/vtt/components/battlefield/useBattlefieldStore';
 import { getChatMessagesAfter, getChatMessagesBefore } from '../api/chatApi';
 import {
   DEFAULT_CHAT_MESSAGES_LIMIT,
@@ -11,95 +9,12 @@ import {
   getLatestCursorFromMessages,
   buildChatCursor,
 } from './useChatMessages';
-import api from '@/lib/axios';
-import { resolveMediaUrl, resolveSceneUrls } from '@/lib/resolveMediaUrl';
-
-const MAX_RECONNECT_ATTEMPTS = 8;
-const INITIAL_RECONNECT_DELAY = 1000;
-const MAX_RECONNECT_DELAY = 20000;
+import { sharedWsManager } from '@/lib/shared-ws';
 
 const isValidId = (value) => Number.isInteger(value) && value > 0;
 
 const createClientMessageId = () => {
   return `tmp-${crypto.randomUUID()}`;
-};
-
-const handleVttStateOrOpened = (data) => {
-  if (data.sessionId != null) {
-    useVttStore.getState().setVttOpen(data.sessionId, Boolean(data.isOpen));
-  }
-  if (data.type === 'vtt:state') {
-    const resolvedData = {
-      ...data,
-      scenes: data.scenes ? resolveSceneUrls(structuredClone(data.scenes)) : data.scenes,
-      backgroundUrl: data.backgroundUrl ? resolveMediaUrl(data.backgroundUrl) : data.backgroundUrl,
-    };
-    useBattlefieldStore.getState().setVttState(resolvedData);
-    
-    // Синхронізуємо історію кидків при повному завантаженні стану
-    if (Array.isArray(data.diceLog)) {
-      useVttStore.setState({ rollHistory: data.diceLog });
-    }
-  } else if (data.backgroundUrl) {
-    useBattlefieldStore.getState().setBackgroundUrl(
-      resolveMediaUrl(data.backgroundUrl) ?? data.backgroundUrl,
-      data.mapWidth,
-      data.mapHeight,
-    );
-  }
-};
-
-const handleVttMessage = (data) => {
-  const type = data.type;
-
-  if (type === 'vtt:scene:previewImage') {
-    useBattlefieldStore.getState().previewSceneImage(data.sceneId, data.imageId, data.updates);
-    return;
-  }
-
-  if (type === 'vtt:opened' || type === 'vtt:state') {
-    handleVttStateOrOpened(data);
-    return;
-  }
-
-  if (type === 'vtt:dice:result' && data.roll) {
-    // Встановлюємо кубики для 3D анімації
-    useVttStore.getState().setIncomingRoll(data.roll);
-    
-    // Результат в чат (addRollResult) тепер додається в DiceRoller3D.jsx після завершення анімації
-    // Якщо ми не на сторінці VTT, то кубики можуть не показатися, тому додамо тайм-аут про всяк випадок
-    setTimeout(() => {
-      const state = useVttStore.getState();
-      // Якщо результат ще не доданий (ідентифікатор), додамо його
-      if (!state.rollHistory.some(r => r.id === data.roll.id)) {
-        state.addRollResult(data.roll);
-      }
-    }, 6000); // Резервний таймер, якщо анімація не відпрацювала
-    
-    return;
-  }
-
-  if (type === 'vtt:token_drag' || type === 'vtt:token_drop') {
-    if (data.tokenId != null && data.x != null && data.y != null) {
-      useBattlefieldStore.getState().moveToken(data.tokenId, data.x, data.y);
-    }
-    return;
-  }
-
-  if (type === 'vtt:set_background' && data.backgroundUrl !== undefined) {
-    useBattlefieldStore.getState().setBackgroundUrl(
-      resolveMediaUrl(data.backgroundUrl) ?? data.backgroundUrl,
-      data.mapWidth,
-      data.mapHeight,
-    );
-  }
-};
-
-export const resolveWsUrl = () => {
-  const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-  const baseUrl = apiBaseUrl.replace(/\/api\/?$/, '');
-  const wsBase = baseUrl.replace(/^http/, 'ws');
-  return `${wsBase.replace(/\/$/, '')}/ws/chat`;
 };
 
 export const normalizeAuthor = (user) => {
@@ -132,7 +47,7 @@ export const upsertMessageIntoList = (messages, incoming) => {
     return [incoming];
   }
 
-const idx = messages.findIndex((m) => {
+  const idx = messages.findIndex((m) => {
     if (incoming.clientMessageId && m.clientMessageId === incoming.clientMessageId) {
       return true;
     }
@@ -184,23 +99,14 @@ export default function useChatConnection(chatId, options = {}) {
   } = options;
 
   const queryClient = useQueryClient();
-  const socketRef = useRef(null);
-  const reconnectTimeoutRef = useRef(null);
-  const reconnectAttemptsRef = useRef(0);
-  const manualCloseRef = useRef(false);
-  const fatalCloseRef = useRef(false);
-  const lastFatalErrorRef = useRef(null);
   const lastCursorRef = useRef(null);
   const catchUpInProgressRef = useRef(false);
-  const connectRef = useRef(null);
 
   const user = useAuthStore(selectUser);
-  const {
-    connectionState,
-    setConnectionState,
-    setReadonly,
-    reset: resetChatStore,
-  } = useChatStore();
+  const connectionState = useChatStore((s) => s.connectionState);
+  const setConnectionState = useChatStore((s) => s.setConnectionState);
+  const setReadonly = useChatStore((s) => s.setReadonly);
+  const resetChatStore = useChatStore((s) => s.reset);
   const [capabilities, setCapabilities] = useState(null);
 
   const queryKey = useMemo(() => chatMessagesQueryKeys.byChat(chatId, limit), [chatId, limit]);
@@ -303,12 +209,9 @@ export default function useChatConnection(chatId, options = {}) {
   }, [chatId, limit, queryClient, queryKey, updateMessages]);
 
   const handleChatJoined = useCallback((data) => {
+    if (data.chatId !== chatId) return;
     setReadonly(Boolean(data.readonly));
     setCapabilities(data.capabilities || null);
-    setConnectionState('connected');
-    reconnectAttemptsRef.current = 0;
-    fatalCloseRef.current = false;
-    lastFatalErrorRef.current = null;
 
     const localCursor = lastCursorRef.current;
     const snapshotCursor = data.snapshotCursor || null;
@@ -318,18 +221,20 @@ export default function useChatConnection(chatId, options = {}) {
       queryClient.invalidateQueries({ queryKey });
       lastCursorRef.current = snapshotCursor;
     }
-  }, [catchUpMessages, setConnectionState, setReadonly, queryClient, queryKey]);
+  }, [catchUpMessages, setReadonly, queryClient, queryKey, chatId]);
 
   const handleChatMessage = useCallback((data) => {
-    if (!data.message) return;
+    if (!data.message || data.message.chatId !== chatId) return;
 
     upsertMessage({
       ...data.message,
       ...(data.clientMessageId ? { clientMessageId: data.clientMessageId } : {}),
     });
-  }, [upsertMessage]);
+  }, [upsertMessage, chatId]);
 
   const handleChatError = useCallback((data) => {
+    if (data.chatId !== chatId && data.chatId !== null) return;
+    
     if (data.clientMessageId) {
       markOptimisticFailed(data.clientMessageId);
     }
@@ -338,30 +243,10 @@ export default function useChatConnection(chatId, options = {}) {
       return;
     }
 
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
+    sharedWsManager.disconnect(true, data.message || 'Access denied to chat');
+  }, [markOptimisticFailed, chatId]);
 
-    fatalCloseRef.current = true;
-    lastFatalErrorRef.current = data.message || 'Access denied to chat';
-    manualCloseRef.current = true;
-    setConnectionState('error', lastFatalErrorRef.current);
-    socketRef.current?.close();
-  }, [markOptimisticFailed, setConnectionState]);
-
-
-
-  const handleIncomingMessage = useCallback((event) => {
-    let data;
-
-    try {
-      data = JSON.parse(event.data);
-    } catch (error) {
-      console.error('[Chat] Failed to parse WS message:', error);
-      return;
-    }
-
+  const handleIncomingMessage = useCallback((data) => {
     if (!data || typeof data !== 'object') {
       return;
     }
@@ -378,22 +263,11 @@ export default function useChatConnection(chatId, options = {}) {
 
     if (data.type === 'chat:error') {
       handleChatError(data);
-      return;
-    }
-
-    if (data.type?.startsWith('vtt:')) {
-      handleVttMessage(data);
     }
   }, [handleChatError, handleChatJoined, handleChatMessage]);
 
   const sendEvent = useCallback((type, payload) => {
-    if (socketRef.current?.readyState !== WebSocket.OPEN) {
-      return false;
-    }
-
-    const message = JSON.stringify({ type, ...payload });
-    socketRef.current.send(message);
-    return true;
+    return sharedWsManager.send(type, payload);
   }, []);
 
   const sendMessage = useCallback((content) => {
@@ -403,7 +277,7 @@ export default function useChatConnection(chatId, options = {}) {
       return null;
     }
 
-    if (connectionState !== 'connected') {
+    if (!sharedWsManager.isConnected) {
       return null;
     }
 
@@ -417,7 +291,7 @@ export default function useChatConnection(chatId, options = {}) {
     });
 
     return clientMessageId;
-  }, [appendOptimisticMessage, chatId, connectionState, sendEvent]);
+  }, [appendOptimisticMessage, chatId, sendEvent]);
 
   const joinChat = useCallback(() => {
     if (!isValidId(chatId)) {
@@ -438,222 +312,57 @@ export default function useChatConnection(chatId, options = {}) {
     sendEvent('chat:leave', { chatId });
   }, [chatId, sendEvent]);
 
-  const disconnect = useCallback(() => {
-    manualCloseRef.current = true;
-    leaveChat();
-
-    if (socketRef.current) {
-      socketRef.current.close();
-      socketRef.current = null;
-    }
-
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-
-    fatalCloseRef.current = false;
-    lastFatalErrorRef.current = null;
-
-    setConnectionState('disconnected');
-  }, [leaveChat, setConnectionState]);
-
-  const connect = useCallback((isReconnect = false) => {
-    if (!enabled || socketRef.current || !isValidId(chatId)) {
-      return;
-    }
-
-    manualCloseRef.current = false;
-    fatalCloseRef.current = false;
-    lastFatalErrorRef.current = null;
-    if (isReconnect) {
-      setConnectionState('reconnecting');
-    } else {
-      setConnectionState('connecting');
-    }
-
-    const ws = new WebSocket(resolveWsUrl());
-    socketRef.current = ws;
-
-    ws.onopen = () => {
-      joinChat();
-    };
-
-    ws.onmessage = handleIncomingMessage;
-
-    ws.onerror = (event) => {
-      console.warn('[Chat] WS error event', event);
-    };
-
-    ws.onclose = () => {
-      socketRef.current = null;
-
-      if (fatalCloseRef.current) {
-        setConnectionState('error', lastFatalErrorRef.current || 'Access denied to chat');
-        return;
-      }
-
-      if (manualCloseRef.current) {
-        setConnectionState('disconnected');
-        return;
-      }
-
-      api.get('/profile/me').catch(() => {});
-      if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
-        const attempt = reconnectAttemptsRef.current + 1;
-        reconnectAttemptsRef.current = attempt;
-        const delay = Math.min(
-          INITIAL_RECONNECT_DELAY * Math.pow(2, attempt - 1),
-          MAX_RECONNECT_DELAY
-        );
-
-        setConnectionState('reconnecting');
-        reconnectTimeoutRef.current = setTimeout(() => {
-          connectRef.current?.(true);
-        }, delay);
-        return;
-      }
-
-      setConnectionState('error', 'Failed to reconnect');
-    };
-  }, [chatId, enabled, handleIncomingMessage, joinChat, setConnectionState]);
-
-  useEffect(() => {
-    connectRef.current = connect;
-  }, [connect]);
-
   useEffect(() => {
     if (lastKnownCursor) {
       lastCursorRef.current = lastKnownCursor;
     }
   }, [lastKnownCursor]);
 
-  // Reset store state when chatId changes or on unmount to prevent
-  // stale readonly / connectionState from leaking into the next chat.
   useEffect(() => {
     return () => {
       resetChatStore();
     };
   }, [chatId, resetChatStore]);
 
+  const handlersRef = useRef({ handleIncomingMessage, joinChat, leaveChat, setConnectionState });
+  useEffect(() => {
+    handlersRef.current = { handleIncomingMessage, joinChat, leaveChat, setConnectionState };
+  });
+
   useEffect(() => {
     if (!enabled || !isValidId(chatId)) return undefined;
 
-    // Невелика затримка (0ms мікрозадача) захищає від React Strict Mode:
-    // у dev-режимі React навмисно монтує двічі; без затримки cleanup першого
-    // монтування закриває WS до того, як він встиг відкритися.
-    const timerId = setTimeout(() => {
-      connect();
-    }, 0);
+    const unsubMsg = sharedWsManager.subscribeMessage((data) => {
+      handlersRef.current.handleIncomingMessage(data);
+    });
+    
+    const unsubConn = sharedWsManager.subscribeConnection((state, error) => {
+      handlersRef.current.setConnectionState(state, error);
+      if (state === 'connected') {
+        handlersRef.current.joinChat();
+      }
+    });
+
+    sharedWsManager.addRef();
 
     return () => {
-      clearTimeout(timerId);
-      disconnect();
+      unsubMsg();
+      unsubConn();
+      handlersRef.current.leaveChat();
+      sharedWsManager.removeRef();
     };
-  }, [chatId, connect, disconnect, enabled]);
+  }, [chatId, enabled]);
 
   useEffect(() => {
     const onFocus = () => {
-      const state = useChatStore.getState().connectionState;
-      if ((state === 'error' || state === 'disconnected') && enabled && isValidId(chatId)) {
-        connectRef.current?.(true);
+      if ((connectionState === 'error' || connectionState === 'disconnected') && enabled && isValidId(chatId)) {
+        sharedWsManager.connect(true);
       }
     };
     
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
-  }, [chatId, enabled]);
-
-  const sendVttOpen = useCallback(() => {
-    if (!isValidId(chatId)) return false;
-    return sendEvent('vtt:open', { chatId });
-  }, [chatId, sendEvent]);
-
-  const sendVttGetState = useCallback(() => {
-    if (!isValidId(chatId)) return false;
-    return sendEvent('vtt:getState', { chatId });
-  }, [chatId, sendEvent]);
-
-  const sendVttTokenDrag = useCallback((tokenId, x, y) => {
-    if (!isValidId(chatId)) return false;
-    return sendEvent('vtt:token_drag', { chatId, tokenId, x, y });
-  }, [chatId, sendEvent]);
-
-  const sendVttTokenDrop = useCallback((tokenId, x, y) => {
-    if (!isValidId(chatId)) return false;
-    return sendEvent('vtt:token_drop', { chatId, tokenId, x, y });
-  }, [chatId, sendEvent]);
-
-  const sendVttDiceRoll = useCallback((formula, name) => {
-    if (!isValidId(chatId)) return false;
-    const strength = useVttStore.getState().rollStrength || 1;
-    return sendEvent('vtt:dice:roll', { chatId, formula, name, strength });
-  }, [chatId, sendEvent]);
-
-  const sendVttSetBackground = useCallback((backgroundUrl, mapWidth, mapHeight) => {
-    if (!isValidId(chatId)) return false;
-    return sendEvent('vtt:set_background', { chatId, backgroundUrl, mapWidth, mapHeight });
-  }, [chatId, sendEvent]);
-
-  const sendVttSceneCreate = useCallback((data) => {
-    if (!isValidId(chatId)) return false;
-    return sendEvent('vtt:scene:create', { chatId, ...data });
-  }, [chatId, sendEvent]);
-
-  const sendVttSceneUpdate = useCallback((sceneId, updates) => {
-    if (!isValidId(chatId)) return false;
-    return sendEvent('vtt:scene:update', { chatId, sceneId, updates });
-  }, [chatId, sendEvent]);
-
-  const sendVttSceneDelete = useCallback((sceneId) => {
-    if (!isValidId(chatId)) return false;
-    return sendEvent('vtt:scene:delete', { chatId, sceneId });
-  }, [chatId, sendEvent]);
-
-  const sendVttSceneActivate = useCallback((sceneId) => {
-    if (!isValidId(chatId)) return false;
-    return sendEvent('vtt:scene:activate', { chatId, sceneId });
-  }, [chatId, sendEvent]);
-
-  const sendVttLayerCreate = useCallback((sceneId, name, layerType) => {
-    if (!isValidId(chatId)) return false;
-    return sendEvent('vtt:layer:create', { chatId, sceneId, name, layerType });
-  }, [chatId, sendEvent]);
-
-  const sendVttLayerUpdate = useCallback((sceneId, layerId, updates) => {
-    if (!isValidId(chatId)) return false;
-    return sendEvent('vtt:layer:update', { chatId, sceneId, layerId, updates });
-  }, [chatId, sendEvent]);
-
-  const sendVttLayerReorder = useCallback((sceneId, layerIds) => {
-    if (!isValidId(chatId)) return false;
-    return sendEvent('vtt:layer:reorder', { chatId, sceneId, layerIds });
-  }, [chatId, sendEvent]);
-
-  const sendVttLayerDelete = useCallback((sceneId, layerId) => {
-    if (!isValidId(chatId)) return false;
-    return sendEvent('vtt:layer:delete', { chatId, sceneId, layerId });
-  }, [chatId, sendEvent]);
-
-  const sendVttSceneAddImage = useCallback((sceneId, imageUrl, imageWidth, imageHeight) => {
-    if (!isValidId(chatId)) return false;
-    return sendEvent('vtt:scene:addImage', { chatId, sceneId, imageUrl, imageWidth, imageHeight });
-  }, [chatId, sendEvent]);
-
-  const sendVttSceneUpdateImage = useCallback((sceneId, imageId, updates) => {
-    if (!isValidId(chatId)) return false;
-    return sendEvent('vtt:scene:updateImage', { chatId, sceneId, imageId, updates });
-  }, [chatId, sendEvent]);
-
-  const sendVttScenePreviewImage = useCallback((sceneId, imageId, updates) => {
-    if (!isValidId(chatId)) return false;
-    return sendEvent('vtt:scene:previewImage', { chatId, sceneId, imageId, updates });
-  }, [chatId, sendEvent]);
-
-  const sendVttSceneRemoveImage = useCallback((sceneId, imageId) => {
-    if (!isValidId(chatId)) return false;
-    return sendEvent('vtt:scene:removeImage', { chatId, sceneId, imageId });
-  }, [chatId, sendEvent]);
+  }, [chatId, enabled, connectionState]);
 
   return {
     connectionState,
@@ -663,25 +372,7 @@ export default function useChatConnection(chatId, options = {}) {
     hasError: connectionState === 'error',
     sendMessage,
     loadOlderMessages,
-    connect,
-    disconnect,
-    sendVttOpen,
-    sendVttGetState,
-    sendVttTokenDrag,
-    sendVttTokenDrop,
-    sendVttDiceRoll,
-    sendVttSetBackground,
-    sendVttSceneCreate,
-    sendVttSceneUpdate,
-    sendVttSceneDelete,
-    sendVttSceneActivate,
-    sendVttLayerCreate,
-    sendVttLayerUpdate,
-    sendVttLayerReorder,
-    sendVttLayerDelete,
-    sendVttSceneAddImage,
-    sendVttSceneUpdateImage,
-    sendVttScenePreviewImage,
-    sendVttSceneRemoveImage,
+    connect: () => sharedWsManager.connect(),
+    disconnect: useCallback(() => { handlersRef.current.leaveChat(); sharedWsManager.removeRef(); }, []),
   };
 }

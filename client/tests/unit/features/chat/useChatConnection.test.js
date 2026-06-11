@@ -1,8 +1,7 @@
-import { describe, expect, it, vi, afterEach } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { 
   upsertMessageIntoList, 
   isFatalChatErrorCode, 
-  resolveWsUrl, 
   normalizeAuthor, 
   mergeMessages 
 } from '@/features/chat/hooks/useChatConnection';
@@ -71,32 +70,6 @@ describe('useChatConnection utilities', () => {
       expect(isFatalChatErrorCode('MESSAGE_TOO_LONG')).toBe(false);
       expect(isFatalChatErrorCode(null)).toBe(false);
       expect(isFatalChatErrorCode(123)).toBe(false);
-    });
-  });
-
-  describe('resolveWsUrl', () => {
-    afterEach(() => {
-      vi.unstubAllEnvs();
-    });
-
-    it('correctly transforms URL for localhost', () => {
-      vi.stubEnv('VITE_API_URL', 'http://localhost:5000/api');
-      expect(resolveWsUrl()).toBe('ws://localhost:5000/ws/chat');
-    });
-
-    it('correctly transforms URL for production (https)', () => {
-      vi.stubEnv('VITE_API_URL', 'https://ttrpg.com/api');
-      expect(resolveWsUrl()).toBe('wss://ttrpg.com/ws/chat');
-    });
-
-    it('handles missing /api at the end and trailing slashes', () => {
-      vi.stubEnv('VITE_API_URL', 'http://api.example.com/');
-      expect(resolveWsUrl()).toBe('ws://api.example.com/ws/chat');
-    });
-
-    it('uses fallback when env is missing', () => {
-      vi.stubEnv('VITE_API_URL', '');
-      expect(resolveWsUrl()).toBe('ws://localhost:5000/ws/chat');
     });
   });
 

@@ -96,20 +96,6 @@ const useVttStore = create(
         };
       }),
 
-      /** Стан вікна чату (x, y, w, h, isLocked) */
-      floatingChatState: null,
-      /** Стан вікна журналу кидків (x, y, w, h, isLocked) */
-      diceLogState: null,
-      /** Стан вікна менеджера сцен (x, y, w, h, isLocked) */
-      sceneManagerState: null,
-      /** Стан вікна Roll Maker (x, y, w, h, isLocked) */
-      rollMakerState: null,
-
-      setFloatingChatState: (newState) => set({ floatingChatState: newState }),
-      setDiceLogState: (newState) => set({ diceLogState: newState }),
-      setSceneManagerState: (newState) => set({ sceneManagerState: newState }),
-      setRollMakerState: (newState) => set({ rollMakerState: newState }),
-
       reset: () => set({ sessionId: null, isVttOpen: false, isRollMakerOpen: false }),
     }),
     {
@@ -120,10 +106,6 @@ const useVttStore = create(
         isChatOpen: state.isChatOpen,
         isDiceLogOpen: state.isDiceLogOpen,
         isSceneManagerOpen: state.isSceneManagerOpen,
-        floatingChatState: state.floatingChatState,
-        diceLogState: state.diceLogState,
-        sceneManagerState: state.sceneManagerState,
-        rollMakerState: state.rollMakerState,
         rollHistory: state.rollHistory,
       }),
     }

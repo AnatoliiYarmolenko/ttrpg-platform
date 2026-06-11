@@ -49,7 +49,22 @@ function createRoomManager() {
     const data = typeof payload === 'string' ? payload : JSON.stringify(payload);
 
     for (const socket of room) {
-      if (socket.readyState === socket.OPEN) {
+      if (socket.readyState === 1) { // 1 = OPEN
+        socket.send(data);
+      }
+    }
+  };
+
+  const broadcastFilter = (chatId, payload, filterFn) => {
+    const room = rooms.get(chatId);
+    if (!room || room.size === 0) {
+      return;
+    }
+
+    const data = typeof payload === 'string' ? payload : JSON.stringify(payload);
+
+    for (const socket of room) {
+      if (socket.readyState === 1 && filterFn(socket)) {
         socket.send(data);
       }
     }
@@ -67,7 +82,7 @@ function createRoomManager() {
       if (socket === excludedSocket) {
         continue;
       }
-      if (socket.readyState === socket.OPEN) {
+      if (socket.readyState === 1) { // 1 = OPEN
         socket.send(data);
       }
     }
@@ -83,6 +98,7 @@ function createRoomManager() {
     leaveRoom,
     leaveAll,
     broadcast,
+    broadcastFilter,
     broadcastExcept,
     roomSize,
   };

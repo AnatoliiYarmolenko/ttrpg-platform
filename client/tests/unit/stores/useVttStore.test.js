@@ -6,8 +6,6 @@ describe('useVttStore', () => {
     const store = useVttStore.getState();
     store.reset();
     store.clearRollHistory();
-    store.setFloatingChatState(null);
-    store.setDiceLogState(null);
   });
 
   it('should initialize with default state', () => {
@@ -16,8 +14,6 @@ describe('useVttStore', () => {
     expect(state.rollHistory).toEqual([]);
     expect(state.isChatOpen).toBe(false);
     expect(state.isDiceLogOpen).toBe(false);
-    expect(state.floatingChatState).toBeNull();
-    expect(state.diceLogState).toBeNull();
   });
 
   it('should toggle chat state', () => {
@@ -52,22 +48,7 @@ describe('useVttStore', () => {
     expect(state.latestRoll.total).toBe(20);
   });
 
-  it('should update floating chat state for UI persistence', () => {
-    const { setFloatingChatState } = useVttStore.getState();
-    const mockState = { x: 100, y: 200, w: 300, h: 400, isLocked: true };
-    
-    setFloatingChatState(mockState);
-    expect(useVttStore.getState().floatingChatState).toEqual(mockState);
-  });
 
-  it('should update dice log state for UI persistence', () => {
-    const { setDiceLogState } = useVttStore.getState();
-    const mockState = { x: 50, y: 50, w: 250, h: 350, isLocked: false };
-    
-    setDiceLogState(mockState);
-    expect(useVttStore.getState().diceLogState).toEqual(mockState);
-  });
-  
   it('should successfully clear roll history', () => {
     const { addRollResult, clearRollHistory } = useVttStore.getState();
     addRollResult({ id: 1, total: 20 });
