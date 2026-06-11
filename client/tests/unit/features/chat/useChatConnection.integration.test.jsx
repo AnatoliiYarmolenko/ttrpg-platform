@@ -115,6 +115,7 @@ describe('useChatConnection Integration', () => {
       await act(async () => {
         ws.simulateMessage({
           type: 'chat:joined',
+          chatId,
           snapshotCursor: 'new-cursor',
           readonly: false
         });
@@ -151,6 +152,7 @@ describe('useChatConnection Integration', () => {
       await act(async () => {
         ws.simulateMessage({
           type: 'chat:error',
+          chatId,
           clientMessageId,
           code: 'MESSAGE_REJECTED',
           message: 'Bad words'
@@ -182,7 +184,7 @@ describe('useChatConnection Integration', () => {
       });
 
       // State should be 'reconnecting' immediately
-      expect(chatStoreMock.setConnectionState).toHaveBeenCalledWith('reconnecting');
+      expect(chatStoreMock.setConnectionState).toHaveBeenCalledWith('reconnecting', null);
 
       await act(async () => {
         vi.advanceTimersByTime(1000);
