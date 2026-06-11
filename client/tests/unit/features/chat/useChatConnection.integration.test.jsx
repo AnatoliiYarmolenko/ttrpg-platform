@@ -33,15 +33,19 @@ vi.mock('@/features/chat/api/chatApi', () => ({
 
 // WebSocket Mock
 class MockWebSocket {
+  static CONNECTING = 0;
+  static OPEN = 1;
+  static CLOSING = 2;
+  static CLOSED = 3;
+  static instances = [];
+
   constructor(url) {
     this.url = url;
-    this.readyState = 0; // CONNECTING
+    this.readyState = MockWebSocket.CONNECTING;
     this.send = vi.fn();
     this.close = vi.fn();
     MockWebSocket.instances.push(this);
   }
-  
-  static instances = [];
   
   triggerOpen() {
     this.readyState = 1; // OPEN
