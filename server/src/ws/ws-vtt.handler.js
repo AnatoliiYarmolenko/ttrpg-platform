@@ -181,6 +181,22 @@ async function handleVttStateChange(socket, payload, roomManager, actionType) {
     case 'vtt:scene:removeImage':
       vttStateManager.removeSceneImage(sessionId, sceneId, imageId);
       break;
+    case 'vtt:scene:addDrawing':
+      vttStateManager.addDrawingToScene(sessionId, sceneId, payload.drawingData);
+      break;
+    case 'vtt:scene:updateDrawing':
+      vttStateManager.updateDrawing(sessionId, sceneId, payload.drawingId, payload.updates);
+      break;
+    case 'vtt:scene:removeDrawing':
+      vttStateManager.removeDrawingById(sessionId, sceneId, payload.drawingId);
+      break;
+    case 'vtt:scene:undoDrawing':
+      vttStateManager.removeLastDrawing(sessionId, sceneId, payload.userId);
+      break;
+    case 'vtt:scene:clearDrawings':
+      vttStateManager.clearDrawings(sessionId, sceneId);
+      roomManager.broadcast(getVttRoom(sessionId), { type: 'vtt:scene:clearAllPreviews' });
+      break;
   }
 
   const vttState = vttStateManager.getVttState(sessionId);
@@ -226,9 +242,15 @@ const vttHandler = async (socket, type, payload, roomManager) => {
     case 'vtt:scene:addImage':
     case 'vtt:scene:updateImage':
     case 'vtt:scene:removeImage':
+    case 'vtt:scene:addDrawing':
+    case 'vtt:scene:updateDrawing':
+    case 'vtt:scene:removeDrawing':
+    case 'vtt:scene:undoDrawing':
+    case 'vtt:scene:clearDrawings':
       await handleVttStateChange(socket, payload, roomManager, type);
       break;
     case 'vtt:scene:previewImage':
+    case 'vtt:scene:drawPreview':
       // Broadcast without saving
       roomManager.broadcastExcept(getVttRoom(parseSessionId(payload.sessionId)), { type, ...payload }, socket);
       break;

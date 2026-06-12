@@ -7,7 +7,7 @@ export default function useVttConnection(sessionId, options = {}) {
   const { enabled = true } = options;
 
   const setVttState = useBattlefieldStore((s) => s.setVttState);
-  const previewSceneImage = useBattlefieldStore((s) => s.previewSceneImage);
+  // Note: previewSceneItem is accessed dynamically via useBattlefieldStore.getState()
   const moveToken = useBattlefieldStore((s) => s.moveToken);
   
   const setVttOpen = useVttStore((s) => s.setVttOpen);
@@ -38,12 +38,31 @@ export default function useVttConnection(sessionId, options = {}) {
         }
         break;
       case 'vtt:scene:previewImage':
-        previewSceneImage(data.sceneId, data.imageId, data.updates);
+        // Оновлюємо тимчасовий стан зображення для плавного перетягування іншими гравцями
+        useBattlefieldStore.getState().previewSceneItem(data.sceneId, data.imageId, data.updates);
+        break;
+      case 'vtt:scene:drawPreview':
+        if (data.userId) {
+          if (data.previewData) {
+            // Якщо це існуючий малюнок (має id) - плавно рухаємо його
+            if (data.previewData.id) {
+              useBattlefieldStore.getState().previewSceneItem(data.sceneId, data.previewData.id, data.previewData);
+            } else {
+              // Якщо це новий малюнок у процесі малювання - показуємо привид
+              useBattlefieldStore.getState().setDrawPreview(data.userId, { ...data.previewData, sceneId: data.sceneId });
+            }
+          } else {
+            useBattlefieldStore.getState().removeDrawPreview(data.userId);
+          }
+        }
+        break;
+      case 'vtt:scene:clearAllPreviews':
+        useBattlefieldStore.getState().clearAllPreviews();
         break;
       default:
         break;
     }
-  }, [sessionId, setVttOpen, setVttState, moveToken, setIncomingRoll, previewSceneImage]);
+  }, [sessionId, setVttOpen, setVttState, moveToken, setIncomingRoll]);
 
   const handleIncomingMessage = useCallback((data) => {
     if (!data || typeof data !== 'object') return;
@@ -109,9 +128,15 @@ export default function useVttConnection(sessionId, options = {}) {
     sendVttLayerUpdate: (sceneId, layerId, updates) => sendEvent('vtt:layer:update', { sceneId, layerId, updates }),
     sendVttLayerReorder: (sceneId, layerIds) => sendEvent('vtt:layer:reorder', { sceneId, layerIds }),
     sendVttLayerDelete: (sceneId, layerId) => sendEvent('vtt:layer:delete', { sceneId, layerId }),
-    sendVttSceneAddImage: (sceneId, imageUrl, imageWidth, imageHeight) => sendEvent('vtt:scene:addImage', { sceneId, imageUrl, imageWidth, imageHeight }),
+    sendVttSceneAddImage: (sceneId, imageUrl, width, height) => sendEvent('vtt:scene:addImage', { sceneId, imageUrl, imageWidth: width, imageHeight: height }),
     sendVttSceneUpdateImage: (sceneId, imageId, updates) => sendEvent('vtt:scene:updateImage', { sceneId, imageId, updates }),
     sendVttScenePreviewImage: (sceneId, imageId, updates) => sendEvent('vtt:scene:previewImage', { sceneId, imageId, updates }),
     sendVttSceneRemoveImage: (sceneId, imageId) => sendEvent('vtt:scene:removeImage', { sceneId, imageId }),
+    sendVttSceneDrawPreview: (sceneId, userId, previewData) => sendEvent('vtt:scene:drawPreview', { sceneId, userId, previewData }),
+    sendVttSceneAddDrawing: (sceneId, drawingData) => sendEvent('vtt:scene:addDrawing', { sceneId, drawingData }),
+    sendVttSceneUpdateDrawing: (sceneId, drawingId, updates) => sendEvent('vtt:scene:updateDrawing', { sceneId, drawingId, updates }),
+    sendVttSceneRemoveDrawing: (sceneId, drawingId) => sendEvent('vtt:scene:removeDrawing', { sceneId, drawingId }),
+    sendVttSceneUndoDrawing: (sceneId, userId) => sendEvent('vtt:scene:undoDrawing', { sceneId, userId }),
+    sendVttSceneClearDrawings: (sceneId) => sendEvent('vtt:scene:clearDrawings', { sceneId }),
   };
 }
