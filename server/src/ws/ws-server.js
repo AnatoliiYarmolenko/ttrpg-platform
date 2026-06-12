@@ -39,7 +39,7 @@ function createWsServer({ server, path = DEFAULT_WS_PATH, logger, onConnection }
   }
 
   const wsPath = path || DEFAULT_WS_PATH;
-  const wss = new WebSocketServer({ noServer: true });
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 1024 * 1024 });
   activeWssInstances.add(wss);
 
   const handleUpgrade = async (request, socket, head) => {

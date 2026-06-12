@@ -61,24 +61,26 @@ export function GlobalCallProvider({ children }) {
       camEnabled: peer.mediaState?.camEnabled || false
     });
 
+    const syncCallState = async () => {
+      try {
+        const state = await newRpcClient.request('call:getCallState', { sessionId: activeSessionId });
+        if (rpcClientRef.current !== newRpcClient) return;
+        setCallState(state.callState);
+        setPeers((state.peers || []).map(mapPeer));
+      } catch (err) {
+        if (rpcClientRef.current !== newRpcClient) return;
+        console.error('Failed to get call state', err);
+      }
+    };
+
     const connect = async () => {
       setConnectionState('CONNECTING');
       try {
         await newRpcClient.connect();
         if (rpcClientRef.current !== newRpcClient) return;
-        
-        setConnectionState('CONNECTED');
-        
-        try {
-          const state = await newRpcClient.request('call:getCallState', { sessionId: activeSessionId });
-          if (rpcClientRef.current !== newRpcClient) return;
-          setCallState(state.callState);
-          setPeers((state.peers || []).map(mapPeer));
-        } catch (err) {
-          if (rpcClientRef.current !== newRpcClient) return;
-          console.error('Failed to get initial call state', err);
-        }
 
+        setConnectionState('CONNECTED');
+        await syncCallState();
       } catch (err) {
         if (rpcClientRef.current !== newRpcClient) return;
         console.error('Failed to connect to call server', err);
@@ -114,10 +116,22 @@ export function GlobalCallProvider({ children }) {
       });
     });
 
+    newRpcClient.on('reconnecting', () => {
+      if (rpcClientRef.current !== newRpcClient) return;
+      setConnectionState('CONNECTING');
+    });
+
+    newRpcClient.on('reconnected', () => {
+      if (rpcClientRef.current !== newRpcClient) return;
+      setConnectionState('CONNECTED');
+      syncCallState();
+    });
+
     newRpcClient.on('disconnected', () => {
+      if (rpcClientRef.current !== newRpcClient) return;
       setConnectionState('DISCONNECTED');
     });
-    
+
     newRpcClient.on('error', (payload) => {
       toast.error(`Call Error: ${payload.message}`);
     });

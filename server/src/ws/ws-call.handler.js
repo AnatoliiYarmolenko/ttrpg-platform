@@ -92,6 +92,12 @@ async function handleWebRtcAction({ socket, type, payload, sessionId, userId, se
           peer.transports.delete(transport.id);
         }
       });
+      transport.on('icestatechange', (iceState) => {
+        if (iceState === 'disconnected' || iceState === 'failed') {
+          transport.close();
+          peer.transports.delete(transport.id);
+        }
+      });
       peer.addTransport(transport);
       const data = {
         id: transport.id,
