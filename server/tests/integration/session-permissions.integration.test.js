@@ -7,6 +7,7 @@ const assert = require('node:assert/strict');
 
 const { SessionService } = require('../../src/services/session.service');
 const { AppError, ERROR_CODES } = require('../../src/constants/errors');
+const { redis } = require('../../src/lib/redis');
 
 const testDbUrl = process.env.DATABASE_URL_TEST || process.env.DATABASE_URL;
 
@@ -58,6 +59,9 @@ test.before(async () => {
 test.after(async () => {
   await cleanupTestData();
   await testPrisma.$disconnect();
+  if (redis.status === 'ready' || redis.status === 'connecting') {
+    await redis.quit();
+  }
 });
 
 async function createTestUser(overrides = {}) {
