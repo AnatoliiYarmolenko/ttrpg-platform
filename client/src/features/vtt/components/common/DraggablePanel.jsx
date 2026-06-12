@@ -11,6 +11,7 @@ export default function DraggablePanel({
   icon,
   children,
   headerContent,
+  headerExtra,
   initialState,
   onSaveState,
   storageKey,
@@ -94,6 +95,7 @@ export default function DraggablePanel({
           {typeof title === 'string' ? <span className="truncate">{title}</span> : title}
         </div>
         <div className="flex items-center gap-1">
+          {headerExtra}
           {headerContent}
           <button
             type="button"
@@ -144,6 +146,7 @@ DraggablePanel.propTypes = {
   icon: PropTypes.node,
   children: PropTypes.node,
   headerContent: PropTypes.node,
+  headerExtra: PropTypes.node,
   initialState: PropTypes.object,
   onSaveState: PropTypes.func,
   storageKey: PropTypes.string,

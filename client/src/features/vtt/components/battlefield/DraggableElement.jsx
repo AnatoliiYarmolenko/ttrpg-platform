@@ -55,7 +55,7 @@ function rotatePoint(x, y, angle) {
 }
 
 /**
- * DraggableImage — зображення-оверлей на канвасі VTT.
+ * DraggableElement — універсальний компонент для фото та малюнків на канвасі VTT.
  *
  * Підтримує:
  * - Drag & Drop для переміщення
@@ -64,18 +64,19 @@ function rotatePoint(x, y, angle) {
  * - Відображення UI контролів ТІЛЬКИ коли isSelected = true
  *
  * @param {{
- *   item: { id: string, url: string, x: number, y: number, width: number, height: number, scaleX: number, scaleY: number, rotation: number },
+ *   item: { id: string, type?: string, url?: string, x: number, y: number, width: number, height: number, scaleX: number, scaleY: number, rotation: number },
  *   isSelected: boolean,
  *   onSelect: () => void,
- *   onUpdate: (imageId: string, updates: object) => void,
- *   onPreview: (imageId: string, updates: object) => void,
- *   onContextMenu: (e: object, imageId: string) => void,
+ *   onUpdate: (itemId: string, updates: object) => void,
+ *   onPreview: (itemId: string, updates: object) => void,
+ *   onContextMenu: (e: object, itemId: string) => void,
  *   viewport: { x: number, y: number, scale: number },
  *   gridSize?: number,
- *   isLocked?: boolean
+ *   isLocked?: boolean,
+ *   renderContent?: (displayWidth: number, displayHeight: number, cursor: string, eventHandlers: object) => React.ReactNode
  * }} props
  */
-export default function DraggableImage({ item, isSelected, onSelect, onUpdate, onPreview, onContextMenu, viewport, gridSize, isLocked = false }) {
+export default function DraggableElement({ item, isSelected, onSelect, onUpdate, onPreview, onContextMenu, viewport, gridSize, isLocked = false, renderContent }) {
   const texture = usePixiTexture(item.url);
 
   // Локальний стан для плавного drag/resize без затримки мережі
@@ -357,11 +358,10 @@ export default function DraggableImage({ item, isSelected, onSelect, onUpdate, o
   const onRotateEnd = useCallback(() => {
     if (!rotateState.current) return;
     rotateState.current = false;
-    setIsRotating(false);
     sendUpdate({ rotation: localRotation });
   }, [localRotation, sendUpdate]);
 
-  if (!texture) return null;
+  if (item.url && !texture) return null;
 
   const displayWidth = item.width * localScaleX;
   const displayHeight = item.height * localScaleY;
@@ -397,20 +397,29 @@ export default function DraggableImage({ item, isSelected, onSelect, onUpdate, o
       eventMode={isLocked ? "none" : "static"} /* NOSONAR */
       sortableChildren /* NOSONAR */
     >
-      {/* Зображення */}
-      {/* Sprite має anchor 0.5, тому він відцентрований у контейнері */}
-      <sprite
-        texture={texture /* NOSONAR */}
-        width={displayWidth}
-        height={displayHeight}
-        anchor={0.5 /* NOSONAR */}
-        eventMode="static" /* NOSONAR */
-        cursor={spriteCursor}
-        onPointerDown={onDragStart}
-        onGlobalPointerMove={onDragMove /* NOSONAR */}
-        onPointerUp={onDragEnd}
-        onPointerUpOutside={onDragEnd /* NOSONAR */}
-      />
+      {/* Зображення або кастомний контент */}
+      {renderContent ? (
+        // eslint-disable-next-line react-hooks/refs
+        renderContent(displayWidth, displayHeight, spriteCursor, {
+          onPointerDown: onDragStart,
+          onGlobalPointerMove: onDragMove,
+          onPointerUp: onDragEnd,
+          onPointerUpOutside: onDragEnd,
+        })
+      ) : (
+        <sprite
+          texture={texture /* NOSONAR */}
+          width={displayWidth}
+          height={displayHeight}
+          anchor={0.5 /* NOSONAR */}
+          eventMode="static" /* NOSONAR */
+          cursor={spriteCursor}
+          onPointerDown={onDragStart}
+          onGlobalPointerMove={onDragMove /* NOSONAR */}
+          onPointerUp={onDragEnd}
+          onPointerUpOutside={onDragEnd /* NOSONAR */}
+        />
+      )}
 
       {/* Елементи керування (Тільки коли виділено і не заблоковано) */}
       {isSelected && !isLocked && (
@@ -476,7 +485,7 @@ export default function DraggableImage({ item, isSelected, onSelect, onUpdate, o
   );
 }
 
-DraggableImage.propTypes = {
+DraggableElement.propTypes = {
   item: PropTypes.shape({
     id: PropTypes.string.isRequired,
     url: PropTypes.string.isRequired,
@@ -500,4 +509,5 @@ DraggableImage.propTypes = {
   onPreview: PropTypes.func,
   onContextMenu: PropTypes.func,
   isLocked: PropTypes.bool,
+  renderContent: PropTypes.func,
 };
