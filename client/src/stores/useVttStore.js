@@ -30,6 +30,8 @@ const useVttStore = create(
       isDiceLogOpen: false,
       /** Чи відкритий менеджер сцен (карта, токени) */
       isSceneManagerOpen: false,
+      /** Чи відкрита панель інструментів малювання */
+      isDrawingToolsOpen: true,
 
       /** Останні 8 результатів кидків */
       rollHistory: [],
@@ -54,6 +56,7 @@ const useVttStore = create(
       toggleCall: () => set((state) => ({ isCallOpen: !state.isCallOpen })),
       toggleDiceLog: () => set((state) => ({ isDiceLogOpen: !state.isDiceLogOpen })),
       toggleSceneManager: () => set((state) => ({ isSceneManagerOpen: !state.isSceneManagerOpen })),
+      toggleDrawingTools: () => set((state) => ({ isDrawingToolsOpen: !state.isDrawingToolsOpen })),
 
       /** Додати результат кидка (макс 8, старіші витісняються) */
       addRollResult: (result) => set((state) => {
@@ -110,6 +113,7 @@ const useVttStore = create(
         isCallOpen: state.isCallOpen,
         isDiceLogOpen: state.isDiceLogOpen,
         isSceneManagerOpen: state.isSceneManagerOpen,
+        isDrawingToolsOpen: state.isDrawingToolsOpen,
         rollHistory: state.rollHistory,
       }),
     }

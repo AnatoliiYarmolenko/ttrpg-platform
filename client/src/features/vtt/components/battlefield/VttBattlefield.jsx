@@ -1,11 +1,12 @@
 import React, { useRef, useCallback, useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Application, extend } from '@pixi/react';
-import { Container, Graphics, Sprite } from 'pixi.js';
+import { Container, Graphics, Sprite, Text } from 'pixi.js';
 import GridLayer from './GridLayer';
 import TokenLayer from './TokenLayer';
 import BackgroundLayer from './BackgroundLayer';
-import DraggableImage from './DraggableImage';
+import DraggableElement from './DraggableElement';
+import DrawingLayer from './DrawingLayer';
 import useBattlefieldStore from './useBattlefieldStore';
 import useViewport from '../../hooks/useViewport';
 import { ChevronRight } from 'lucide-react';
@@ -13,8 +14,8 @@ import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 
 // Реєструємо Pixi-компоненти для @pixi/react
 // Після extend() їх можна використовувати як JSX-теги нижнього регістру:
-// <container>, <graphics>, <sprite>
-extend({ Container, Graphics, Sprite });
+// <container>, <graphics>, <sprite>, <text>
+extend({ Container, Graphics, Sprite, Text });
 
 /**
  * BattlefieldContent — внутрішній Pixi-компонент.
@@ -29,7 +30,7 @@ extend({ Container, Graphics, Sprite });
  *   vttConnection?: object
  * }} props
  */
-function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection, isGM, onContextMenu }) {
+function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection, isGM, onContextMenu, viewerId }) {
   const globalGridSize = useBattlefieldStore((s) => s.gridSize);
   const backgroundUrl = useBattlefieldStore((s) => s.backgroundUrl);
   const tokens = useBattlefieldStore((s) => s.tokens);
@@ -42,25 +43,168 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection
   const scenes = useBattlefieldStore((s) => s.scenes);
   const selectedImageId = useBattlefieldStore((s) => s.selectedImageId);
   const setSelectedImageId = useBattlefieldStore((s) => s.setSelectedImageId);
+  const selectedDrawingId = useBattlefieldStore((s) => s.selectedDrawingId);
+  const setSelectedDrawingId = useBattlefieldStore((s) => s.setSelectedDrawingId);
+
+  const drawingTool = useBattlefieldStore(s => s.drawingTool);
+  const drawingColor = useBattlefieldStore(s => s.drawingColor);
+  const drawingThickness = useBattlefieldStore(s => s.drawingThickness);
+  const drawPreviews = useBattlefieldStore(s => s.drawPreviews);
+  const setDrawPreview = useBattlefieldStore(s => s.setDrawPreview);
+  const removeDrawPreview = useBattlefieldStore(s => s.removeDrawPreview);
+  const setTextPrompt = useBattlefieldStore(s => s.setTextPrompt);
+
+  const localDrawingRef = useRef(null);
+  const isDrawingRef = useRef(false);
+
+  const setLocalDrawing = useCallback((drawing) => {
+    localDrawingRef.current = drawing;
+  }, []);
 
   // Гравці завжди бачать активну сцену. GM бачить те, що обрав (gmViewSceneId) або активну
   const viewedSceneId = isGM ? (gmViewSceneId || activeSceneId) : activeSceneId;
   const currentScene = viewedSceneId ? scenes[viewedSceneId] : null;
 
+  useEffect(() => {
+    // Очищаємо локальні малюнки та прев'ю при зміні сцени
+    localDrawingRef.current = null;
+    isDrawingRef.current = false;
+    useBattlefieldStore.getState().clearAllPreviews();
+  }, [currentScene?.id]);
+
   const currentGridSize = currentScene?.gridSize ?? globalGridSize;
 
-  /** Оновити позицію/масштаб зображення-оверлея через WebSocket */
-  const handleImageUpdate = useCallback((imageId, updates) => {
-    if (!currentScene) return;
-    vttConnection?.sendVttSceneUpdateImage?.(currentScene.id, imageId, updates);
-  }, [currentScene, vttConnection]);
 
-  const handleImagePreview = useCallback((imageId, updates) => {
-    if (!currentScene?.id) return;
-    vttConnection?.sendVttScenePreviewImage?.(currentScene.id, imageId, updates);
-  }, [currentScene, vttConnection]);
 
-  /** Витягуємо зображення з BACKGROUND шару для сумісності, але тепер рендеримо все циклом */
+  // --- Drawing Logic ---
+  const handlePointerDown = useCallback((e) => {
+    // Дозволяємо малювати тільки лівою кнопкою миші (button 0)
+    if (e.button !== 0) return;
+
+    if (!drawingTool) {
+      setSelectedImageId(null);
+      setSelectedDrawingId(null);
+      return;
+    }
+    e.stopPropagation();
+    isDrawingRef.current = true;
+    
+    // Отримуємо координати відносно контейнера (сцени)
+    const localPos = e.data.getLocalPosition(e.currentTarget.parent);
+    
+    // Якщо вибрано текст, викликаємо кастомну модалку
+    if (drawingTool === 'text') {
+      setTextPrompt({ points: [localPos.x, localPos.y] });
+      isDrawingRef.current = false;
+      return;
+    }
+
+    const newDrawing = {
+      type: drawingTool,
+      points: [localPos.x, localPos.y],
+      color: drawingColor,
+      thickness: drawingThickness,
+      userId: viewerId || 'me',
+    };
+    
+    setLocalDrawing(newDrawing);
+    const previewData = { ...newDrawing, sceneId: currentScene.id };
+    setDrawPreview('me', previewData);
+    vttConnection?.sendVttSceneDrawPreview?.(currentScene.id, viewerId || 'me', newDrawing);
+  }, [drawingTool, currentScene, setSelectedImageId, setSelectedDrawingId, drawingColor, drawingThickness, setLocalDrawing, viewerId, setDrawPreview, vttConnection, setTextPrompt]);
+
+  const handlePointerMove = useCallback((e) => {
+    const localDrawing = localDrawingRef.current;
+    if (!isDrawingRef.current || !localDrawing) return;
+
+    const localPos = e.data.getLocalPosition(e.currentTarget.parent);
+
+    setLocalDrawing({
+      ...localDrawing,
+      points: localDrawing.type === 'pencil'
+        ? [...localDrawing.points, localPos.x, localPos.y]
+        : [localDrawing.points[0], localDrawing.points[1], localPos.x, localPos.y]
+    });
+    
+    const previewData = { ...localDrawingRef.current, sceneId: currentScene.id };
+    setDrawPreview('me', previewData);
+    vttConnection?.sendVttSceneDrawPreview?.(currentScene.id, viewerId || 'me', localDrawingRef.current);
+  }, [currentScene, vttConnection, setDrawPreview, setLocalDrawing, viewerId]);
+
+  const handlePointerUp = useCallback((e) => {
+    const localDrawing = localDrawingRef.current;
+    if (!isDrawingRef.current) return;
+    if (e.stopPropagation) e.stopPropagation();
+    isDrawingRef.current = false;
+
+    if (localDrawing) {
+      // Відправляємо фінальний малюнок
+      if (localDrawing.points.length >= 4 || localDrawing.type === 'pencil' || localDrawing.type === 'text') {
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        if (localDrawing.type === 'circle') {
+          const cx = localDrawing.points[0];
+          const cy = localDrawing.points[1];
+          const r = Math.sqrt(Math.pow(localDrawing.points[2] - cx, 2) + Math.pow(localDrawing.points[3] - cy, 2));
+          minX = cx - r; maxX = cx + r;
+          minY = cy - r; maxY = cy + r;
+        } else if (localDrawing.type === 'text') {
+          minX = localDrawing.points[0];
+          maxX = localDrawing.points[0] + 100;
+          minY = localDrawing.points[1];
+          maxY = localDrawing.points[1] + 30;
+        } else {
+          for (let i = 0; i < localDrawing.points.length; i += 2) {
+            const x = localDrawing.points[i];
+            const y = localDrawing.points[i+1];
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+          }
+        }
+        
+        let width = maxX - minX;
+        let height = maxY - minY;
+        if (width < 2) width = 2;
+        if (height < 2) height = 2;
+
+        // Додаємо відступ (padding), щоб ручки resize не перекривали тонкі лінії
+        width += localDrawing.thickness || 4;
+        height += localDrawing.thickness || 4;
+
+        const x = minX + (maxX - minX) / 2;
+        const y = minY + (maxY - minY) / 2;
+
+        const normalizedPoints = [];
+        for (let i = 0; i < localDrawing.points.length; i += 2) {
+          normalizedPoints.push(localDrawing.points[i] - x, localDrawing.points[i+1] - y);
+        }
+
+        const finalDrawing = {
+          ...localDrawing,
+          points: normalizedPoints,
+          x, y, width, height, scaleX: 1, scaleY: 1, rotation: 0
+        };
+
+        vttConnection?.sendVttSceneAddDrawing?.(currentScene?.id, finalDrawing);
+      }
+    }
+    
+    setLocalDrawing(null);
+    removeDrawPreview('me');
+    vttConnection?.sendVttSceneDrawPreview?.(currentScene?.id, viewerId || 'me', null);
+  }, [currentScene, vttConnection, removeDrawPreview, viewerId, setLocalDrawing]);
+
+  const handlePointerCancel = useCallback(() => {
+    if (!isDrawingRef.current) return;
+    isDrawingRef.current = false;
+    setLocalDrawing(null);
+    removeDrawPreview('me');
+    vttConnection?.sendVttSceneDrawPreview?.(currentScene?.id, viewerId || 'me', null);
+  }, [currentScene, vttConnection, viewerId, setLocalDrawing, removeDrawPreview]);
+
+  // Скидання малювання якщо мишка вийшла за межі
+  const handlePointerUpOutside = handlePointerUp;
 
   /** Рендер сцени зі стану сцени (новий шлях) */
   const renderNewScene = () => (
@@ -68,7 +212,10 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection
       {/* 0. Безкінечний прозорий "стіл" (ловить кліки поза розміром сцени) */}
       <graphics
         eventMode="static"
-        onPointerDown={() => setSelectedImageId(null)}
+        onPointerDown={() => {
+          setSelectedImageId(null);
+          setSelectedDrawingId(null);
+        }}
         draw={(g) => {
           g.clear();
           g.rect(-100000, -100000, 200000, 200000);
@@ -76,59 +223,52 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection
         }}
       />
 
-      {/* 1. Суцільний фон самої сцени */}
+      {/* 1. Суцільний фон самої сцени (він перехоплює події малювання) 
+          Збільшено до 100000 для можливості малювання поза межами сцени */}
       <graphics
-        eventMode="static"
-        onPointerDown={() => setSelectedImageId(null)}
+        eventMode={drawingTool ? "static" : "auto"}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerUpOutside={handlePointerUpOutside}
+        onPointerCancel={handlePointerCancel}
         draw={(g) => {
           g.clear();
-          g.rect(0, 0, currentScene.width, currentScene.height);
-          g.fill({ color: currentScene.backgroundColor ?? 0x243530 });
+          // Зона для малювання (величезна)
+          g.rect(-50000, -50000, 100000, 100000);
+          g.fill({ color: 0x000000, alpha: 0.001 }); // Майже прозорий фон для захоплення подій
+          
+          // Візуальна границя самої сцени
+          if (currentScene) {
+            g.rect(0, 0, currentScene.width, currentScene.height);
+            g.fill({ color: currentScene.backgroundColor ?? 0x243530 });
+          }
         }}
       />
 
       {/* 2. Шари рендеряться в їхньому порядку з currentScene.layers */}
       {(() => {
         const layers = currentScene?.layers || [];
-        const hasDrawings = layers.some(l => l.type === 'DRAWING');
-
         return (
           <container sortableChildren={true}>
-            {/* Fallback: якщо шару Drawings немає, малюємо сітку просто так */}
-            {!hasDrawings && currentScene.gridEnabled !== false && (
-               <container zIndex={999}>
-                 <GridLayer
-                   screenWidth={screenWidth}
-                   screenHeight={screenHeight}
-                   gridSize={currentGridSize}
-                   viewport={viewport}
-                   mapWidth={currentScene.width}
-                   mapHeight={currentScene.height}
-                   gridType={currentScene.gridType}
-                   gridColor={currentScene.gridColor}
-                   gridOpacity={currentScene.gridOpacity}
-                 />
-               </container>
-            )}
-
             {layers.map((layer, index) => (
               <container 
                 key={layer.id} 
                 zIndex={index} 
                 visible={layer.isVisible !== false}
               >
-                {layer.items?.map((item) => (
-                  <DraggableImage
-                    key={item.id}
-                    item={item}
-                    isSelected={item.id === selectedImageId}
-                    onSelect={() => setSelectedImageId(item.id)}
-                    onUpdate={handleImageUpdate}
-                    onPreview={handleImagePreview}
+                {layer.items?.filter(item => item.type === 'IMAGE').map((img) => (
+                  <DraggableElement
+                    key={img.id}
+                    item={img}
+                    isSelected={selectedImageId === img.id}
+                    onSelect={() => setSelectedImageId(img.id)}
+                    onUpdate={(id, updates) => vttConnection?.sendVttSceneUpdateImage?.(currentScene.id, id, updates)}
+                    onPreview={(id, updates) => vttConnection?.sendVttScenePreviewImage?.(currentScene.id, id, updates)}
                     onContextMenu={onContextMenu}
                     viewport={viewport}
-                    gridSize={currentGridSize}
-                    isLocked={layer.isLocked === true}
+                    gridSize={globalGridSize}
+                    isLocked={layer.isLocked || !isGM}
                   />
                 ))}
 
@@ -147,23 +287,32 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection
                   />
                 )}
 
+                {layer.type === 'GRID' && currentScene.gridEnabled !== false && (
+                  <GridLayer
+                    screenWidth={screenWidth}
+                    screenHeight={screenHeight}
+                    gridSize={currentGridSize}
+                    viewport={viewport}
+                    mapWidth={currentScene.width}
+                    mapHeight={currentScene.height}
+                    gridType={currentScene.gridType}
+                    gridColor={currentScene.gridColor}
+                    gridOpacity={currentScene.gridOpacity}
+                  />
+                )}
                 {layer.type === 'DRAWING' && (
-                  <>
-                    {/* Сітка жорстко прив'язана до шару Drawings */}
-                    {currentScene.gridEnabled !== false && (
-                      <GridLayer
-                        screenWidth={screenWidth}
-                        screenHeight={screenHeight}
-                        gridSize={currentGridSize}
-                        viewport={viewport}
-                        mapWidth={currentScene.width}
-                        mapHeight={currentScene.height}
-                        gridType={currentScene.gridType}
-                        gridColor={currentScene.gridColor}
-                        gridOpacity={currentScene.gridOpacity}
-                      />
-                    )}
-                  </>
+                  <DrawingLayer 
+                    drawings={layer.items}
+                    drawPreviews={drawPreviews}
+                    gridSize={currentGridSize}
+                    selectedDrawingId={selectedDrawingId}
+                    setSelectedDrawingId={setSelectedDrawingId}
+                    vttConnection={vttConnection}
+                    currentScene={currentScene}
+                    viewport={viewport}
+                    isLocked={layer.isLocked || !isGM}
+                    onContextMenu={onContextMenu}
+                  />
                 )}
               </container>
             ))}
@@ -221,26 +370,25 @@ BattlefieldContent.propTypes = {
 };
 
 /**
- * VttBattlefield — головний компонент ігрового поля.
- *
- * Відповідає за:
- * - Ініціалізацію PixiJS Application
- * - Viewport (Pan + Zoom) через useViewport хук
- * - Підключення BattlefieldContent всередину Application
- *
- * @param {{ vttConnection?: object }} props
+ * Головний компонент VttBattlefield.
  */
-export default function VttBattlefield({ vttConnection, isGM }) {
+export default function VttBattlefield({ vttConnection, isGM, viewerId }) {
   const containerRef = useRef(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [contextMenu, setContextMenu] = useState(null);
 
-  const handleContextMenu = useCallback((e, imageId) => {
-    const originalEvent = e.data?.originalEvent || e.nativeEvent || e;
-    const clientX = originalEvent.clientX;
-    const clientY = originalEvent.clientY;
-    setContextMenu({ x: clientX, y: clientY, imageId });
-  }, []);
+  const handleContextMenu = useCallback((e, itemId) => {
+    if (!isGM) return;
+    const event = e.data?.originalEvent || e.nativeEvent || e;
+    const { clientX, clientY } = event;
+    
+    // We adjust the click position by subtracting any offset if the container isn't full screen
+    const rect = containerRef.current?.getBoundingClientRect();
+    const x = clientX - (rect?.left || 0);
+    const y = clientY - (rect?.top || 0);
+
+    setContextMenu({ x, y, itemId });
+  }, [isGM]);
 
   // Close context menu on any click
   useEffect(() => {
@@ -272,14 +420,8 @@ export default function VttBattlefield({ vttConnection, isGM }) {
   
   const selectedImageId = useBattlefieldStore((s) => s.selectedImageId);
   const setSelectedImageId = useBattlefieldStore((s) => s.setSelectedImageId);
-
-  const handleDeleteImage = useCallback((imageId) => {
-    if (!viewedSceneId || !imageId) return;
-    vttConnection?.sendVttSceneRemoveImage?.(viewedSceneId, imageId);
-    if (selectedImageId === imageId) {
-      setSelectedImageId(null);
-    }
-  }, [viewedSceneId, vttConnection, selectedImageId, setSelectedImageId]);
+  const selectedDrawingId = useBattlefieldStore((s) => s.selectedDrawingId);
+  const setSelectedDrawingId = useBattlefieldStore((s) => s.setSelectedDrawingId);
 
   const handleAdaptScene = useCallback((imageId) => {
     if (!currentScene || !imageId) return;
@@ -312,17 +454,22 @@ export default function VttBattlefield({ vttConnection, isGM }) {
   // Обробка видалення через клавіатуру
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Ігноруємо натискання, якщо користувач вводить текст у поле
+      // Do not delete if typing in an input
       if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
       
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedImageId) {
-        handleDeleteImage(selectedImageId);
+      if (e.key === 'Delete' || e.key === 'Backspace' || e.code === 'Delete' || e.code === 'Backspace') {
+        if (selectedImageId) {
+          vttConnection?.sendVttSceneRemoveImage?.(currentScene?.id, selectedImageId);
+          setSelectedImageId(null);
+        }
+        if (selectedDrawingId) {
+          vttConnection?.sendVttSceneRemoveDrawing?.(currentScene.id, selectedDrawingId);
+          setSelectedDrawingId(null);
+        }
       }
-    };
-    
-    globalThis.window.addEventListener('keydown', handleKeyDown);
+    };globalThis.window.addEventListener('keydown', handleKeyDown);
     return () => globalThis.window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedImageId, handleDeleteImage]);
+  }, [selectedImageId, selectedDrawingId, currentScene, vttConnection, setSelectedImageId, setSelectedDrawingId]);
 
   // Скидання виділення зображення-оверлея при кліку поза канвасом VTT
   useEffect(() => {
@@ -388,6 +535,7 @@ export default function VttBattlefield({ vttConnection, isGM }) {
               vttConnection={vttConnection}
               isGM={isGM}
               onContextMenu={handleContextMenu}
+              viewerId={viewerId}
             />
           </Application>
         </ErrorBoundary>
@@ -411,7 +559,7 @@ export default function VttBattlefield({ vttConnection, isGM }) {
           <button 
             className="px-4 py-2 text-left hover:bg-brand-medium/70 hover:text-white transition-colors" 
             onClick={() => {
-              handleAdaptScene(contextMenu.imageId);
+              handleAdaptScene(contextMenu.itemId);
               setContextMenu(null);
             }}
           >
@@ -429,7 +577,11 @@ export default function VttBattlefield({ vttConnection, isGM }) {
                   key={layer.id}
                   className="px-4 py-2 text-left hover:bg-brand-medium/70 hover:text-white transition-colors truncate"
                   onClick={() => {
-                    vttConnection?.sendVttSceneUpdateImage?.(currentScene.id, contextMenu.imageId, { layerId: layer.id });
+                    if (contextMenu.itemId?.startsWith('draw-')) {
+                      vttConnection?.sendVttSceneUpdateDrawing?.(currentScene.id, contextMenu.itemId, { layerId: layer.id });
+                    } else {
+                      vttConnection?.sendVttSceneUpdateImage?.(currentScene.id, contextMenu.itemId, { layerId: layer.id });
+                    }
                     setContextMenu(null);
                   }}
                 >
@@ -438,14 +590,18 @@ export default function VttBattlefield({ vttConnection, isGM }) {
               ))}
             </div>
           </div>
-          
+
           <button className="px-4 py-2 text-left hover:bg-brand-medium/70 hover:text-white transition-colors" onClick={() => setContextMenu(null)}>Змінити Z-індекс</button>
           <button className="px-4 py-2 text-left hover:bg-brand-medium/70 hover:text-white transition-colors" onClick={() => setContextMenu(null)}>Передати контроль</button>
           <div className="h-px bg-brand-light/10 my-1 mx-2" />
           <button 
             className="px-4 py-2 text-left text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors" 
             onClick={() => {
-              handleDeleteImage(contextMenu.imageId);
+              if (contextMenu.itemId?.startsWith('draw-')) {
+                vttConnection?.sendVttSceneRemoveDrawing?.(currentScene.id, contextMenu.itemId);
+              } else {
+                vttConnection?.sendVttSceneRemoveImage?.(currentScene.id, contextMenu.itemId);
+              }
               setContextMenu(null);
             }}
           >
@@ -460,6 +616,7 @@ export default function VttBattlefield({ vttConnection, isGM }) {
 VttBattlefield.propTypes = {
   vttConnection: PropTypes.object,
   isGM: PropTypes.bool,
+  viewerId: PropTypes.string,
 };
 
 BattlefieldContent.propTypes = {
@@ -473,4 +630,5 @@ BattlefieldContent.propTypes = {
   vttConnection: PropTypes.object,
   isGM: PropTypes.bool,
   onContextMenu: PropTypes.func,
+  viewerId: PropTypes.string,
 };

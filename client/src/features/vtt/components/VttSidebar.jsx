@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Menu, ChevronLeft, ChevronRight, MessageSquare, ScrollText, Map, Video } from 'lucide-react';
+import { ArrowLeft, Menu, ChevronLeft, ChevronRight, MessageSquare, ScrollText, Map, Video, Pencil } from 'lucide-react';
 import useVttStore from '@/stores/useVttStore';
 import Button from '@/components/ui/Button';
 
@@ -56,6 +56,18 @@ export default function VttSidebar() {
             >
               <MessageSquare size={18} className="text-brand-accent" />
               <span>Ігровий Чат</span>
+            </Button>
+
+            <Button
+              onClick={() => {
+                useVttStore.getState().toggleDrawingTools();
+                toggleSidebar();
+              }}
+              variant="outline"
+              className="w-full !border-brand-light/20 !text-brand-light hover:!bg-brand-medium/30 flex items-center justify-start gap-3 !px-4"
+            >
+              <Pencil size={18} className="text-pink-400" />
+              <span>Малювання</span>
             </Button>
 
             <Button
