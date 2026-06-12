@@ -92,11 +92,9 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('SIGUSR2', () => gracefulShutdown('SIGUSR2')); // Для nodemon
 process.on('unhandledRejection', (reason) => {
   logger.error({ err: reason }, 'UNHANDLED_REJECTION');
-  gracefulShutdown('UNHANDLED_REJECTION');
 });
 process.on('uncaughtException', (err) => {
   logger.fatal({ err }, 'UNCAUGHT_EXCEPTION');
-  gracefulShutdown('UNCAUGHT_EXCEPTION');
 });
 
 async function startServer() {
@@ -133,7 +131,7 @@ async function startServer() {
     logger,
     onConnection: mainWsHandler,
   });
-  logger.info({ path: wsChatPath }, 'WS сервер запущено (Chat)');
+  logger.info({ path: wsChatPath }, 'WS сервер запущено (Chat & VTT)');
 
   const callHandler = createCallHandler({ logger });
   wsCallServer = createWsServer({

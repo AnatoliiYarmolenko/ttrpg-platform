@@ -16,7 +16,7 @@ function isCampaignOwnerOverride(session, userId) {
 
 async function loadSessionContext(req, res, next) {
   try {
-    const sessionId = parseInt(req.params.id, 10);
+    const sessionId = Number.parseInt(req.params.id, 10);
 
     if (!Number.isInteger(sessionId) || sessionId <= 0) {
       throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'ID сесії повинен бути позитивним числом');
@@ -32,6 +32,8 @@ async function loadSessionContext(req, res, next) {
         duration: true,
         maxPlayers: true,
         visibility: true,
+        price: true,
+        heldAmount: true,
         campaign: {
           select: {
             id: true,

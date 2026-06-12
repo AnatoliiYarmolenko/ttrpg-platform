@@ -6,45 +6,91 @@ export class CallRpcClient {
     this.pendingRequests = new Map();
     this.eventListeners = new Map();
     this.isConnecting = false;
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 8;
+    this.initialReconnectDelay = 1000;
+    this.maxReconnectDelay = 20000;
+    this.reconnectTimeout = null;
+    this.shouldReconnect = true;
   }
 
   connect() {
     if (this.ws || this.isConnecting) return Promise.resolve();
+    this.shouldReconnect = true;
+    return this.openSocket(false);
+  }
 
+  openSocket(isReconnect) {
     return new Promise((resolve, reject) => {
       this.isConnecting = true;
       this.isDisconnecting = false;
-      console.log('[CallRpcClient] Connecting to:', this.url);
-      this.ws = new WebSocket(this.url);
+      console.log(`[CallRpcClient] ${isReconnect ? 'Reconnecting' : 'Connecting'} to:`, this.url);
+      const ws = new WebSocket(this.url);
+      this.ws = ws;
 
-      this.ws.onopen = () => {
+      ws.onopen = () => {
+        if (this.ws !== ws) return;
         console.log('[CallRpcClient] Connected successfully to', this.url);
         this.isConnecting = false;
+        this.reconnectAttempts = 0;
+        if (isReconnect) this.emit('reconnected');
         resolve();
       };
 
-      this.ws.onclose = () => {
+      ws.onclose = () => {
+        if (this.ws !== ws) return;
         this.isConnecting = false;
-        this.emit('disconnected');
+        this.ws = null;
         this.cleanup();
+        this.handleUnexpectedClose();
       };
 
-      this.ws.onerror = (err) => {
+      ws.onerror = (err) => {
+        if (this.ws !== ws) return;
         this.isConnecting = false;
-        if (!this.isDisconnecting) {
+        if (!this.isDisconnecting && !isReconnect) {
           reject(err instanceof Error ? err : new Error('WebSocket connection error'));
         }
       };
 
-      this.ws.onmessage = (event) => {
+      ws.onmessage = (event) => {
+        if (this.ws !== ws) return;
         this.handleMessage(event.data);
       };
     });
   }
 
+  handleUnexpectedClose() {
+    if (!this.shouldReconnect || this.isDisconnecting) {
+      this.emit('disconnected');
+      return;
+    }
+
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.reconnectAttempts++;
+      const delay = Math.min(
+        this.initialReconnectDelay * Math.pow(2, this.reconnectAttempts - 1),
+        this.maxReconnectDelay
+      );
+      this.emit('reconnecting', { attempt: this.reconnectAttempts });
+      this.reconnectTimeout = setTimeout(() => {
+        this.reconnectTimeout = null;
+        if (!this.shouldReconnect) return;
+        this.openSocket(true).catch(() => {});
+      }, delay);
+    } else {
+      this.emit('disconnected');
+    }
+  }
+
   disconnect() {
+    this.shouldReconnect = false;
+    this.isDisconnecting = true;
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
     if (this.ws) {
-      this.isDisconnecting = true;
       this.ws.close();
       this.cleanup();
     }
@@ -63,7 +109,6 @@ export class CallRpcClient {
     try {
       const message = JSON.parse(data);
       
-      // Обробляємо RPC-відповідь
       if (message.type === 'call:response' || message.type === 'call:error') {
         if (message.id && this.pendingRequests.has(message.id)) {
           const { resolve, reject } = this.pendingRequests.get(message.id);
@@ -77,12 +122,10 @@ export class CallRpcClient {
             resolve(message.data);
           }
         } else if (message.type === 'call:error' && message.requestType) {
-           // Асинхронна помилка без id
            console.error('Call async error:', message);
            this.emit('error', message);
         }
       } else if (message.type === 'call:event' && message.event) {
-        // Обробляємо серверні події
         this.emit(message.event, message.payload);
       } else {
         this.emit(message.type, message);
@@ -110,7 +153,6 @@ export class CallRpcClient {
       this.pendingRequests.set(id, { resolve, reject });
       this.ws.send(JSON.stringify(requestMsg));
       
-      // Таймаут після 15 секунд
       setTimeout(() => {
         if (this.pendingRequests.has(id)) {
           this.pendingRequests.delete(id);
@@ -120,7 +162,6 @@ export class CallRpcClient {
     });
   }
 
-  // Одноразова подія без відповіді (без id)
   sendEvent(type, payload = {}) {
      if (this.ws?.readyState !== WebSocket.OPEN) {
       return;
