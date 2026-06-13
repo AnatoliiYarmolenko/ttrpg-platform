@@ -26,6 +26,7 @@ export default function DraggablePanel({
   headerClassName = '',
   contentClassName = 'flex flex-col flex-1 overflow-y-auto min-h-0 bg-transparent',
   zIndex = 200,
+  resetHeightTrigger,
 }) {
   const {
     isLocked,
@@ -45,7 +46,8 @@ export default function DraggablePanel({
     defaultY: defaultY ?? (globalThis.window ? globalThis.window.innerHeight / 2 - defaultHeight / 2 : 0),
     minWidth,
     minHeight,
-    isOpen
+    isOpen,
+    resetHeightTrigger
   });
 
   if (!isOpen) return null;
@@ -161,4 +163,5 @@ DraggablePanel.propTypes = {
   headerClassName: PropTypes.string,
   contentClassName: PropTypes.string,
   zIndex: PropTypes.number,
+  resetHeightTrigger: PropTypes.any,
 };
