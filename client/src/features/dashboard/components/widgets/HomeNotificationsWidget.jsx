@@ -9,7 +9,7 @@ import NotificationList from '@/features/notifications/components/NotificationLi
 import NotificationBadge from '@/features/notifications/components/NotificationBadge';
 import {
   useNotificationsQuery,
-  useNotificationCountQuery,
+  useUnreadCountQuery,
   useNotificationMutations,
 } from '@/features/notifications/hooks/useNotificationQueries';
 
@@ -32,7 +32,7 @@ export default function HomeNotificationsWidget() {
     limit,
     offset: 0,
   });
-  const { data: activeCount = 0 } = useNotificationCountQuery();
+  const { data: activeCount = 0 } = useUnreadCountQuery();
 
   // Extract notifications data early (needed for effects and render)
   const notifications = data?.notifications || [];

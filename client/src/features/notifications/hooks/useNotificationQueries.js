@@ -49,8 +49,6 @@ export const useUnreadCountQuery = (enabled = true) => {
   });
 };
 
-export const useNotificationCountQuery = useUnreadCountQuery;
-
 export const useNotificationMutations = () => {
   const queryClient = useQueryClient();
 
