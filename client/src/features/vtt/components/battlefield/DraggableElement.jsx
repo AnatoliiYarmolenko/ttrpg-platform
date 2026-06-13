@@ -73,10 +73,10 @@ function rotatePoint(x, y, angle) {
  *   viewport: { x: number, y: number, scale: number },
  *   gridSize?: number,
  *   isLocked?: boolean,
- *   renderContent?: (displayWidth: number, displayHeight: number, cursor: string, eventHandlers: object) => React.ReactNode
+ *   onDoubleClick?: (itemId: string) => void,
  * }} props
  */
-export default function DraggableElement({ item, isSelected, onSelect, onUpdate, onPreview, onContextMenu, viewport, gridSize, isLocked = false, renderContent }) {
+export default function DraggableElement({ item, isSelected, onSelect, onUpdate, onPreview, onContextMenu, onDoubleClick, viewport, gridSize, isLocked = false, renderContent }) {
   const texture = usePixiTexture(item.url);
 
   // Локальний стан для плавного drag/resize без затримки мережі
@@ -146,7 +146,7 @@ export default function DraggableElement({ item, isSelected, onSelect, onUpdate,
 
   // ─── Drag handlers (Переміщення) ───────────────────────────────────────────────
 
-  const rightClickStartRef = useRef(null);
+  const lastClickTimeRef = useRef(0);
 
   const onDragStart = useCallback((e) => {
     if (isLocked) return;
@@ -154,10 +154,16 @@ export default function DraggableElement({ item, isSelected, onSelect, onUpdate,
     
     // Якщо це правий клік (button 2)
     if (e.data?.button === 2 || e.button === 2 || e.nativeEvent?.button === 2) {
-      // НЕ робимо stopPropagation(), щоб useViewport міг рухати сцену
-      rightClickStartRef.current = { x: event.x, y: event.y };
+      e.stopPropagation?.();
+      onContextMenu?.(e.nativeEvent || e.data?.originalEvent || e, item.id);
       return;
     }
+    
+    const now = Date.now();
+    if (now - lastClickTimeRef.current < 500) {
+      if (onDoubleClick) onDoubleClick(item.id);
+    }
+    lastClickTimeRef.current = now;
 
     onSelect(); // Виділяємо при кліку
     dragState.current = {
@@ -168,7 +174,7 @@ export default function DraggableElement({ item, isSelected, onSelect, onUpdate,
     };
     setIsDragging(true);
     e.stopPropagation?.();
-  }, [localX, localY, onSelect, isLocked]);
+  }, [localX, localY, onSelect, isLocked, onDoubleClick, onContextMenu, item.id]);
 
   const onDragMove = useCallback((e) => {
     if (!dragState.current) return;
@@ -186,23 +192,8 @@ export default function DraggableElement({ item, isSelected, onSelect, onUpdate,
   }, [viewport.scale, sendPreview]);
 
   const onDragEnd = useCallback((e) => {
-    // Перевірка на відпускання правої кнопки миші
+    // Context menu тепер викликається одразу в onDragStart, тому тут нічого не робимо
     if (e && (e.data?.button === 2 || e.button === 2 || e.nativeEvent?.button === 2)) {
-      if (rightClickStartRef.current) {
-        const event = e.data?.global || e.global || e;
-        const dx = event.x - rightClickStartRef.current.x;
-        const dy = event.y - rightClickStartRef.current.y;
-        const dist = Math.hypot(dx, dy);
-        
-        // Якщо майже не рухали мишкою (менше 5 пікселів) — це клік, відкриваємо меню
-        if (dist < 5) {
-          // Щоб запобігти миттєвому закриттю меню через глобальний клік:
-          e.stopPropagation?.();
-          e.data?.originalEvent?.stopPropagation?.();
-          onContextMenu?.(e, item.id);
-        }
-        rightClickStartRef.current = null;
-      }
       return;
     }
 
@@ -218,7 +209,7 @@ export default function DraggableElement({ item, isSelected, onSelect, onUpdate,
     setLocalScaleY(snapped.scaleY);
     
     sendUpdate({ x: snapped.x, y: snapped.y, scaleX: snapped.scaleX, scaleY: snapped.scaleY });
-  }, [localX, localY, localScaleX, localScaleY, item.width, item.height, gridSize, sendUpdate, item.id, onContextMenu]);
+  }, [localX, localY, localScaleX, localScaleY, item.width, item.height, gridSize, sendUpdate]);
 
   // ─── Resize handlers (Масштабування) ─────────────────────────────────────────────
 
@@ -510,4 +501,5 @@ DraggableElement.propTypes = {
   onContextMenu: PropTypes.func,
   isLocked: PropTypes.bool,
   renderContent: PropTypes.func,
+  onDoubleClick: PropTypes.func,
 };

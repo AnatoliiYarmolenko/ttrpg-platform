@@ -69,7 +69,7 @@ const useBattlefieldStore = create((set) => ({
     const activeSceneId = state.activeSceneId ?? null;
 
     // Якщо поточна перегляд-сцена GM більше не існує — перемикаємося
-    if (gmViewSceneId && state.scenes && !state.scenes[gmViewSceneId]) {
+    if (gmViewSceneId && !state.scenes?.[gmViewSceneId]) {
       gmViewSceneId = activeSceneId;
     }
 
@@ -171,12 +171,31 @@ const useBattlefieldStore = create((set) => ({
    * @param {number} x
    * @param {number} y
    */
-  moveToken: (tokenId, x, y) =>
-    set((state) => ({
-      tokens: state.tokens.map((t) =>
+  moveToken: (sceneId, tokenId, x, y) =>
+    set((state) => {
+      const newTokens = state.tokens.map((t) =>
         t.id === tokenId ? { ...t, x, y } : t
-      ),
-    })),
+      );
+      
+      const newScenes = { ...state.scenes };
+      const sId = sceneId || state.activeSceneId || state.gmViewSceneId;
+      
+      if (sId && newScenes[sId]?.tokens?.[tokenId]) {
+        newScenes[sId] = {
+          ...newScenes[sId],
+          tokens: {
+            ...newScenes[sId].tokens,
+            [tokenId]: {
+              ...newScenes[sId].tokens[tokenId],
+              x,
+              y
+            }
+          }
+        };
+      }
+      
+      return { tokens: newTokens, scenes: newScenes };
+    }),
 
   /**
    * Додати новий legacy-токен.
@@ -199,9 +218,10 @@ const useBattlefieldStore = create((set) => ({
   /** Виділене зображення-оверлей (тільки для локального UI, не синхронізується з сервером) */
   selectedImageId: null,
   setSelectedImageId: (id) => set({ selectedImageId: id }),
-
   selectedDrawingId: null,
   setSelectedDrawingId: (id) => set({ selectedDrawingId: id }),
+  selectedTokenId: null,
+  setSelectedTokenId: (id) => set({ selectedTokenId: id }),
 
   /**
    * Змінити розмір клітинки сітки.

@@ -4,11 +4,13 @@ import { Application, extend } from '@pixi/react';
 import { Container, Graphics, Sprite, Text } from 'pixi.js';
 import GridLayer from './GridLayer';
 import TokenLayer from './TokenLayer';
-import BackgroundLayer from './BackgroundLayer';
 import DraggableElement from './DraggableElement';
 import DrawingLayer from './DrawingLayer';
 import RulerLayer from './RulerLayer';
 import useBattlefieldStore from './useBattlefieldStore';
+import useVttStore from '@/stores/useVttStore';
+import useGmCreaturesStore from '@/stores/useGmCreaturesStore';
+import useAuthStore from '@/stores/useAuthStore';
 import useViewport from '../../hooks/useViewport';
 import { ChevronRight } from 'lucide-react';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
@@ -33,11 +35,6 @@ extend({ Container, Graphics, Sprite, Text });
  */
 function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection, isGM, onContextMenu, viewerId }) {
   const globalGridSize = useBattlefieldStore((s) => s.gridSize);
-  const backgroundUrl = useBattlefieldStore((s) => s.backgroundUrl);
-  const tokens = useBattlefieldStore((s) => s.tokens);
-  const moveToken = useBattlefieldStore((s) => s.moveToken);
-  const mapWidth = useBattlefieldStore((s) => s.mapWidth);
-  const mapHeight = useBattlefieldStore((s) => s.mapHeight);
 
   const activeSceneId = useBattlefieldStore((s) => s.activeSceneId);
   const gmViewSceneId = useBattlefieldStore((s) => s.gmViewSceneId);
@@ -46,6 +43,8 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection
   const setSelectedImageId = useBattlefieldStore((s) => s.setSelectedImageId);
   const selectedDrawingId = useBattlefieldStore((s) => s.selectedDrawingId);
   const setSelectedDrawingId = useBattlefieldStore((s) => s.setSelectedDrawingId);
+  const selectedTokenId = useBattlefieldStore((s) => s.selectedTokenId);
+  const setSelectedTokenId = useBattlefieldStore((s) => s.setSelectedTokenId);
 
   const drawingTool = useBattlefieldStore(s => s.drawingTool);
   const drawingColor = useBattlefieldStore(s => s.drawingColor);
@@ -92,6 +91,7 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection
     if (!drawingTool && !rulerTool) {
       setSelectedImageId(null);
       setSelectedDrawingId(null);
+      setSelectedTokenId(null);
       return;
     }
     e.stopPropagation();
@@ -135,7 +135,7 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection
     const previewData = { ...newDrawing, sceneId: currentScene?.id };
     setDrawPreview('me', previewData);
     vttConnection?.sendVttSceneDrawPreview?.(currentScene?.id, viewerId || 'me', newDrawing);
-  }, [drawingTool, rulerTool, rulerConfig, currentScene, setSelectedImageId, setSelectedDrawingId, drawingColor, drawingThickness, setLocalDrawing, setLocalRuler, viewerId, setDrawPreview, vttConnection, setTextPrompt]);
+  }, [drawingTool, rulerTool, rulerConfig, currentScene, setSelectedImageId, setSelectedDrawingId, setSelectedTokenId, drawingColor, drawingThickness, setLocalDrawing, setLocalRuler, viewerId, setDrawPreview, vttConnection, setTextPrompt]);
 
   const handlePointerMove = useCallback((e) => {
     const localPos = e.data.getLocalPosition(e.currentTarget.parent);
@@ -253,6 +253,20 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection
   // Скидання малювання якщо мишка вийшла за межі
   const handlePointerUpOutside = handlePointerUp;
 
+  const handleTokenDoubleClick = useCallback((tokenId) => {
+    const token = currentScene?.tokens?.[tokenId];
+    if (token?.isGmCreature && isGM) {
+      useGmCreaturesStore.getState().setActiveTab(token.creatureId);
+      useVttStore.getState().openGmCreatures();
+    } else if (token?.ownerId === viewerId) {
+      useVttStore.getState().openCharacterSheet();
+    }
+  }, [currentScene?.tokens, isGM, viewerId]);
+
+  const handleTokenUpdate = useCallback((tokenId, updates) => {
+    vttConnection?.sendVttTokenUpdate?.(currentScene?.id, tokenId, updates);
+  }, [vttConnection, currentScene?.id]);
+
   /** Рендер сцени зі стану сцени (новий шлях) */
   const renderNewScene = () => (
     <>
@@ -262,6 +276,7 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection
         onPointerDown={() => {
           setSelectedImageId(null);
           setSelectedDrawingId(null);
+          setSelectedTokenId(null);
         }}
         draw={(g) => { // nosonar
           g.clear();
@@ -325,13 +340,20 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection
                     tokens={Object.values(currentScene.tokens || {})}
                     gridSize={currentGridSize}
                     onTokenDrag={(tokenId, x, y) => { // nosonar
-                      vttConnection?.sendVttTokenDrag?.(tokenId, x, y);
+                      vttConnection?.sendVttTokenDrag?.(currentScene.id, tokenId, x, y);
                     }}
                     onTokenDrop={(tokenId, x, y) => { // nosonar
                       vttConnection?.sendVttTokenDrop?.(currentScene.id, tokenId, x, y);
                     }}
                     viewport={viewport}
                     isLocked={layer.isLocked === true}
+                    isGM={isGM}
+                    viewerId={viewerId}
+                    onContextMenu={onContextMenu}
+                    onDoubleClick={handleTokenDoubleClick}
+                    selectedTokenId={selectedTokenId}
+                    onSelectToken={setSelectedTokenId}
+                    onUpdateToken={handleTokenUpdate}
                   />
                 )}
 
@@ -379,46 +401,11 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection
     </>
   );
 
-  /** Рендер у legacy-режимі (без сцен — для зворотної сумісності) */
-  const renderLegacyScene = () => (
-    <>
-      <BackgroundLayer imageUrl={backgroundUrl} width={mapWidth} height={mapHeight} />
-      {backgroundUrl && (
-        <GridLayer
-          screenWidth={screenWidth}
-          screenHeight={screenHeight}
-          gridSize={globalGridSize}
-          viewport={viewport}
-          mapWidth={mapWidth}
-          mapHeight={mapHeight}
-        />
-      )}
-      <TokenLayer
-        tokens={tokens}
-        gridSize={globalGridSize}
-        onTokenDrag={(tokenId, x, y) => {
-          vttConnection?.sendVttTokenDrag?.(tokenId, x, y);
-        }}
-        onTokenDrop={(tokenId, x, y) => {
-          moveToken(tokenId, x, y);
-          vttConnection?.sendVttTokenDrop?.(tokenId, x, y);
-        }}
-        viewport={viewport}
-      />
-      
-      <RulerLayer 
-        localRuler={localRuler}
-        remoteRulers={remoteRulers}
-        gridSize={globalGridSize}
-        gridScale={5}
-        gridType="SQUARE"
-      />
-    </>
-  );
+
 
   return (
     <container x={viewport.x} y={viewport.y} scale={viewport.scale}>
-      {currentScene ? renderNewScene() : renderLegacyScene()}
+      {currentScene ? renderNewScene() : null}
     </container>
   );
 }
@@ -434,16 +421,27 @@ BattlefieldContent.propTypes = {
   vttConnection: PropTypes.object,
 };
 
-/**
- * Головний компонент VttBattlefield.
- */
-export default function VttBattlefield({ vttConnection, isGM, viewerId }) {
+export default function VttBattlefield({ vttConnection, isGM }) {
+  const currentUser = useAuthStore((s) => s.user);
+  const viewerId = currentUser?.id;
   const containerRef = useRef(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+
+  // Контекстне меню
   const [contextMenu, setContextMenu] = useState(null);
+  const lastContextTimeRef = useRef(0);
 
   const handleContextMenu = useCallback((e, itemId) => {
-    if (!isGM) return;
+    e.preventDefault?.(); // stop browser menu
+    
+    const now = Date.now();
+    // Якщо це DOM-подія (без itemId), але щойно було відкрито меню через PixiJS, ігноруємо
+    if (!itemId && now - lastContextTimeRef.current < 100) {
+      return;
+    }
+
+    if (!isGM && !itemId) return; // non-GMs can only right-click items
+
     const event = e.data?.originalEvent || e.nativeEvent || e;
     const { clientX, clientY } = event;
     
@@ -452,6 +450,7 @@ export default function VttBattlefield({ vttConnection, isGM, viewerId }) {
     const x = clientX - (rect?.left || 0);
     const y = clientY - (rect?.top || 0);
 
+    lastContextTimeRef.current = now;
     setContextMenu({ x, y, itemId });
   }, [isGM]);
 
@@ -487,6 +486,8 @@ export default function VttBattlefield({ vttConnection, isGM, viewerId }) {
   const setSelectedImageId = useBattlefieldStore((s) => s.setSelectedImageId);
   const selectedDrawingId = useBattlefieldStore((s) => s.selectedDrawingId);
   const setSelectedDrawingId = useBattlefieldStore((s) => s.setSelectedDrawingId);
+  const selectedTokenId = useBattlefieldStore((s) => s.selectedTokenId);
+  const setSelectedTokenId = useBattlefieldStore((s) => s.setSelectedTokenId);
 
   const handleAdaptScene = useCallback((imageId) => {
     if (!currentScene || !imageId) return;
@@ -531,20 +532,25 @@ export default function VttBattlefield({ vttConnection, isGM, viewerId }) {
           vttConnection?.sendVttSceneRemoveDrawing?.(currentScene.id, selectedDrawingId);
           setSelectedDrawingId(null);
         }
+        if (selectedTokenId) {
+          vttConnection?.sendVttTokenRemove?.(currentScene.id, selectedTokenId);
+          setSelectedTokenId(null);
+        }
       }
     };globalThis.window.addEventListener('keydown', handleKeyDown);
     return () => globalThis.window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedImageId, selectedDrawingId, currentScene, vttConnection, setSelectedImageId, setSelectedDrawingId]);
+  }, [selectedImageId, selectedDrawingId, selectedTokenId, currentScene, vttConnection, setSelectedImageId, setSelectedDrawingId, setSelectedTokenId]);
 
   // Скидання виділення зображення-оверлея при кліку поза канвасом VTT
   useEffect(() => {
-    if (!selectedImageId) return;
+    if (!selectedImageId && !selectedTokenId) return;
 
     const handleOutsideClick = (e) => {
       // Якщо клік був у межах контейнера (наприклад, сам canvas) — 
       // ігноруємо, оскільки PixiJS має власну логіку (клік по фону).
       if (containerRef.current && !containerRef.current.contains(e.target)) {
         setSelectedImageId(null);
+        setSelectedTokenId(null);
       }
     };
 
@@ -556,7 +562,7 @@ export default function VttBattlefield({ vttConnection, isGM, viewerId }) {
       document.removeEventListener('pointerdown', handleOutsideClick);
       document.removeEventListener('mousedown', handleOutsideClick);
     };
-  }, [selectedImageId, setSelectedImageId]);
+  }, [selectedImageId, setSelectedImageId, selectedTokenId, setSelectedTokenId]);
 
   // Відстежуємо розмір контейнера через ResizeObserver
   useEffect(() => {
@@ -621,15 +627,40 @@ export default function VttBattlefield({ vttConnection, isGM, viewerId }) {
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
         >
-          <button 
-            className="px-4 py-2 text-left hover:bg-brand-medium/70 hover:text-white transition-colors" 
-            onClick={() => {
-              handleAdaptScene(contextMenu.itemId);
-              setContextMenu(null);
-            }}
-          >
-            Адаптувати сцену
-          </button>
+          {!contextMenu.itemId?.startsWith('token-') && (
+            <button 
+              className="px-4 py-2 text-left hover:bg-brand-medium/70 hover:text-white transition-colors" 
+              onClick={() => {
+                handleAdaptScene(contextMenu.itemId);
+                setContextMenu(null);
+              }}
+            >
+              Адаптувати сцену
+            </button>
+          )}
+
+          {contextMenu.itemId?.startsWith('token-') && (
+            <div className="relative group">
+              <button className="w-full px-4 py-2 text-left hover:bg-brand-medium/70 hover:text-white transition-colors flex justify-between items-center">
+                <span>Розмір токена</span>
+                <ChevronRight size={14} className="opacity-50" />
+              </button>
+              <div className="absolute left-full top-0 hidden group-hover:flex flex-col min-w-[120px] bg-[#162422]/90 backdrop-blur-xl border border-brand-light/20 rounded-lg shadow-xl py-1">
+                {[1, 2, 3, 4].map(size => (
+                  <button
+                    key={size}
+                    className="px-4 py-2 text-left hover:bg-brand-medium/70 hover:text-white transition-colors"
+                    onClick={() => {
+                      vttConnection?.sendVttTokenUpdate?.(currentScene.id, contextMenu.itemId, { size });
+                      setContextMenu(null);
+                    }}
+                  >
+                    {size}x{size}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           
           <div className="relative group">
             <button className="w-full px-4 py-2 text-left hover:bg-brand-medium/70 hover:text-white transition-colors flex justify-between items-center">
@@ -656,13 +687,19 @@ export default function VttBattlefield({ vttConnection, isGM, viewerId }) {
             </div>
           </div>
 
-          <button className="px-4 py-2 text-left hover:bg-brand-medium/70 hover:text-white transition-colors" onClick={() => setContextMenu(null)}>Змінити Z-індекс</button>
-          <button className="px-4 py-2 text-left hover:bg-brand-medium/70 hover:text-white transition-colors" onClick={() => setContextMenu(null)}>Передати контроль</button>
+          {!contextMenu.itemId?.startsWith('token-') && (
+            <>
+              <button className="px-4 py-2 text-left hover:bg-brand-medium/70 hover:text-white transition-colors" onClick={() => setContextMenu(null)}>Змінити Z-індекс</button>
+              <button className="px-4 py-2 text-left hover:bg-brand-medium/70 hover:text-white transition-colors" onClick={() => setContextMenu(null)}>Передати контроль</button>
+            </>
+          )}
           <div className="h-px bg-brand-light/10 my-1 mx-2" />
           <button 
             className="px-4 py-2 text-left text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors" 
             onClick={() => {
-              if (contextMenu.itemId?.startsWith('draw-')) {
+              if (contextMenu.itemId?.startsWith('token-')) {
+                vttConnection?.sendVttTokenRemove?.(currentScene.id, contextMenu.itemId);
+              } else if (contextMenu.itemId?.startsWith('draw-')) {
                 vttConnection?.sendVttSceneRemoveDrawing?.(currentScene.id, contextMenu.itemId);
               } else {
                 vttConnection?.sendVttSceneRemoveImage?.(currentScene.id, contextMenu.itemId);
@@ -681,7 +718,6 @@ export default function VttBattlefield({ vttConnection, isGM, viewerId }) {
 VttBattlefield.propTypes = {
   vttConnection: PropTypes.object,
   isGM: PropTypes.bool,
-  viewerId: PropTypes.string,
 };
 
 BattlefieldContent.propTypes = {
