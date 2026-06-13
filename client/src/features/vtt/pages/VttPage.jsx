@@ -9,11 +9,14 @@ import { FullPageLoader, ConfirmModal, InputModal } from '@/components/shared';
 import DiceRoller3D from '../components/DiceRoller3D';
 import QuickBar from '../components/QuickBar';
 import RollMaker from '../components/RollMaker';
+import useCharacterStore from '@/stores/useCharacterStore';
 import VttSidebar from '../components/VttSidebar';
 import VttFloatingChat from '../components/VttFloatingChat';
 import VttFloatingCall from '../components/VttFloatingCall';
 import VttDrawingTools from '../components/VttDrawingTools';
 import VttRulerTools from '../components/VttRulerTools';
+import VttCharacterSheet from '../components/VttCharacterSheet';
+import VttGmCreatures from '../components/VttGmCreatures';
 
 import RollResultPopup from '../components/RollResultPopup';
 import DiceLogPanel from '../components/DiceLogPanel';
@@ -130,9 +133,11 @@ export default function VttPage() {
       alert('Помилка: Функція sendVttDiceRoll недоступна. Будь ласка, оновіть сторінку (Ctrl+F5).');
       return;
     }
+    const charName = !isGM ? useCharacterStore.getState().name : undefined;
+    const finalCharName = (charName && charName !== 'Без імені') ? charName : undefined;
     // Відправляємо кидок на сервер для синхронізації
-    vttConnection.sendVttDiceRoll(formula, name, customStrength ?? rollStrength, visibility);
-  }, [vttConnection, rollStrength]);
+    vttConnection.sendVttDiceRoll(formula, name, customStrength ?? rollStrength, visibility, finalCharName);
+  }, [vttConnection, rollStrength, isGM]);
 
   if (isLoading || !pageData) {
     return <FullPageLoader text="Завантаження Ігрового столу..." />;
@@ -144,7 +149,7 @@ export default function VttPage() {
 
   return (
     <div className="flex flex-col h-screen bg-brand-dark text-white overflow-hidden">
-      <VttSidebar />
+      <VttSidebar isGM={isGM} />
       <VttFloatingChat chatController={chatController} />
       <VttFloatingCall sessionId={id} />
       <RollResultPopup />
@@ -178,7 +183,10 @@ export default function VttPage() {
         
         {/* Ruler Tools */}
         <VttRulerTools isGM={isGM} userId={pageData?.viewer?.id || 'me'} sceneId={isGM ? (gmViewSceneId || activeSceneId) : activeSceneId} vttConnection={vttConnection} />
-        
+
+        {/* Character Sheet & GM Panel */}
+        <VttCharacterSheet isGM={isGM} vttConnection={vttConnection} />
+        {isGM && <VttGmCreatures vttConnection={vttConnection} />}
         <ConfirmModal
           isOpen={clearPromptVisible}
           title="Очистити всі малюнки?"

@@ -1,10 +1,11 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Menu, ChevronLeft, ChevronRight, MessageSquare, ScrollText, Map, Video, Pencil, Ruler } from 'lucide-react';
+import PropTypes from 'prop-types';
+import { ArrowLeft, Menu, ChevronLeft, ChevronRight, MessageSquare, ScrollText, Map, Video, Pencil, Ruler, User } from 'lucide-react';
 import useVttStore from '@/stores/useVttStore';
 import Button from '@/components/ui/Button';
 
-export default function VttSidebar() {
+export default function VttSidebar({ isGM }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const { isSidebarOpen, toggleSidebar } = useVttStore();
@@ -34,6 +35,22 @@ export default function VttSidebar() {
           </div>
 
           <div className="p-4 flex-1 overflow-y-auto flex flex-col gap-2">
+            <Button
+              onClick={() => {
+                if (isGM) {
+                  useVttStore.getState().toggleGmCreaturesOpen();
+                } else {
+                  useVttStore.getState().toggleCharacterSheet();
+                }
+                toggleSidebar();
+              }}
+              variant="outline"
+              className="w-full !border-brand-light/20 !text-brand-light hover:!bg-brand-medium/30 flex items-center justify-start gap-3 !px-4"
+            >
+              <User size={18} className="text-purple-400" />
+              <span>{isGM ? 'Мої істоти' : 'Мій персонаж'}</span>
+            </Button>
+
             <Button
               onClick={() => {
                 useVttStore.getState().toggleCall();
@@ -136,3 +153,7 @@ export default function VttSidebar() {
     </>
   );
 }
+
+VttSidebar.propTypes = {
+  isGM: PropTypes.bool,
+};
