@@ -132,7 +132,7 @@ export default function RollResultPopup() {
   const { name, formula, total, details } = latestRoll;
 
   return (
-    <div className={`fixed inset-0 z-[60] pointer-events-none flex items-start justify-center pt-[8vh] ${leaving ? 'animate-out fade-out slide-out-to-top-4 duration-500' : 'animate-in fade-in slide-in-from-top-4 duration-300'}`}>
+    <div className={`fixed inset-0 z-[10000] pointer-events-none flex items-start justify-center pt-[8vh] ${leaving ? 'animate-out fade-out slide-out-to-top-4 duration-500' : 'animate-in fade-in slide-in-from-top-4 duration-300'}`}>
       <div 
         className="pointer-events-auto relative rounded-xl px-5 py-4 min-w-[280px] max-w-[500px] shadow-[0_12px_40px_rgba(0,0,0,0.8)] border border-brand-light/20"
         style={{ background: 'rgba(22, 36, 34, 0.5)', backdropFilter: 'blur(24px)' }}

@@ -34,6 +34,10 @@ const useVttStore = create(
       isDrawingToolsOpen: true,
       /** Чи відкрита панель інструментів лінійки */
       isRulerToolsOpen: false,
+      /** Чи відкритий аркуш персонажа (Character Sheet) */
+      isCharacterSheetOpen: false,
+      /** Чи відкрита панель GM істот */
+      isGmCreaturesOpen: false,
 
       /** Останні 8 результатів кидків */
       rollHistory: [],
@@ -60,6 +64,16 @@ const useVttStore = create(
       toggleSceneManager: () => set((state) => ({ isSceneManagerOpen: !state.isSceneManagerOpen })),
       toggleDrawingTools: () => set((state) => ({ isDrawingToolsOpen: !state.isDrawingToolsOpen })),
       toggleRulerTools: () => set((state) => ({ isRulerToolsOpen: !state.isRulerToolsOpen })),
+      toggleCharacterSheet: () => set((state) => ({ isCharacterSheetOpen: !state.isCharacterSheetOpen })),
+      openCharacterSheet: () => set((state) => ({ 
+        isCharacterSheetOpen: true, 
+        characterSheetOpenTrigger: (state.characterSheetOpenTrigger || 0) + 1 
+      })),
+      toggleGmCreaturesOpen: () => set((state) => ({ isGmCreaturesOpen: !state.isGmCreaturesOpen })),
+      openGmCreatures: () => set((state) => ({ 
+        isGmCreaturesOpen: true, 
+        gmCreaturesOpenTrigger: (state.gmCreaturesOpenTrigger || 0) + 1 
+      })),
 
       /** Додати результат кидка (макс 8, старіші витісняються) */
       addRollResult: (result) => set((state) => {
