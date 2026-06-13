@@ -73,3 +73,22 @@ export const invalidateCampaignCollectionQueries = (
 
 export const invalidateWalletQuery = (queryClient) =>
   queryClient.invalidateQueries({ queryKey: ['wallet'] });
+
+export const invalidateNextRelevantSessionQuery = (queryClient) =>
+  queryClient.invalidateQueries({ queryKey: ['dashboard', 'home', 'next-relevant-session'] });
+
+export const getCachedCampaignIdForSession = (queryClient, sessionId) => {
+  if (!sessionId) return null;
+  const queries = queryClient.getQueryCache().findAll({
+    queryKey: ['session-page', sessionId],
+    exact: false,
+  });
+  for (const q of queries) {
+    const data = q.state.data;
+    if (data?.campaignId) return data.campaignId;
+    if (data?.campaign?.id) return data.campaign.id;
+  }
+  return null;
+};
+
+

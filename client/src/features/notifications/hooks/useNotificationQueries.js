@@ -65,7 +65,6 @@ export const useNotificationMutations = () => {
   const markAsReadMutation = useMutation({
     mutationFn: markAsRead,
     onSuccess: () => {
-      invalidateUnreadCount();
       invalidateNotifications();
     },
     onError: (error) => {
@@ -76,7 +75,6 @@ export const useNotificationMutations = () => {
   const markManyAsReadMutation = useMutation({
     mutationFn: markManyAsRead,
     onSuccess: (res) => {
-      invalidateUnreadCount();
       invalidateNotifications();
       toast.success(`${res.data?.count || 'Notifications'} archived`);
     },

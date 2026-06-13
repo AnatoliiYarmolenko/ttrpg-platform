@@ -12,6 +12,10 @@ import {
   useUnreadCountQuery,
   useNotificationMutations,
 } from '@/features/notifications/hooks/useNotificationQueries';
+import {
+  invalidateNextRelevantSessionQuery,
+  invalidateDashboardGamesQuery,
+} from '@/lib/queryInvalidation';
 
 const FILTER_OPTIONS = [
   { key: 'ACTIVE', label: 'Активні' },
@@ -34,7 +38,6 @@ export default function HomeNotificationsWidget() {
   });
   const { data: activeCount = 0 } = useUnreadCountQuery();
 
-  // Extract notifications data early (needed for effects and render)
   const notifications = data?.notifications || [];
   const pagination = data?.pagination;
 
@@ -45,8 +48,8 @@ export default function HomeNotificationsWidget() {
   };
 
   const handleCreateSuccess = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['dashboard', 'home', 'next-relevant-session'] });
-    await queryClient.invalidateQueries({ queryKey: ['dashboard', 'games'] });
+    await invalidateNextRelevantSessionQuery(queryClient);
+    await invalidateDashboardGamesQuery(queryClient);
     handleBackToNotifications();
   };
 
@@ -89,7 +92,6 @@ export default function HomeNotificationsWidget() {
       }
     >
       <div className="flex flex-col h-full">
-        {/* Filter tabs */}
         <div className="flex gap-1 mb-4 p-1 bg-brand-light/10 rounded-xl">
           {FILTER_OPTIONS.map((option) => (
             <button
@@ -108,7 +110,6 @@ export default function HomeNotificationsWidget() {
           ))}
         </div>
 
-        {/* Notifications list */}
         <div className="flex-1 overflow-y-auto -mx-2 px-2">
           <NotificationList
             notifications={notifications}
