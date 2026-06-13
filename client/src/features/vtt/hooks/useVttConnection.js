@@ -27,7 +27,7 @@ export default function useVttConnection(sessionId, options = {}) {
         break;
       case 'vtt:token_drag':
       case 'vtt:token_drop':
-        moveToken(data.tokenId, data.x, data.y);
+        moveToken(data.sceneId, data.tokenId, data.x, data.y);
         break;
       case 'vtt:set_background':
         setVttState({ backgroundUrl: data.backgroundUrl, mapWidth: data.mapWidth, mapHeight: data.mapHeight });
@@ -127,9 +127,12 @@ export default function useVttConnection(sessionId, options = {}) {
   return {
     sendVttOpen: () => sendEvent('vtt:open', {}),
     sendVttGetState: () => sendEvent('vtt:getState', {}),
-    sendVttTokenDrag: (tokenId, x, y) => sendEvent('vtt:token_drag', { tokenId, x, y }),
-    sendVttTokenDrop: (tokenId, x, y) => sendEvent('vtt:token_drop', { tokenId, x, y }),
-    sendVttDiceRoll: (formula, name, strength, visibility) => sendEvent('vtt:dice:roll', { formula, name, strength, visibility }),
+    sendVttTokenAdd: (sceneId, tokenData) => sendEvent('vtt:token_add', { sceneId, tokenData }),
+    sendVttTokenUpdate: (sceneId, tokenId, updates) => sendEvent('vtt:token_update', { sceneId, tokenId, updates }),
+    sendVttTokenRemove: (sceneId, tokenId) => sendEvent('vtt:token_remove', { sceneId, tokenId }),
+    sendVttTokenDrag: (sceneId, tokenId, x, y) => sendEvent('vtt:token_drag', { sceneId, tokenId, x, y }),
+    sendVttTokenDrop: (sceneId, tokenId, x, y) => sendEvent('vtt:token_drop', { sceneId, tokenId, x, y }),
+    sendVttDiceRoll: (formula, name, strength, visibility, characterName) => sendEvent('vtt:dice:roll', { formula, name, strength, visibility, characterName }),
     sendVttSetBackground: (backgroundUrl, mapWidth, mapHeight) => sendEvent('vtt:set_background', { backgroundUrl, mapWidth, mapHeight }),
     sendVttSceneCreate: (data) => sendEvent('vtt:scene:create', data),
     sendVttSceneUpdate: (sceneId, updates) => sendEvent('vtt:scene:update', { sceneId, updates }),

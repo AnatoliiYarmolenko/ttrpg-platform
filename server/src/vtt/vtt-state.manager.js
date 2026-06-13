@@ -250,6 +250,7 @@ class VttStateManager {
       gridColor: gColor,
       gridOpacity: gridOpacity ?? 0.4,
       gridScale: gridScale ?? 5,
+      tokens: {},
       layers: [
         {
           id: `layer-${this._generateId()}`,
@@ -346,6 +347,68 @@ class VttStateManager {
     if (!room.scenes[sceneId]) return false;
     room.activeSceneId = sceneId;
     logger.info({ sessionId, sceneId }, 'Scene activated');
+    return true;
+  }
+
+  // ─── Token Management ───────────────────────────────────────────────────────
+
+  /**
+   * Додає токен на сцену.
+   * @param {string | number} sessionId 
+   * @param {string} sceneId 
+   * @param {Object} tokenData 
+   * @returns {Object|null}
+   */
+  addToken(sessionId, sceneId, tokenData) {
+    const room = this._ensureRoom(sessionId);
+    const scene = room.scenes[sceneId];
+    if (!scene) return null;
+
+    if (!scene.tokens) scene.tokens = {};
+
+    const tokenId = tokenData.id || `token-${this._generateId()}`;
+    const token = {
+      ...tokenData,
+      id: tokenId,
+      x: tokenData.x ?? 0,
+      y: tokenData.y ?? 0,
+      size: tokenData.size ?? 1,
+    };
+
+    scene.tokens[tokenId] = token;
+    return token;
+  }
+
+  /**
+   * Оновлює токен.
+   * @param {string | number} sessionId 
+   * @param {string} sceneId 
+   * @param {string} tokenId 
+   * @param {Object} updates 
+   * @returns {Object|null}
+   */
+  updateToken(sessionId, sceneId, tokenId, updates) {
+    const room = this._ensureRoom(sessionId);
+    const scene = room.scenes[sceneId];
+    if (!scene?.tokens?.[tokenId]) return null;
+
+    scene.tokens[tokenId] = { ...scene.tokens[tokenId], ...updates };
+    return scene.tokens[tokenId];
+  }
+
+  /**
+   * Видаляє токен.
+   * @param {string | number} sessionId 
+   * @param {string} sceneId 
+   * @param {string} tokenId 
+   * @returns {boolean}
+   */
+  removeToken(sessionId, sceneId, tokenId) {
+    const room = this._ensureRoom(sessionId);
+    const scene = room.scenes[sceneId];
+    if (!scene?.tokens?.[tokenId]) return false;
+
+    delete scene.tokens[tokenId];
     return true;
   }
 

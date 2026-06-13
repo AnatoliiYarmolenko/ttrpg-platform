@@ -80,13 +80,18 @@ async function handleVttOpen(socket, payload, roomManager) {
 
 async function handleVttTokenMove(socket, payload, roomManager, eventType) {
   const sessionId = parseSessionId(payload.sessionId);
-  const { tokenId, x, y } = payload;
+  const { sceneId, tokenId, x, y } = payload;
   
   if (!tokenId) return;
+
+  if (sceneId && eventType === 'vtt:token_drop') {
+    vttStateManager.updateToken(sessionId, sceneId, tokenId, { x, y });
+  }
 
   roomManager.broadcastExcept(getVttRoom(sessionId), {
     type: eventType,
     sessionId,
+    sceneId,
     tokenId,
     x,
     y,
@@ -110,8 +115,8 @@ async function handleVttSetBackground(socket, payload, roomManager) {
 
 async function handleVttDiceRoll(socket, payload, roomManager) {
   const sessionId = parseSessionId(payload.sessionId);
-  const { formula, name, strength, visibility } = payload;
-  const player = socket.user?.username || 'Гравець';
+  const { formula, name, strength, visibility, characterName } = payload;
+  const player = characterName || socket.user?.username || 'Гравець';
   const initiatorId = socket.user?.id ? String(socket.user.id) : null;
   
   const rollResult = { 
@@ -197,6 +202,15 @@ async function handleVttStateChange(socket, payload, roomManager, actionType) {
       vttStateManager.clearDrawings(sessionId, sceneId);
       roomManager.broadcast(getVttRoom(sessionId), { type: 'vtt:scene:clearAllPreviews' });
       break;
+    case 'vtt:token_add':
+      vttStateManager.addToken(sessionId, sceneId, payload.tokenData);
+      break;
+    case 'vtt:token_update':
+      vttStateManager.updateToken(sessionId, sceneId, payload.tokenId, payload.updates);
+      break;
+    case 'vtt:token_remove':
+      vttStateManager.removeToken(sessionId, sceneId, payload.tokenId);
+      break;
   }
 
   const vttState = vttStateManager.getVttState(sessionId);
@@ -247,6 +261,9 @@ const vttHandler = async (socket, type, payload, roomManager) => {
     case 'vtt:scene:removeDrawing':
     case 'vtt:scene:undoDrawing':
     case 'vtt:scene:clearDrawings':
+    case 'vtt:token_add':
+    case 'vtt:token_update':
+    case 'vtt:token_remove':
       await handleVttStateChange(socket, payload, roomManager, type);
       break;
     case 'vtt:scene:previewImage':
