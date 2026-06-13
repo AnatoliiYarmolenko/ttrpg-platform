@@ -13,6 +13,7 @@ import VttSidebar from '../components/VttSidebar';
 import VttFloatingChat from '../components/VttFloatingChat';
 import VttFloatingCall from '../components/VttFloatingCall';
 import VttDrawingTools from '../components/VttDrawingTools';
+import VttRulerTools from '../components/VttRulerTools';
 
 import RollResultPopup from '../components/RollResultPopup';
 import DiceLogPanel from '../components/DiceLogPanel';
@@ -174,6 +175,9 @@ export default function VttPage() {
 
         {/* Drawing Tools */}
         <VttDrawingTools isGM={isGM} userId={pageData?.viewer?.id || 'me'} sceneId={isGM ? (gmViewSceneId || activeSceneId) : activeSceneId} vttConnection={vttConnection} />
+        
+        {/* Ruler Tools */}
+        <VttRulerTools isGM={isGM} userId={pageData?.viewer?.id || 'me'} sceneId={isGM ? (gmViewSceneId || activeSceneId) : activeSceneId} vttConnection={vttConnection} />
         
         <ConfirmModal
           isOpen={clearPromptVisible}
