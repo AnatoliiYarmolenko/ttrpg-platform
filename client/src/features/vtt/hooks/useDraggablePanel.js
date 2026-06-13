@@ -11,7 +11,8 @@ export default function useDraggablePanel({
   onSaveState,
   storageKey,
   isOpen,
-  resetHeightTrigger
+  resetHeightTrigger,
+  openTrigger
 }) {
   const containerRef = useRef(null);
 
@@ -191,6 +192,18 @@ export default function useDraggablePanel({
       saveStateToStorage({ ...stateRef.current });
     }
   }, [resetHeightTrigger, applyStyles, saveStateToStorage]);
+
+  // Uncollapse when openTrigger fires
+  useEffect(() => {
+    if (openTrigger) {
+      if (stateRef.current.isCollapsed) {
+        setIsCollapsed(false);
+        stateRef.current.isCollapsed = false;
+        applyStyles();
+        saveStateToStorage({ ...stateRef.current });
+      }
+    }
+  }, [openTrigger, applyStyles, saveStateToStorage]);
 
   // Handle drag and resize movement
   useEffect(() => {
