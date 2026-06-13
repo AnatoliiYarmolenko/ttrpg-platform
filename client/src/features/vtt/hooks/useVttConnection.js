@@ -13,7 +13,7 @@ export default function useVttConnection(sessionId, options = {}) {
   const setVttOpen = useVttStore((s) => s.setVttOpen);
   const setIncomingRoll = useVttStore((s) => s.setIncomingRoll);
 
-  const handleVttMessage = useCallback((data) => {
+  const handleVttMessage = useCallback((data) => { // nosonar
     // Ігноруємо якщо повідомлення не для цієї сесії
     if (data.sessionId && String(data.sessionId) !== String(sessionId)) return;
 
@@ -58,6 +58,17 @@ export default function useVttConnection(sessionId, options = {}) {
         break;
       case 'vtt:scene:clearAllPreviews':
         useBattlefieldStore.getState().clearAllPreviews();
+        break;
+      case 'vtt:scene:rulerPreview':
+        if (data.userId && data.rulerData) {
+          console.log('[VTT] Отримано rulerPreview від', data.userId, data.rulerData);
+          useBattlefieldStore.getState().setRemoteRuler(data.userId, data.rulerData);
+        }
+        break;
+      case 'vtt:scene:clearRuler':
+        if (data.userId) {
+          useBattlefieldStore.getState().setRemoteRuler(data.userId, null);
+        }
         break;
       default:
         break;
@@ -138,5 +149,7 @@ export default function useVttConnection(sessionId, options = {}) {
     sendVttSceneRemoveDrawing: (sceneId, drawingId) => sendEvent('vtt:scene:removeDrawing', { sceneId, drawingId }),
     sendVttSceneUndoDrawing: (sceneId, userId) => sendEvent('vtt:scene:undoDrawing', { sceneId, userId }),
     sendVttSceneClearDrawings: (sceneId) => sendEvent('vtt:scene:clearDrawings', { sceneId }),
+    sendVttSceneRulerPreview: (sceneId, userId, rulerData) => sendEvent('vtt:scene:rulerPreview', { sceneId, userId, rulerData }),
+    sendVttSceneClearRuler: (sceneId, userId) => sendEvent('vtt:scene:clearRuler', { sceneId, userId }),
   };
 }

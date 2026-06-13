@@ -251,6 +251,11 @@ const vttHandler = async (socket, type, payload, roomManager) => {
       break;
     case 'vtt:scene:previewImage':
     case 'vtt:scene:drawPreview':
+    case 'vtt:scene:rulerPreview':
+    case 'vtt:scene:clearRuler':
+      if (type === 'vtt:scene:rulerPreview') {
+        console.log('[VTT SERVER] Broadcasting rulerPreview', payload.userId);
+      }
       // Broadcast without saving
       roomManager.broadcastExcept(getVttRoom(parseSessionId(payload.sessionId)), { type, ...payload }, socket);
       break;
