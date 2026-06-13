@@ -248,6 +248,25 @@ const useBattlefieldStore = create((set) => ({
 
   clearPromptVisible: false,
   setClearPromptVisible: (visible) => set({ clearPromptVisible: visible }),
+
+  // ─── Ruler State ────────────────────────────────────────────────────────
+  rulerTool: null, // 'line' | 'cone' | 'circle' | 'rectangle' | null
+  rulerConfig: { coneAngle: 60, distance: 15, radius: 20, width: 20, height: 20 },
+  localRuler: null, // ruler shape object with coordinates
+  remoteRulers: {}, // map of user IDs to ruler shape objects
+
+  setRulerTool: (tool) => set({ rulerTool: tool }),
+  setRulerConfig: (config) => set((state) => ({ rulerConfig: { ...state.rulerConfig, ...config } })),
+  setLocalRuler: (ruler) => set({ localRuler: ruler }),
+  setRemoteRuler: (userId, ruler) => set((state) => {
+    if (!ruler) {
+      const next = { ...state.remoteRulers };
+      delete next[userId];
+      return { remoteRulers: next };
+    }
+    return { remoteRulers: { ...state.remoteRulers, [userId]: ruler } };
+  }),
+  clearAllRemoteRulers: () => set({ remoteRulers: {} }),
 }));
 
 export default useBattlefieldStore;

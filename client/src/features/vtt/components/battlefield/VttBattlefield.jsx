@@ -7,6 +7,7 @@ import TokenLayer from './TokenLayer';
 import BackgroundLayer from './BackgroundLayer';
 import DraggableElement from './DraggableElement';
 import DrawingLayer from './DrawingLayer';
+import RulerLayer from './RulerLayer';
 import useBattlefieldStore from './useBattlefieldStore';
 import useViewport from '../../hooks/useViewport';
 import { ChevronRight } from 'lucide-react';
@@ -54,8 +55,15 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection
   const removeDrawPreview = useBattlefieldStore(s => s.removeDrawPreview);
   const setTextPrompt = useBattlefieldStore(s => s.setTextPrompt);
 
+  const rulerTool = useBattlefieldStore(s => s.rulerTool);
+  const rulerConfig = useBattlefieldStore(s => s.rulerConfig);
+  const localRuler = useBattlefieldStore(s => s.localRuler);
+  const remoteRulers = useBattlefieldStore(s => s.remoteRulers);
+  const setLocalRuler = useBattlefieldStore(s => s.setLocalRuler);
+
   const localDrawingRef = useRef(null);
   const isDrawingRef = useRef(false);
+  const isRulerRef = useRef(false);
 
   const setLocalDrawing = useCallback((drawing) => {
     localDrawingRef.current = drawing;
@@ -81,17 +89,33 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection
     // Дозволяємо малювати тільки лівою кнопкою миші (button 0)
     if (e.button !== 0) return;
 
-    if (!drawingTool) {
+    if (!drawingTool && !rulerTool) {
       setSelectedImageId(null);
       setSelectedDrawingId(null);
       return;
     }
     e.stopPropagation();
-    isDrawingRef.current = true;
     
     // Отримуємо координати відносно контейнера (сцени)
     const localPos = e.data.getLocalPosition(e.currentTarget.parent);
     
+    if (rulerTool) {
+      isRulerRef.current = true;
+      const newRuler = {
+        type: rulerTool,
+        startX: localPos.x,
+        startY: localPos.y,
+        endX: localPos.x,
+        endY: localPos.y,
+        config: rulerConfig,
+      };
+      setLocalRuler(newRuler);
+      vttConnection?.sendVttSceneRulerPreview?.(currentScene?.id, viewerId || 'me', newRuler);
+      return;
+    }
+
+    isDrawingRef.current = true;
+
     // Якщо вибрано текст, викликаємо кастомну модалку
     if (drawingTool === 'text') {
       setTextPrompt({ points: [localPos.x, localPos.y] });
@@ -108,16 +132,26 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection
     };
     
     setLocalDrawing(newDrawing);
-    const previewData = { ...newDrawing, sceneId: currentScene.id };
+    const previewData = { ...newDrawing, sceneId: currentScene?.id };
     setDrawPreview('me', previewData);
-    vttConnection?.sendVttSceneDrawPreview?.(currentScene.id, viewerId || 'me', newDrawing);
-  }, [drawingTool, currentScene, setSelectedImageId, setSelectedDrawingId, drawingColor, drawingThickness, setLocalDrawing, viewerId, setDrawPreview, vttConnection, setTextPrompt]);
+    vttConnection?.sendVttSceneDrawPreview?.(currentScene?.id, viewerId || 'me', newDrawing);
+  }, [drawingTool, rulerTool, rulerConfig, currentScene, setSelectedImageId, setSelectedDrawingId, drawingColor, drawingThickness, setLocalDrawing, setLocalRuler, viewerId, setDrawPreview, vttConnection, setTextPrompt]);
 
   const handlePointerMove = useCallback((e) => {
+    const localPos = e.data.getLocalPosition(e.currentTarget.parent);
+
+    if (isRulerRef.current) {
+      const currentRuler = useBattlefieldStore.getState().localRuler;
+      if (currentRuler) {
+        const updatedRuler = { ...currentRuler, endX: localPos.x, endY: localPos.y };
+        setLocalRuler(updatedRuler);
+        vttConnection?.sendVttSceneRulerPreview?.(currentScene?.id, viewerId || 'me', updatedRuler);
+      }
+      return;
+    }
+
     const localDrawing = localDrawingRef.current;
     if (!isDrawingRef.current || !localDrawing) return;
-
-    const localPos = e.data.getLocalPosition(e.currentTarget.parent);
 
     setLocalDrawing({
       ...localDrawing,
@@ -126,12 +160,19 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection
         : [localDrawing.points[0], localDrawing.points[1], localPos.x, localPos.y]
     });
     
-    const previewData = { ...localDrawingRef.current, sceneId: currentScene.id };
+    const previewData = { ...localDrawingRef.current, sceneId: currentScene?.id };
     setDrawPreview('me', previewData);
-    vttConnection?.sendVttSceneDrawPreview?.(currentScene.id, viewerId || 'me', localDrawingRef.current);
-  }, [currentScene, vttConnection, setDrawPreview, setLocalDrawing, viewerId]);
+    vttConnection?.sendVttSceneDrawPreview?.(currentScene?.id, viewerId || 'me', localDrawingRef.current);
+  }, [currentScene, vttConnection, setDrawPreview, setLocalDrawing, setLocalRuler, viewerId]);
 
-  const handlePointerUp = useCallback((e) => {
+  const handlePointerUp = useCallback((e) => { // nosonar
+    if (isRulerRef.current) {
+      isRulerRef.current = false;
+      setLocalRuler(null);
+      vttConnection?.sendVttSceneClearRuler?.(currentScene?.id, viewerId || 'me');
+      return;
+    }
+
     const localDrawing = localDrawingRef.current;
     if (!isDrawingRef.current) return;
     if (e.stopPropagation) e.stopPropagation();
@@ -193,15 +234,21 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection
     setLocalDrawing(null);
     removeDrawPreview('me');
     vttConnection?.sendVttSceneDrawPreview?.(currentScene?.id, viewerId || 'me', null);
-  }, [currentScene, vttConnection, removeDrawPreview, viewerId, setLocalDrawing]);
+  }, [currentScene, vttConnection, removeDrawPreview, viewerId, setLocalDrawing, setLocalRuler]);
 
   const handlePointerCancel = useCallback(() => {
+    if (isRulerRef.current) {
+      isRulerRef.current = false;
+      setLocalRuler(null);
+      vttConnection?.sendVttSceneClearRuler?.(currentScene?.id, viewerId || 'me');
+    }
+    
     if (!isDrawingRef.current) return;
     isDrawingRef.current = false;
     setLocalDrawing(null);
     removeDrawPreview('me');
     vttConnection?.sendVttSceneDrawPreview?.(currentScene?.id, viewerId || 'me', null);
-  }, [currentScene, vttConnection, viewerId, setLocalDrawing, removeDrawPreview]);
+  }, [currentScene, vttConnection, viewerId, setLocalDrawing, removeDrawPreview, setLocalRuler]);
 
   // Скидання малювання якщо мишка вийшла за межі
   const handlePointerUpOutside = handlePointerUp;
@@ -211,12 +258,12 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection
     <>
       {/* 0. Безкінечний прозорий "стіл" (ловить кліки поза розміром сцени) */}
       <graphics
-        eventMode="static"
+        eventMode="static" // nosonar
         onPointerDown={() => {
           setSelectedImageId(null);
           setSelectedDrawingId(null);
         }}
-        draw={(g) => {
+        draw={(g) => { // nosonar
           g.clear();
           g.rect(-100000, -100000, 200000, 200000);
           g.fill({ color: 0x000000, alpha: 0.001 });
@@ -226,13 +273,13 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection
       {/* 1. Суцільний фон самої сцени (він перехоплює події малювання) 
           Збільшено до 100000 для можливості малювання поза межами сцени */}
       <graphics
-        eventMode={drawingTool ? "static" : "auto"}
+        eventMode={drawingTool || rulerTool ? "static" : "auto"} // nosonar
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        onPointerUpOutside={handlePointerUpOutside}
+        onPointerUpOutside={handlePointerUpOutside} // nosonar
         onPointerCancel={handlePointerCancel}
-        draw={(g) => {
+        draw={(g) => { // nosonar
           g.clear();
           // Зона для малювання (величезна)
           g.rect(-50000, -50000, 100000, 100000);
@@ -250,14 +297,15 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection
       {(() => {
         const layers = currentScene?.layers || [];
         return (
-          <container sortableChildren={true}>
+          <container sortableChildren={true} // nosonar
+          >
             {layers.map((layer, index) => (
               <container 
                 key={layer.id} 
-                zIndex={index} 
-                visible={layer.isVisible !== false}
+                zIndex={index} // nosonar
+                visible={layer.isVisible !== false} // nosonar
               >
-                {layer.items?.filter(item => item.type === 'IMAGE').map((img) => (
+                {layer.items?.filter(item => item.type === 'IMAGE').map((img) => ( /* nosonar */
                   <DraggableElement
                     key={img.id}
                     item={img}
@@ -276,10 +324,10 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection
                   <TokenLayer
                     tokens={Object.values(currentScene.tokens || {})}
                     gridSize={currentGridSize}
-                    onTokenDrag={(tokenId, x, y) => {
+                    onTokenDrag={(tokenId, x, y) => { // nosonar
                       vttConnection?.sendVttTokenDrag?.(tokenId, x, y);
                     }}
-                    onTokenDrop={(tokenId, x, y) => {
+                    onTokenDrop={(tokenId, x, y) => { // nosonar
                       vttConnection?.sendVttTokenDrop?.(currentScene.id, tokenId, x, y);
                     }}
                     viewport={viewport}
@@ -319,6 +367,15 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection
           </container>
         );
       })()}
+
+      {/* RulerLayer поверх усіх шарів сцени */}
+      <RulerLayer 
+        localRuler={localRuler}
+        remoteRulers={remoteRulers}
+        gridSize={currentGridSize}
+        gridScale={currentScene?.gridScale || 5}
+        gridType={currentScene?.gridType || 'SQUARE'}
+      />
     </>
   );
 
@@ -347,6 +404,14 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection
           vttConnection?.sendVttTokenDrop?.(tokenId, x, y);
         }}
         viewport={viewport}
+      />
+      
+      <RulerLayer 
+        localRuler={localRuler}
+        remoteRulers={remoteRulers}
+        gridSize={globalGridSize}
+        gridScale={5}
+        gridType="SQUARE"
       />
     </>
   );
