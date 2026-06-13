@@ -10,20 +10,12 @@ import SessionCard from '../ui/SessionCard';
 import Button from '@/components/ui/Button';
 import { BackButton, EmptyState, formatDate } from '@/components/shared';
 import Dice20 from '@/components/ui/icons/Dice20';
+import {
+  invalidateCalendarQuery,
+  invalidateDailySessionsQuery,
+  invalidateDashboardGamesQuery,
+} from '@/lib/queryInvalidation';
 
-/**
- * HomeRightWidget — Права панель для режиму "Календар"
- * 
- * Стани:
- * - LIST: Список сесій вибраного дня (з акордеоном)
- * - CREATE: Форма створення нової сесії
- * 
- * Features:
- * - Sticky footer з кнопкою "Створити сесію"
- * - Акордеон для розгортання деталей сесії
- * - Кнопка "Деталі" веде до сторінки сесії
- * - Автоматично показує сесії на сьогодні при першому завантаженні
- */
 export default function HomeRightWidget() {
   const {
     selectedDate,
@@ -44,30 +36,26 @@ export default function HomeRightWidget() {
     searchFilters,
   });
 
-  // Форматування дати для відображення
   const getDateTitle = (dateStr) => {
     if (!dateStr) return 'Оберіть день';
     return formatDate(dateStr, 'dayMonth');
   };
 
-  // Перехід до форми створення
   const handleCreateClick = () => {
     setRightPanelMode(PANEL_MODES.CREATE);
   };
 
-  // Повернення до списку
   const handleBackToList = () => {
     setRightPanelMode(PANEL_MODES.LIST);
   };
 
   const handleCreateSuccess = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['calendar'] });
-    await queryClient.invalidateQueries({ queryKey: ['sessions', 'daily'] });
-    await queryClient.invalidateQueries({ queryKey: ['dashboard', 'games'] });
+    await invalidateCalendarQuery(queryClient);
+    await invalidateDailySessionsQuery(queryClient);
+    await invalidateDashboardGamesQuery(queryClient);
     handleBackToList();
   };
 
-  // ===== РЕЖИМ СТВОРЕННЯ СЕСІЇ =====
   if (rightPanelMode === PANEL_MODES.CREATE) {
     return (
       <DashboardCard 
@@ -85,9 +73,7 @@ export default function HomeRightWidget() {
     );
   }
 
-  // ===== РЕЖИМ СПИСКУ СЕСІЙ =====
   
-  // Заголовок залежить від того, чи вибрана дата
   const title = selectedDate 
     ? getDateTitle(selectedDate) 
     : 'Сесії на сьогодні';
@@ -129,7 +115,6 @@ export default function HomeRightWidget() {
     );
   }
 
-  // Якщо дата не вибрана — показуємо підказку
 return (
     <DashboardCard title={title}>
       <div className="flex flex-col h-full">
@@ -137,7 +122,6 @@ return (
           {sessionsContent}
         </div>
         
-        {/* Sticky Footer */}
         <div className="pt-4 border-t border-brand-light/20 mt-auto flex-shrink-0">
           <Button onClick={handleCreateClick} variant="primary" fullWidth={true} className="flex items-center justify-center gap-2">
             Створити сесію

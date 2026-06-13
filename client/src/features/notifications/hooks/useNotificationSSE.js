@@ -4,7 +4,10 @@ import { queryClient } from '@/lib/queryClient';
 import {
   invalidateCampaignCollectionQueries,
   invalidateSessionCollectionQueries,
+  getCachedCampaignIdForSession,
 } from '@/lib/queryInvalidation';
+import { invalidateSessionPage, sessionQueryKeys } from '@/features/sessions/hooks/useSessionQueries';
+import { invalidateCampaignPage } from '@/features/campaigns/hooks/useCampaignQueries';
 
 const MAX_RECONNECT_ATTEMPTS = 10;
 const INITIAL_RECONNECT_DELAY = 1000;
@@ -14,7 +17,7 @@ const CAMPAIGN_MEMBERSHIP_EVENTS = new Set([
   'CAMPAIGN_PARTICIPATION_CONFIRMED',
   'CAMPAIGN_PARTICIPATION_DECLINED',
   'CAMPAIGN_MEMBER_REMOVED',
-  // Legacy aliases kept for backward compatibility with older payloads
+
   'CAMPAIGN_CONFIRMED',
   'CAMPAIGN_DECLINED',
   'CAMPAIGN_REMOVED',
@@ -34,7 +37,7 @@ const SESSION_PARTICIPATION_EVENTS = new Set([
   'SESSION_TIME_CONFLICT',
   'SESSION_CANCELLED',
   'SESSION_RESCHEDULED',
-  // Legacy alias kept for backward compatibility with older payloads
+
   'SESSION_CONFIRMED',
   'SESSION_CONFLICT_REVIEW',
   'SESSION_PARTICIPANT_ADDED',
@@ -83,12 +86,12 @@ const invalidateQueriesByNotification = (notification) => {
       includeHome: true,
       includeSearchSessions: true,
     });
-    queryClient.invalidateQueries({ queryKey: ['session-page'] });
+    invalidateSessionPage(queryClient);
 
     if (campaignId) {
-      queryClient.invalidateQueries({ queryKey: ['campaign-page', campaignId] });
+      invalidateCampaignPage(queryClient, { campaignId });
     } else {
-      queryClient.invalidateQueries({ queryKey: ['campaign-page'] });
+      invalidateCampaignPage(queryClient);
     }
 
     
@@ -98,9 +101,9 @@ const invalidateQueriesByNotification = (notification) => {
     const campaignId = getNotificationCampaignId(notification);
 
     if (campaignId) {
-      queryClient.invalidateQueries({ queryKey: ['campaign-page', campaignId] });
+      invalidateCampaignPage(queryClient, { campaignId });
     } else {
-      queryClient.invalidateQueries({ queryKey: ['campaign-page'] });
+      invalidateCampaignPage(queryClient);
     }
   }
 
@@ -108,29 +111,39 @@ const invalidateQueriesByNotification = (notification) => {
     const sessionId = getNotificationSessionId(notification);
 
     if (sessionId) {
-      queryClient.invalidateQueries({ queryKey: ['session-page', sessionId] });
-      queryClient.invalidateQueries({ queryKey: ['session', sessionId] });
+      invalidateSessionPage(queryClient, { sessionId });
+      queryClient.invalidateQueries({ queryKey: sessionQueryKeys.detail(sessionId) });
     } else {
-      queryClient.invalidateQueries({ queryKey: ['session-page'] });
+      invalidateSessionPage(queryClient);
     }
   }
 
   if (SESSION_PARTICIPATION_EVENTS.has(eventCode)) {
     const sessionId = getNotificationSessionId(notification);
+    const campaignId = getNotificationCampaignId(notification);
 
     invalidateSessionCollectionQueries(queryClient);
-    queryClient.invalidateQueries({ queryKey: ['campaign-page'] });
+
+    if (campaignId) {
+      invalidateCampaignPage(queryClient, { campaignId });
+    } else {
+      const cachedCampaignId = getCachedCampaignIdForSession(queryClient, sessionId);
+      if (cachedCampaignId) {
+        invalidateCampaignPage(queryClient, { campaignId: cachedCampaignId });
+      } else {
+        invalidateCampaignPage(queryClient);
+      }
+    }
 
     if (sessionId) {
-      queryClient.invalidateQueries({ queryKey: ['session-page', sessionId] });
-      queryClient.invalidateQueries({ queryKey: ['session', sessionId] });
+      invalidateSessionPage(queryClient, { sessionId });
+      queryClient.invalidateQueries({ queryKey: sessionQueryKeys.detail(sessionId) });
     }
   }
 };
 
 /**
  * Hook для підключення до SSE stream сповіщень
- * MVP-16: Client SSE with reconnect and backoff
  *
  * @param {boolean} enabled - чи активувати SSE
  */
@@ -173,14 +186,12 @@ export default function useNotificationSSE(enabled = true) {
         }
 
         if (data.type === 'heartbeat') {
-          // Keep connection alive, no action needed
           return;
         }
 
         if (data.type === 'notification' && data.data) {
           const notification = data.data;
 
-          // Add to live notifications
           addLiveNotification(notification);
           invalidateQueriesByNotification(notification);
 
@@ -191,35 +202,36 @@ export default function useNotificationSSE(enabled = true) {
       }
     };
 
-    es.onerror = (error) => {
+    const scheduleReconnect = (attempts) => {
+      const newAttempts = attempts + 1;
+      if (newAttempts < MAX_RECONNECT_ATTEMPTS) {
+        const delay = Math.min(
+          INITIAL_RECONNECT_DELAY * Math.pow(2, newAttempts - 1),
+          MAX_RECONNECT_DELAY
+        );
+
+        console.log(`[SSE] Reconnecting in ${delay}ms (attempt ${newAttempts})`);
+
+        reconnectTimeoutRef.current = setTimeout(connectRef.current, delay);
+      } else {
+        console.error('[SSE] Max reconnect attempts reached');
+        setConnectionState('error', 'Max reconnect attempts reached');
+      }
+
+      return newAttempts;
+    };
+
+    const handleError = (error) => {
       console.error('[SSE] Error:', error);
       setConnectionState('error', 'Connection error');
 
-      // Close current connection
       es.close();
       eventSourceRef.current = null;
 
-      // Attempt reconnect with backoff
-      setReconnectAttempts((prevAttempts) => {
-        const newAttempts = prevAttempts + 1;
-        if (newAttempts < MAX_RECONNECT_ATTEMPTS) {
-          const delay = Math.min(
-            INITIAL_RECONNECT_DELAY * Math.pow(2, newAttempts - 1),
-            MAX_RECONNECT_DELAY
-          );
-
-          console.log(`[SSE] Reconnecting in ${delay}ms (attempt ${newAttempts})`);
-
-          reconnectTimeoutRef.current = setTimeout(() => {
-            connectRef.current?.();
-          }, delay);
-        } else {
-          console.error('[SSE] Max reconnect attempts reached');
-          setConnectionState('error', 'Max reconnect attempts reached');
-        }
-        return newAttempts;
-      });
+      setReconnectAttempts((prev) => scheduleReconnect(prev));
     };
+
+    es.onerror = handleError;
   }, [enabled, setConnectionState, addLiveNotification]);
 
   const disconnect = useCallback(() => {
@@ -262,7 +274,6 @@ export default function useNotificationSSE(enabled = true) {
     };
   }, [enabled, connect, setConnectionState]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (reconnectTimeoutRef.current) {

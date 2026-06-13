@@ -93,7 +93,7 @@ describe('notification mutations with MSW', () => {
 
     await waitFor(() => {
       expect(notificationsCalls).toBe(2);
-      expect(unreadCountCalls).toBe(3);
+      expect(unreadCountCalls).toBe(2);
     });
   });
 });

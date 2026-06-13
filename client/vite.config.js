@@ -36,15 +36,18 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  esbuild: {
-    drop: ['debugger'],
-    pure: ['console.log'], 
-  },
   build: {
     rollupOptions: {
+      treeshake: {
+        annotations: true,
+        moduleSideEffects: false,
+      },
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom', 'zustand', 'axios'],
+        manualChunks(id) {
+          const vendorPackages = ['react', 'react-dom', 'react-router-dom', 'zustand', 'axios'];
+          if (vendorPackages.some(pkg => id.includes(`/node_modules/${pkg}/`))) {
+            return 'vendor';
+          }
         },
       },
     },

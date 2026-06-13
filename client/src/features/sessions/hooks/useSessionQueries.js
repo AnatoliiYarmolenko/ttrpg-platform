@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/stores/useToastStore';
-import { invalidateSessionCollectionQueries } from '@/lib/queryInvalidation';
+import { invalidateSessionCollectionQueries, getCachedCampaignIdForSession } from '@/lib/queryInvalidation';
 import {
   getSessionPageById,
   getSessionPageByShareToken,
@@ -20,11 +20,18 @@ import {
 
 export const sessionPageQueryKeys = {
   all: ['session-page'],
-  byId: (sessionId, campaignShareToken = null) => ['session-page', sessionId || null, null, campaignShareToken || null],
   byShare: (shareToken) => ['session-page', null, shareToken || null],
   detail: ({ sessionId = null, shareToken = null, campaignShareToken = null } = {}) => (
     ['session-page', sessionId || null, shareToken || null, campaignShareToken || null]
   ),
+};
+
+export const sessionQueryKeys = {
+  all: ['session'],
+  detail: (sessionId) => ['session', sessionId || null],
+  participants: (sessionId) => ['session', sessionId || null, 'participants'],
+  shareLink: (sessionId) => ['session', sessionId || null, 'share-link'],
+  callConfig: (sessionId) => ['session', sessionId || null, 'call-config'],
 };
 
 export const invalidateSessionPage = async (
@@ -47,7 +54,7 @@ export const invalidateSessionPage = async (
     tasks.push(queryClient.invalidateQueries({ queryKey: sessionPageQueryKeys.all }));
   }
 
-  await Promise.all(tasks);
+  await Promise.allSettled(tasks);
 };
 
 export const useSessionPageQuery = ({
@@ -79,7 +86,7 @@ export const useSessionParticipantsQuery = (sessionId, enabled = true) => {
   const isValidId = Number.isInteger(sessionId) && sessionId > 0;
 
   return useQuery({
-    queryKey: ['session', sessionId, 'participants'],
+    queryKey: sessionQueryKeys.participants(sessionId),
     queryFn: async () => {
       const res = await getSessionParticipants(sessionId);
       if (!res.success) {
@@ -96,7 +103,7 @@ export const useSessionShareLinkQuery = (sessionId, enabled = true) => {
   const isValidId = Number.isInteger(sessionId) && sessionId > 0;
 
   return useQuery({
-    queryKey: ['session', sessionId, 'share-link'],
+    queryKey: sessionQueryKeys.shareLink(sessionId),
     queryFn: async () => {
       const res = await getSessionShareLink(sessionId);
       if (!res.success) {
@@ -113,7 +120,7 @@ export const useSessionCallConfigQuery = (sessionId, enabled = true) => {
   const isValidId = Number.isInteger(sessionId) && sessionId > 0;
 
   return useQuery({
-    queryKey: ['session', sessionId, 'call-config'],
+    queryKey: sessionQueryKeys.callConfig(sessionId),
     queryFn: async () => {
       const res = await getSessionCallConfig(sessionId);
       if (!res.success) {
@@ -122,7 +129,7 @@ export const useSessionCallConfigQuery = (sessionId, enabled = true) => {
       return res.data || null;
     },
     enabled: isValidId && enabled,
-    staleTime: 5 * 60 * 1000, // Config won't change often, keep it cached for 5 mins
+    staleTime: 5 * 60 * 1000,
   });
 };
 
@@ -130,10 +137,22 @@ export const useSessionMutations = (sessionId, options = {}) => {
   const { shareToken = null } = options;
   const queryClient = useQueryClient();
 
-  const invalidateSession = () => queryClient.invalidateQueries({ queryKey: ['session', sessionId] });
+  const invalidateSession = () => queryClient.invalidateQueries({ queryKey: sessionQueryKeys.detail(sessionId) });
   const invalidateSessionPageQuery = () => invalidateSessionPage(queryClient, { sessionId, shareToken });
-  const invalidateParticipants = () => queryClient.invalidateQueries({ queryKey: ['session', sessionId, 'participants'] });
-  const invalidateShareLink = () => queryClient.invalidateQueries({ queryKey: ['session', sessionId, 'share-link'] });
+  const invalidateParticipants = () => queryClient.invalidateQueries({ queryKey: sessionQueryKeys.participants(sessionId) });
+  const invalidateShareLink = () => queryClient.invalidateQueries({ queryKey: sessionQueryKeys.shareLink(sessionId) });
+
+  const getCachedCampaignId = () => {
+    return options.campaignId || getCachedCampaignIdForSession(queryClient, sessionId);
+  };
+
+  const invalidateCampaignPageForSession = (res) => {
+    const campaignId = res?.data?.campaignId || res?.data?.campaign?.id || getCachedCampaignId();
+    if (campaignId) {
+      return queryClient.invalidateQueries({ queryKey: ['campaign-page', campaignId] });
+    }
+    return queryClient.invalidateQueries({ queryKey: ['campaign-page'] });
+  };
 
   const handleMutation = (successMessage, invalidateFns = []) => ({
     onSuccess: async (res) => {
@@ -143,7 +162,7 @@ export const useSessionMutations = (sessionId, options = {}) => {
         if (successMessage) {
           toast.success(successMessage);
         }
-        await Promise.allSettled(invalidateFns.map((fn) => fn()));
+        await Promise.allSettled(invalidateFns.map((fn) => fn(res)));
       }
     },
     onError: (err) => {
@@ -156,25 +175,16 @@ export const useSessionMutations = (sessionId, options = {}) => {
     },
   });
 
-  const updateSessionHandlers = handleMutation('Сесію успішно оновлено', [
-    invalidateSessionPageQuery,
-    invalidateSession,
-    invalidateParticipants,
-    invalidateShareLink,
-    () => invalidateSessionCollectionQueries(queryClient),
-  ]);
-
   const updateSessionMutation = useMutation({
     mutationFn: (data) => updateSession(sessionId, data),
-    onSuccess: async (res) => {
-      await updateSessionHandlers.onSuccess(res);
-      if (res?.success !== false && res?.data?.campaignId) {
-        await queryClient.invalidateQueries({ 
-          queryKey: ['campaign-page', res.data.campaignId] 
-        });
-      }
-    },
-    onError: updateSessionHandlers.onError, // якщо є
+    ...handleMutation('Сесію успішно оновлено', [
+      invalidateSessionPageQuery,
+      invalidateSession,
+      invalidateParticipants,
+      invalidateShareLink,
+      () => invalidateSessionCollectionQueries(queryClient),
+      invalidateCampaignPageForSession,
+    ]),
   });
 
   const deleteSessionMutation = useMutation({
@@ -184,7 +194,7 @@ export const useSessionMutations = (sessionId, options = {}) => {
       invalidateSession,
       invalidateParticipants,
       () => invalidateSessionCollectionQueries(queryClient),
-      () => queryClient.invalidateQueries({ queryKey: ['campaign-page'] }),
+      invalidateCampaignPageForSession,
     ]),
   });
 
@@ -195,7 +205,7 @@ export const useSessionMutations = (sessionId, options = {}) => {
       invalidateSession,
       invalidateParticipants,
       () => invalidateSessionCollectionQueries(queryClient),
-      () => queryClient.invalidateQueries({ queryKey: ['campaign-page'] }),
+      invalidateCampaignPageForSession,
     ]),
   });
 
@@ -206,7 +216,8 @@ export const useSessionMutations = (sessionId, options = {}) => {
       invalidateSession,
       invalidateParticipants,
       () => invalidateSessionCollectionQueries(queryClient),
-      () => queryClient.invalidateQueries({ queryKey: ['campaign-page'] }),
+      invalidateCampaignPageForSession,
+      () => queryClient.invalidateQueries({ queryKey: ['profile'] }),
     ]),
   });
 
@@ -222,7 +233,7 @@ export const useSessionMutations = (sessionId, options = {}) => {
       invalidateSession,
       invalidateParticipants,
       () => invalidateSessionCollectionQueries(queryClient),
-      () => queryClient.invalidateQueries({ queryKey: ['campaign-page'] }),
+      invalidateCampaignPageForSession,
     ]),
   });
   
@@ -236,35 +247,19 @@ export const useSessionMutations = (sessionId, options = {}) => {
       invalidateSession,
       invalidateParticipants,
       () => invalidateSessionCollectionQueries(queryClient),
-      () => queryClient.invalidateQueries({ queryKey: ['campaign-page'] }),
+      invalidateCampaignPageForSession,
     ]),
   });
 
   const leaveSessionMutation = useMutation({
     mutationFn: () => leaveSession(sessionId),
-    onSuccess: async (res) => {
-      if (res?.success === false) {
-        toast.error(res.error || res.message || 'Сталася помилка');
-        return;
-      }
-
-      toast.success(res?.message || 'Ви покинули сесію');
-      await Promise.allSettled([
-        invalidateSessionPageQuery(),
-        invalidateSession(),
-        invalidateParticipants(),
-        invalidateSessionCollectionQueries(queryClient),
-        queryClient.invalidateQueries({ queryKey: ['campaign-page'] }),
-      ]);
-    },
-    onError: (err) => {
-      const apiError = err?.response?.data;
-      const validationMessage = Array.isArray(apiError?.details) && apiError.details.length > 0
-        ? apiError.details[0]?.message
-        : null;
-
-      toast.error(validationMessage || apiError?.error || err?.message || 'Сталася помилка');
-    },
+    ...handleMutation('Ви покинули сесію', [
+      invalidateSessionPageQuery,
+      invalidateSession,
+      invalidateParticipants,
+      () => invalidateSessionCollectionQueries(queryClient),
+      invalidateCampaignPageForSession,
+    ]),
   });
 
   const updateParticipantStatusMutation = useMutation({
@@ -274,7 +269,7 @@ export const useSessionMutations = (sessionId, options = {}) => {
       invalidateSessionPageQuery,
       invalidateSession,
       () => invalidateSessionCollectionQueries(queryClient),
-      () => queryClient.invalidateQueries({ queryKey: ['campaign-page'] }),
+      invalidateCampaignPageForSession,
     ]),
   });
 
@@ -285,7 +280,7 @@ export const useSessionMutations = (sessionId, options = {}) => {
       invalidateSessionPageQuery,
       invalidateSession,
       () => invalidateSessionCollectionQueries(queryClient),
-      () => queryClient.invalidateQueries({ queryKey: ['campaign-page'] }),
+      invalidateCampaignPageForSession,
     ]),
   });
 

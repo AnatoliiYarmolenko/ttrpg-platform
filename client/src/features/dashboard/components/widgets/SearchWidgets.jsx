@@ -19,6 +19,8 @@ import Dice20 from "@/components/ui/icons/Dice20";
 import GroupPeople from "@/components/ui/icons/GroupPeople";
 import Data from "@/components/ui/icons/Data";
 import { toast } from "@/stores/useToastStore";
+import { invalidateSessionPage, sessionQueryKeys } from "@/features/sessions/hooks/useSessionQueries";
+import { campaignPageQueryKeys } from "@/features/campaigns/hooks/useCampaignQueries";
 
 const TAB_LABELS = {
   [SEARCH_TABS.SESSIONS]: "Сесії",
@@ -259,9 +261,9 @@ export function SearchResultsWidget() {
     onSuccess: async (_result, sessionId) => {
       await Promise.allSettled([
         invalidateSessionCollectionQueries(queryClient),
-        queryClient.invalidateQueries({ queryKey: ["session-page", sessionId] }),
-        queryClient.invalidateQueries({ queryKey: ["session", sessionId] }),
-        queryClient.invalidateQueries({ queryKey: ["campaign-page"] }),
+        invalidateSessionPage(queryClient, { sessionId }),
+        queryClient.invalidateQueries({ queryKey: sessionQueryKeys.detail(sessionId) }),
+        queryClient.invalidateQueries({ queryKey: campaignPageQueryKeys.all }),
       ]);
     },
   });

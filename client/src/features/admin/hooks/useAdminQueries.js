@@ -70,7 +70,7 @@ export const useAdminMutations = () => {
 
   const deleteCampaignMutation = useMutation({
     mutationFn: (id) => deleteAdminCampaign(id),
-    ...handleMutation('Кампанію видалено', [['admin', 'campaigns'], ['admin', 'stats']]),
+    ...handleMutation('Кампанію видалено', [['admin', 'campaigns'], ['admin', 'sessions'], ['admin', 'stats']]),
   });
 
   const deleteSessionMutation = useMutation({
@@ -80,12 +80,12 @@ export const useAdminMutations = () => {
 
   const banUserMutation = useMutation({
     mutationFn: (id) => banAdminUser(id),
-    ...handleMutation('Користувача забанено', [['admin', 'users']]),
+    ...handleMutation('Користувача забанено', [['admin', 'users'], ['admin', 'stats'], ['admin', 'campaigns'], ['admin', 'sessions']]),
   });
 
   const unbanUserMutation = useMutation({
     mutationFn: (id) => unbanAdminUser(id),
-    ...handleMutation('Користувача розбанено', [['admin', 'users']]),
+    ...handleMutation('Користувача розбанено', [['admin', 'users'], ['admin', 'stats'], ['admin', 'campaigns'], ['admin', 'sessions']]),
   });
 
   return {
