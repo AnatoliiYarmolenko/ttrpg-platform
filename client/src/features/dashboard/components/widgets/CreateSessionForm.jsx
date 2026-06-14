@@ -13,6 +13,7 @@ import {
 } from '@/lib/queryInvalidation';
 import useConfirmDialog from '@/hooks/useConfirmDialog';
 import ConfirmModal from '@/components/shared/ConfirmModal';
+import { campaignQueryKeys, campaignPageQueryKeys } from '@/features/campaigns/hooks/useCampaignQueries';
 
 const DATE_ERROR_MESSAGES = {
   empty: 'Дата сесії обовʼязкова',
@@ -49,8 +50,8 @@ export default function CreateSessionForm({
             includeHome: true,
             includeSearchSessions: true,
           }),
-          queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] }),
-          queryClient.invalidateQueries({ queryKey: ['campaign-page', campaignId] })
+          queryClient.invalidateQueries({ queryKey: campaignQueryKeys.detail(campaignId) }),
+          queryClient.invalidateQueries({ queryKey: campaignPageQueryKeys.byId(campaignId) })
         );
       }
 

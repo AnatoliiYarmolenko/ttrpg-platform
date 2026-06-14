@@ -4,6 +4,7 @@ import {
   invalidateCampaignCollectionQueries,
   invalidateSessionCollectionQueries,
 } from '@/lib/queryInvalidation';
+import { invalidateSessionPage } from '@/features/sessions/hooks/useSessionQueries';
 import {
   getCampaignPageById,
   getCampaignPageByShareToken,
@@ -30,6 +31,12 @@ export const campaignPageQueryKeys = {
   ),
 };
 
+export const campaignQueryKeys = {
+  all: ['campaign'],
+  detail: (campaignId) => ['campaign', campaignId || null],
+  shareLink: (campaignId) => ['campaign', campaignId || null, 'share-link'],
+};
+
 export const invalidateCampaignPage = async (
   queryClient,
   { campaignId = null, shareToken = null } = {}
@@ -50,7 +57,7 @@ export const invalidateCampaignPage = async (
     tasks.push(queryClient.invalidateQueries({ queryKey: campaignPageQueryKeys.all }));
   }
 
-  await Promise.all(tasks);
+  await Promise.allSettled(tasks);
 };
 
 export const useCampaignPageQuery = ({
@@ -81,7 +88,7 @@ export const useCampaignShareLinkQuery = (campaignId, enabled = true) => {
   const isValidId = Number.isInteger(campaignId) && campaignId > 0;
 
   return useQuery({
-    queryKey: ['campaign', campaignId, 'share-link'],
+    queryKey: campaignQueryKeys.shareLink(campaignId),
     queryFn: async () => {
       const res = await getCampaignShareLink(campaignId);
       if (!res.success) {
@@ -99,11 +106,11 @@ export const useCampaignMutations = (campaignId, options = {}) => {
   const queryClient = useQueryClient();
 
   const invalidateCampaignPageQuery = () => invalidateCampaignPage(queryClient, { campaignId, shareToken });
-  const invalidateCampaignDetail = () => queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] });
+  const invalidateCampaignDetail = () => queryClient.invalidateQueries({ queryKey: campaignQueryKeys.detail(campaignId) });
   const invalidateCampaignCollections = (options = {}) =>
     invalidateCampaignCollectionQueries(queryClient, options);
-  const invalidateSessionPages = () => queryClient.invalidateQueries({ queryKey: ['session-page'] });
-  const invalidateCampaignShareLink = () => queryClient.invalidateQueries({ queryKey: ['campaign', campaignId, 'share-link'] });
+  const invalidateSessionPages = () => invalidateSessionPage(queryClient);
+  const invalidateCampaignShareLink = () => queryClient.invalidateQueries({ queryKey: campaignQueryKeys.shareLink(campaignId) });
 
   const handleMutation = (successMessage, invalidateFns = []) => ({
     onSuccess: async (res) => {
