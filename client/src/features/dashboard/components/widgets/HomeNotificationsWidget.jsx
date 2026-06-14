@@ -12,6 +12,7 @@ import {
   useUnreadCountQuery,
   useNotificationMutations,
 } from '@/features/notifications/hooks/useNotificationQueries';
+import NotificationEmptyState from '@/features/notifications/components/NotificationEmptyState';
 import {
   invalidateNextRelevantSessionQuery,
   invalidateDashboardGamesQuery,
@@ -82,6 +83,8 @@ export default function HomeNotificationsWidget() {
     );
   }
 
+  const isEmpty = !isLoading && notifications.length === 0;
+
   return (
     <DashboardCard
       title={
@@ -91,8 +94,8 @@ export default function HomeNotificationsWidget() {
         </div>
       }
     >
-      <div className="flex flex-col h-full">
-        <div className="flex gap-1 mb-4 p-1 bg-brand-light/10 rounded-xl">
+      <div className="flex flex-col h-full relative">
+        <div className="relative z-10 flex gap-1 mb-4 p-1 bg-brand-light/10 rounded-xl">
           {FILTER_OPTIONS.map((option) => (
             <button
               key={option.key}
@@ -110,17 +113,23 @@ export default function HomeNotificationsWidget() {
           ))}
         </div>
 
-        <div className="flex-1 overflow-y-auto -mx-2 px-2">
-          <NotificationList
-            notifications={notifications}
-            isLoading={isLoading}
-            hasMore={pagination?.hasMore}
-            onLoadMore={handleLoadMore}
-            onMarkAsRead={handleMarkAsRead}
-            onArchive={handleArchive}
-            filter={filter}
-          />
-        </div>
+        {isEmpty ? (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <NotificationEmptyState filter={filter} />
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto -mx-2 px-2">
+            <NotificationList
+              notifications={notifications}
+              isLoading={isLoading}
+              hasMore={pagination?.hasMore}
+              onLoadMore={handleLoadMore}
+              onMarkAsRead={handleMarkAsRead}
+              onArchive={handleArchive}
+              filter={filter}
+            />
+          </div>
+        )}
       </div>
     </DashboardCard>
   );

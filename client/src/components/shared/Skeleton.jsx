@@ -83,6 +83,24 @@ export function SkeletonProfile() {
   );
 }
 
+export function SkeletonNotification() {
+  return (
+    <div className="rounded-xl border border-brand-light/10 p-4 space-y-2">
+      <div className="flex items-center gap-3">
+        <Skeleton className="w-10 h-10 rounded-full shrink-0" />
+        <div className="flex-1 space-y-2">
+          <div className="flex justify-between gap-4">
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-3 w-12 shrink-0" />
+          </div>
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-3 w-4/5" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function SkeletonForm({ rows = 3 }) {
   const rowKeys = Array.from({ length: rows }, (_, index) => `row-${index + 1}`);
 

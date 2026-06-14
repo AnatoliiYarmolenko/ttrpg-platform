@@ -26,4 +26,5 @@ export {
   SkeletonSessionDetail,
   SkeletonProfile,
   SkeletonForm,
+  SkeletonNotification,
 } from './Skeleton';

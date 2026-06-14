@@ -120,13 +120,12 @@ export default function CampaignPage() {
         ),
         rightPanel: (
           <DashboardCard title="Учасники">
-            <div className="flex flex-col items-center justify-center h-full min-h-[300px]">
-              <EmptyState
-                icon={<GroupPeople className="w-12 h-12" />}
-                title="Список учасників прихований"
-                description="Для цього режиму перегляду список учасників недоступний."
-              />
-            </div>
+            <EmptyState
+              icon={<GroupPeople className="w-12 h-12" />}
+              title="Список учасників прихований"
+              description="Для цього режиму перегляду список учасників недоступний."
+              fullHeight
+            />
           </DashboardCard>
         ),
         leftLabel: 'Деталі кампанії',

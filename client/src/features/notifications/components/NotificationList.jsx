@@ -2,6 +2,8 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import NotificationListItem from './NotificationListItem';
 import NotificationEmptyState from './NotificationEmptyState';
+import { SkeletonNotification } from '@/components/shared';
+import Button from '@/components/ui/Button';
 
 /**
  * Список сповіщень з підтримкою скролу та пагінації
@@ -25,8 +27,8 @@ export default function NotificationList({
 }) {
   if (isLoading && notifications.length === 0) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <span className="text-brand-medium font-medium">Завантаження...</span>
+      <div className="flex flex-col gap-3">
+        {[1, 2, 3].map((i) => <SkeletonNotification key={i} />)}
       </div>
     );
   }
@@ -47,24 +49,16 @@ export default function NotificationList({
       ))}
 
       {hasMore && (
-        <button
+        <Button
           onClick={onLoadMore}
-          disabled={isLoading}
-          className="
-            mt-2 py-3 px-4 rounded-xl
-            bg-brand-light/10 text-brand-dark font-medium
-            hover:bg-brand-light/20
-            disabled:opacity-50 disabled:cursor-not-allowed
-            transition-colors
-            flex items-center justify-center gap-2
-          "
+          isLoading={isLoading}
+          loadingText="Завантаження..."
+          variant="outline"
+          fullWidth
+          className="mt-2 shadow-none hover:shadow-none"
         >
-          {isLoading ? (
-            <span>Завантаження...</span>
-          ) : (
-            'Завантажити ще'
-          )}
-        </button>
+          Завантажити ще
+        </Button>
       )}
     </div>
   );

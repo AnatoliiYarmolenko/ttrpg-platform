@@ -160,6 +160,7 @@ function SearchResultsBody({
       <EmptyState
         title="Не вдалося завантажити результати"
         description="Спробуйте змінити фільтри або оновити сторінку"
+        fullHeight
       />
     );
   }
@@ -176,6 +177,7 @@ function SearchResultsBody({
       <EmptyState
         title={emptyTitle}
         description={emptyDescription}
+        fullHeight
       />
     );
   }

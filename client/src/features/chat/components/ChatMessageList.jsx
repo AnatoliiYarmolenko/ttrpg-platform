@@ -2,14 +2,11 @@ import React, { useMemo, useRef } from 'react';
 import PropTypes from 'prop-types';
 import ChatMessage from './ChatMessage';
 import ChatSystemMessage from './ChatSystemMessage';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, MessageSquare } from 'lucide-react';
 import useAuthStore, { selectUser } from '@/stores/useAuthStore';
+import EmptyState from '@/components/shared/EmptyState';
 
-/**
- * ChatMessageList — список повідомлень з прокруткою.
- * Автоматично скролиться вниз при приходженні нових повідомлень.
- * Підтримує фільтрацію по типу (USER, SYSTEM).
- */
+
 export default function ChatMessageList({
   messages = [],
   isLoading = false,
@@ -103,11 +100,13 @@ export default function ChatMessageList({
 
   if (messages.length === 0) {
     return (
-      <div className={`flex items-center justify-center h-full ${className}`}>
-        <p className="text-brand-light text-sm">
-          Поки що немає повідомлень. Починайте розмову!
-        </p>
-      </div>
+      <EmptyState
+        icon={<MessageSquare className="w-8 h-8" />}
+        title="Поки що немає повідомлень"
+        description="Починайте розмову!"
+        fullHeight
+        className={className}
+      />
     );
   }
 
