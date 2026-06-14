@@ -11,6 +11,7 @@ export default function DraggablePanel({
   icon,
   children,
   headerContent,
+  headerExtra,
   initialState,
   onSaveState,
   storageKey,
@@ -25,6 +26,8 @@ export default function DraggablePanel({
   headerClassName = '',
   contentClassName = 'flex flex-col flex-1 overflow-y-auto min-h-0 bg-transparent',
   zIndex = 200,
+  resetHeightTrigger,
+  openTrigger,
 }) {
   const {
     isLocked,
@@ -44,7 +47,9 @@ export default function DraggablePanel({
     defaultY: defaultY ?? (globalThis.window ? globalThis.window.innerHeight / 2 - defaultHeight / 2 : 0),
     minWidth,
     minHeight,
-    isOpen
+    isOpen,
+    resetHeightTrigger,
+    openTrigger
   });
 
   if (!isOpen) return null;
@@ -94,6 +99,7 @@ export default function DraggablePanel({
           {typeof title === 'string' ? <span className="truncate">{title}</span> : title}
         </div>
         <div className="flex items-center gap-1">
+          {headerExtra}
           {headerContent}
           <button
             type="button"
@@ -144,6 +150,7 @@ DraggablePanel.propTypes = {
   icon: PropTypes.node,
   children: PropTypes.node,
   headerContent: PropTypes.node,
+  headerExtra: PropTypes.node,
   initialState: PropTypes.object,
   onSaveState: PropTypes.func,
   storageKey: PropTypes.string,
@@ -158,4 +165,6 @@ DraggablePanel.propTypes = {
   headerClassName: PropTypes.string,
   contentClassName: PropTypes.string,
   zIndex: PropTypes.number,
+  resetHeightTrigger: PropTypes.any,
+  openTrigger: PropTypes.any,
 };

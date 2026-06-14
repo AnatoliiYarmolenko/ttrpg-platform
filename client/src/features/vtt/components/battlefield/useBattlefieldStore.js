@@ -69,7 +69,7 @@ const useBattlefieldStore = create((set) => ({
     const activeSceneId = state.activeSceneId ?? null;
 
     // Якщо поточна перегляд-сцена GM більше не існує — перемикаємося
-    if (gmViewSceneId && state.scenes && !state.scenes[gmViewSceneId]) {
+    if (gmViewSceneId && !state.scenes?.[gmViewSceneId]) {
       gmViewSceneId = activeSceneId;
     }
 
@@ -99,12 +99,13 @@ const useBattlefieldStore = create((set) => ({
   }),
 
   /**
-   * Тимчасово оновити параметри зображення для плавного drag/resize (без збереження в БД)
+   * Оновлює локальний стан об'єкта (малюнка або зображення) для плавного перетягування (preview).
+   * Не замінює vttState.
    * @param {string} sceneId
-   * @param {string} imageId
+   * @param {string} itemId
    * @param {Object} updates
    */
-  previewSceneImage: (sceneId, imageId, updates) => set((state) => {
+  previewSceneItem: (sceneId, itemId, updates) => set((state) => {
     if (!state.scenes?.[sceneId]) return state;
     const scene = state.scenes[sceneId];
     if (!scene.layers) return state;
@@ -115,7 +116,7 @@ const useBattlefieldStore = create((set) => ({
     for (let i = 0; i < scene.layers.length; i++) {
       const items = scene.layers[i].items;
       if (items) {
-        itemIndex = items.findIndex(item => item.id === imageId);
+        itemIndex = items.findIndex(item => item.id === itemId);
         if (itemIndex !== -1) {
           layerIndex = i;
           break;
@@ -170,12 +171,31 @@ const useBattlefieldStore = create((set) => ({
    * @param {number} x
    * @param {number} y
    */
-  moveToken: (tokenId, x, y) =>
-    set((state) => ({
-      tokens: state.tokens.map((t) =>
+  moveToken: (sceneId, tokenId, x, y) =>
+    set((state) => {
+      const newTokens = state.tokens.map((t) =>
         t.id === tokenId ? { ...t, x, y } : t
-      ),
-    })),
+      );
+      
+      const newScenes = { ...state.scenes };
+      const sId = sceneId || state.activeSceneId || state.gmViewSceneId;
+      
+      if (sId && newScenes[sId]?.tokens?.[tokenId]) {
+        newScenes[sId] = {
+          ...newScenes[sId],
+          tokens: {
+            ...newScenes[sId].tokens,
+            [tokenId]: {
+              ...newScenes[sId].tokens[tokenId],
+              x,
+              y
+            }
+          }
+        };
+      }
+      
+      return { tokens: newTokens, scenes: newScenes };
+    }),
 
   /**
    * Додати новий legacy-токен.
@@ -198,12 +218,75 @@ const useBattlefieldStore = create((set) => ({
   /** Виділене зображення-оверлей (тільки для локального UI, не синхронізується з сервером) */
   selectedImageId: null,
   setSelectedImageId: (id) => set({ selectedImageId: id }),
+  selectedDrawingId: null,
+  setSelectedDrawingId: (id) => set({ selectedDrawingId: id }),
+  selectedTokenId: null,
+  setSelectedTokenId: (id) => set({ selectedTokenId: id }),
 
   /**
    * Змінити розмір клітинки сітки.
    * @param {number} size
    */
   setGridSize: (size) => set({ gridSize: size }),
+
+  // ─── Drawing State ────────────────────────────────────────────────────────
+
+  /** 
+   * Поточний інструмент малювання. 
+   * null = вимкнено (режим виділення/переміщення)
+   * 'pencil' | 'line' | 'rect' | 'circle' | 'polygon' | 'arrow' | 'text' | 'eraser'
+   */
+  drawingTool: null,
+  setDrawingTool: (tool) => set({ drawingTool: tool }),
+
+  drawingColor: '#ffffff',
+  setDrawingColor: (color) => set({ drawingColor: color }),
+
+  drawingThickness: 4,
+  setDrawingThickness: (thickness) => set({ drawingThickness: thickness }),
+
+  /**
+   * Словник поточних малюнків, що зараз малюються іншими гравцями (live preview).
+   * Key: userId, Value: { type, points, color, thickness }
+   */
+  drawPreviews: {},
+  setDrawPreview: (userId, previewData) => set((state) => ({
+    drawPreviews: {
+      ...state.drawPreviews,
+      [userId]: previewData
+    }
+  })),
+  removeDrawPreview: (userId) => set((state) => {
+    const newPreviews = { ...state.drawPreviews };
+    delete newPreviews[userId];
+    return { drawPreviews: newPreviews };
+  }),
+  clearAllPreviews: () => set({ drawPreviews: {} }),
+
+  textPrompt: null,
+  setTextPrompt: (data) => set({ textPrompt: data }),
+
+  clearPromptVisible: false,
+  setClearPromptVisible: (visible) => set({ clearPromptVisible: visible }),
+
+  // ─── Ruler State ────────────────────────────────────────────────────────
+  rulerTool: null, // 'line' | 'cone' | 'circle' | 'rectangle' | null
+  rulerConfig: { coneAngle: 60, distance: 15, radius: 20, width: 20, height: 20 },
+  localRuler: null, // ruler shape object with coordinates
+  remoteRulers: {}, // map of user IDs to ruler shape objects
+
+  setRulerTool: (tool) => set({ rulerTool: tool }),
+  setRulerConfig: (config) => set((state) => ({ rulerConfig: { ...state.rulerConfig, ...config } })),
+  setLocalRuler: (ruler) => set({ localRuler: ruler }),
+  setRemoteRuler: (userId, ruler) => set((state) => {
+    if (!ruler) {
+      const next = { ...state.remoteRulers };
+      delete next[userId];
+      return { remoteRulers: next };
+    }
+    return { remoteRulers: { ...state.remoteRulers, [userId]: ruler } };
+  }),
+  clearAllRemoteRulers: () => set({ remoteRulers: {} }),
 }));
 
 export default useBattlefieldStore;

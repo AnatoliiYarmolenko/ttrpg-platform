@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 import useBattlefieldStore from './battlefield/useBattlefieldStore';
 import useVttStore from '@/stores/useVttStore';
 import {
-  Layers, Plus, GripVertical, AlertCircle, Eye, EyeOff, Lock, Unlock, Upload, Edit2, Map
+  Layers, Plus, GripVertical, AlertCircle, Eye, EyeOff, Lock, Unlock, Upload, Edit2, Map, Trash2
 } from 'lucide-react';
 import DraggablePanel from './common/DraggablePanel';
 import CreateSceneModal from './CreateSceneModal';
@@ -159,6 +159,12 @@ export default function SceneManager({ vttConnection }) {
   const handleToggleLayerLock = useCallback((layer) => {
     if (!currentScene) return;
     vttConnection?.sendVttLayerUpdate?.(currentScene.id, layer.id, { isLocked: !layer.isLocked });
+  }, [currentScene, vttConnection]);
+
+  const handleDeleteLayer = useCallback((layer) => {
+    if (!currentScene) return;
+    if (layer.type === 'BACKGROUND' || layer.type === 'GRID' || layer.type === 'TOKEN') return;
+    vttConnection?.sendVttLayerDelete?.(currentScene.id, layer.id);
   }, [currentScene, vttConnection]);
 
   const handleTransportPlayers = useCallback(() => {
@@ -369,6 +375,16 @@ export default function SceneManager({ vttConnection }) {
                 >
                   {layer.isLocked ? <Lock size={14} /> : <Unlock size={14} />}
                 </button>
+
+                {!(layer.type === 'BACKGROUND' || layer.type === 'GRID' || layer.type === 'TOKEN') && (
+                  <button
+                    onClick={() => handleDeleteLayer(layer)}
+                    className="text-brand-light/30 hover:text-red-400 transition-colors"
+                    title="Видалити шар"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
 
                 <div className={`px-1 ${layer.isLocked ? 'text-brand-light/10 cursor-not-allowed' : 'text-brand-light/30 hover:text-brand-light'}`}>
                   <GripVertical size={14} />

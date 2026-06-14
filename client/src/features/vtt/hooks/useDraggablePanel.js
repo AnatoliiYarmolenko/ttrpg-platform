@@ -10,7 +10,9 @@ export default function useDraggablePanel({
   minHeight,
   onSaveState,
   storageKey,
-  isOpen
+  isOpen,
+  resetHeightTrigger,
+  openTrigger
 }) {
   const containerRef = useRef(null);
 
@@ -58,8 +60,13 @@ export default function useDraggablePanel({
     if (!containerRef.current) return;
     const { x, y, w, h, isCollapsed } = stateRef.current;
     containerRef.current.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-    containerRef.current.style.width = `${w}px`;
-    containerRef.current.style.height = isCollapsed ? 'auto' : `${h}px`;
+    containerRef.current.style.width = w === undefined ? 'auto' : `${w}px`;
+    
+    let styleHeight = 'auto';
+    if (!isCollapsed && h !== undefined) {
+      styleHeight = `${h}px`;
+    }
+    containerRef.current.style.height = styleHeight;
   }, []);
 
   const onDragMouseDown = useCallback((e) => {
@@ -72,10 +79,12 @@ export default function useDraggablePanel({
   const onResizeMouseDown = useCallback((direction) => (e) => {
     if (stateRef.current.isLocked || e.button !== 0) return;
     action.current = `resize-${direction}`;
-    start.current = { mx: e.clientX, my: e.clientY, ox: stateRef.current.x, oy: stateRef.current.y, w: stateRef.current.w, h: stateRef.current.h };
+    const startW = stateRef.current.w ?? containerRef.current?.offsetWidth ?? defaultWidth;
+    const startH = stateRef.current.h ?? containerRef.current?.offsetHeight ?? defaultHeight;
+    start.current = { mx: e.clientX, my: e.clientY, ox: stateRef.current.x, oy: stateRef.current.y, w: startW, h: startH };
     e.preventDefault();
     e.stopPropagation();
-  }, []);
+  }, [defaultWidth, defaultHeight]);
 
   const toggleLock = useCallback(() => {
     const newLocked = !isLocked;
@@ -158,6 +167,44 @@ export default function useDraggablePanel({
     applyStyles();
   }, [isOpen, applyStyles]);
 
+  // Enforce minHeight/minWidth if they change dynamically
+  useEffect(() => {
+    let changed = false;
+    if (stateRef.current.w < minWidth) {
+      stateRef.current.w = minWidth;
+      changed = true;
+    }
+    if (stateRef.current.h !== undefined && stateRef.current.h !== 'auto' && stateRef.current.h < minHeight) {
+      stateRef.current.h = minHeight;
+      changed = true;
+    }
+    if (changed) {
+      applyStyles();
+      saveStateToStorage({ ...stateRef.current });
+    }
+  }, [minWidth, minHeight, applyStyles, saveStateToStorage]);
+
+  // Reset height to auto when trigger changes
+  useEffect(() => {
+    if (resetHeightTrigger !== undefined) {
+      stateRef.current.h = undefined;
+      applyStyles();
+      saveStateToStorage({ ...stateRef.current });
+    }
+  }, [resetHeightTrigger, applyStyles, saveStateToStorage]);
+
+  // Uncollapse when openTrigger fires
+  useEffect(() => {
+    if (openTrigger) {
+      if (stateRef.current.isCollapsed) {
+        setIsCollapsed(false);
+        stateRef.current.isCollapsed = false;
+        applyStyles();
+        saveStateToStorage({ ...stateRef.current });
+      }
+    }
+  }, [openTrigger, applyStyles, saveStateToStorage]);
+
   // Handle drag and resize movement
   useEffect(() => {
     const onMouseMove = (e) => {
@@ -171,13 +218,17 @@ export default function useDraggablePanel({
         const winH = globalThis.window.innerHeight;
         
         if (action.current === 'drag') {
-          const currentHeight = stateRef.current.isCollapsed ? (containerRef.current?.offsetHeight || 42) : stateRef.current.h;
-          const max_x = Math.max(0, winW - stateRef.current.w);
+          const currentHeight = stateRef.current.isCollapsed 
+            ? (containerRef.current?.offsetHeight || 42) 
+            : (stateRef.current.h ?? containerRef.current?.offsetHeight ?? 400);
+          const max_x = Math.max(0, winW - (stateRef.current.w ?? containerRef.current?.offsetWidth ?? 200));
           const max_y = Math.max(0, winH - currentHeight);
           
           stateRef.current.x = Math.max(0, Math.min(max_x, start.current.ox + dx));
           stateRef.current.y = Math.max(0, Math.min(max_y, start.current.oy + dy));
-        } else if (action.current.startsWith('resize-')) {
+          
+          applyStyles();
+        } else if (action.current.startsWith('resize')) {
           const dir = action.current.replace('resize-', '');
           let newW = start.current.w;
           let newH = start.current.h;

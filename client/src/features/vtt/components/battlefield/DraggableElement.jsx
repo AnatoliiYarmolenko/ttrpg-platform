@@ -55,7 +55,7 @@ function rotatePoint(x, y, angle) {
 }
 
 /**
- * DraggableImage — зображення-оверлей на канвасі VTT.
+ * DraggableElement — універсальний компонент для фото та малюнків на канвасі VTT.
  *
  * Підтримує:
  * - Drag & Drop для переміщення
@@ -64,18 +64,19 @@ function rotatePoint(x, y, angle) {
  * - Відображення UI контролів ТІЛЬКИ коли isSelected = true
  *
  * @param {{
- *   item: { id: string, url: string, x: number, y: number, width: number, height: number, scaleX: number, scaleY: number, rotation: number },
+ *   item: { id: string, type?: string, url?: string, x: number, y: number, width: number, height: number, scaleX: number, scaleY: number, rotation: number },
  *   isSelected: boolean,
  *   onSelect: () => void,
- *   onUpdate: (imageId: string, updates: object) => void,
- *   onPreview: (imageId: string, updates: object) => void,
- *   onContextMenu: (e: object, imageId: string) => void,
+ *   onUpdate: (itemId: string, updates: object) => void,
+ *   onPreview: (itemId: string, updates: object) => void,
+ *   onContextMenu: (e: object, itemId: string) => void,
  *   viewport: { x: number, y: number, scale: number },
  *   gridSize?: number,
- *   isLocked?: boolean
+ *   isLocked?: boolean,
+ *   onDoubleClick?: (itemId: string) => void,
  * }} props
  */
-export default function DraggableImage({ item, isSelected, onSelect, onUpdate, onPreview, onContextMenu, viewport, gridSize, isLocked = false }) {
+export default function DraggableElement({ item, isSelected, onSelect, onUpdate, onPreview, onContextMenu, onDoubleClick, viewport, gridSize, isLocked = false, renderContent }) {
   const texture = usePixiTexture(item.url);
 
   // Локальний стан для плавного drag/resize без затримки мережі
@@ -145,7 +146,7 @@ export default function DraggableImage({ item, isSelected, onSelect, onUpdate, o
 
   // ─── Drag handlers (Переміщення) ───────────────────────────────────────────────
 
-  const rightClickStartRef = useRef(null);
+  const lastClickTimeRef = useRef(0);
 
   const onDragStart = useCallback((e) => {
     if (isLocked) return;
@@ -153,10 +154,16 @@ export default function DraggableImage({ item, isSelected, onSelect, onUpdate, o
     
     // Якщо це правий клік (button 2)
     if (e.data?.button === 2 || e.button === 2 || e.nativeEvent?.button === 2) {
-      // НЕ робимо stopPropagation(), щоб useViewport міг рухати сцену
-      rightClickStartRef.current = { x: event.x, y: event.y };
+      e.stopPropagation?.();
+      onContextMenu?.(e.nativeEvent || e.data?.originalEvent || e, item.id);
       return;
     }
+    
+    const now = Date.now();
+    if (now - lastClickTimeRef.current < 500) {
+      if (onDoubleClick) onDoubleClick(item.id);
+    }
+    lastClickTimeRef.current = now;
 
     onSelect(); // Виділяємо при кліку
     dragState.current = {
@@ -167,7 +174,7 @@ export default function DraggableImage({ item, isSelected, onSelect, onUpdate, o
     };
     setIsDragging(true);
     e.stopPropagation?.();
-  }, [localX, localY, onSelect, isLocked]);
+  }, [localX, localY, onSelect, isLocked, onDoubleClick, onContextMenu, item.id]);
 
   const onDragMove = useCallback((e) => {
     if (!dragState.current) return;
@@ -185,23 +192,8 @@ export default function DraggableImage({ item, isSelected, onSelect, onUpdate, o
   }, [viewport.scale, sendPreview]);
 
   const onDragEnd = useCallback((e) => {
-    // Перевірка на відпускання правої кнопки миші
+    // Context menu тепер викликається одразу в onDragStart, тому тут нічого не робимо
     if (e && (e.data?.button === 2 || e.button === 2 || e.nativeEvent?.button === 2)) {
-      if (rightClickStartRef.current) {
-        const event = e.data?.global || e.global || e;
-        const dx = event.x - rightClickStartRef.current.x;
-        const dy = event.y - rightClickStartRef.current.y;
-        const dist = Math.hypot(dx, dy);
-        
-        // Якщо майже не рухали мишкою (менше 5 пікселів) — це клік, відкриваємо меню
-        if (dist < 5) {
-          // Щоб запобігти миттєвому закриттю меню через глобальний клік:
-          e.stopPropagation?.();
-          e.data?.originalEvent?.stopPropagation?.();
-          onContextMenu?.(e, item.id);
-        }
-        rightClickStartRef.current = null;
-      }
       return;
     }
 
@@ -217,7 +209,7 @@ export default function DraggableImage({ item, isSelected, onSelect, onUpdate, o
     setLocalScaleY(snapped.scaleY);
     
     sendUpdate({ x: snapped.x, y: snapped.y, scaleX: snapped.scaleX, scaleY: snapped.scaleY });
-  }, [localX, localY, localScaleX, localScaleY, item.width, item.height, gridSize, sendUpdate, item.id, onContextMenu]);
+  }, [localX, localY, localScaleX, localScaleY, item.width, item.height, gridSize, sendUpdate]);
 
   // ─── Resize handlers (Масштабування) ─────────────────────────────────────────────
 
@@ -357,11 +349,10 @@ export default function DraggableImage({ item, isSelected, onSelect, onUpdate, o
   const onRotateEnd = useCallback(() => {
     if (!rotateState.current) return;
     rotateState.current = false;
-    setIsRotating(false);
     sendUpdate({ rotation: localRotation });
   }, [localRotation, sendUpdate]);
 
-  if (!texture) return null;
+  if (item.url && !texture) return null;
 
   const displayWidth = item.width * localScaleX;
   const displayHeight = item.height * localScaleY;
@@ -397,20 +388,29 @@ export default function DraggableImage({ item, isSelected, onSelect, onUpdate, o
       eventMode={isLocked ? "none" : "static"} /* NOSONAR */
       sortableChildren /* NOSONAR */
     >
-      {/* Зображення */}
-      {/* Sprite має anchor 0.5, тому він відцентрований у контейнері */}
-      <sprite
-        texture={texture /* NOSONAR */}
-        width={displayWidth}
-        height={displayHeight}
-        anchor={0.5 /* NOSONAR */}
-        eventMode="static" /* NOSONAR */
-        cursor={spriteCursor}
-        onPointerDown={onDragStart}
-        onGlobalPointerMove={onDragMove /* NOSONAR */}
-        onPointerUp={onDragEnd}
-        onPointerUpOutside={onDragEnd /* NOSONAR */}
-      />
+      {/* Зображення або кастомний контент */}
+      {renderContent ? (
+        // eslint-disable-next-line react-hooks/refs
+        renderContent(displayWidth, displayHeight, spriteCursor, {
+          onPointerDown: onDragStart,
+          onGlobalPointerMove: onDragMove,
+          onPointerUp: onDragEnd,
+          onPointerUpOutside: onDragEnd,
+        })
+      ) : (
+        <sprite
+          texture={texture /* NOSONAR */}
+          width={displayWidth}
+          height={displayHeight}
+          anchor={0.5 /* NOSONAR */}
+          eventMode="static" /* NOSONAR */
+          cursor={spriteCursor}
+          onPointerDown={onDragStart}
+          onGlobalPointerMove={onDragMove /* NOSONAR */}
+          onPointerUp={onDragEnd}
+          onPointerUpOutside={onDragEnd /* NOSONAR */}
+        />
+      )}
 
       {/* Елементи керування (Тільки коли виділено і не заблоковано) */}
       {isSelected && !isLocked && (
@@ -476,7 +476,7 @@ export default function DraggableImage({ item, isSelected, onSelect, onUpdate, o
   );
 }
 
-DraggableImage.propTypes = {
+DraggableElement.propTypes = {
   item: PropTypes.shape({
     id: PropTypes.string.isRequired,
     url: PropTypes.string.isRequired,
@@ -500,4 +500,6 @@ DraggableImage.propTypes = {
   onPreview: PropTypes.func,
   onContextMenu: PropTypes.func,
   isLocked: PropTypes.bool,
+  renderContent: PropTypes.func,
+  onDoubleClick: PropTypes.func,
 };
