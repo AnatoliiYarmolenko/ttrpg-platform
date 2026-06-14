@@ -38,6 +38,8 @@ const useVttStore = create(
       isCharacterSheetOpen: false,
       /** Чи відкрита панель GM істот */
       isGmCreaturesOpen: false,
+      /** Чи відкрита панель Ініціативи */
+      isInitiativeTrackerOpen: false,
 
       /** Останні 8 результатів кидків */
       rollHistory: [],
@@ -73,6 +75,11 @@ const useVttStore = create(
       openGmCreatures: () => set((state) => ({ 
         isGmCreaturesOpen: true, 
         gmCreaturesOpenTrigger: (state.gmCreaturesOpenTrigger || 0) + 1 
+      })),
+      toggleInitiativeTracker: () => set((state) => ({ isInitiativeTrackerOpen: !state.isInitiativeTrackerOpen })),
+      openInitiativeTracker: () => set((state) => ({
+        isInitiativeTrackerOpen: true,
+        initiativeTrackerOpenTrigger: (state.initiativeTrackerOpenTrigger || 0) + 1
       })),
 
       /** Додати результат кидка (макс 8, старіші витісняються) */
@@ -132,6 +139,7 @@ const useVttStore = create(
         isSceneManagerOpen: state.isSceneManagerOpen,
         isDrawingToolsOpen: state.isDrawingToolsOpen,
         isRulerToolsOpen: state.isRulerToolsOpen,
+        isInitiativeTrackerOpen: state.isInitiativeTrackerOpen,
         rollHistory: state.rollHistory,
       }),
     }

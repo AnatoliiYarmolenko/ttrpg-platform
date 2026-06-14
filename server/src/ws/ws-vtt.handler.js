@@ -113,6 +113,17 @@ async function handleVttSetBackground(socket, payload, roomManager) {
   }, socket);
 }
 
+async function handleVttInitiativeUpdate(socket, payload, roomManager) {
+  const sessionId = parseSessionId(payload.sessionId);
+  const updatedInitiative = vttStateManager.setInitiative(sessionId, payload.initiative);
+  
+  roomManager.broadcast(getVttRoom(sessionId), {
+    type: 'vtt:initiative:updated',
+    sessionId,
+    initiative: updatedInitiative
+  });
+}
+
 async function handleVttDiceRoll(socket, payload, roomManager) {
   const sessionId = parseSessionId(payload.sessionId);
   const { formula, name, strength, visibility, characterName } = payload;
@@ -241,6 +252,9 @@ const vttHandler = async (socket, type, payload, roomManager) => {
       break;
     case 'vtt:set_background':
       await handleVttSetBackground(socket, payload, roomManager);
+      break;
+    case 'vtt:initiative:update':
+      await handleVttInitiativeUpdate(socket, payload, roomManager);
       break;
     case 'vtt:dice:roll':
       await handleVttDiceRoll(socket, payload, roomManager);

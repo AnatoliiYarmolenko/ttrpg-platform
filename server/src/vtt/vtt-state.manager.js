@@ -73,6 +73,7 @@ class VttStateManager {
         activeSceneId: null,
         scenes: {},
         diceLog: [],
+        initiative: [],
       });
     }
     return this.rooms.get(id);
@@ -155,7 +156,7 @@ class VttStateManager {
   getVttState(sessionId) {
     const room = this.rooms.get(String(sessionId));
     if (!room) {
-      return { isOpen: false, openedAt: null, openedBy: null, activeSceneId: null, scenes: {}, diceLog: [] };
+      return { isOpen: false, openedAt: null, openedBy: null, activeSceneId: null, scenes: {}, diceLog: [], initiative: [] };
     }
     // Повертаємо shallow copy щоб уникнути зовнішніх мутацій
     return { ...room };
@@ -193,6 +194,19 @@ class VttStateManager {
     if (room) {
       room.diceLog = [];
     }
+  }
+
+  // ─── Initiative ──────────────────────────────────────────────────────────
+
+  /**
+   * Оновити трекер ініціативи
+   * @param {string | number} sessionId 
+   * @param {Array} initiativeList 
+   */
+  setInitiative(sessionId, initiativeList) {
+    const room = this._ensureRoom(sessionId);
+    room.initiative = Array.isArray(initiativeList) ? [...initiativeList] : [];
+    return room.initiative;
   }
 
   // ─── Scene Management ─────────────────────────────────────────────────────

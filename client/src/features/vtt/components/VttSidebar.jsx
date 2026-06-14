@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PropTypes from 'prop-types';
-import { ArrowLeft, Menu, ChevronLeft, ChevronRight, MessageSquare, ScrollText, Map, Video, Pencil, Ruler, User } from 'lucide-react';
+import { ArrowLeft, Menu, ChevronLeft, ChevronRight, MessageSquare, ScrollText, Map, Video, Pencil, Ruler, User, ListOrdered } from 'lucide-react';
 import useVttStore from '@/stores/useVttStore';
 import Button from '@/components/ui/Button';
 
@@ -49,6 +49,18 @@ export default function VttSidebar({ isGM }) {
             >
               <User size={18} className="text-purple-400" />
               <span>{isGM ? 'Мої істоти' : 'Мій персонаж'}</span>
+            </Button>
+
+            <Button
+              onClick={() => {
+                useVttStore.getState().toggleInitiativeTracker();
+                toggleSidebar();
+              }}
+              variant="outline"
+              className="w-full !border-brand-light/20 !text-brand-light hover:!bg-brand-medium/30 flex items-center justify-start gap-3 !px-4"
+            >
+              <ListOrdered size={18} className="text-yellow-400" />
+              <span>Трекер ініціативи</span>
             </Button>
 
             <Button

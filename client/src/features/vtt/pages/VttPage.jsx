@@ -17,6 +17,7 @@ import VttDrawingTools from '../components/VttDrawingTools';
 import VttRulerTools from '../components/VttRulerTools';
 import VttCharacterSheet from '../components/VttCharacterSheet';
 import VttGmCreatures from '../components/VttGmCreatures';
+import InitiativeTracker from '../components/InitiativeTracker';
 
 import RollResultPopup from '../components/RollResultPopup';
 import DiceLogPanel from '../components/DiceLogPanel';
@@ -133,7 +134,7 @@ export default function VttPage() {
       alert('Помилка: Функція sendVttDiceRoll недоступна. Будь ласка, оновіть сторінку (Ctrl+F5).');
       return;
     }
-    const charName = !isGM ? useCharacterStore.getState().name : undefined;
+    const charName = isGM ? undefined : useCharacterStore.getState().name;
     const finalCharName = (charName && charName !== 'Без імені') ? charName : undefined;
     // Відправляємо кидок на сервер для синхронізації
     vttConnection.sendVttDiceRoll(formula, name, customStrength ?? rollStrength, visibility, finalCharName);
@@ -212,6 +213,7 @@ export default function VttPage() {
         />
 
         {/* UI Overlays */}
+        <InitiativeTracker />
         <SceneManager vttConnection={vttConnection} />
         <RollMaker onRoll={handleRoll} />
         <QuickBar onRoll={handleRoll} />

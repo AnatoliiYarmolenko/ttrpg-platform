@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useRef } from 'react';
 import useVttStore from '@/stores/useVttStore';
 import useBattlefieldStore from '../components/battlefield/useBattlefieldStore';
+import useInitiativeStore from '@/stores/useInitiativeStore';
 import { sharedWsManager } from '@/lib/shared-ws';
 
 export default function useVttConnection(sessionId, options = {}) {
@@ -35,6 +36,9 @@ export default function useVttConnection(sessionId, options = {}) {
       case 'vtt:dice:result':
         if (data.roll) {
           setIncomingRoll(data.roll);
+          if (data.roll.name === 'Ініціатива') {
+            useInitiativeStore.getState().addRoll(data.roll);
+          }
         }
         break;
       case 'vtt:scene:previewImage':
@@ -68,6 +72,11 @@ export default function useVttConnection(sessionId, options = {}) {
       case 'vtt:scene:clearRuler':
         if (data.userId) {
           useBattlefieldStore.getState().setRemoteRuler(data.userId, null);
+        }
+        break;
+      case 'vtt:initiative:updated':
+        if (data.initiative) {
+          useInitiativeStore.getState().setInitiative(data.initiative);
         }
         break;
       default:
@@ -138,6 +147,7 @@ export default function useVttConnection(sessionId, options = {}) {
     sendVttSceneUpdate: (sceneId, updates) => sendEvent('vtt:scene:update', { sceneId, updates }),
     sendVttSceneDelete: (sceneId) => sendEvent('vtt:scene:delete', { sceneId }),
     sendVttSceneActivate: (sceneId) => sendEvent('vtt:scene:activate', { sceneId }),
+    sendVttInitiativeUpdate: (initiative) => sendEvent('vtt:initiative:update', { initiative }),
     sendVttLayerCreate: (sceneId, name, layerType) => sendEvent('vtt:layer:create', { sceneId, name, layerType }),
     sendVttLayerUpdate: (sceneId, layerId, updates) => sendEvent('vtt:layer:update', { sceneId, layerId, updates }),
     sendVttLayerReorder: (sceneId, layerIds) => sendEvent('vtt:layer:reorder', { sceneId, layerIds }),
