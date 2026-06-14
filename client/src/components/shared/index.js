@@ -14,6 +14,8 @@ export { default as ViewProfileButton } from './ViewProfileButton';
 export { default as UserProfilePreview } from './UserProfilePreview';
 export { default as FullPageLoader } from './FullPageLoader';
 export { default as ErrorScreen } from './ErrorScreen';
+export { default as NotFoundPage } from './NotFoundPage';
+export { ErrorBoundary } from './ErrorBoundary';
 export { default as ParticipantsList } from './ParticipantsList';
 export { default as BrandLogo } from './BrandLogo';
 export { default as SessionTimeBadge } from './SessionTimeBadge';

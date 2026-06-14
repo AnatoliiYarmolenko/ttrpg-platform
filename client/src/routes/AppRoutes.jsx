@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 
 import ProtectedRoute from "./ProtectedRoute";
 import PublicRoute from "./PublicRoute";
@@ -21,6 +21,7 @@ const CampaignPage = lazy(() => import("../features/campaigns/pages/CampaignPage
 const SessionPage = lazy(() => import("../features/sessions/pages/SessionPage"));
 const VttPage = lazy(() => import("../features/vtt/pages/VttPage"));
 const AdminPage = lazy(() => import("../features/admin/pages/AdminPage"));
+const NotFoundPage = lazy(() => import("../components/shared/NotFoundPage"));
 
 const AppRoutes = () => {
   return (
@@ -126,7 +127,7 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>
   );

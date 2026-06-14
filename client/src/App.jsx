@@ -1,13 +1,14 @@
 import { useEffect } from "react";
 import { BrowserRouter, useNavigate } from "react-router-dom";
 import AppRoutes from "./routes/AppRoutes";
-import { useCsrfInit } from "./hooks/useCsrfInit"; 
+import { useCsrfInit } from "./hooks/useCsrfInit";
 import ToastViewport from "./components/ui/toast/ToastViewport";
 import useAuthStore from "./stores/useAuthStore";
 import GlobalNotificationProvider from "./features/notifications/components/GlobalNotificationProvider";
 import { GlobalCallProvider } from "./features/call/components/GlobalCallProvider";
 import { GlobalInCallBadge } from "./features/call/components/GlobalInCallBadge";
 import FullPageLoader from "./components/shared/FullPageLoader";
+import { ErrorBoundary } from "./components/shared/ErrorBoundary";
 
 function AuthExpiredRedirectListener() {
   const navigate = useNavigate();
@@ -35,13 +36,15 @@ function App() {
 
   return (
     <BrowserRouter>
-      <AuthExpiredRedirectListener />
-      <GlobalNotificationProvider />
-      <GlobalCallProvider>
-        <AppRoutes />
-        <GlobalInCallBadge />
-        <ToastViewport />
-      </GlobalCallProvider>
+      <ErrorBoundary>
+        <AuthExpiredRedirectListener />
+        <GlobalNotificationProvider />
+        <GlobalCallProvider>
+          <AppRoutes />
+          <GlobalInCallBadge />
+          <ToastViewport />
+        </GlobalCallProvider>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }
