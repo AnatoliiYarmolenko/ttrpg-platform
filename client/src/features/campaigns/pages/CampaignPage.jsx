@@ -129,6 +129,8 @@ export default function CampaignPage() {
             </div>
           </DashboardCard>
         ),
+        leftLabel: 'Деталі кампанії',
+        rightLabel: 'Учасники',
       };
     }
 
@@ -166,7 +168,7 @@ export default function CampaignPage() {
         campaignId: id,
         canCreateSessions: canCreateCampaignSessions,
         isCampaignFinished,
-        onCreateSession: () => {}, // Handled directly in right panel header now
+        onCreateSession: () => {},
       },
       sessionsProps: {
         campaignId: id,
@@ -196,7 +198,7 @@ export default function CampaignPage() {
     });
   };
 
-  const { leftPanel, rightPanel } = renderContent();
+  const { leftPanel, rightPanel, leftLabel, rightLabel } = renderContent();
 
   return (
     <CampaignLayout
@@ -229,6 +231,8 @@ export default function CampaignPage() {
       }
       leftPanel={leftPanel}
       rightPanel={rightPanel}
+      leftLabel={leftLabel}
+      rightLabel={rightLabel}
     />
   );
 }

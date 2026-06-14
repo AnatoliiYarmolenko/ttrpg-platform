@@ -193,6 +193,8 @@ export default function SessionPage() {
       />
     ),
     rightPanel: tabPanels.rightPanel,
+    leftLabel: 'Деталі сесії',
+    rightLabel: tabPanels.rightLabel,
   };
 
   const panelState = isPreviewMode ? previewPanels : tabPanels;
@@ -230,6 +232,8 @@ export default function SessionPage() {
       }
       leftPanel={panelState.leftPanel}
       rightPanel={panelState.rightPanel}
+      leftLabel={panelState.leftLabel}
+      rightLabel={panelState.rightLabel}
     />
   );
 }
