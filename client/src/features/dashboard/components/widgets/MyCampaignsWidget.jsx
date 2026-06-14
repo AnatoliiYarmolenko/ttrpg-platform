@@ -5,15 +5,12 @@ import useDashboardStore from '@/stores/useDashboardStore';
 import { PANEL_MODES } from '@/features/dashboard/constants';
 import DashboardCard from '@/components/ui/DashboardCard';
 import Button from '@/components/ui/Button';
-import { RoleBadge, EmptyState } from '@/components/shared';
+import { RoleBadge, EmptyState, SkeletonCampaignCard } from '@/components/shared';
 import useAuthStore from '@/stores/useAuthStore';
 import Dice20 from '@/components/ui/icons/Dice20';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
 import Data from '@/components/ui/icons/Data';
 
-/**
- * Віджет списку моїх кампаній
- */
 export default function MyCampaignsWidget() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -21,7 +18,6 @@ export default function MyCampaignsWidget() {
 
   const { data: campaigns = [], isLoading, error } = useMyCampaignsQuery('all');
 
-  // Визначення ролі користувача в кампанії
   const getUserRole = (campaign) => {
     if (!user) return null;
     if (campaign.ownerId === user.id) return 'OWNER';
@@ -41,8 +37,8 @@ export default function MyCampaignsWidget() {
 
   if (isLoading) {
     content = (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-pulse text-brand-dark">Завантаження...</div>
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => <SkeletonCampaignCard key={i} />)}
       </div>
     );
   } else if (error) {
@@ -91,19 +87,16 @@ export default function MyCampaignsWidget() {
                       </div>
                     </div>
 
-                    {/* Опис */}
                     {campaign.description && (
                       <p className="text-sm text-brand-medium mb-2 line-clamp-2">
                         {campaign.description}
                       </p>
                     )}
 
-                    {/* Статус заявки */}
                     {isPending && (
                       <p className="text-sm text-yellow-700 mb-2">Очікує підтвердження</p>
                     )}
 
-                    {/* Статистика */}
                     <div className="flex items-center gap-4 text-sm text-brand-medium">
                       {campaign.system && <span className="flex items-center gap-1"><Dice20 className="w-4 h-4" /> {campaign.system}</span>}
                       <span className="flex items-center gap-1"><GroupPeople className="w-4 h-4" /> {campaign.membersCount || campaign.members?.length || 0}</span>

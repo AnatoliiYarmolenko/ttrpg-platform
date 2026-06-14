@@ -8,7 +8,7 @@ import { useDaySessionsQuery } from '../../hooks/useCalendarQueries';
 import CreateSessionForm from './CreateSessionForm';
 import SessionCard from '../ui/SessionCard';
 import Button from '@/components/ui/Button';
-import { BackButton, EmptyState, formatDate } from '@/components/shared';
+import { BackButton, EmptyState, formatDate, SkeletonSessionCard } from '@/components/shared';
 import Dice20 from '@/components/ui/icons/Dice20';
 import {
   invalidateCalendarQuery,
@@ -82,8 +82,8 @@ export default function HomeRightWidget() {
 
   if (isLoading) {
     sessionsContent = (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-pulse text-brand-dark font-medium">Завантаження сесій...</div>
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => <SkeletonSessionCard key={i} />)}
       </div>
     );
   } else if (daySessions.length === 0) {

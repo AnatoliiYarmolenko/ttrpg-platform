@@ -16,6 +16,7 @@ variables:
   GIT_CONFIG_COUNT: "1"
   GIT_CONFIG_KEY_0: "core.longpaths"
   GIT_CONFIG_VALUE_0: "true"
+  COMPOSE_PROJECT_NAME: "ttrpg_ci_${CI_PIPELINE_ID}"
 
 cache:
   key:
@@ -104,7 +105,7 @@ coverage_server:
     - cd ..
     - npm run test:coverage --workspace=server
   after_script:
-    - docker compose --profile test down -v
+    - docker compose --profile test down --remove-orphans
   coverage: '/Lines\s*:\s*([0-9.]+)%/'
   artifacts:
     paths:
@@ -170,7 +171,7 @@ e2e_tests:
       Stop-Process -Name node -Force -ErrorAction SilentlyContinue
       if ($exitCode -ne 0) { exit $exitCode }
   after_script:
-    - docker compose --profile test down -v
+    - docker compose --profile test down --remove-orphans
     - Stop-Process -Name node -Force -ErrorAction SilentlyContinue
   artifacts:
     when: on_failure

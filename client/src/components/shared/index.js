@@ -19,3 +19,11 @@ export { ErrorBoundary } from './ErrorBoundary';
 export { default as ParticipantsList } from './ParticipantsList';
 export { default as BrandLogo } from './BrandLogo';
 export { default as SessionTimeBadge } from './SessionTimeBadge';
+export {
+  Skeleton,
+  SkeletonSessionCard,
+  SkeletonCampaignCard,
+  SkeletonSessionDetail,
+  SkeletonProfile,
+  SkeletonForm,
+} from './Skeleton';

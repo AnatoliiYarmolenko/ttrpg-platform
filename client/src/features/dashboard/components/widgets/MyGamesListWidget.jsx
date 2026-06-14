@@ -7,6 +7,7 @@ import {
   RoleBadge,
   DateTimeDisplay,
   EmptyState,
+  SkeletonSessionCard,
 } from '@/components/shared';
 import { useMySessionsQuery } from '../../hooks/useDashboardQueries';
 import Dice20 from '@/components/ui/icons/Dice20';
@@ -14,7 +15,6 @@ import GroupPeople from '@/components/ui/icons/GroupPeople';
 import Data from '@/components/ui/icons/Data';
 import Timer from '@/components/ui/icons/Timer';
 
-/** Картка сесії — використовується і для one-shot і для сесій кампанії */
 function SessionCard({ session, navigate, formatDuration }) {
   const isPending = session.myStatus === 'PENDING';
 
@@ -73,25 +73,15 @@ SessionCard.propTypes = {
   navigate: PropTypes.func.isRequired,
   formatDuration: PropTypes.func.isRequired,
 };
-
-/**
- * MyGamesListWidget — ліва панель для "Мої сесії" view.
- *
- * Два розділи:
- * 1. Сесії в кампаніях (згруповані по кампанії)
- * 2. Мої сесії (one-shot)
- */
 export default function MyGamesListWidget() {
   const navigate = useNavigate();
 
   const { data: sessions = [], isLoading: isLoadingSessions, error } = useMySessionsQuery();
   const isLoading = isLoadingSessions;
 
-  // Розбиваємо сесії на one-shot та сесії всередині кампаній
   const oneShotSessions = sessions.filter((s) => !s.campaignId);
   const campaignSessions = sessions.filter((s) => !!s.campaignId);
 
-  // Групуємо сесії кампаній за кампанією
   const sessionsByCampaign = campaignSessions.reduce((acc, session) => {
     const key = session.campaignId;
     if (!acc[key]) {
@@ -104,7 +94,6 @@ export default function MyGamesListWidget() {
 
   const isEmpty = oneShotSessions.length === 0 && campaignSessions.length === 0;
 
-  // Форматування тривалості
   const formatDuration = (minutes) => {
     if (!minutes) return '';
     const hours = Math.floor(minutes / 60);
@@ -117,13 +106,8 @@ export default function MyGamesListWidget() {
   if (isLoading) {
     return (
       <DashboardCard title="Мої сесії">
-        <div className="animate-pulse space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="p-4 border-2 border-gray-100 rounded-xl space-y-2">
-              <div className="h-5 bg-gray-200 rounded w-3/4" />
-              <div className="h-4 bg-gray-200 rounded w-1/2" />
-            </div>
-          ))}
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => <SkeletonSessionCard key={i} />)}
         </div>
       </DashboardCard>
     );
@@ -157,7 +141,6 @@ export default function MyGamesListWidget() {
   return (
     <DashboardCard title="Мої сесії">
       <div className="flex flex-col gap-6">
-        {/* === Розділ: Сесії в кампаніях === */}
         {campaignGroups.length > 0 && (
           <section>
             <h3 className="text-lg font-bold text-brand-dark mb-3">
@@ -178,7 +161,6 @@ export default function MyGamesListWidget() {
           </section>
         )}
 
-        {/* === Розділ: Мої сесії (one-shot) === */}
         {oneShotSessions.length > 0 && (
           <section>
             <h3 className="text-lg font-bold text-brand-dark mb-3 flex items-center gap-2">
