@@ -17,7 +17,6 @@ function createCampaignMembersService({
     }
   };
 
-  // MVP-25: Send summary notification to campaign managers about new join requests
   async function notifyManagersAboutJoinRequest(campaign, userId) {
     if (!notificationService) return;
 
@@ -34,12 +33,6 @@ function createCampaignMembersService({
 
     if (managers.length === 0) return;
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { username: true, displayName: true },
-    });
-
-    const userName = user?.displayName || user?.username || 'Новий гравець';
     const campaignTitle = campaign.title || 'Нова кампанія';
 
     notificationService.createNotification({
@@ -63,7 +56,6 @@ function createCampaignMembersService({
     });
   }
 
-  // MVP-26: Notify user about campaign participation confirmed
   async function notifyUserCampaignConfirmed(campaign, userId) {
     if (!notificationService) return;
 
@@ -85,7 +77,6 @@ function createCampaignMembersService({
     });
   }
 
-  // MVP-27: Notify user about campaign participation declined
   async function notifyUserCampaignDeclined(campaignId, userId) {
     if (!notificationService) return;
 
@@ -94,7 +85,6 @@ function createCampaignMembersService({
       select: { id: true, title: true },
     });
 
-    // Campaign may be deleted or user lost access - use fallback link
     const link = campaign ? `/campaign/${campaignId}` : '/';
     const campaignTitle = campaign?.title || 'Нова кампанія';
 
@@ -116,7 +106,6 @@ function createCampaignMembersService({
     });
   }
 
-  // MVP-28: Notify user about removal from campaign
   async function notifyUserCampaignRemoved(campaignId, userId) {
     if (!notificationService) return;
 
@@ -125,7 +114,6 @@ function createCampaignMembersService({
       select: { id: true, title: true },
     });
 
-    // User was removed - they don't have access to campaign page anymore
     const link = '/';
     const campaignTitle = campaign?.title || 'Нова кампанія';
 
@@ -406,7 +394,6 @@ function createCampaignMembersService({
         },
       });
 
-      // MVP-26: Notify user about being added to campaign
       notifyUserCampaignConfirmed(campaign, Number.parseInt(newMemberId, 10));
 
       return member;
@@ -454,11 +441,9 @@ function createCampaignMembersService({
           },
         });
 
-        // Self-removal: no notification needed
         return;
       }
 
-      // MVP-28: Notify user about removal from campaign (manager action only)
       notifyUserCampaignRemoved(campaignIdInt, memberIdInt);
 
       const requesterRole = permissionHelpers._requireCampaignRoles(
@@ -576,7 +561,6 @@ function createCampaignMembersService({
 
       const joinRequest = await upsertJoinRequest(campaignIdInt, userId, message);
 
-      // MVP-25: Notify managers about new join request
       notifyManagersAboutJoinRequest(campaign, userId);
 
       return joinRequest;
@@ -704,7 +688,6 @@ function createCampaignMembersService({
             },
           });
 
-          // MVP-26: Notify user about confirmation
           notifyUserCampaignConfirmed(campaign, joinRequest.userId);
 
           return member;
@@ -725,7 +708,6 @@ function createCampaignMembersService({
             });
 
             if (existingMember) {
-              // MVP-26: Notify user even if already member (idempotent approval)
               notifyUserCampaignConfirmed(campaign, joinRequest.userId);
               return existingMember;
             }
@@ -765,7 +747,6 @@ function createCampaignMembersService({
         where: { id: requestIdInt },
       });
 
-      // MVP-27: Notify user about rejection
       notifyUserCampaignDeclined(joinRequest.campaignId, joinRequest.userId);
     },
   };

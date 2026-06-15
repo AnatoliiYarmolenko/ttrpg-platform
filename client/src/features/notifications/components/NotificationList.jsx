@@ -19,6 +19,7 @@ import Button from '@/components/ui/Button';
 export default function NotificationList({
   notifications = [],
   isLoading = false,
+  isLoadingMore = false,
   hasMore = false,
   onLoadMore,
   onMarkAsRead,
@@ -51,7 +52,7 @@ export default function NotificationList({
       {hasMore && (
         <Button
           onClick={onLoadMore}
-          isLoading={isLoading}
+          isLoading={isLoadingMore}
           loadingText="Завантаження..."
           variant="outline"
           fullWidth
@@ -67,6 +68,7 @@ export default function NotificationList({
 NotificationList.propTypes = {
   notifications: PropTypes.arrayOf(PropTypes.object),
   isLoading: PropTypes.bool,
+  isLoadingMore: PropTypes.bool,
   hasMore: PropTypes.bool,
   onLoadMore: PropTypes.func,
   onMarkAsRead: PropTypes.func,
@@ -77,6 +79,7 @@ NotificationList.propTypes = {
 NotificationList.defaultProps = {
   notifications: [],
   isLoading: false,
+  isLoadingMore: false,
   hasMore: false,
   onLoadMore: undefined,
   onMarkAsRead: undefined,

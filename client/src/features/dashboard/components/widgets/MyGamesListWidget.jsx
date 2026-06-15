@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import DashboardCard from '@/components/ui/DashboardCard';
@@ -8,8 +8,23 @@ import {
   DateTimeDisplay,
   EmptyState,
   SkeletonSessionCard,
+  SegmentedToggle,
 } from '@/components/shared';
 import { useMySessionsQuery } from '../../hooks/useDashboardQueries';
+
+const SESSION_FILTER_OPTIONS = [
+  { key: 'ACTIVE', label: 'Активні' },
+  { key: 'PLANNED', label: 'Заплановані' },
+  { key: 'FINISHED', label: 'Завершені' },
+  { key: 'CANCELED', label: 'Скасовані' },
+];
+
+const SESSION_EMPTY_DESCRIPTIONS = {
+  ACTIVE: 'Зараз немає активних сесій',
+  PLANNED: 'Заплановані сесії відображатимуться тут',
+  FINISHED: 'Завершені сесії відображатимуться тут',
+  CANCELED: 'Скасовані сесії відображатимуться тут',
+};
 import Dice20 from '@/components/ui/icons/Dice20';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
 import Data from '@/components/ui/icons/Data';
@@ -75,9 +90,12 @@ SessionCard.propTypes = {
 };
 export default function MyGamesListWidget() {
   const navigate = useNavigate();
+  const [statusFilter, setStatusFilter] = useState('PLANNED');
 
-  const { data: sessions = [], isLoading: isLoadingSessions, error } = useMySessionsQuery();
+  const { data: allSessions = [], isLoading: isLoadingSessions, error } = useMySessionsQuery();
   const isLoading = isLoadingSessions;
+
+  const sessions = allSessions.filter((s) => s.status === statusFilter);
 
   const oneShotSessions = sessions.filter((s) => !s.campaignId);
   const campaignSessions = sessions.filter((s) => !!s.campaignId);
@@ -103,43 +121,42 @@ export default function MyGamesListWidget() {
     return `${hours} год ${mins} хв`;
   };
 
+  let innerContent;
+
   if (isLoading) {
-    return (
-      <DashboardCard title="Мої сесії">
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => <SkeletonSessionCard key={i} />)}
-        </div>
-      </DashboardCard>
+    innerContent = (
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => <SkeletonSessionCard key={i} />)}
+      </div>
     );
-  }
-
-  if (error) {
-    return (
-      <DashboardCard title="Мої сесії">
-        <EmptyState
-          title="Не вдалося завантажити сесії"
-          description={error?.message || 'Спробуйте оновити сторінку ще раз'}
-          className="h-full"
-        />
-      </DashboardCard>
+  } else if (error) {
+    innerContent = (
+      <EmptyState
+        title="Не вдалося завантажити сесії"
+        description={error?.message || 'Спробуйте оновити сторінку ще раз'}
+        className="h-full"
+      />
     );
-  }
-
-  if (isEmpty) {
-    return (
-      <DashboardCard title="Мої сесії">
-        <EmptyState
-          icon={<Dice20 className="w-10 h-10" />}
-          title="У вас ще немає сесій"
-          description="Приєднайтесь до сесії або створіть свою на вкладці Календар"
-          className="h-full"
-        />
-      </DashboardCard>
+  } else if (allSessions.length === 0) {
+    innerContent = (
+      <EmptyState
+        icon={<Dice20 className="w-10 h-10" />}
+        title="У вас ще немає сесій"
+        description="Приєднайтесь до сесії або створіть свою на вкладці Календар"
+        className="h-full"
+      />
     );
-  }
-
-  return (
-    <DashboardCard title="Мої сесії">
+  } else if (isEmpty) {
+    innerContent = (
+      <EmptyState
+        icon={<Dice20 className="w-10 h-10" />}
+        title="Немає сесій"
+        description={SESSION_EMPTY_DESCRIPTIONS[statusFilter]}
+        className="h-full"
+      />
+    );
+  } else {
+    innerContent = (
       <div className="flex flex-col gap-6">
         {campaignGroups.length > 0 && (
           <section>
@@ -173,6 +190,22 @@ export default function MyGamesListWidget() {
             </div>
           </section>
         )}
+      </div>
+    );
+  }
+
+  return (
+    <DashboardCard title="Мої сесії">
+      <div className="flex flex-col h-full">
+        <SegmentedToggle
+          options={SESSION_FILTER_OPTIONS}
+          value={statusFilter}
+          onChange={setStatusFilter}
+          className="mb-4 flex-shrink-0"
+        />
+        <div className="flex-1 overflow-y-auto min-h-0">
+          {innerContent}
+        </div>
       </div>
     </DashboardCard>
   );

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
+import { CheckCheck, Loader2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import DashboardCard from '@/components/ui/DashboardCard';
-import { BackButton } from '@/components/shared';
+import { BackButton, SegmentedToggle } from '@/components/shared';
 import useDashboardStore from '@/stores/useDashboardStore';
 import { PANEL_MODES } from '@/features/dashboard/constants';
 import CreateSessionForm from './CreateSessionForm';
@@ -18,7 +19,7 @@ import {
   invalidateDashboardGamesQuery,
 } from '@/lib/queryInvalidation';
 
-const FILTER_OPTIONS = [
+const NOTIFICATION_FILTER_OPTIONS = [
   { key: 'ACTIVE', label: 'Активні' },
   { key: 'ARCHIVED', label: 'Архів' },
 ];
@@ -32,17 +33,27 @@ export default function HomeNotificationsWidget() {
   const rightPanelMode = useDashboardStore((state) => state.rightPanelMode);
   const setRightPanelMode = useDashboardStore((state) => state.setRightPanelMode);
 
-  const { data, isLoading } = useNotificationsQuery({
+  const { data, isLoading, isFetching } = useNotificationsQuery({
     status: filter,
     limit,
     offset: 0,
   });
+  const isLoadingMore = isFetching && !isLoading;
   const { data: activeCount = 0 } = useUnreadCountQuery();
 
   const notifications = data?.notifications || [];
   const pagination = data?.pagination;
 
-  const { markAsReadMutation, archiveMutation } = useNotificationMutations();
+  const { markAsReadMutation, archiveMutation, markManyAsReadMutation } = useNotificationMutations();
+
+  const activeNotificationIds = notifications
+    .filter((n) => n.status === 'ACTIVE')
+    .map((n) => n.id);
+
+  const handleMarkAllAsRead = async () => {
+    if (activeNotificationIds.length === 0) return;
+    await markManyAsReadMutation.mutateAsync(activeNotificationIds);
+  };
 
   const handleBackToNotifications = () => {
     setRightPanelMode(PANEL_MODES.LIST);
@@ -85,6 +96,20 @@ export default function HomeNotificationsWidget() {
 
   const isEmpty = !isLoading && notifications.length === 0;
 
+  const markAllButton = filter === 'ACTIVE' && activeNotificationIds.length > 0 ? (
+    <button
+      onClick={handleMarkAllAsRead}
+      disabled={markManyAsReadMutation.isPending}
+      title="Позначити всі як прочитані"
+      className="p-1.5 rounded-lg text-brand-medium hover:text-brand-dark hover:bg-brand-light/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {markManyAsReadMutation.isPending
+        ? <Loader2 className="w-4 h-4 animate-spin" />
+        : <CheckCheck className="w-4 h-4" />
+      }
+    </button>
+  ) : null;
+
   return (
     <DashboardCard
       title={
@@ -93,25 +118,15 @@ export default function HomeNotificationsWidget() {
           <NotificationBadge count={activeCount} size="sm" />
         </div>
       }
+      actions={markAllButton}
     >
       <div className="flex flex-col h-full relative">
-        <div className="relative z-10 flex gap-1 mb-4 p-1 bg-brand-light/10 rounded-xl">
-          {FILTER_OPTIONS.map((option) => (
-            <button
-              key={option.key}
-              onClick={() => setFilter(option.key)}
-              className={`
-                flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors
-                ${filter === option.key
-                  ? 'bg-white text-brand-dark shadow-sm'
-                  : 'text-brand-medium hover:text-brand-dark hover:bg-brand-light/10'
-                }
-              `}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedToggle
+          options={NOTIFICATION_FILTER_OPTIONS}
+          value={filter}
+          onChange={setFilter}
+          className="relative z-10 mb-4"
+        />
 
         {isEmpty ? (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -122,6 +137,7 @@ export default function HomeNotificationsWidget() {
             <NotificationList
               notifications={notifications}
               isLoading={isLoading}
+              isLoadingMore={isLoadingMore}
               hasMore={pagination?.hasMore}
               onLoadMore={handleLoadMore}
               onMarkAsRead={handleMarkAsRead}

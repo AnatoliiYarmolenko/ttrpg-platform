@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { toast } from '@/stores/useToastStore';
 import {
   getNotifications,
@@ -28,6 +28,7 @@ export const useNotificationsQuery = (params = {}, enabled = true) => {
       return res.data;
     },
     enabled,
+    placeholderData: keepPreviousData,
   });
 };
 
@@ -76,7 +77,7 @@ export const useNotificationMutations = () => {
     mutationFn: markManyAsRead,
     onSuccess: (res) => {
       invalidateNotifications();
-      toast.success(`${res.data?.count || 'Notifications'} archived`);
+      toast.success(`${res.data?.count || 'Notifications'} прочитано.`);
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to archive notifications');

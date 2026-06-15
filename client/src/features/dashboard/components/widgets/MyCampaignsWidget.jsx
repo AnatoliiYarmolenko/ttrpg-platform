@@ -1,22 +1,29 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMyCampaignsQuery } from '../../hooks/useDashboardQueries';
 import useDashboardStore from '@/stores/useDashboardStore';
 import { PANEL_MODES } from '@/features/dashboard/constants';
 import DashboardCard from '@/components/ui/DashboardCard';
 import Button from '@/components/ui/Button';
-import { RoleBadge, EmptyState, SkeletonCampaignCard } from '@/components/shared';
+import { RoleBadge, EmptyState, SkeletonCampaignCard, SegmentedToggle } from '@/components/shared';
 import useAuthStore from '@/stores/useAuthStore';
 import Dice20 from '@/components/ui/icons/Dice20';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
 import Data from '@/components/ui/icons/Data';
 
+const CAMPAIGN_FILTER_OPTIONS = [
+  { key: 'ACTIVE', label: 'Активні' },
+  { key: 'FINISHED', label: 'Завершені' },
+];
+
 export default function MyCampaignsWidget() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const { setRightPanelMode } = useDashboardStore();
+  const [statusFilter, setStatusFilter] = useState('ACTIVE');
 
-  const { data: campaigns = [], isLoading, error } = useMyCampaignsQuery('all');
+  const { data: allCampaigns = [], isLoading, error } = useMyCampaignsQuery('all');
+  const campaigns = allCampaigns.filter((c) => c.status === statusFilter);
 
   const getUserRole = (campaign) => {
     if (!user) return null;
@@ -50,14 +57,24 @@ export default function MyCampaignsWidget() {
       />
     );
   } else {
+    const emptyDescription = statusFilter === 'ACTIVE'
+      ? 'Створіть нову кампанію, щоб вона з\'явилась тут'
+      : 'Завершені кампанії відображатимуться тут';
+
     content = (
       <div className="flex flex-col h-full">
+        <SegmentedToggle
+          options={CAMPAIGN_FILTER_OPTIONS}
+          value={statusFilter}
+          onChange={setStatusFilter}
+          className="mb-4 flex-shrink-0"
+        />
         <div className="flex-1 overflow-y-auto min-h-0">
           {campaigns.length === 0 ? (
             <EmptyState
               icon={<Dice20 className="w-14 h-14" />}
               title="Немає кампаній"
-              description="Створіть нову кампанію, щоб вона з'явилась тут"
+              description={emptyDescription}
               className="h-full"
             />
           ) : (
