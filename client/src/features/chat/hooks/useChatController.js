@@ -13,7 +13,6 @@ import useChatStore from '@/stores/useChatStore';
  * - useChatConnection для WS lifecycle + optimistic send
  * - useChatStore для стану
  *
- * Повертає готові props для ChatPanel та xk методи send.
  *
  * @param {string} entityType - 'campaign' | 'session'
  * @param {number} entityId - ID кампанії/сесії
@@ -96,21 +95,17 @@ export default function useChatController(entityType, entityId, options = {}) {
   );
 
   return {
-    // Props для ChatPanel
     chatPanelProps,
 
-    // Loading/error states
     isLoading,
     hasError,
     errorMessage,
 
-    // Chat metadata
     chatId,
     descriptor: metaQuery.data?.chat || null,
     capabilities: metaQuery.data?.capabilities || null,
     readonly,
 
-    // Connection utilities
     connect: connectionHook.connect,
     disconnect: connectionHook.disconnect,
     sendMessage: connectionHook.sendMessage,
@@ -118,7 +113,6 @@ export default function useChatController(entityType, entityId, options = {}) {
     connectionState: connectionHook.connectionState,
     isConnected: connectionHook.isConnected,
 
-    // Query/mutation states
     metaQuery,
     messagesQuery,
   };

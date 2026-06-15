@@ -3,14 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import useDashboardStore from '@/stores/useDashboardStore';
 import { VIEW_MODES, PANEL_MODES } from '@/features/dashboard/constants';
 
-// Controller hook — вся логіка сторінки інкапсульована тут
 import useDashboardPageController from '../hooks/useDashboardPageController';
 
-// Layout & Navigation
 import DashboardLayout from '../components/layout/DashboardLayout';
 import DashboardNavigation from '../components/DashboardNavigation';
 
-// Widgets
 import {
   ProfileMenuWidget,
   ProfileContentWidget,
@@ -27,17 +24,8 @@ import {
   SearchResultsWidget,
 } from '../components/widgets/SearchWidgets';
 
-// Shared
 import FullPageLoader from '@/components/shared/FullPageLoader';
 
-/**
- * DashboardPage — тонкий shell-компонент для головної сторінки.
- *
- * Вся логіка (user, viewMode, logout) делегується в useDashboardPageController.
- * Компонент відповідає лише за:
- * - підключення до layout
- * - вибір віджетів за viewMode + panelMode
- */
 export default function DashboardPage() {
   const navigate = useNavigate();
 
@@ -58,7 +46,6 @@ export default function DashboardPage() {
     return <FullPageLoader text="Завантаження світу..." />;
   }
 
-  // === Left panel ===
   const renderLeftPanel = () => {
     if (viewMode === VIEW_MODES.HOME) {
       return <HomeCurrentSessionWidget />;
@@ -82,7 +69,6 @@ export default function DashboardPage() {
     return null;
   };
 
-  // === Right panel ===
   const renderRightPanel = () => {
     if (viewMode === VIEW_MODES.HOME) {
       return <HomeNotificationsWidget />;
@@ -119,6 +105,28 @@ export default function DashboardPage() {
     return null;
   };
 
+  const getPanelLabels = () => {
+    switch (viewMode) {
+      case VIEW_MODES.HOME:
+        return { left: 'Поточна сесія', right: 'Сповіщення' };
+      case VIEW_MODES.CALENDAR:
+        return { left: 'Календар', right: 'Сесії дня' };
+      case VIEW_MODES.MY_GAMES:
+        return {
+          left: 'Мої сесії',
+          right: rightPanelMode === PANEL_MODES.CREATE_CAMPAIGN ? 'Нова кампанія' : 'Мої кампанії',
+        };
+      case VIEW_MODES.PROFILE:
+        return { left: 'Профіль', right: 'Меню' };
+      case VIEW_MODES.SEARCH:
+        return { left: 'Результати', right: 'Фільтри' };
+      default:
+        return { left: undefined, right: undefined };
+    }
+  };
+
+  const panelLabels = getPanelLabels();
+
   return (
     <DashboardLayout
       topBar={
@@ -131,6 +139,8 @@ export default function DashboardPage() {
       }
       leftPanel={renderLeftPanel()}
       rightPanel={renderRightPanel()}
+      leftLabel={panelLabels.left}
+      rightLabel={panelLabels.right}
     />
   );
 }

@@ -9,12 +9,14 @@ import AppLayout from '../../../../components/layout/AppLayout';
  * @param {React.ReactNode} leftPanel — лівий контент (70%)
  * @param {React.ReactNode} rightPanel — правий контент (30%)
  */
-export default function CampaignLayout({ topBar, leftPanel, rightPanel }) {
+export default function CampaignLayout({ topBar, leftPanel, rightPanel, leftLabel = 'Кампанія', rightLabel = 'Деталі' }) {
   return (
     <AppLayout
       topBar={topBar}
       leftPanel={leftPanel}
       rightPanel={rightPanel}
+      leftLabel={leftLabel}
+      rightLabel={rightLabel}
     />
   );
 }

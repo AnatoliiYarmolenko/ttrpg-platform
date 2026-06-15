@@ -30,8 +30,6 @@ export default function CampaignPage() {
     activeTab,
     availableTabs,
     setActiveTab,
-    campaignCommunicationMode,
-    setCampaignCommunicationMode,
     viewingUserId,
     isPreviewMode,
     myRole,
@@ -120,22 +118,21 @@ export default function CampaignPage() {
         ),
         rightPanel: (
           <DashboardCard title="Учасники">
-            <div className="flex flex-col items-center justify-center h-full min-h-[300px]">
-              <EmptyState
-                icon={<GroupPeople className="w-12 h-12" />}
-                title="Список учасників прихований"
-                description="Для цього режиму перегляду список учасників недоступний."
-              />
-            </div>
+            <EmptyState
+              icon={<GroupPeople className="w-12 h-12" />}
+              title="Список учасників прихований"
+              description="Для цього режиму перегляду список учасників недоступний."
+              fullHeight
+            />
           </DashboardCard>
         ),
+        leftLabel: 'Деталі кампанії',
+        rightLabel: 'Учасники',
       };
     }
 
     return CampaignTabRenderer({
       activeTab,
-      campaignCommunicationMode,
-      setCampaignCommunicationMode,
       viewingUserId,
       profilePreviewNode,
       chatProps: chatController.chatPanelProps,
@@ -166,7 +163,7 @@ export default function CampaignPage() {
         campaignId: id,
         canCreateSessions: canCreateCampaignSessions,
         isCampaignFinished,
-        onCreateSession: () => {}, // Handled directly in right panel header now
+        onCreateSession: () => {},
       },
       sessionsProps: {
         campaignId: id,
@@ -196,7 +193,7 @@ export default function CampaignPage() {
     });
   };
 
-  const { leftPanel, rightPanel } = renderContent();
+  const { leftPanel, rightPanel, leftLabel, rightLabel } = renderContent();
 
   return (
     <CampaignLayout
@@ -229,6 +226,8 @@ export default function CampaignPage() {
       }
       leftPanel={leftPanel}
       rightPanel={rightPanel}
+      leftLabel={leftLabel}
+      rightLabel={rightLabel}
     />
   );
 }

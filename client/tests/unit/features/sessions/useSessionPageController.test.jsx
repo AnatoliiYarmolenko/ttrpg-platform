@@ -2,8 +2,9 @@ import React from 'react';
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import PropTypes from 'prop-types';
 import useSessionPageController from '@/features/sessions/hooks/useSessionPageController';
-import { SESSION_TABS, COMMUNICATION_MODES } from '@/features/sessions/constants/sessionTabs';
+import { SESSION_TABS } from '@/features/sessions/constants/sessionTabs';
 
 const mockUseSessionPageQuery = vi.fn();
 const mockUseSessionMutations = vi.fn();
@@ -71,7 +72,7 @@ function buildSessionPageData(overrides = {}) {
 }
 
 function createWrapper(initialEntry) {
-  return function Wrapper({ children }) {
+  function Wrapper({ children }) {
     return (
       <MemoryRouter initialEntries={[initialEntry]}>
         <Routes>
@@ -79,7 +80,13 @@ function createWrapper(initialEntry) {
         </Routes>
       </MemoryRouter>
     );
+  }
+
+  Wrapper.propTypes = {
+    children: PropTypes.node,
   };
+
+  return Wrapper;
 }
 
 describe('useSessionPageController tab state', () => {
@@ -100,21 +107,6 @@ describe('useSessionPageController tab state', () => {
       data: null,
       refetch: vi.fn(),
     });
-  });
-
-  it('reads communication deeplink params from URL', () => {
-    mockUseSessionPageQuery.mockReturnValue({
-      data: buildSessionPageData(),
-      isLoading: false,
-      error: null,
-    });
-
-    const { result } = renderHook(() => useSessionPageController(), {
-      wrapper: createWrapper('/session/5?tab=communication&comm=participants'),
-    });
-
-    expect(result.current.activeTab).toBe(SESSION_TABS.COMMUNICATION);
-    expect(result.current.communicationPanelMode).toBe(COMMUNICATION_MODES.PARTICIPANTS);
   });
 
   it('falls back from manage tab when viewer has no manage permission', async () => {
@@ -150,26 +142,6 @@ describe('useSessionPageController tab state', () => {
 
     await waitFor(() => {
       expect(result.current.viewingUserId).toBe(42);
-    });
-  });
-
-  it('toggles communication panel mode via setter', async () => {
-    mockUseSessionPageQuery.mockReturnValue({
-      data: buildSessionPageData(),
-      isLoading: false,
-      error: null,
-    });
-
-    const { result } = renderHook(() => useSessionPageController(), {
-      wrapper: createWrapper('/session/5?tab=communication'),
-    });
-
-    act(() => {
-      result.current.setCommunicationPanelMode(COMMUNICATION_MODES.PARTICIPANTS);
-    });
-
-    await waitFor(() => {
-      expect(result.current.communicationPanelMode).toBe(COMMUNICATION_MODES.PARTICIPANTS);
     });
   });
 

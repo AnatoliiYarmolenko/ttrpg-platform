@@ -103,7 +103,7 @@ export default function AdminPage() {
   const handleBanClick = (targetUser) => {
     openConfirm({
       title: `Заблокувати користувача @${targetUser.username}?`,
-      message: `Ви впевнені, що хочете забанити користувача "${targetUser.displayName || targetUser.username}"? Його власні активні сесії буде скасовано, кампанії завершено, а Telegram відв'язано.`,
+      message: `Ви впевнені, що хочете заблокувати користувача "${targetUser.displayName || targetUser.username}"? Його власні активні сесії буде скасовано, кампанії завершено, а Telegram відв'язано.`,
       variant: 'danger',
       confirmText: 'Заблокувати',
       onConfirm: async () => {
@@ -253,7 +253,7 @@ export default function AdminPage() {
                         fullWidth={false}
                         className="px-2 py-1 border-brand-light text-brand-dark hover:bg-brand-light/20"
                       >
-                        Розбанити
+                        Розблокувати
                       </Button>
                     ) : (
                       <Button
@@ -263,7 +263,7 @@ export default function AdminPage() {
                         fullWidth={false}
                         className="px-2 py-1 border-red-300 text-red-600 hover:bg-red-500"
                       >
-                        Бан
+                        Заблокувати
                       </Button>
                     )
                   )}

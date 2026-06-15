@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import DashboardCard from '@/components/ui/DashboardCard';
 import Button from '@/components/ui/Button';
-import { DateTimeDisplay, EmptyState, RoleBadge, SessionTimeBadge, VisibilityBadge } from '@/components/shared';
+import { DateTimeDisplay, EmptyState, RoleBadge, SessionTimeBadge, VisibilityBadge, SkeletonSessionDetail } from '@/components/shared';
 import Dice20 from '@/components/ui/icons/Dice20';
 import Data from '@/components/ui/icons/Data';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
@@ -88,9 +88,7 @@ export default function HomeCurrentSessionWidget() {
   if (isLoading) {
     return (
       <DashboardCard title={cardTitle}>
-        <div className="flex items-center justify-center h-full min-h-48">
-          <div className="animate-pulse text-brand-dark font-medium">Завантаження...</div>
-        </div>
+        <SkeletonSessionDetail />
       </DashboardCard>
     );
   }

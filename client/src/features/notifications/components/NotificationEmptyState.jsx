@@ -1,30 +1,27 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import EmptyState from '@/components/shared/EmptyState';
+import Dice20 from '@/components/ui/icons/Dice20';
 
-/**
- * Empty state для списку сповіщень
- *
- * @param {'ACTIVE'|'ARCHIVED'} filter - поточний фільтр для контекстного повідомлення
- */
+const MESSAGES = {
+  ACTIVE: {
+    title: 'Немає активних сповіщень',
+    description: 'Коли щось важливе трапиться, ви побачите це тут',
+  },
+  ARCHIVED: {
+    title: 'Немає архівованих',
+    description: "Архівовані сповіщення з'являться тут",
+  },
+};
+
 export default function NotificationEmptyState({ filter = 'ACTIVE' }) {
-  const messages = {
-    ACTIVE: {
-      title: 'Немає активних сповіщень',
-      description: 'Коли щось важливе трапиться, ви побачите це тут',
-    },
-    ARCHIVED: {
-      title: 'Немає архівованих',
-      description: 'Архівовані сповіщення з\'являться тут',
-    },
-  };
-
-  const { title, description } = messages[filter] || messages.ACTIVE;
-
+  const { title, description } = MESSAGES[filter] || MESSAGES.ACTIVE;
   return (
-    <div className="flex flex-col items-center justify-center py-45 text-brand-medium w-full flex-1">
-      <p className="text-lg font-medium text-center text-brand-medium">{title}</p>
-      <p className="text-sm mt-2 text-center max-w-[250px]">{description}</p>
-    </div>
+    <EmptyState
+      icon={<Dice20 className="w-10 h-10" />}
+      title={title}
+      description={description}
+    />
   );
 }
 

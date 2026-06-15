@@ -7,7 +7,7 @@ import {
   useCampaignShareLinkQuery,
 } from "./useCampaignQueries";
 import useAuthStore from "@/stores/useAuthStore";
-import { CAMPAIGN_TABS as TABS, CAMPAIGN_TAB_VALUES as TAB_VALUES, CAMPAIGN_COMMUNICATION_MODES } from "../constants/campaignTabs";
+import { CAMPAIGN_TABS as TABS, CAMPAIGN_TAB_VALUES as TAB_VALUES } from "../constants/campaignTabs";
 import {
   parseEnumSearchParam,
   parsePositiveIntSearchParam,
@@ -125,7 +125,6 @@ export default function useCampaignPageController() {
   const [searchParams, setSearchParams] = useSearchParams();
   const user = useAuthStore((state) => state.user);
   const [lastGeneratedShareLink, setLastGeneratedShareLink] = useState("");
-  const [campaignCommunicationMode, setCampaignCommunicationMode] = useState(CAMPAIGN_COMMUNICATION_MODES.CHAT);
 
   const hasShareToken = typeof routeShareToken === "string" && routeShareToken.trim().length > 0;
   const isValidId = Number.isInteger(campaignIdNumber) && campaignIdNumber > 0;
@@ -372,8 +371,6 @@ export default function useCampaignPageController() {
     activeTab,
     availableTabs,
     setActiveTab,
-    campaignCommunicationMode,
-    setCampaignCommunicationMode,
     viewingUserId,
     isPreviewMode,
     myRole,

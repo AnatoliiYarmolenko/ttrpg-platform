@@ -1,12 +1,10 @@
 import React from 'react';
-import PropTypes from 'prop-types';
-import { SESSION_TABS, COMMUNICATION_MODES } from '../../constants/sessionTabs';
+import { SESSION_TABS } from '../../constants/sessionTabs';
 import SessionInfoWidget from '../widgets/SessionInfoWidget';
 import SessionSettingsWidget from '../widgets/SessionSettingsWidget';
 import SessionCommunicationCallWidget from '../widgets/SessionCommunicationCallWidget';
 import SessionCommunicationChatWidget from '../widgets/SessionCommunicationChatWidget';
 import SessionPageParticipantsWidget from '../widgets/SessionParticipantsWidget';
-import TopBarTabButton from '@/components/ui/TopBarTabButton';
 
 function renderCommunicationLeftPanel({ viewingUserId, profilePreviewNode }) {
   if (viewingUserId) {
@@ -16,40 +14,6 @@ function renderCommunicationLeftPanel({ viewingUserId, profilePreviewNode }) {
   return <SessionCommunicationCallWidget />;
 }
 
-const COMMUNICATION_TAB_OPTIONS = [
-  { key: COMMUNICATION_MODES.CHAT, label: 'Чат' },
-  { key: COMMUNICATION_MODES.PARTICIPANTS, label: 'Учасники' },
-];
-
-// eslint-disable-next-line no-unused-vars
-function CommunicationModeSwitch({ activeMode, onChange }) {
-  return null;
-  /*
-  return (
-    <fieldset className="max-w-full overflow-x-auto" aria-label="Режим комунікації">
-      <legend className="sr-only">Режим комунікації</legend>
-      <div className="flex items-center gap-2 min-w-max">
-        {COMMUNICATION_TAB_OPTIONS.map((tab) => (
-          <TopBarTabButton
-            key={tab.key}
-            label={tab.label}
-            isActive={activeMode === tab.key}
-            onClick={() => onChange(tab.key)}
-            className="py-2 px-4 text-sm"
-          />
-        ))}
-      </div>
-    </fieldset>
-  );
-  */
-}
-
-CommunicationModeSwitch.propTypes = {
-  activeMode: PropTypes.string.isRequired,
-  onChange: PropTypes.func.isRequired,
-};
-
-
 export default function SessionTabRenderer({
   activeTab,
   sessionInfoProps,
@@ -57,8 +21,6 @@ export default function SessionTabRenderer({
   participantsProps,
   viewingUserId,
   profilePreviewNode,
-  communicationPanelMode,
-  setCommunicationPanelMode,
   chatProps,
 }) {
   const detailsParticipantsProps = {
@@ -71,40 +33,24 @@ export default function SessionTabRenderer({
     return {
       leftPanel: <SessionSettingsWidget {...sessionSettingsProps} />,
       rightPanel: <SessionPageParticipantsWidget {...participantsProps} />,
+      leftLabel: 'Керування',
+      rightLabel: 'Учасники',
     };
   }
 
   if (activeTab === SESSION_TABS.COMMUNICATION) {
-    const isChatMode = communicationPanelMode === COMMUNICATION_MODES.CHAT;
     return {
+      leftLabel: viewingUserId ? 'Профіль' : 'Відеодзвінок',
+      rightLabel: 'Чат',
       leftPanel: renderCommunicationLeftPanel({ viewingUserId, profilePreviewNode }),
-      rightPanel: isChatMode ? (
-        <SessionCommunicationChatWidget
-          chatProps={chatProps}
-          actions={(
-            <CommunicationModeSwitch
-              activeMode={communicationPanelMode}
-              onChange={setCommunicationPanelMode}
-            />
-          )}
-        />
-      ) : (
-        <SessionPageParticipantsWidget
-          {...participantsProps}
-          actions={(
-            <CommunicationModeSwitch
-              activeMode={communicationPanelMode}
-              onChange={setCommunicationPanelMode}
-            />
-          )}
-        />
-      ),
+      rightPanel: <SessionCommunicationChatWidget chatProps={chatProps} />,
     };
   }
 
   return {
     leftPanel: viewingUserId ? profilePreviewNode : <SessionInfoWidget {...sessionInfoProps} />,
     rightPanel: <SessionPageParticipantsWidget {...detailsParticipantsProps} />,
+    leftLabel: viewingUserId ? 'Профіль' : 'Деталі',
+    rightLabel: 'Учасники',
   };
 }
-

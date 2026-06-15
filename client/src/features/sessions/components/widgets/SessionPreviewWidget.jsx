@@ -38,13 +38,24 @@ function getUnavailableJoinMessage(session) {
   return 'Приєднання до цієї сесії зараз недоступне';
 }
 
-function getJoinModalMessage({ hasConfirmedGm, canApplyAsGm }) {
+function getJoinModalMessage({ hasConfirmedGm, canApplyAsGm, session }) {
+  const entityType = getEntityType(session);
+  const visibility = session?.visibility;
+
+  const isImmediateJoin =
+    (entityType === 'oneShot' && visibility === 'PUBLIC') ||
+    (entityType === 'campaignSession' && visibility === 'PRIVATE');
+
   if (hasConfirmedGm) {
-    return 'Після підтвердження ви одразу приєднаєтесь як гравець.';
+    return isImmediateJoin
+      ? 'Після підтвердження ви одразу приєднаєтесь як гравець.'
+      : 'Ваша заявка потребує підтвердження організатором.';
   }
 
   if (!canApplyAsGm) {
-    return 'Бажаєте приєднатися як гравець?';
+    return isImmediateJoin
+      ? 'Бажаєте приєднатися як гравець?'
+      : 'Бажаєте подати заявку на участь?';
   }
 
   return 'У сесії поки немає підтвердженого GM. Оберіть роль, на яку хочете податися.';
@@ -86,7 +97,7 @@ function SessionJoinModal({
     >
       <div className="rounded-2xl bg-white p-6 shadow-xl">
         <h3 className="mb-2 text-lg font-bold text-brand-dark">Приєднатись до сесії</h3>
-        <p className="mb-6 text-brand-medium">{getJoinModalMessage({ hasConfirmedGm, canApplyAsGm })}</p>
+        <p className="mb-6 text-brand-medium">{getJoinModalMessage({ hasConfirmedGm, canApplyAsGm, session })}</p>
 
         {session?.price > 0 && canJoin && (
           <p className="mb-6 text-brand-medium">
@@ -121,12 +132,12 @@ function SessionJoinModal({
             <Button
               onClick={handleApplyAsGm}
               isLoading={isApplyingGm}
-              loadingText="Відправка..."
+              loadingText="Подача заявки..."
               variant={canJoin ? 'outline' : 'primary'}
               fullWidth={false}
               className="min-w-[170px]"
             >
-              Податися як GM
+              Подати заявку як GM
             </Button>
           )}
 

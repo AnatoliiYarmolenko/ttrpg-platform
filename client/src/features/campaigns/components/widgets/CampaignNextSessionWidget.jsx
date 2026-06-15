@@ -45,12 +45,11 @@ export default function CampaignNextSessionWidget({
   if (!session) {
     return (
       <DashboardCard title="Наступна сесія">
-        <div className="flex items-center justify-center w-full h-full min-h-[300px]">
-          <EmptyState
-            icon={<Dice20 className="w-14 h-14" />}
-            title="Немає запланованих сесій"
-          />
-        </div>
+        <EmptyState
+          icon={<Dice20 className="w-14 h-14" />}
+          title="Немає запланованих сесій"
+          fullHeight
+        />
       </DashboardCard>
     );
   }

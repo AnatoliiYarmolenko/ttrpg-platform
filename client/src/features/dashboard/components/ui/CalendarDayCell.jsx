@@ -1,10 +1,7 @@
 import React, { memo } from 'react';
+import PropTypes from 'prop-types';
 import Campfire from '../../../../components/ui/icons/Campfire';
 
-/**
- * Компонент для відображення дня календаря з детальною інформацією
- * Огорнутий у React.memo для запобігання зайвим перемальовуванням
- */
 const CalendarDayCell = memo(function CalendarDayCell({
   day,
   dateKey,
@@ -19,18 +16,15 @@ const CalendarDayCell = memo(function CalendarDayCell({
       onSelect(dateKey);
     }
   };
-  // Агрегуємо сесії за системами та кампаніями
   const aggregateData = React.useMemo(() => {
     const systemCounts = {};
     const campaignCounts = {};
     
     sessions.forEach(session => {
-      // Підраховуємо по системах
       if (session.system) {
         systemCounts[session.system] = (systemCounts[session.system] || 0) + 1;
       }
       
-      // Підраховуємо по кампаніях
       if (session.campaignTitle) {
         campaignCounts[session.campaignTitle] = (campaignCounts[session.campaignTitle] || 0) + 1;
       }
@@ -39,7 +33,6 @@ const CalendarDayCell = memo(function CalendarDayCell({
     return { systemCounts, campaignCounts };
   }, [sessions]);
 
-  // Кольори для різних систем
   const getSystemColor = (system) => {
     const colors = {
       'D&D 5e': 'bg-red-500',
@@ -50,7 +43,6 @@ const CalendarDayCell = memo(function CalendarDayCell({
     return colors[system] || 'bg-green-500';
   };
 
-  // Визначаємо стилі
   const getBorderColor = () => {
     if (isSelected) return 'border-brand-dark';
     if (isToday) return 'border-brand-accent';
@@ -69,7 +61,7 @@ const CalendarDayCell = memo(function CalendarDayCell({
       className={`
         w-full min-h-[82px]
         flex flex-col items-start justify-between
-        rounded-md border 
+        rounded-md border
         ${getBorderColor()}
         ${getBackgroundColor()}
         hover:shadow-sm hover:border-brand-dark
@@ -77,7 +69,6 @@ const CalendarDayCell = memo(function CalendarDayCell({
         p-2 relative
       `}
     >
-      {/* Верхній рядок: номер дня та загальна кількість */}
       
       <div className="w-full flex items-center justify-between">
         <div className={`
@@ -97,7 +88,6 @@ const CalendarDayCell = memo(function CalendarDayCell({
             `}>
                 <Campfire className="w-3.5 h-3.5" /> {count}
 
-                {/* 3. Сама підказка */}
                 <div className="
                   absolute bottom-full left-1/2 -translate-x-1/2 mb-1
                   px-2 py-1
@@ -106,19 +96,16 @@ const CalendarDayCell = memo(function CalendarDayCell({
                   pointer-events-none whitespace-nowrap z-50
                 ">
                   Активні сесії
-                  {/* Маленький трикутник знизу */}
                   <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
                 </div>
             </div>
           )}
       </div>
 
-      {/* Список сесій за системами/кампаніями - внизу */}
       {count > 0 && (
         <div className="w-full flex flex-col gap-1 mt-auto">
-          {/* Показуємо системи */}
           {Object.entries(aggregateData.systemCounts)
-            .sort((a, b) => b[1] - a[1]) // Сортуємо за кількістю (від більшого до меншого)
+            .sort((a, b) => b[1] - a[1])
             .slice(0, 2)
             .map(([system, sysCount]) => (
             <div key={system} className="flex items-center justify-between">
@@ -130,7 +117,6 @@ const CalendarDayCell = memo(function CalendarDayCell({
             </div>
           ))}
           
-          {/* Якщо більше 2 систем, показуємо +N */}
           {Object.keys(aggregateData.systemCounts).length > 2 && (
             <div className="text-[10px] text-gray-500 font-medium">
               +{Object.keys(aggregateData.systemCounts).length - 2}
@@ -139,7 +125,6 @@ const CalendarDayCell = memo(function CalendarDayCell({
         </div>
       )}
 
-      {/* Індикатор сьогодні (маленька крапка) */}
       {isToday && (
         <div className="absolute top-0.5 right-0.5">
           <div className="w-2 h-2 rounded-full bg-brand-accent"></div>
@@ -150,3 +135,13 @@ const CalendarDayCell = memo(function CalendarDayCell({
 });
 
 export default CalendarDayCell;
+
+CalendarDayCell.propTypes = {
+  day: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  dateKey: PropTypes.string,
+  count: PropTypes.number,
+  sessions: PropTypes.array,
+  isSelected: PropTypes.bool,
+  isToday: PropTypes.bool,
+  onSelect: PropTypes.func,
+};

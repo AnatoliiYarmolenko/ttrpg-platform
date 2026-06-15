@@ -13,9 +13,6 @@ import { useCalendarStatsQuery } from '../../hooks/useCalendarQueries';
 
 const EMPTY_SESSIONS = [];
 
-/**
- * Універсальний CalendarWidget для всіх режимів Dashboard
- */
 const CalendarWidget = memo(function CalendarWidget({ title, showTodayButton }) {
   const {
     currentMonth,
@@ -51,36 +48,28 @@ const CalendarWidget = memo(function CalendarWidget({ title, showTodayButton }) 
     };
   }, []);
 
-  // Отримуємо статистику через React Query
   const { data: calendarStats = {} } = useCalendarStatsQuery({
     currentMonth,
     viewMode,
     searchFilters,
   });
 
-  // Генеруємо дні для календаря
   const calendarDays = useMemo(() => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
     
-    // Перший день місяця
     const firstDay = new Date(year, month, 1);
-    // Останній день місяця
     const lastDay = new Date(year, month + 1, 0);
     
-    // День тижня першого дня (0 = неділя, перетворюємо на 0 = понеділок)
     let startDayOfWeek = firstDay.getDay();
     startDayOfWeek = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
     
-    // Сьогоднішня дата для порівняння
     const days = [];
     
-    // Додаємо порожні клітинки для днів попереднього місяця
     for (let i = 0; i < startDayOfWeek; i++) {
       days.push({ id: `empty-before-${year}-${month}-${i}`, day: null, dateKey: null, isToday: false });
     }
     
-    // Додаємо дні поточного місяця
     for (let day = 1; day <= lastDay.getDate(); day++) {
       const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       days.push({ day, dateKey, isToday: dateKey === todayKey });
@@ -89,25 +78,23 @@ const CalendarWidget = memo(function CalendarWidget({ title, showTodayButton }) 
     return days;
   }, [currentMonth, todayKey]);
 
-  // Форматуємо назву місяця
   const monthName = useMemo(() => {
     return formatDate(currentMonth, 'monthYear');
   }, [currentMonth]);
 
-  // Дні тижня
   const weekDays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
 
 const navigationActions = (
-    <div className="flex gap-2 items-center">
+    <div className="flex gap-1 sm:gap-2 items-center">
       <button
         onClick={goToPrevMonth}
         type="button"
-        className="duration-300 inline-flex items-center justify-center w-10 h-10 rounded-full text-brand-dark bg-white/0 hover:bg-brand-light/20 transition-colors"
+        className="duration-300 inline-flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full text-brand-dark bg-white/0 hover:bg-brand-light/20 transition-colors"
         aria-label="Попередній місяць"
       >
         <Arrow direction="left" className="w-5 h-5" />
       </button>
-      
+
       {shouldShowTodayButton && (
         <div className="flex-shrink-0">
           <Button
@@ -115,68 +102,43 @@ const navigationActions = (
             variant="primary"
             size="md"
             fullWidth={false}
-            className="h-8 px-4"
+            className="h-8 px-3 sm:px-4 text-sm"
           >
             Сьогодні
           </Button>
         </div>
       )}
-      
+
       <button
         onClick={goToNextMonth}
         type="button"
-        className="duration-300 inline-flex items-center justify-center w-10 h-10 rounded-full text-brand-dark bg-white/0 hover:bg-brand-light/20 transition-colors"
+        className="duration-300 inline-flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full text-brand-dark bg-white/0 hover:bg-brand-light/20 transition-colors"
         aria-label="Наступний місяць"
       >
         <Arrow direction="right" className="w-5 h-5" />
       </button>
     </div>
-  );  
-  // Генеруємо заголовок на основі viewMode
-  const getViewModeLabel = () => {
-    switch (viewMode) {
-      case VIEW_MODES.MY_GAMES:
-        return 'Мої ігри';
-      case VIEW_MODES.CALENDAR:
-        return 'Календар';
-      case VIEW_MODES.SEARCH:
-        return 'Пошук';
-      default:
-        return '';
-    }
-  };
-  
-  const viewModeLabel = getViewModeLabel();
-  const cardTitle = title || (viewModeLabel 
-    ? `${viewModeLabel} — ${monthName.charAt(0).toUpperCase() + monthName.slice(1)}`
-    : `${monthName.charAt(0).toUpperCase() + monthName.slice(1)}`
   );
+  const cardTitle = title || (monthName.charAt(0).toUpperCase() + monthName.slice(1));
 
   return (
     <DashboardCard 
       title={cardTitle}
       actions={navigationActions}
     >
-      {/* {isCalendarLoading ? (
-        <div className="flex items-center justify-center h-full">
-          <div className="animate-pulse text-brand-dark">Завантаження...</div>
-        </div>
-      ) : ( */}
-      {
-        <div className="flex flex-col h-full">
+      <div className="h-full overflow-x-auto sm:overflow-x-visible">
+        <div className="flex flex-col h-full min-w-[600px] sm:min-w-0">
           {/* Заголовки днів тижня */}
           <div className="grid grid-cols-7 gap-1 mb-1">
             {weekDays.map((day) => (
-              <div 
-                key={day} 
+              <div
+                key={day}
                 className="text-center font-bold text-brand-medium text-xs py-0.5"
               >
                 {day}
               </div>
             ))}
           </div>
-          
-          {/* Сітка днів */}
           <div className="grid grid-cols-7 gap-1 flex-1 overflow-visible">
             {calendarDays.map((item) => {
               const stats = item.dateKey ? calendarStats[item.dateKey] : null;
@@ -184,7 +146,6 @@ const navigationActions = (
               const sessions = stats?.sessions || EMPTY_SESSIONS;
               
               if (!item.day) {
-                // Порожня клітинка
                 return <div key={item.id} className="min-h-[82px]" />;
               }
               
@@ -203,7 +164,7 @@ const navigationActions = (
             })}
           </div>
         </div>
-      }
+      </div>
     </DashboardCard>
   );
 });

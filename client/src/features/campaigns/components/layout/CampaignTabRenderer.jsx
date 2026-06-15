@@ -1,49 +1,14 @@
 import React from 'react';
-import { CAMPAIGN_TABS, CAMPAIGN_COMMUNICATION_MODES } from '../../constants/campaignTabs';
+import { CAMPAIGN_TABS } from '../../constants/campaignTabs';
 import CampaignInfoWidget from '../widgets/CampaignInfoWidget';
 import CampaignMembersWidget from '../widgets/CampaignMembersWidget';
 import CampaignCommunicationChatWidget from '../widgets/CampaignCommunicationChatWidget';
 import CampaignNextSessionWidget from '../widgets/CampaignNextSessionWidget';
 import CampaignSessionsWidget from '../widgets/CampaignSessionsWidget';
 import CampaignSettingsWidget from '../widgets/CampaignSettingsWidget';
-import TopBarTabButton from '@/components/ui/TopBarTabButton';
-
-/**
- * CampaignTabRenderer — відповідає за рендеринг лівої та правої панелі
- * сторінки кампанії залежно від поточного табу.
- */
-const COMMUNICATION_TAB_OPTIONS = [
-  { key: CAMPAIGN_COMMUNICATION_MODES.CHAT, label: 'Чат' },
-  { key: CAMPAIGN_COMMUNICATION_MODES.MEMBERS, label: 'Учасники' },
-];
-// eslint-disable-next-line no-unused-vars
-function CommunicationModeSwitch({ activeMode, onChange }) {
-  return null;
-  /*
-  return (
-    <fieldset className="max-w-full overflow-x-auto" aria-label="Режим комунікації">
-      <legend className="sr-only">Режим комунікації</legend>
-      <div className="flex items-center gap-2 min-w-max">
-        {COMMUNICATION_TAB_OPTIONS.map((tab) => (
-          <TopBarTabButton
-            key={tab.key}
-            label={tab.label}
-            isActive={activeMode === tab.key}
-            onClick={() => onChange(tab.key)}
-            className="py-2 px-4 text-sm"
-          />
-        ))}
-      </div>
-    </fieldset>
-  );
-  */
-}
 
 export default function CampaignTabRenderer({
   activeTab,
-  campaignCommunicationMode,
-  setCampaignCommunicationMode,
-  // Props for widgets
   infoProps,
   membersProps,
   nextSessionProps,
@@ -58,41 +23,25 @@ export default function CampaignTabRenderer({
       return {
         leftPanel: viewingUserId ? profilePreviewNode : <CampaignSettingsWidget {...settingsProps} />,
         rightPanel: <CampaignMembersWidget {...membersProps} />,
+        leftLabel: viewingUserId ? 'Профіль' : 'Налаштування',
+        rightLabel: 'Учасники',
       };
 
     case CAMPAIGN_TABS.SESSIONS:
       return {
         leftPanel: <CampaignNextSessionWidget {...nextSessionProps} />,
         rightPanel: <CampaignSessionsWidget {...sessionsProps} />,
+        leftLabel: 'Наступна сесія',
+        rightLabel: 'Сесії',
       };
 
     case CAMPAIGN_TABS.DETAILS:
-    default: {
-      const isChatMode = campaignCommunicationMode === CAMPAIGN_COMMUNICATION_MODES.CHAT;
+    default:
       return {
+        leftLabel: viewingUserId ? 'Профіль' : 'Деталі',
+        rightLabel: 'Чат',
         leftPanel: viewingUserId ? profilePreviewNode : <CampaignInfoWidget {...infoProps} />,
-        rightPanel: isChatMode ? (
-          <CampaignCommunicationChatWidget
-            chatProps={chatProps}
-            actions={(
-              <CommunicationModeSwitch
-                activeMode={campaignCommunicationMode}
-                onChange={setCampaignCommunicationMode}
-              />
-            )}
-          />
-        ) : (
-          <CampaignMembersWidget
-            {...membersProps}
-            actions={(
-              <CommunicationModeSwitch
-                activeMode={campaignCommunicationMode}
-                onChange={setCampaignCommunicationMode}
-              />
-            )}
-          />
-        ),
+        rightPanel: <CampaignCommunicationChatWidget chatProps={chatProps} />,
       };
-    }
   }
 }

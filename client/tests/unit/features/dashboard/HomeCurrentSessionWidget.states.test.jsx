@@ -46,7 +46,7 @@ describe('HomeCurrentSessionWidget states', () => {
 
     render(<HomeCurrentSessionWidget />);
 
-    expect(screen.getByText('Завантаження...')).toBeInTheDocument();
+    expect(screen.getByTestId('skeleton-session-detail')).toBeInTheDocument();
   });
 
   it('renders error state and retries on button click', async () => {

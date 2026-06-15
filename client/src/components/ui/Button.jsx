@@ -1,4 +1,5 @@
 import { forwardRef } from 'react';
+import { Loader2 } from 'lucide-react';
 
 const Button = forwardRef(function Button({ 
   as: Component = "button",
@@ -49,7 +50,12 @@ const Button = forwardRef(function Button({
       className={`${displayClass} ${baseStyles} ${sizes[size] || sizes.md} ${variants[variant] || variants.primary} ${widthClass} ${className}`}
       {...rest}
     >
-      {isLoading ? loadingText : children}
+      {isLoading ? (
+        <>
+          <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+          {loadingText}
+        </>
+      ) : children}
     </Component>
   );
 });

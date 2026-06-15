@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { UserAvatar } from '@/components/shared';
+import { UserAvatar, SkeletonProfile } from '@/components/shared';
 import Timer from '@/components/ui/icons/Timer';
 import Dice20 from '@/components/ui/icons/Dice20';
 import { formatTimeZoneLabel } from '@/utils/timeZone';
@@ -24,15 +24,7 @@ export default function ProfilePublicCard({
   shareButton = null,
 }) {
   if (isLoading) {
-    return (
-      <div className="animate-pulse space-y-4 py-8">
-        <div className="flex justify-center">
-          <div className="w-24 h-24 bg-brand-light/20 rounded-full" />
-        </div>
-        <div className="h-6 bg-brand-light/20 rounded w-1/2 mx-auto" />
-        <div className="h-4 bg-brand-light/20 rounded w-2/3 mx-auto" />
-      </div>
-    );
+    return <SkeletonProfile />;
   }
 
   if (error) {

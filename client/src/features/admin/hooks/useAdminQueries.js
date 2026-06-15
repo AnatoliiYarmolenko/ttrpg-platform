@@ -80,12 +80,12 @@ export const useAdminMutations = () => {
 
   const banUserMutation = useMutation({
     mutationFn: (id) => banAdminUser(id),
-    ...handleMutation('Користувача забанено', [['admin', 'users'], ['admin', 'stats'], ['admin', 'campaigns'], ['admin', 'sessions']]),
+    ...handleMutation('Користувача заблоковано', [['admin', 'users'], ['admin', 'stats'], ['admin', 'campaigns'], ['admin', 'sessions']]),
   });
 
   const unbanUserMutation = useMutation({
     mutationFn: (id) => unbanAdminUser(id),
-    ...handleMutation('Користувача розбанено', [['admin', 'users'], ['admin', 'stats'], ['admin', 'campaigns'], ['admin', 'sessions']]),
+    ...handleMutation('Користувача розблоковано', [['admin', 'users'], ['admin', 'stats'], ['admin', 'campaigns'], ['admin', 'sessions']]),
   });
 
   return {

@@ -5,13 +5,12 @@ import Dropdown from '@/components/ui/Dropdown';
 import FormField from '@/components/ui/FormField';
 import { toast } from '@/stores/useToastStore';
 import { normalizeTimeZoneValue } from '@/utils/timeZone';
+import { SkeletonForm } from '@/components/shared';
 
-// Список часових поясів для вибору
 const TIMEZONES = [
   { value: 'Europe/Kyiv', label: 'Київ (UTC+2/+3)' },
 ];
 
-// Список мов
 const LANGUAGES = [
   { value: 'uk', label: '🇺🇦 Українська' },
 ];
@@ -21,7 +20,6 @@ export default function ProfileEditForm({ onSuccess }) {
   const { updateProfile } = useProfileMutations();
   const [saving, setSaving] = useState(false);
   
-  // Форма
   const [formData, setFormData] = useState({
     displayName: '',
     bio: '',
@@ -29,7 +27,6 @@ export default function ProfileEditForm({ onSuccess }) {
     language: 'uk',
   });
   
-  // Заповнення форми даними
   useEffect(() => {
     if (profile) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -52,7 +49,6 @@ export default function ProfileEditForm({ onSuccess }) {
     setSaving(true);
 
     try {
-      // Фільтруємо пусті значення
       const dataToSend = {};
       Object.keys(formData).forEach(key => {
         if (formData[key] !== '' && formData[key] !== null) {
@@ -65,12 +61,10 @@ export default function ProfileEditForm({ onSuccess }) {
       const result = await updateProfile(dataToSend);
   toast.success('Профіль успішно оновлено!');
       
-      // Викликаємо onSuccess з оновленим профілем
       if (onSuccess && result.profile) {
         onSuccess(result.profile);
       }
     } catch (err) {
-      // Підтримуємо новий формат помилок (error замість message)
       const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Помилка при збереженні';
       toast.error(errorMessage);
     } finally {
@@ -79,23 +73,17 @@ export default function ProfileEditForm({ onSuccess }) {
   };
 
   if (isLoading) {
-    return (
-      <div className="animate-pulse text-center py-8 text-brand-medium">
-        Завантаження...
-      </div>
-    );
+    return <SkeletonForm rows={4} />;
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      {/* ===== Секція: Публічний профіль ===== */}
       <section className="space-y-5">
         <div className="pb-2 border-b border-brand-light/30">
           <h3 className="font-semibold text-brand-dark">Публічний профіль</h3>
           <p className="text-xs text-brand-medium">Інформація, яку бачитимуть інші гравці</p>
         </div>
 
-        {/* Display Name */}
         <FormField
           as="input"
           id="displayName"
@@ -109,7 +97,6 @@ export default function ProfileEditForm({ onSuccess }) {
           hint="Це ім'я бачитимуть інші гравці"
         />
 
-        {/* Bio */}
         <div>
           <FormField
             as="textarea"
@@ -129,14 +116,12 @@ export default function ProfileEditForm({ onSuccess }) {
         </div>
       </section>
 
-      {/* ===== Секція: Налаштування ===== */}
       <section className="space-y-5">
         <div className="pb-2 border-b border-brand-light/30">
           <h3 className="font-semibold text-brand-dark">Налаштування</h3>
           <p className="text-xs text-brand-medium">Персональні параметри для зручності використання</p>
         </div>
 
-        {/* Timezone */}
         <div>
           <Dropdown
             label="Часовий пояс"
@@ -151,7 +136,6 @@ export default function ProfileEditForm({ onSuccess }) {
           </p>
         </div>
 
-        {/* Language */}
         <div>
           <Dropdown
             label="Мова інтерфейсу"
@@ -164,7 +148,6 @@ export default function ProfileEditForm({ onSuccess }) {
         </div>
       </section>
 
-      {/* Submit Button */}
       <div className="pt-4 border-t border-brand-light/20">
         <Button
           type="submit"

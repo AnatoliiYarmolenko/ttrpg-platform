@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import DashboardCard from '@/components/ui/DashboardCard';
@@ -7,14 +7,29 @@ import {
   RoleBadge,
   DateTimeDisplay,
   EmptyState,
+  SkeletonSessionCard,
+  SegmentedToggle,
 } from '@/components/shared';
 import { useMySessionsQuery } from '../../hooks/useDashboardQueries';
+
+const SESSION_FILTER_OPTIONS = [
+  { key: 'ACTIVE', label: 'Активні' },
+  { key: 'PLANNED', label: 'Заплановані' },
+  { key: 'FINISHED', label: 'Завершені' },
+  { key: 'CANCELED', label: 'Скасовані' },
+];
+
+const SESSION_EMPTY_DESCRIPTIONS = {
+  ACTIVE: 'Зараз немає активних сесій',
+  PLANNED: 'Заплановані сесії відображатимуться тут',
+  FINISHED: 'Завершені сесії відображатимуться тут',
+  CANCELED: 'Скасовані сесії відображатимуться тут',
+};
 import Dice20 from '@/components/ui/icons/Dice20';
 import GroupPeople from '@/components/ui/icons/GroupPeople';
 import Data from '@/components/ui/icons/Data';
 import Timer from '@/components/ui/icons/Timer';
 
-/** Картка сесії — використовується і для one-shot і для сесій кампанії */
 function SessionCard({ session, navigate, formatDuration }) {
   const isPending = session.myStatus === 'PENDING';
 
@@ -73,25 +88,18 @@ SessionCard.propTypes = {
   navigate: PropTypes.func.isRequired,
   formatDuration: PropTypes.func.isRequired,
 };
-
-/**
- * MyGamesListWidget — ліва панель для "Мої сесії" view.
- *
- * Два розділи:
- * 1. Сесії в кампаніях (згруповані по кампанії)
- * 2. Мої сесії (one-shot)
- */
 export default function MyGamesListWidget() {
   const navigate = useNavigate();
+  const [statusFilter, setStatusFilter] = useState('PLANNED');
 
-  const { data: sessions = [], isLoading: isLoadingSessions, error } = useMySessionsQuery();
+  const { data: allSessions = [], isLoading: isLoadingSessions, error } = useMySessionsQuery();
   const isLoading = isLoadingSessions;
 
-  // Розбиваємо сесії на one-shot та сесії всередині кампаній
+  const sessions = allSessions.filter((s) => s.status === statusFilter);
+
   const oneShotSessions = sessions.filter((s) => !s.campaignId);
   const campaignSessions = sessions.filter((s) => !!s.campaignId);
 
-  // Групуємо сесії кампаній за кампанією
   const sessionsByCampaign = campaignSessions.reduce((acc, session) => {
     const key = session.campaignId;
     if (!acc[key]) {
@@ -104,7 +112,6 @@ export default function MyGamesListWidget() {
 
   const isEmpty = oneShotSessions.length === 0 && campaignSessions.length === 0;
 
-  // Форматування тривалості
   const formatDuration = (minutes) => {
     if (!minutes) return '';
     const hours = Math.floor(minutes / 60);
@@ -114,50 +121,43 @@ export default function MyGamesListWidget() {
     return `${hours} год ${mins} хв`;
   };
 
+  let innerContent;
+
   if (isLoading) {
-    return (
-      <DashboardCard title="Мої сесії">
-        <div className="animate-pulse space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="p-4 border-2 border-gray-100 rounded-xl space-y-2">
-              <div className="h-5 bg-gray-200 rounded w-3/4" />
-              <div className="h-4 bg-gray-200 rounded w-1/2" />
-            </div>
-          ))}
-        </div>
-      </DashboardCard>
+    innerContent = (
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => <SkeletonSessionCard key={i} />)}
+      </div>
     );
-  }
-
-  if (error) {
-    return (
-      <DashboardCard title="Мої сесії">
-        <EmptyState
-          title="Не вдалося завантажити сесії"
-          description={error?.message || 'Спробуйте оновити сторінку ще раз'}
-          className="h-full"
-        />
-      </DashboardCard>
+  } else if (error) {
+    innerContent = (
+      <EmptyState
+        title="Не вдалося завантажити сесії"
+        description={error?.message || 'Спробуйте оновити сторінку ще раз'}
+        className="h-full"
+      />
     );
-  }
-
-  if (isEmpty) {
-    return (
-      <DashboardCard title="Мої сесії">
-        <EmptyState
-          icon={<Dice20 className="w-10 h-10" />}
-          title="У вас ще немає сесій"
-          description="Приєднайтесь до сесії або створіть свою на вкладці Календар"
-          className="h-full"
-        />
-      </DashboardCard>
+  } else if (allSessions.length === 0) {
+    innerContent = (
+      <EmptyState
+        icon={<Dice20 className="w-10 h-10" />}
+        title="У вас ще немає сесій"
+        description="Приєднайтесь до сесії або створіть свою на вкладці Календар"
+        className="h-full"
+      />
     );
-  }
-
-  return (
-    <DashboardCard title="Мої сесії">
+  } else if (isEmpty) {
+    innerContent = (
+      <EmptyState
+        icon={<Dice20 className="w-10 h-10" />}
+        title="Немає сесій"
+        description={SESSION_EMPTY_DESCRIPTIONS[statusFilter]}
+        className="h-full"
+      />
+    );
+  } else {
+    innerContent = (
       <div className="flex flex-col gap-6">
-        {/* === Розділ: Сесії в кампаніях === */}
         {campaignGroups.length > 0 && (
           <section>
             <h3 className="text-lg font-bold text-brand-dark mb-3">
@@ -178,7 +178,6 @@ export default function MyGamesListWidget() {
           </section>
         )}
 
-        {/* === Розділ: Мої сесії (one-shot) === */}
         {oneShotSessions.length > 0 && (
           <section>
             <h3 className="text-lg font-bold text-brand-dark mb-3 flex items-center gap-2">
@@ -191,6 +190,20 @@ export default function MyGamesListWidget() {
             </div>
           </section>
         )}
+      </div>
+    );
+  }
+
+  return (
+    <DashboardCard title="Мої сесії" noScroll>
+      <SegmentedToggle
+        options={SESSION_FILTER_OPTIONS}
+        value={statusFilter}
+        onChange={setStatusFilter}
+        className="mb-4 flex-shrink-0"
+      />
+      <div className="flex-1 overflow-y-auto min-h-0">
+        {innerContent}
       </div>
     </DashboardCard>
   );

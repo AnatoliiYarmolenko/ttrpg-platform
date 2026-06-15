@@ -41,8 +41,6 @@ export default function SessionPage() {
     activeTab,
     availableTabs,
     setActiveTab,
-    communicationPanelMode,
-    setCommunicationPanelMode,
     viewingUserId,
     isPreviewMode,
     myRole,
@@ -172,8 +170,6 @@ export default function SessionPage() {
     participantsProps,
     viewingUserId,
     profilePreviewNode,
-    communicationPanelMode,
-    setCommunicationPanelMode,
     chatProps: chatController.chatPanelProps,
   });
 
@@ -193,6 +189,8 @@ export default function SessionPage() {
       />
     ),
     rightPanel: tabPanels.rightPanel,
+    leftLabel: 'Деталі сесії',
+    rightLabel: tabPanels.rightLabel,
   };
 
   const panelState = isPreviewMode ? previewPanels : tabPanels;
@@ -230,6 +228,8 @@ export default function SessionPage() {
       }
       leftPanel={panelState.leftPanel}
       rightPanel={panelState.rightPanel}
+      leftLabel={panelState.leftLabel}
+      rightLabel={panelState.rightLabel}
     />
   );
 }

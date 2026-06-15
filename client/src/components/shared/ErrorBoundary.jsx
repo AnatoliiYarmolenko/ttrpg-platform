@@ -1,5 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import ErrorScreen from './ErrorScreen';
 
 export class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -18,10 +19,24 @@ export class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: 20, color: 'white', backgroundColor: 'red', position: 'absolute', zIndex: 9999 }}>
-          <h2>Упс! Виникла помилка у візуалізації (React Crash).</h2>
-          <pre>{this.state.error?.toString()}</pre>
-        </div>
+        <>
+          <ErrorScreen
+            message="Виникла непередбачена помилка. Спробуйте перезавантажити сторінку."
+            onAction={() => globalThis.location.reload()}
+            actionLabel="Перезавантажити"
+          />
+          {import.meta.env.DEV && (
+            <pre style={{
+              position: 'fixed', bottom: 0, left: 0, right: 0,
+              maxHeight: '200px', overflow: 'auto',
+              background: '#1a1a1a', color: '#ff6b6b',
+              padding: '12px', fontSize: '12px', zIndex: 9999,
+              margin: 0,
+            }}>
+              {this.state.error?.toString()}
+            </pre>
+          )}
+        </>
       );
     }
     return this.props.children;
@@ -29,5 +44,5 @@ export class ErrorBoundary extends React.Component {
 }
 
 ErrorBoundary.propTypes = {
-  children: PropTypes.node
+  children: PropTypes.node,
 };

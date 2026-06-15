@@ -1,5 +1,6 @@
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom"; // Додали useNavigate
+import PropTypes from "prop-types";
 import { loginUser } from "../api/authApi";
 
 import AuthInput from "../ui/AuthInput";
@@ -14,32 +15,23 @@ function LoginForm({ onSuccess }) {
   } = useForm();
   const navigate = useNavigate();
 
-  const onSubmit = async (formData) => { // data -> formData для ясності
+  const onSubmit = async (formData) => {
     try {
-      // ❌ Було: const res = await api.post("/api/auth/login", data);
-      // ✅ Стало: Викликаємо чисту функцію. URL схований всередині.
       const responseData = await loginUser(formData);
 
       if (onSuccess) {
-        // Увага: authApi повертає response.data, тому тут ми передаємо вже чисті дані
         onSuccess(responseData);
       }
     } catch (error) {
-      // Логіка помилок залишається майже такою ж, бо помилки приходять з axios
       const resp = error.response?.data;
       const errorMessage = resp?.message || resp?.error || "";
 
-      // Перехоплення непідтвердженого email
       if (error.response?.status === 403 && 
          (errorMessage.toLowerCase().includes("пошта") || errorMessage.toLowerCase().includes("email"))) {
         navigate("/verify-email-notice", { state: { email: formData.email } });
         return;
       }
-      
-      // ⚠️ CSRF логіку Retry ми прибираємо звідси!
-      // Чому? Бо lib/axios.js повинен додавати токен автоматично.
-      // Якщо 403 CSRF стається постійно - це проблема налаштування axios, а не форми.
-      
+            
       if (error.response?.status === 429) {
         toast.error(errorMessage || 'Занадто багато спроб. Спробуйте пізніше.');
         return;
@@ -61,7 +53,6 @@ function LoginForm({ onSuccess }) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      {/* Поле Email */}
       <AuthInput
         name="email"
         type="email"
@@ -70,7 +61,6 @@ function LoginForm({ onSuccess }) {
         error={errors.email} 
         rules={VALIDATION_RULES.email}  
       />
-      {/* Поле Пароль */}
       <AuthInput
         name="password"
         type="password"
@@ -100,5 +90,9 @@ function LoginForm({ onSuccess }) {
     </form>
   );
 }
+
+LoginForm.propTypes = {
+  onSuccess: PropTypes.func,
+};
 
 export default LoginForm;
