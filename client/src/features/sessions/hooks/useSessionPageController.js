@@ -6,8 +6,6 @@ import useAuthStore from '@/stores/useAuthStore';
 import {
   SESSION_TABS,
   SESSION_TAB_VALUES,
-  COMMUNICATION_MODES,
-  COMMUNICATION_MODE_VALUES,
 } from '../constants/sessionTabs';
 import {
   parseEnumSearchParam,
@@ -26,23 +24,19 @@ function normalizeSessionUrlState({
   searchParams,
   activeTab,
   viewingUserId,
-  communicationPanelMode,
   setSearchParams,
 }) {
   const rawTab = searchParams.get('tab');
   const rawViewing = searchParams.get('viewing');
-  const rawComm = searchParams.get('comm');
   const hasInvalidTab = rawTab && rawTab !== activeTab;
   const hasInvalidViewing = rawViewing && !viewingUserId;
-  const hasInvalidComm = rawComm && rawComm !== communicationPanelMode;
 
-  if (!hasInvalidTab && !hasInvalidViewing && !hasInvalidComm) {
+  if (!hasInvalidTab && !hasInvalidViewing) {
     return;
   }
 
   updateSearchParams(setSearchParams, (next) => {
     setOrDeleteParam(next, 'tab', activeTab, SESSION_TABS.DETAILS);
-    setOrDeleteParam(next, 'comm', communicationPanelMode, COMMUNICATION_MODES.CHAT);
     if (hasInvalidViewing) {
       next.delete('viewing');
     }
@@ -302,22 +296,14 @@ export default function useSessionPageController() {
     SESSION_TABS.DETAILS
   );
   const viewingUserId = parsePositiveIntSearchParam(searchParams, 'viewing');
-  const communicationPanelMode = parseEnumSearchParam(
-    searchParams,
-    'comm',
-    COMMUNICATION_MODE_VALUES,
-    COMMUNICATION_MODES.CHAT
-  );
-
   useEffect(() => {
     normalizeSessionUrlState({
       searchParams,
       activeTab,
       viewingUserId,
-      communicationPanelMode,
       setSearchParams,
     });
-  }, [communicationPanelMode, activeTab, searchParams, setSearchParams, viewingUserId]);
+  }, [activeTab, searchParams, setSearchParams, viewingUserId]);
 
   const setActiveTab = useCallback((tab) => {
     updateSearchParams(setSearchParams, (next) => {
@@ -330,19 +316,8 @@ export default function useSessionPageController() {
       }
 
       setOrDeleteParam(next, 'tab', targetTab, SESSION_TABS.DETAILS);
-
-      if (targetTab !== SESSION_TABS.COMMUNICATION) {
-        setOrDeleteParam(next, 'comm', COMMUNICATION_MODES.CHAT, COMMUNICATION_MODES.CHAT);
-      }
     });
   }, [availableTabs, setSearchParams]);
-
-  const setCommunicationPanelMode = useCallback((mode) => {
-    updateSearchParams(setSearchParams, (next) => {
-      const targetMode = COMMUNICATION_MODE_VALUES.includes(mode) ? mode : COMMUNICATION_MODES.CHAT;
-      setOrDeleteParam(next, 'comm', targetMode, COMMUNICATION_MODES.CHAT);
-    });
-  }, [setSearchParams]);
 
   useEffect(() => {
     if (!availableTabs.includes(activeTab)) {
@@ -452,8 +427,6 @@ export default function useSessionPageController() {
     activeTab,
     availableTabs,
     setActiveTab,
-    communicationPanelMode,
-    setCommunicationPanelMode,
     viewingUserId,
     isPreviewMode,
     myRole,

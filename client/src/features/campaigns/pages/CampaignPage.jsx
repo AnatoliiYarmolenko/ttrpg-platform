@@ -30,8 +30,6 @@ export default function CampaignPage() {
     activeTab,
     availableTabs,
     setActiveTab,
-    campaignCommunicationMode,
-    setCampaignCommunicationMode,
     viewingUserId,
     isPreviewMode,
     myRole,
@@ -135,8 +133,6 @@ export default function CampaignPage() {
 
     return CampaignTabRenderer({
       activeTab,
-      campaignCommunicationMode,
-      setCampaignCommunicationMode,
       viewingUserId,
       profilePreviewNode,
       chatProps: chatController.chatPanelProps,

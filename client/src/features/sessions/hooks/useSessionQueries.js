@@ -163,7 +163,7 @@ export const useSessionMutations = (sessionId, options = {}) => {
         if (message) {
           toast.success(message);
         }
-        await Promise.allSettled(invalidateFns.map((fn) => fn(res)));
+        Promise.allSettled(invalidateFns.map((fn) => fn(res)));
       }
     },
     onError: (err) => {

@@ -44,7 +44,7 @@ export function SkeletonCampaignCard() {
 
 export function SkeletonSessionDetail() {
   return (
-    <div className="flex flex-col gap-4 h-full">
+    <div data-testid="skeleton-session-detail" className="flex flex-col gap-4 h-full">
       <div className="flex flex-col gap-2">
         <div className="flex items-start justify-between gap-2">
           <Skeleton className="h-7 w-2/3" />

@@ -195,17 +195,15 @@ export default function MyGamesListWidget() {
   }
 
   return (
-    <DashboardCard title="Мої сесії">
-      <div className="flex flex-col h-full">
-        <SegmentedToggle
-          options={SESSION_FILTER_OPTIONS}
-          value={statusFilter}
-          onChange={setStatusFilter}
-          className="mb-4 flex-shrink-0"
-        />
-        <div className="flex-1 overflow-y-auto min-h-0">
-          {innerContent}
-        </div>
+    <DashboardCard title="Мої сесії" noScroll>
+      <SegmentedToggle
+        options={SESSION_FILTER_OPTIONS}
+        value={statusFilter}
+        onChange={setStatusFilter}
+        className="mb-4 flex-shrink-0"
+      />
+      <div className="flex-1 overflow-y-auto min-h-0">
+        {innerContent}
       </div>
     </DashboardCard>
   );

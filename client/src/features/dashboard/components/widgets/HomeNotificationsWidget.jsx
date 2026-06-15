@@ -119,32 +119,31 @@ export default function HomeNotificationsWidget() {
         </div>
       }
       actions={markAllButton}
+      noScroll
     >
-      <div className="flex flex-col h-full relative">
-        <SegmentedToggle
-          options={NOTIFICATION_FILTER_OPTIONS}
-          value={filter}
-          onChange={setFilter}
-          className="relative z-10 mb-4"
-        />
-
-        {isEmpty ? (
+      <SegmentedToggle
+        options={NOTIFICATION_FILTER_OPTIONS}
+        value={filter}
+        onChange={setFilter}
+        className="mb-4 flex-shrink-0"
+      />
+      <div className="flex-1 overflow-y-auto min-h-0 -mx-2 px-2 relative">
+        {isEmpty && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <NotificationEmptyState filter={filter} />
           </div>
-        ) : (
-          <div className="flex-1 overflow-y-auto -mx-2 px-2">
-            <NotificationList
-              notifications={notifications}
-              isLoading={isLoading}
-              isLoadingMore={isLoadingMore}
-              hasMore={pagination?.hasMore}
-              onLoadMore={handleLoadMore}
-              onMarkAsRead={handleMarkAsRead}
-              onArchive={handleArchive}
-              filter={filter}
-            />
-          </div>
+        )}
+        {!isEmpty && (
+          <NotificationList
+            notifications={notifications}
+            isLoading={isLoading}
+            isLoadingMore={isLoadingMore}
+            hasMore={pagination?.hasMore}
+            onLoadMore={handleLoadMore}
+            onMarkAsRead={handleMarkAsRead}
+            onArchive={handleArchive}
+            filter={filter}
+          />
         )}
       </div>
     </DashboardCard>

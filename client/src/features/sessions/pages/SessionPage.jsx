@@ -41,8 +41,6 @@ export default function SessionPage() {
     activeTab,
     availableTabs,
     setActiveTab,
-    communicationPanelMode,
-    setCommunicationPanelMode,
     viewingUserId,
     isPreviewMode,
     myRole,
@@ -172,8 +170,6 @@ export default function SessionPage() {
     participantsProps,
     viewingUserId,
     profilePreviewNode,
-    communicationPanelMode,
-    setCommunicationPanelMode,
     chatProps: chatController.chatPanelProps,
   });
 
