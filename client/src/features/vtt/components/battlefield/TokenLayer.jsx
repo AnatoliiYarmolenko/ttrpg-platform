@@ -1,209 +1,220 @@
-import React, { useRef, useCallback, useState, useEffect } from 'react';
+import React, { useRef, useCallback, useState, useEffect, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { extend } from '@pixi/react';
-import { Graphics, Container } from 'pixi.js';
-import { snapObjectToGrid } from '../../utils/vttUtils';
+import { Graphics, Container, Sprite, Assets } from 'pixi.js';
+import { resolveMediaUrl } from '@/lib/resolveMediaUrl';
+import DraggableElement from './DraggableElement';
+import useAuthStore from '@/stores/useAuthStore';
 
-extend({ Graphics, Container });
+extend({ Graphics, Container, Sprite });
 
 /**
- * useTokenDrag — хук логіки перетягування токена.
- *
- * Інкапсулює:
- * - Відстеження стану dragging через ref (уникає stale closures)
- * - Throttle WebSocket-подій до ~30fps
- * - Snap to grid при відпусканні
- * - Синхронізацію позиції з зовнішнім станом
- *
- * @param {{
- *   token: import('../../types/vtt.types').Token,
- *   viewport: import('../../types/vtt.types').Viewport,
- *   snapToGrid: (x: number, y: number) => { x: number, y: number },
- *   onDrag?: (id: string, x: number, y: number) => void,
- *   onDrop?: (id: string, x: number, y: number) => void,
- * }} options
- * @returns {{
- *   pos: { x: number, y: number },
- *   handlePointerDown: (e: any) => void,
- *   handlePointerMove: (e: any) => void,
- *   handlePointerUp: () => void,
- * }}
+ * usePixiTexture — завантаження текстури для зображення.
+ * @param {string | null} imageUrl
+ * @returns {import('pixi.js').Texture | null}
  */
-function useTokenDrag({ token, viewport, gridSize, onDrag, onDrop }) {
-  const [pos, setPos] = useState({ x: token.x, y: token.y });
+function usePixiTexture(imageUrl) {
+  const resolvedUrl = imageUrl ? resolveMediaUrl(imageUrl) : null;
+  const [state, setState] = useState({ url: resolvedUrl, texture: null });
 
-  // Зберігаємо поточну позицію у ref для доступу без stale closure
-  const posRef = useRef(pos);
-  const draggingRef = useRef(false);
-  const offsetRef = useRef({ x: 0, y: 0 });
-  const lastEmitRef = useRef(0);
+  if (state.url !== resolvedUrl) {
+    setState({ url: resolvedUrl, texture: null });
+  }
 
-  // Синхронізація з зовнішніми змінами (наприклад, інший гравець перемістив токен)
   useEffect(() => {
-    if (!draggingRef.current) {
-      const newPos = { x: token.x, y: token.y };
-      setPos(newPos);
-      posRef.current = newPos;
+    let isMounted = true;
+    if (resolvedUrl) {
+      Assets.load(resolvedUrl).then((t) => {
+        if (isMounted) setState({ url: resolvedUrl, texture: t });
+      }).catch(err => {
+        console.error('Failed to load token texture:', err);
+      });
     }
-  }, [token.x, token.y]);
+    return () => { isMounted = false; };
+  }, [resolvedUrl]);
 
-  const handlePointerDown = useCallback((e) => {
-    if (e.button !== 0) return; // Тільки ліва кнопка
-    draggingRef.current = true;
-
-    // e.global — PixiJS v8 API (v7 мав e.data.global)
-    const globalPos = e.global;
-    if (globalPos) {
-      offsetRef.current = {
-        x: posRef.current.x - (globalPos.x - viewport.x) / viewport.scale,
-        y: posRef.current.y - (globalPos.y - viewport.y) / viewport.scale,
-      };
-    }
-
-    e.stopPropagation?.();
-  }, [viewport]);
-
-  const handlePointerMove = useCallback((e) => {
-    if (!draggingRef.current) return;
-
-    const globalPos = e.global;
-    if (!globalPos) return;
-
-    const worldX = (globalPos.x - viewport.x) / viewport.scale + offsetRef.current.x;
-    const worldY = (globalPos.y - viewport.y) / viewport.scale + offsetRef.current.y;
-
-    const newPos = { x: worldX, y: worldY };
-    setPos(newPos);
-    posRef.current = newPos;
-
-    // Throttle WebSocket-подій до ~30fps
-    const now = Date.now();
-    if (now - lastEmitRef.current > 33) {
-      lastEmitRef.current = now;
-      onDrag?.(token.id, worldX, worldY);
-    }
-  }, [viewport, onDrag, token.id]);
-
-  const handlePointerUp = useCallback(() => {
-    if (!draggingRef.current) return;
-    draggingRef.current = false;
-
-    // Використовуємо posRef.current щоб уникнути stale closure
-    // Токен за замовчуванням має розмір 1x1 клітинку
-    const width = gridSize * (token.size || 1);
-    const height = gridSize * (token.size || 1);
-    const snapped = snapObjectToGrid(posRef.current.x, posRef.current.y, width, height, 1, 1, gridSize);
-    setPos(snapped);
-    posRef.current = snapped;
-    onDrop?.(token.id, snapped.x, snapped.y);
-  }, [gridSize, token.size, onDrop, token.id]);
-
-  return { pos, handlePointerDown, handlePointerMove, handlePointerUp };
+  return state.texture;
 }
 
-/**
- * TokenLayer — шар токенів на ігровому полі.
- *
- * @param {{
- *   tokens: import('../../types/vtt.types').Token[],
- *   gridSize: number,
- *   onTokenDrag: (id: string, x: number, y: number) => void,
- *   onTokenDrop: (id: string, x: number, y: number) => void,
- *   viewport: import('../../types/vtt.types').Viewport,
- * }} props
- */
-export default function TokenLayer({ tokens, gridSize, onTokenDrag, onTokenDrop, viewport, isLocked = false }) {
+export default function TokenLayer({ tokens, gridSize, onTokenDrag, onTokenDrop, viewport, isLocked = false, onContextMenu, onDoubleClick, selectedTokenId, onSelectToken, onUpdateToken, isGM }) {
+  const currentUser = useAuthStore((s) => s.user);
+  const viewerId = currentUser?.id;
+
   return (
     <container>
-      {tokens.map((token) => (
-        <Token
-          key={token.id}
-          token={token}
-          gridSize={gridSize}
-          onDrag={onTokenDrag}
-          onDrop={onTokenDrop}
-          viewport={viewport}
-          isLocked={isLocked}
-        />
-      ))}
+      {tokens.map((token) => {
+        const isMyToken = (token.ownerId && token.ownerId === viewerId) || (token.id === `token-player-${viewerId}`);
+        const tokenLocked = isLocked || (!isGM && !isMyToken);
+
+        return (
+          <Token
+            key={token.id}
+            token={token}
+            gridSize={gridSize}
+            onDrag={onTokenDrag}
+            onDrop={onTokenDrop}
+            viewport={viewport}
+            isLocked={tokenLocked}
+            onContextMenu={onContextMenu}
+            onDoubleClick={onDoubleClick}
+            selectedTokenId={selectedTokenId}
+            onSelectToken={onSelectToken}
+            onUpdateToken={onUpdateToken}
+            isGM={isGM}
+            isMyToken={isMyToken}
+          />
+        );
+      })}
     </container>
   );
 }
 
 TokenLayer.propTypes = {
-  tokens: PropTypes.arrayOf(PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    x: PropTypes.number.isRequired,
-    y: PropTypes.number.isRequired,
-    color: PropTypes.number,
-  })).isRequired,
+  tokens: PropTypes.array.isRequired,
   gridSize: PropTypes.number.isRequired,
-  onTokenDrag: PropTypes.func.isRequired,
-  onTokenDrop: PropTypes.func.isRequired,
-  viewport: PropTypes.shape({
-    x: PropTypes.number.isRequired,
-    y: PropTypes.number.isRequired,
-    scale: PropTypes.number.isRequired,
-  }).isRequired,
+  onTokenDrag: PropTypes.func,
+  onTokenDrop: PropTypes.func,
+  viewport: PropTypes.object.isRequired,
   isLocked: PropTypes.bool,
+  onContextMenu: PropTypes.func,
+  onDoubleClick: PropTypes.func,
+  selectedTokenId: PropTypes.string,
+  onSelectToken: PropTypes.func,
+  onUpdateToken: PropTypes.func,
+  isGM: PropTypes.bool,
 };
 
-/**
- * Token — окремий токен на полі.
- *
- * @param {{
- *   token: import('../../types/vtt.types').Token,
- *   gridSize: number,
- *   onDrag: (id: string, x: number, y: number) => void,
- *   onDrop: (id: string, x: number, y: number) => void,
- *   viewport: import('../../types/vtt.types').Viewport,
- * }} props
- */
-function Token({ token, gridSize, onDrag, onDrop, viewport, isLocked = false }) {
-  const { pos, handlePointerDown, handlePointerMove, handlePointerUp } = useTokenDrag({
-    token,
-    viewport,
-    gridSize,
-    onDrag,
-    onDrop,
-  });
+function Token({ token, gridSize, onDrag, onDrop, viewport, isLocked, onContextMenu, onDoubleClick, selectedTokenId, onSelectToken, onUpdateToken, isGM, isMyToken }) {
+  const texture = usePixiTexture(token.avatarUrl);
+  
+  // Create an item object that DraggableElement expects
+  const item = useMemo(() => ({
+    id: token.id,
+    type: 'token',
+    url: token.avatarUrl,
+    x: token.x,
+    y: token.y,
+    width: gridSize * (token.size || 1),
+    height: gridSize * (token.size || 1),
+    scaleX: token.scaleX ?? 1,
+    scaleY: token.scaleY ?? 1,
+    rotation: token.rotation ?? 0
+  }), [token, gridSize]);
 
-  const tokenRadius = gridSize * 0.4;
+  const maskRef = useRef(null);
+  const [maskObj, setMaskObj] = useState(null);
 
-  const drawToken = useCallback(
-    (g) => {
+  useEffect(() => {
+    if (maskRef.current && texture) {
+      setMaskObj(maskRef.current);
+    }
+  }, [texture, item.width, item.height, item.scaleX, item.scaleY]);
+
+  const drawTokenContent = useCallback(
+    (g, tokenRadius) => {
       g.clear();
-
-      // Тінь токена
+      // Тінь
       g.circle(2, 2, tokenRadius);
       g.fill({ color: 0x000000, alpha: 0.3 });
-
-      // Тіло токена
-      g.circle(0, 0, tokenRadius);
-      g.fill({ color: token.color || 0xe74c3c });
-
-      // Обводка токена (окремий shape — щоб stroke не конфліктував з fill)
-      g.circle(0, 0, tokenRadius);
-      g.stroke({ width: 2, color: 0xffffff, alpha: 0.8 });
-
-      // Центральна точка (маркер)
-      g.circle(0, 0, tokenRadius * 0.2);
-      g.fill({ color: 0xffffff, alpha: 0.6 });
+      
+      // Фон, якщо текстура ще не завантажилась або її немає
+      if (!texture) {
+        g.circle(0, 0, tokenRadius);
+        g.fill({ color: token.color || (token.isAlly ? 0x27ae60 : 0xe74c3c) });
+      }
     },
-    [tokenRadius, token.color]
+    [texture, token.isAlly, token.color]
+  );
+
+  const drawTokenStroke = useCallback(
+    (g, tokenRadius) => {
+      g.clear();
+      g.circle(0, 0, tokenRadius);
+      g.stroke({ width: 3, color: token.color || (token.isAlly ? 0x2ecc71 : 0xe74c3c), alpha: 0.9 });
+      
+      // Смужка здоров'я
+      const canSeeHp = isGM || isMyToken || (!token.isGmCreature && token.isAlly);
+      if (token.hpMax > 0 && canSeeHp) {
+        const hpPercent = Math.max(0, Math.min(1, token.hpCurrent / token.hpMax));
+        const barWidth = tokenRadius * 1.5;
+        const barHeight = 4;
+        const barY = tokenRadius + 4;
+        
+        g.rect(-barWidth/2, barY, barWidth, barHeight);
+        g.fill({ color: 0x000000, alpha: 0.7 });
+        
+        g.rect(-barWidth/2, barY, barWidth * hpPercent, barHeight);
+        let barColor = 0xe74c3c;
+        if (hpPercent > 0.5) {
+          barColor = 0x2ecc71;
+        } else if (hpPercent > 0.2) {
+          barColor = 0xf1c40f;
+        }
+        g.fill({ color: barColor });
+      }
+    },
+    [token.isAlly, token.hpCurrent, token.hpMax, token.isGmCreature, token.color, isGM, isMyToken]
+  );
+
+  const drawTokenMask = useCallback(
+    (g, tokenRadius) => {
+      g.clear();
+      g.circle(0, 0, tokenRadius);
+      g.fill({ color: 0xffffff });
+    },
+    []
   );
 
   return (
-    <graphics
-      draw={drawToken /* NOSONAR */}
-      x={pos.x}
-      y={pos.y}
-      eventMode={isLocked ? 'none' : 'static'} /* NOSONAR */
-      cursor={isLocked ? 'default' : 'pointer'}
-      onPointerDown={isLocked ? undefined : handlePointerDown}
-      onGlobalPointerMove={handlePointerMove /* NOSONAR */}
-      onPointerUp={handlePointerUp}
-      onPointerUpOutside={handlePointerUp /* NOSONAR */}
+    <DraggableElement
+      item={item}
+      isSelected={selectedTokenId === token.id}
+      onSelect={() => onSelectToken?.(token.id)}
+      onUpdate={(id, updates) => {
+        if (onUpdateToken) onUpdateToken(id, updates);
+        if (updates.x !== undefined && updates.y !== undefined) {
+          if (onDrop) onDrop(id, updates.x, updates.y);
+        }
+      }}
+      onPreview={(id, updates) => {
+        if (updates.x !== undefined && updates.y !== undefined) {
+          if (onDrag) onDrag(id, updates.x, updates.y);
+        }
+      }}
+      onContextMenu={onContextMenu}
+      onDoubleClick={onDoubleClick}
+      viewport={viewport}
+      gridSize={gridSize}
+      isLocked={isLocked}
+      renderContent={(displayWidth, displayHeight, cursor, eventHandlers) => {
+        // Use the smaller dimension as the token diameter to keep it circular even if scaled non-uniformly
+        const effectiveSize = Math.min(displayWidth, displayHeight);
+        const tokenRadius = effectiveSize * 0.45; // slightly smaller to leave a gap
+
+        return (
+          <container
+            eventMode={isLocked ? "none" : "static"} /* NOSONAR */
+            cursor={cursor}
+            {...eventHandlers}
+          >
+            <graphics draw={(g) => drawTokenContent(g, tokenRadius) /* NOSONAR */} />
+            
+            {texture && (
+              <container mask={maskObj /* NOSONAR */}>
+                <graphics ref={maskRef} draw={(g) => drawTokenMask(g, tokenRadius) /* NOSONAR */} />
+                <sprite 
+                  texture={texture /* NOSONAR */} 
+                  anchor={0.5 /* NOSONAR */} 
+                  width={tokenRadius * 2} 
+                  height={tokenRadius * 2} 
+                />
+              </container>
+            )}
+
+            <graphics draw={(g) => drawTokenStroke(g, tokenRadius) /* NOSONAR */} />
+          </container>
+        );
+      }}
     />
   );
 }
@@ -215,6 +226,14 @@ Token.propTypes = {
     y: PropTypes.number.isRequired,
     color: PropTypes.number,
     size: PropTypes.number,
+    avatarUrl: PropTypes.string,
+    scaleX: PropTypes.number,
+    scaleY: PropTypes.number,
+    rotation: PropTypes.number,
+    isAlly: PropTypes.bool,
+    isGmCreature: PropTypes.bool,
+    hpMax: PropTypes.number,
+    hpCurrent: PropTypes.number,
   }).isRequired,
   gridSize: PropTypes.number.isRequired,
   onDrag: PropTypes.func.isRequired,
@@ -225,4 +244,11 @@ Token.propTypes = {
     scale: PropTypes.number.isRequired,
   }).isRequired,
   isLocked: PropTypes.bool,
+  onContextMenu: PropTypes.func,
+  onDoubleClick: PropTypes.func,
+  selectedTokenId: PropTypes.string,
+  onSelectToken: PropTypes.func,
+  onUpdateToken: PropTypes.func,
+  isGM: PropTypes.bool,
+  isMyToken: PropTypes.bool,
 };

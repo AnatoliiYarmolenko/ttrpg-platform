@@ -80,13 +80,18 @@ async function handleVttOpen(socket, payload, roomManager) {
 
 async function handleVttTokenMove(socket, payload, roomManager, eventType) {
   const sessionId = parseSessionId(payload.sessionId);
-  const { tokenId, x, y } = payload;
+  const { sceneId, tokenId, x, y } = payload;
   
   if (!tokenId) return;
+
+  if (sceneId && eventType === 'vtt:token_drop') {
+    vttStateManager.updateToken(sessionId, sceneId, tokenId, { x, y });
+  }
 
   roomManager.broadcastExcept(getVttRoom(sessionId), {
     type: eventType,
     sessionId,
+    sceneId,
     tokenId,
     x,
     y,
@@ -108,10 +113,21 @@ async function handleVttSetBackground(socket, payload, roomManager) {
   }, socket);
 }
 
+async function handleVttInitiativeUpdate(socket, payload, roomManager) {
+  const sessionId = parseSessionId(payload.sessionId);
+  const updatedInitiative = vttStateManager.setInitiative(sessionId, payload.initiative);
+  
+  roomManager.broadcast(getVttRoom(sessionId), {
+    type: 'vtt:initiative:updated',
+    sessionId,
+    initiative: updatedInitiative
+  });
+}
+
 async function handleVttDiceRoll(socket, payload, roomManager) {
   const sessionId = parseSessionId(payload.sessionId);
-  const { formula, name, strength, visibility } = payload;
-  const player = socket.user?.username || 'Гравець';
+  const { formula, name, strength, visibility, characterName } = payload;
+  const player = characterName || socket.user?.username || 'Гравець';
   const initiatorId = socket.user?.id ? String(socket.user.id) : null;
   
   const rollResult = { 
@@ -181,6 +197,31 @@ async function handleVttStateChange(socket, payload, roomManager, actionType) {
     case 'vtt:scene:removeImage':
       vttStateManager.removeSceneImage(sessionId, sceneId, imageId);
       break;
+    case 'vtt:scene:addDrawing':
+      vttStateManager.addDrawingToScene(sessionId, sceneId, payload.drawingData);
+      break;
+    case 'vtt:scene:updateDrawing':
+      vttStateManager.updateDrawing(sessionId, sceneId, payload.drawingId, payload.updates);
+      break;
+    case 'vtt:scene:removeDrawing':
+      vttStateManager.removeDrawingById(sessionId, sceneId, payload.drawingId);
+      break;
+    case 'vtt:scene:undoDrawing':
+      vttStateManager.removeLastDrawing(sessionId, sceneId, payload.userId);
+      break;
+    case 'vtt:scene:clearDrawings':
+      vttStateManager.clearDrawings(sessionId, sceneId);
+      roomManager.broadcast(getVttRoom(sessionId), { type: 'vtt:scene:clearAllPreviews' });
+      break;
+    case 'vtt:token_add':
+      vttStateManager.addToken(sessionId, sceneId, payload.tokenData);
+      break;
+    case 'vtt:token_update':
+      vttStateManager.updateToken(sessionId, sceneId, payload.tokenId, payload.updates);
+      break;
+    case 'vtt:token_remove':
+      vttStateManager.removeToken(sessionId, sceneId, payload.tokenId);
+      break;
   }
 
   const vttState = vttStateManager.getVttState(sessionId);
@@ -212,6 +253,9 @@ const vttHandler = async (socket, type, payload, roomManager) => {
     case 'vtt:set_background':
       await handleVttSetBackground(socket, payload, roomManager);
       break;
+    case 'vtt:initiative:update':
+      await handleVttInitiativeUpdate(socket, payload, roomManager);
+      break;
     case 'vtt:dice:roll':
       await handleVttDiceRoll(socket, payload, roomManager);
       break;
@@ -226,9 +270,23 @@ const vttHandler = async (socket, type, payload, roomManager) => {
     case 'vtt:scene:addImage':
     case 'vtt:scene:updateImage':
     case 'vtt:scene:removeImage':
+    case 'vtt:scene:addDrawing':
+    case 'vtt:scene:updateDrawing':
+    case 'vtt:scene:removeDrawing':
+    case 'vtt:scene:undoDrawing':
+    case 'vtt:scene:clearDrawings':
+    case 'vtt:token_add':
+    case 'vtt:token_update':
+    case 'vtt:token_remove':
       await handleVttStateChange(socket, payload, roomManager, type);
       break;
     case 'vtt:scene:previewImage':
+    case 'vtt:scene:drawPreview':
+    case 'vtt:scene:rulerPreview':
+    case 'vtt:scene:clearRuler':
+      if (type === 'vtt:scene:rulerPreview') {
+        console.log('[VTT SERVER] Broadcasting rulerPreview', payload.userId);
+      }
       // Broadcast without saving
       roomManager.broadcastExcept(getVttRoom(parseSessionId(payload.sessionId)), { type, ...payload }, socket);
       break;

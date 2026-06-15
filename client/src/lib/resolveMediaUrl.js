@@ -20,8 +20,8 @@
 export function resolveMediaUrl(url) {
   if (!url) return null;
 
-  // Якщо вже абсолютний URL — повертаємо без змін
-  if (url.startsWith('http://') || url.startsWith('https://')) {
+  // Якщо вже абсолютний URL або data URL — повертаємо без змін
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
     return url;
   }
 

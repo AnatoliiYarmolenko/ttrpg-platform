@@ -1,10 +1,11 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Menu, ChevronLeft, ChevronRight, MessageSquare, ScrollText, Map } from 'lucide-react';
+import PropTypes from 'prop-types';
+import { ArrowLeft, Menu, ChevronLeft, ChevronRight, MessageSquare, ScrollText, Map, Video, Pencil, Ruler, User, ListOrdered } from 'lucide-react';
 import useVttStore from '@/stores/useVttStore';
 import Button from '@/components/ui/Button';
 
-export default function VttSidebar() {
+export default function VttSidebar({ isGM }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const { isSidebarOpen, toggleSidebar } = useVttStore();
@@ -36,6 +37,46 @@ export default function VttSidebar() {
           <div className="p-4 flex-1 overflow-y-auto flex flex-col gap-2">
             <Button
               onClick={() => {
+                if (isGM) {
+                  useVttStore.getState().toggleGmCreaturesOpen();
+                } else {
+                  useVttStore.getState().toggleCharacterSheet();
+                }
+                toggleSidebar();
+              }}
+              variant="outline"
+              className="w-full !border-brand-light/20 !text-brand-light hover:!bg-brand-medium/30 flex items-center justify-start gap-3 !px-4"
+            >
+              <User size={18} className="text-purple-400" />
+              <span>{isGM ? 'Мої істоти' : 'Мій персонаж'}</span>
+            </Button>
+
+            <Button
+              onClick={() => {
+                useVttStore.getState().toggleInitiativeTracker();
+                toggleSidebar();
+              }}
+              variant="outline"
+              className="w-full !border-brand-light/20 !text-brand-light hover:!bg-brand-medium/30 flex items-center justify-start gap-3 !px-4"
+            >
+              <ListOrdered size={18} className="text-yellow-400" />
+              <span>Трекер ініціативи</span>
+            </Button>
+
+            <Button
+              onClick={() => {
+                useVttStore.getState().toggleCall();
+                toggleSidebar();
+              }}
+              variant="outline"
+              className="w-full !border-brand-light/20 !text-brand-light hover:!bg-brand-medium/30 flex items-center justify-start gap-3 !px-4"
+            >
+              <Video size={18} className="text-blue-400" />
+              <span>Голосовий зв'язок</span>
+            </Button>
+
+            <Button
+              onClick={() => {
                 useVttStore.getState().toggleChat();
                 toggleSidebar(); // Закриваємо сайдбар після кліку для зручності
               }}
@@ -44,6 +85,30 @@ export default function VttSidebar() {
             >
               <MessageSquare size={18} className="text-brand-accent" />
               <span>Ігровий Чат</span>
+            </Button>
+
+            <Button
+              onClick={() => {
+                useVttStore.getState().toggleDrawingTools();
+                toggleSidebar();
+              }}
+              variant="outline"
+              className="w-full !border-brand-light/20 !text-brand-light hover:!bg-brand-medium/30 flex items-center justify-start gap-3 !px-4"
+            >
+              <Pencil size={18} className="text-pink-400" />
+              <span>Малювання</span>
+            </Button>
+
+            <Button
+              onClick={() => {
+                useVttStore.getState().toggleRulerTools();
+                toggleSidebar();
+              }}
+              variant="outline"
+              className="w-full !border-brand-light/20 !text-brand-light hover:!bg-brand-medium/30 flex items-center justify-start gap-3 !px-4"
+            >
+              <Ruler size={18} className="text-cyan-400" />
+              <span>Лінійка</span>
             </Button>
 
             <Button
@@ -100,3 +165,7 @@ export default function VttSidebar() {
     </>
   );
 }
+
+VttSidebar.propTypes = {
+  isGM: PropTypes.bool,
+};

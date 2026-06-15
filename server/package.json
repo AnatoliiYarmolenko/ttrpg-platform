@@ -32,12 +32,12 @@
     "express": "^5.2.1",
     "helmet": "^8.1.0",
     "ioredis": "^5.10.1",
-    "joi": "^18.0.2",
+    "joi": "^18.2.1",
     "jsonwebtoken": "^9.0.3",
     "mediasoup": "^3.19.22",
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
-    "nodemailer": "^8.0.7",
+    "nodemailer": "^9.0.0",
     "pg": "^8.16.3",
     "pino": "^10.3.1",
     "pino-http": "^11.0.0",
@@ -47,7 +47,7 @@
     "swagger-ui-express": "^5.0.1",
     "telegraf": "^4.16.3",
     "uuid": "^11.0.0",
-    "ws": "^8.18.3"
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "cross-env": "^7.0.3",

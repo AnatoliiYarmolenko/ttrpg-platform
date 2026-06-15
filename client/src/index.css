@@ -148,6 +148,23 @@ body,
   scrollbar-color: var(--color-brand-light) transparent;
 }
 
+@layer utilities {
+  .clip-path-custom {
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  }
+}
+
+/* Remove arrows from number inputs */
+.no-spinners::-webkit-outer-spin-button,
+.no-spinners::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.no-spinners[type=number] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 @keyframes toast-enter {
   from {
     opacity: 0;

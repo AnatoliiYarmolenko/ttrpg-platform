@@ -29,3 +29,4 @@ export {
   SkeletonForm,
   SkeletonNotification,
 } from './Skeleton';
+export { default as InputModal } from './InputModal';

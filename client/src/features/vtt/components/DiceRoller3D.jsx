@@ -167,7 +167,7 @@ export default function DiceRoller3D({ incomingRoll }) {
   return (
     <div 
       id="dice-canvas-container"
-      className="fixed inset-0 z-40 pointer-events-none flex items-center justify-center"
+      className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center"
       style={{ width: '100vw', height: '100vh', margin: 0, padding: 0 }}
     />
   );
