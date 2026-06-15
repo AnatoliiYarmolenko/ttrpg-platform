@@ -328,7 +328,7 @@ export function SearchResultsWidget() {
       const result = await joinMutation.mutateAsync(sessionId);
 
       if (result?.success) {
-        toast.success("Ви успішно приєдналися. Вашу заявку обробляють.");
+        toast.success(result?.message || "Ви успішно приєдналися до сесії");
       } else {
         setJoinErrors((prev) => ({ ...prev, [sessionId]: result?.error || null }));
         toast.error(result?.error || "Не вдалося приєднатися до сесії");

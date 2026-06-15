@@ -121,12 +121,12 @@ function SessionJoinModal({
             <Button
               onClick={handleApplyAsGm}
               isLoading={isApplyingGm}
-              loadingText="Відправка..."
+              loadingText="Подача заявки..."
               variant={canJoin ? 'outline' : 'primary'}
               fullWidth={false}
               className="min-w-[170px]"
             >
-              Податися як GM
+              Подати заявку як GM
             </Button>
           )}
 

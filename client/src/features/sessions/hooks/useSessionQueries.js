@@ -159,8 +159,9 @@ export const useSessionMutations = (sessionId, options = {}) => {
       if (res?.success === false) {
         toast.error(res.error || res.message || 'Сталася помилка');
       } else {
-        if (successMessage) {
-          toast.success(successMessage);
+        const message = typeof successMessage === 'function' ? successMessage(res) : successMessage;
+        if (message) {
+          toast.success(message);
         }
         await Promise.allSettled(invalidateFns.map((fn) => fn(res)));
       }
@@ -242,7 +243,7 @@ export const useSessionMutations = (sessionId, options = {}) => {
       ...payload,
       ...(shareToken ? { shareToken } : {}),
     }),
-    ...handleMutation('Ви успішно приєдналися до сесії', [
+    ...handleMutation((res) => res?.message || 'Заявку подано', [
       invalidateSessionPageQuery,
       invalidateSession,
       invalidateParticipants,
@@ -253,7 +254,7 @@ export const useSessionMutations = (sessionId, options = {}) => {
 
   const leaveSessionMutation = useMutation({
     mutationFn: () => leaveSession(sessionId),
-    ...handleMutation('Ви покинули сесію', [
+    ...handleMutation((res) => res?.message || 'Ви покинули сесію', [
       invalidateSessionPageQuery,
       invalidateSession,
       invalidateParticipants,
@@ -275,7 +276,7 @@ export const useSessionMutations = (sessionId, options = {}) => {
 
   const removeParticipantMutation = useMutation({
     mutationFn: (participantId) => removeParticipant(sessionId, participantId),
-    ...handleMutation('Учасника видалено', [
+    ...handleMutation('Учасника видалено з сесії', [
       invalidateParticipants,
       invalidateSessionPageQuery,
       invalidateSession,
