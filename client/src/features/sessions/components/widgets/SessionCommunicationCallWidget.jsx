@@ -8,7 +8,7 @@ export default function SessionCommunicationCallWidget() {
   const sessionId = Number(id);
 
   return (
-    <DashboardCard title="Відеодзвінок">
+    <DashboardCard title="Відеодзвінок" noScroll={true}>
       <CallWidget sessionId={sessionId} />
     </DashboardCard>
   );

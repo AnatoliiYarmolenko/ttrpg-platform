@@ -207,25 +207,26 @@ function CallWidgetInner({ sessionId }) {
 
   return (
     <div className="flex flex-col h-full space-y-2">
-      <div className="flex-1 min-h-0 relative">
-        {mediaPermissionError && (
-          <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl mb-4 text-sm flex items-start gap-3">
-            <AlertCircle className="shrink-0 mt-0.5" size={20} />
-            <div>
-              <p className="font-medium mb-1">Немає доступу до камери або мікрофона</p>
-              <p className="opacity-80">Будь ласка, надайте дозвіл у налаштуваннях браузера та спробуйте ще раз.</p>
-              <button 
-                className="mt-2 text-red-300 hover:text-red-200 underline text-xs"
-                onClick={() => {
-                  if (!localMicEnabled) enableMic();
-                  if (!localCamEnabled) enableCam();
-                }}
-              >
-                Спробувати знову
-              </button>
-            </div>
+      {mediaPermissionError && (
+        <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl text-sm flex items-start gap-3 shrink-0">
+          <AlertCircle className="shrink-0 mt-0.5" size={20} />
+          <div>
+            <p className="font-medium mb-1">Немає доступу до камери або мікрофона</p>
+            <p className="opacity-80">Будь ласка, надайте дозвіл у налаштуваннях браузера та спробуйте ще раз.</p>
+            <button 
+              className="mt-2 text-red-300 hover:text-red-200 underline text-xs"
+              onClick={() => {
+                if (!localMicEnabled) enableMic();
+                if (!localCamEnabled) enableCam();
+              }}
+            >
+              Спробувати знову
+            </button>
           </div>
-        )}
+        </div>
+      )}
+
+      <div className="flex-1 min-h-0 relative">
         <div className="absolute inset-0">
           <CallGrid />
         </div>
