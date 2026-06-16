@@ -232,7 +232,7 @@ class VttStateManager {
     const sceneId = `scene-${this._generateId()}`;
 
     // Конвертуємо backgroundColor: рядок '#rrggbb' → число 0xrrggbb
-    let bgColor = 0x9dc88d; // default green
+    let bgColor = 0x000000; // default black
     if (backgroundColor != null) {
       if (typeof backgroundColor === 'string' && backgroundColor.startsWith('#')) {
         bgColor = Number.parseInt(backgroundColor.slice(1), 16);
@@ -242,7 +242,7 @@ class VttStateManager {
     }
 
     // Конвертуємо gridColor: рядок '#rrggbb' → число 0xrrggbb
-    let gColor = 0x9dc88d; // default light green
+    let gColor = 0x39ff14; // default neon green
     if (gridColor != null) {
       if (typeof gridColor === 'string' && gridColor.startsWith('#')) {
         gColor = Number.parseInt(gridColor.slice(1), 16);

@@ -101,6 +101,9 @@ async function handleVttOpen(socket, payload, roomManager) {
   startAutoSave(sessionId, sessionPage.campaignId || null);
 
   sendEvent(socket, 'vtt:opened', { sessionId, isOpen: true });
+  
+  // Надсилаємо повний стан (включно зі сценами, щойно завантаженими з БД) майстру
+  sendEvent(socket, 'vtt:state', { sessionId, ...getFilteredState(vttStateManager.getVttState(sessionId), userId) });
 
   roomManager.broadcastExcept(getVttRoom(sessionId), {
     type: 'vtt:opened',
