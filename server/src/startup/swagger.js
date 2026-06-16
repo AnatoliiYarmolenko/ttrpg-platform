@@ -42,6 +42,7 @@ const options = {
       { name: 'Profile', description: 'Керування профілем користувача' },
       { name: 'Campaigns', description: 'Керування кампаніями та майстер-даними' },
       { name: 'Sessions', description: 'Управління ігровими сесіями' },
+      { name: 'VTT', description: 'Маршрути для Віртуального Ігрового Столу' },
       { name: 'Search', description: 'Глобальний пошук' },
       { name: 'Security', description: 'Безпека облікового запису' },
       { name: 'Chat', description: 'Чат та повідомлення' },

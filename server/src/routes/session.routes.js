@@ -16,6 +16,7 @@ const sessionCrudController = require('../controllers/session/session-crud.contr
 const sessionCalendarController = require('../controllers/session/session-calendar.controller');
 const sessionParticipantsController = require('../controllers/session/session-participants.controller');
 const sessionCallController = require('../controllers/session/session-call.controller');
+const vttController = require('../controllers/vtt.controller');
 const {
   validateCreateSession,
   validateUpdateSession,
@@ -187,6 +188,68 @@ router.post(
     handleMulterError,
   ],
   (req, res, next) => sessionCrudController.uploadVttMap(req, res, next)
+);
+
+// ─── VTT: Character Sheet ───────────────────────────────────────────────────────────
+
+// GET  /sessions/:id/vtt/character  — отримати аркуш персонажа поточного гравця
+router.get(
+  '/:id/vtt/character',
+  [authenticateToken, ...validateSessionId],
+  (req, res, next) => vttController.getCharacterSheet(req, res, next)
+);
+
+// PUT  /sessions/:id/vtt/character  — зберегти/оновити аркуш персонажа
+router.put(
+  '/:id/vtt/character',
+  [authenticateToken, verifyCSRFToken, ...validateSessionId],
+  (req, res, next) => vttController.upsertCharacterSheet(req, res, next)
+);
+
+// ─── VTT: GM Creatures (Bestiary) ──────────────────────────────────────────────────
+
+// GET  /sessions/:id/vtt/creatures  — список GM-істот
+router.get(
+  '/:id/vtt/creatures',
+  [authenticateToken, ...validateSessionId],
+  (req, res, next) => vttController.getCreatures(req, res, next)
+);
+
+// POST /sessions/:id/vtt/creatures  — додати нову істоту { type }
+router.post(
+  '/:id/vtt/creatures',
+  [authenticateToken, verifyCSRFToken, ...validateSessionId],
+  (req, res, next) => vttController.addCreature(req, res, next)
+);
+
+// POST /sessions/:id/vtt/creatures/sync  — bulk-синхронізація всього бестіарію зі store
+router.post(
+  '/:id/vtt/creatures/sync',
+  [authenticateToken, verifyCSRFToken, ...validateSessionId],
+  (req, res, next) => vttController.syncCreatures(req, res, next)
+);
+
+// PUT  /sessions/:id/vtt/creatures/:creatureId  — оновити окрему істоту
+router.put(
+  '/:id/vtt/creatures/:creatureId',
+  [authenticateToken, verifyCSRFToken, ...validateSessionId],
+  (req, res, next) => vttController.updateCreature(req, res, next)
+);
+
+// DELETE /sessions/:id/vtt/creatures/:creatureId  — видалити істоту
+router.delete(
+  '/:id/vtt/creatures/:creatureId',
+  [authenticateToken, verifyCSRFToken, ...validateSessionId],
+  (req, res, next) => vttController.removeCreature(req, res, next)
+);
+
+// ─── VTT: Dice Log ─────────────────────────────────────────────────────────────────
+
+// GET /sessions/:id/vtt/dice-log  — історія кидків кубиків з БД (?limit=50)
+router.get(
+  '/:id/vtt/dice-log',
+  [authenticateToken, ...validateSessionId],
+  (req, res, next) => vttController.getDiceLog(req, res, next)
 );
 
 module.exports = router;

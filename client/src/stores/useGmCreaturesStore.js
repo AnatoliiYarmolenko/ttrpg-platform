@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import api from '@/lib/axios';
 
 const initialStats = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
 const initialSavingThrows = { str: false, dex: false, con: false, int: false, wis: false, cha: false };
@@ -172,6 +173,77 @@ const useGmCreaturesStore = create(
         );
         return { creatures };
       }),
+
+      // ─── Server Sync ────────────────────────────────────────────────────────────
+
+      /**
+       * Завантажити GM-істот з сервера та гідрувати store.
+       * Якщо сервер повертає [] — зберегти поточний store на сервер.
+       * @param {number} sessionId
+       */
+      loadFromServer: async (sessionId) => {
+        try {
+          const res = await api.get(`/sessions/${sessionId}/vtt/creatures`);
+          const dbCreatures = res.data.data;
+
+          if (Array.isArray(dbCreatures) && dbCreatures.length > 0) {
+            // Конвертуємо DB-формат → внутрішній (c.data nested structure)
+            const creatures = dbCreatures.map((c) => ({
+              id: String(c.id),         // DB ідентифікатор (Int)
+              type: c.type === 'HUMAN' ? 'human' : 'monster',
+              data: {
+                name: c.name,
+                level: c.level,
+                characterClass: c.characterClass ?? '',
+                race: c.race ?? '',
+                avatarUrl: c.avatarUrl ?? null,
+                hpCurrent: c.hpCurrent,
+                hpMax: c.hpMax,
+                tempHp: c.tempHp,
+                ac: c.ac,
+                speed: c.speed,
+                initiativeBonus: c.initiativeBonus,
+                proficiencyBonus: c.proficiencyBonus,
+                hitDiceCurrent: c.hitDiceCurrent,
+                hitDiceMax: c.hitDiceMax,
+                hitDiceType: c.hitDiceType,
+                tokenBorderColor: c.tokenBorderColor,
+                stats: c.stats ?? createDefaultCreatureData('monster').stats,
+                savingThrows: c.savingThrows ?? createDefaultCreatureData('monster').savingThrows,
+                skills: c.skills ?? createDefaultCreatureData('monster').skills,
+                coins: c.coins ?? { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
+                attacks: c.attacks ?? [],
+              },
+            }));
+
+            set({
+              creatures,
+              activeTabId: creatures[0]?.id ?? null,
+            });
+          } else if (Array.isArray(dbCreatures) && dbCreatures.length === 0) {
+            // БД порожня — зберегти поточний store якщо є істоти
+            const { creatures } = useGmCreaturesStore.getState();
+            if (creatures.length > 0) {
+              await useGmCreaturesStore.getState().syncToServer(sessionId);
+            }
+          }
+        } catch (err) {
+          console.warn('[GmCreaturesStore] Failed to load from server', err?.message);
+        }
+      },
+
+      /**
+       * Bulk-синхронізація: весь store → БД (перезаписує поточний список в БД).
+       * @param {number} sessionId
+       */
+      syncToServer: async (sessionId) => {
+        try {
+          const { creatures } = useGmCreaturesStore.getState();
+          await api.post(`/sessions/${sessionId}/vtt/creatures/sync`, { creatures });
+        } catch (err) {
+          console.warn('[GmCreaturesStore] Failed to sync to server', err?.message);
+        }
+      },
 
     }),
     {

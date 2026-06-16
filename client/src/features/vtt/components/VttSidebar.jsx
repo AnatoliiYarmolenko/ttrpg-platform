@@ -123,17 +123,19 @@ export default function VttSidebar({ isGM }) {
               <span>Журнал кидків</span>
             </Button>
 
-            <Button
-              onClick={() => {
-                useVttStore.getState().toggleSceneManager();
-                toggleSidebar();
-              }}
-              variant="outline"
-              className="w-full !border-brand-light/20 !text-brand-light hover:!bg-brand-medium/30 flex items-center justify-start gap-3 !px-4"
-            >
-              <Map size={18} className="text-emerald-400" />
-              <span>Менеджер сцени</span>
-            </Button>
+            {isGM && (
+              <Button
+                onClick={() => {
+                  useVttStore.getState().toggleSceneManager();
+                  toggleSidebar();
+                }}
+                variant="outline"
+                className="w-full !border-brand-light/20 !text-brand-light hover:!bg-brand-medium/30 flex items-center justify-start gap-3 !px-4"
+              >
+                <Map size={18} className="text-emerald-400" />
+                <span>Менеджер сцени</span>
+              </Button>
+            )}
 
             {/* Тут в майбутньому будуть інші компоненти */}
             <div className="text-brand-light/40 text-sm italic text-center mt-10 border-t border-brand-light/10 pt-4">
