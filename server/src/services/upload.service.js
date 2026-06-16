@@ -23,8 +23,8 @@ if (!fs.existsSync(MAPS_UPLOAD_DIR)) {
 const AVATAR_CONFIG = {
   maxSize: 5 * 1024 * 1024, // 5MB
   allowedTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
-  outputSize: 256, // Розмір вихідного зображення (256x256)
-  quality: 85, // Якість JPEG/WebP
+  outputSize: 1024, // Розмір вихідного зображення (1024x1024) для високої якості
+  quality: 95, // Якість JPEG/WebP (висока)
 };
 
 // Налаштування для карт
