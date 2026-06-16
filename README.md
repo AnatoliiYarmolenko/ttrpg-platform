@@ -1,92 +1,220 @@
-# TTRPG Platform
+# myttrpg.me — Платформа для організації та проведення TTRPG-кампаній
 
-[![GitHub CI](https://github.com/Kvarell/ttrpg-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/Kvarell/ttrpg-platform/actions/workflows/ci.yml)
-[![Sonar Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=Kvarell_ttrpg-platform&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Kvarell_ttrpg-platform)
-[![Sonar Coverage](https://sonarcloud.io/api/project_badges/measure?project=Kvarell_ttrpg-platform&metric=coverage)](https://sonarcloud.io/summary/new_code?id=Kvarell_ttrpg-platform)
+<p align="center">
+  <img src="client/public/logo.svg" alt="myttrpg.me Logo" width="150px" />
+</p>
 
-Платформа для організації TTRPG-кампаній і сесій: керування кампаніями, учасниками, ролями, календарем, безпекою доступу та журналюванням клієнтських подій.
+<p align="center">
+  <strong>Сучасний вебпростір для поціновувачів настільних рольових ігор (TTRPG)</strong>
+</p>
 
-## Tech Stack
+<p align="center">
+  <a href="https://github.com/Kvarell/ttrpg-platform/actions/workflows/ci.yml">
+    <img src="https://github.com/Kvarell/ttrpg-platform/actions/workflows/ci.yml/badge.svg" alt="GitHub CI" />
+  </a>
+  <a href="https://sonarcloud.io/summary/new_code?id=Kvarell_ttrpg-platform">
+    <img src="https://sonarcloud.io/api/project_badges/measure?project=Kvarell_ttrpg-platform&metric=alert_status" alt="Sonar Quality Gate" />
+  </a>
+  <a href="https://sonarcloud.io/summary/new_code?id=Kvarell_ttrpg-platform">
+    <img src="https://sonarcloud.io/api/project_badges/measure?project=Kvarell_ttrpg-platform&metric=coverage" alt="Sonar Coverage" />
+  </a>
+</p>
 
-- Frontend: React 19, Vite 7, React Router 7, TanStack Query, Zustand, Tailwind CSS
-- Backend: Node.js 22, Express 5, Prisma ORM
-- Database: PostgreSQL 15
-- Cache and rate limiting: Redis 7
-- Containerization: Docker, Docker Compose
-- CI: GitLab CI + GitHub Actions
-- Testing (Backend): Node test runner + c8 coverage
-- Testing (Frontend): Vitest + Testing Library + jsdom + V8 coverage
+---
 
-## Dependency Management (Root-Only Workspaces)
+# Живий застосунок
 
-Проєкт працює у режимі root-only npm workspaces:
+Платформа є розгорнутою та доступною для використання в реальному часі:
 
-- єдиний lock-файл: `package-lock.json` у корені;
-- інсталяція залежностей виконується з кореня;
-- CI також використовує root install (`npm ci`) і запускає workspace-скрипти.
+**URL-адреса:** [https://myttrpg.me](https://myttrpg.me)
 
-Не створюйте окремі lock-файли у `client/` або `server/`.
+---
 
-## Quick Start
+## Про проєкт
 
-### 1. Install dependencies
+**myttrpg.me** – це інтегрована вебплатформа, що забезпечує повний життєвий цикл організації, координації та безпосереднього проведення настільних рольових ігор (TTRPG). Застосунок об'єднує організаційні інструменти (управління кампаніями, планування ігор, фінансовий баланс) з інтерактивними ігровими засобами (відеозв'язок, спільний ігровий чат, віртуальний стіл VTT).
+
+Платформа покликана спростити комунікацію між Гейм-майстрами (GMs) та гравцями, автоматизувати процеси реєстрації на ігри та надати якісний зв'язок без залучення стороннього програмного забезпечення.
+
+---
+
+## Ключові можливості
+
+### Управління кампаніями та сесіями
+
+* **Кампанії:** Створення кампаній з детальним описом, встановленням ігрової системи (D&D, Pathfinder тощо), керуванням видимістю (публічна або за посиланням) та унікальними токенами доступу.
+* **Сесії:** Планування конкретних ігор зі встановленням дати, часу, тривалості, вартості участі та ліміту гравців.
+* **Запити на приєднання (Join Requests):** Зручний механізм подачі та модерації заявок на участь у кампаніях з відстеженням статусу.
+
+### Інтерактивні медіадзвінки (WebRTC / Mediasoup SFU)
+
+* Вбудована система аудіо- та відеоконференцій прямо в ігровій сесії.
+* Базується на сучасній архітектурі **Mediasoup SFU (Selective Forwarding Unit)**, що гарантує низьку затримку та мінімальне навантаження на процесори користувачів завдяки розумній ретрансляції потоків замість повного перекодування.
+
+### Чат-система в реальному часі
+
+* Окремі інтерактивні чати для кожної кампанії та сесії.
+* Підтримка текстового спілкування, системних повідомлень (наприклад, про приєднання нового гравця), а також можливість редагування та видалення повідомлень.
+
+### Вбудована фінансова система (Wallet & Transactions)
+
+* Власні віртуальні гаманці користувачів з підтримкою історії транзакцій.
+* Проведення платних сесій з автоматичним розрахунком сервісного збору (Platform Fee) та безпечним утриманням коштів (hold) до підтвердження проведення гри.
+
+### Багатоканальні сповіщення
+
+* Транзакційна черга повідомлень на основі патерну **Outbox**.
+* Можливість отримувати сповіщення трьома каналами:
+  * Внутрішньосистемні сповіщення (In-App)
+  * Telegram-бот (зручне підключення через Telegram Chat ID)
+  * Повідомлення на електронну пошту
+* Детальні налаштування профілю: тихі години (quiet hours), мутинг категорій та рівнів критичності сповіщень.
+
+### Віртуальний ігровий стіл (VTT) та логування
+
+* Візуалізація карт ігрових світів та робота з токенами.
+* **Client-side Event Logger:** Система збору клієнтських логів безпеки та помилок для оперативного моніторингу та виправлення збоїв у роботі клієнта.
+
+---
+
+## Технологічний стек
+
+Платформа побудована на основі сучасних та високопродуктивних технологій:
+
+### Frontend
+
+* **React 19** & **Vite 7** — швидкий рендеринг та сучасна збірка застосунку
+* **React Router 7** — маршрутизація
+* **TanStack Query** (React Query) — ефективне керування асинхронним станом та кешуванням
+* **Zustand** — легковажне управління глобальним станом
+* **Tailwind CSS** — адаптивна та гнучка стилізація
+* **Mediasoup Client** — інтеграція з WebRTC SFU медіасервером
+
+### Backend
+
+* **Node.js 22** & **Express 5** — стабільна серверна платформа та API
+* **Prisma ORM** — об'єктно-реляційне відображення для зручної роботи з базою даних
+* **Socket.io (WebSockets)** — реалізація двостороннього обміну повідомленнями в чаті
+* **Mediasoup SFU** — обробка та ретрансляція аудіо/відео потоків
+
+### База даних та кеш
+
+* **PostgreSQL 15** — збереження транзакційних та реляційних даних
+* **Redis 7** — лімітування запитів (Rate Limiting), сесії та кешування
+
+### Тестування та якість коду
+
+* **Vitest & Testing Library** — модульне тестування інтерфейсу користувача
+* **Playwright** — наскрізне (E2E) тестування критичних сценаріїв
+* **Node Test Runner & c8** — тестування серверної логіки та аналіз покриття
+* **SonarCloud** — безперервний аналіз якості коду та безпеки
+
+---
+
+## Архітектура системи
+
+Наступна схема демонструє взаємодію основних компонентів системи:
+
+```mermaid
+graph TD
+    subgraph Client ["Клієнт (React / Vite)"]
+        UI["React 19 Single Page App"]
+        WS_C["Socket.io Client"]
+        RTC_C["Mediasoup Client"]
+    end
+
+    subgraph Backend ["Сервер (Node.js / Express)"]
+        API["Express App (REST API)"]
+        WS_S["Socket.io Server (Real-time Chat)"]
+        SFU["Mediasoup SFU (WebRTC Audio/Video)"]
+        Prisma["Prisma ORM"]
+        Outbox["Outbox Worker (Notifications)"]
+    end
+
+    subgraph Data ["База даних та Кеш"]
+        DB[("PostgreSQL 15")]
+        Cache[("Redis 7 (Rate limit / Sessions)")]
+    end
+
+    subgraph External ["Зовнішні сервіси"]
+        TG["Telegram Bot API"]
+        Email["SMTP Email Server"]
+    end
+
+    UI -->|HTTPS REST| API
+    WS_C <-->|WebSocket| WS_S
+    RTC_C <-->|WebRTC RTP| SFU
+  
+    API --> Prisma
+    Prisma --> DB
+    API --> Cache
+  
+    Outbox --> Prisma
+    Outbox -->|HTTP| TG
+    Outbox -->|SMTP| Email
+```
+
+---
+
+<details>
+<summary>🛠️ Інструкція для локального запуску та розробки</summary>
+
+### Менеджмент залежностей
+
+Проєкт використовує режим **npm workspaces** на рівні кореня:
+
+* Усі залежності встановлюються з кореневої директорії.
+* Використовується єдиний файл `package-lock.json`.
+* **Важливо:** Не створюйте окремі lock-файли у директоріях `client/` або `server/`.
+
+#### Встановлення залежностей
 
 ```bash
 npm ci
 ```
 
-### 2. Run locally (without Docker)
+### Локальний запуск
 
-```bash
-npm run dev:server
-npm run dev:client
-```
+#### Запуск за допомогою Docker Compose (Рекомендовано)
 
-### 3. Run with Docker Compose
+Усі необхідні сервіси (Node, React, PostgreSQL, Redis) налаштовані для спільного запуску:
 
 ```bash
 docker compose up --build
 ```
 
-## Common Scripts
+#### Запуск без Docker (необхідно мати локально встановлені Postgres та Redis)
+
+Запустіть сервер та клієнт у різних терміналах:
 
 ```bash
-# Build
+# Запуск бекенду
+npm run dev:server
+
+# Запуск фронтенду
+npm run dev:client
+```
+
+### Корисні скрипти розробника
+
+```bash
+# Збірка проєкту
 npm run build
 npm run build:client
 
-# Lint
+# Статичний аналіз (Linter)
 npm run lint
 npm run lint:client
 npm run lint:server
 
-# Tests
+# Запуск тестів
 npm run test
 npm run test:client
 npm run test:server
 npm run test:e2e
 
-# Coverage
+# Аналіз покриття тестами (Coverage)
 npm run test:coverage
-npm run test:coverage:client
-npm run test:coverage:server
 ```
 
-## Coverage Output
-
-- Frontend: `client/coverage/` (including `lcov.info`)
-- Backend: `server/coverage/` (including `lcov.info`)
-
-## CI Overview
-
-GitHub Actions pipeline includes:
-
-- build_server
-- build_client
-- lint_client
-- lint_server
-- coverage_client
-- coverage_server
-- sonarcloud
-
-Усі кроки інсталяції в GitHub CI виконуються через `npm ci` з кореня.
+</details>
