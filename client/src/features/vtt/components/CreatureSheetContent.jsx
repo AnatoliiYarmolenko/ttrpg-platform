@@ -149,7 +149,7 @@ export default function CreatureSheetContent({
       <div className="flex flex-col items-center gap-4 w-40 shrink-0">
         <button 
           type="button"
-          className="w-32 h-32 rounded-full border-4 flex items-center justify-center cursor-pointer relative group bg-brand-dark overflow-hidden transition-all outline-none focus:ring-2 focus:ring-brand-accent/50"
+          className="w-32 h-32 shrink-0 rounded-full border-4 flex items-center justify-center cursor-pointer relative group bg-brand-dark overflow-hidden transition-all outline-none focus:ring-2 focus:ring-brand-accent/50"
           style={{ borderColor: tokenBorderColor }}
           onClick={() => fileInputRef.current?.click()}
         >

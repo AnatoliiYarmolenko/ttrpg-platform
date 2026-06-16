@@ -152,10 +152,16 @@ export default function DraggableElement({ item, isSelected, onSelect, onUpdate,
     if (isLocked) return;
     const event = e.data?.global || e.global || e;
     
-    // Якщо це правий клік (button 2)
+    // Якщо це правий клік
     if (e.data?.button === 2 || e.button === 2 || e.nativeEvent?.button === 2) {
-      e.stopPropagation?.();
-      onContextMenu?.(e.nativeEvent || e.data?.originalEvent || e, item.id);
+      // Записуємо позицію для перевірки, чи був рух
+      dragState.current = {
+        isRightClick: true,
+        startMouseX: event.x,
+        startMouseY: event.y,
+        time: Date.now()
+      };
+      // Ми НЕ зупиняємо propagation, щоб useViewport.js міг почати пересувати карту!
       return;
     }
     
@@ -174,10 +180,10 @@ export default function DraggableElement({ item, isSelected, onSelect, onUpdate,
     };
     setIsDragging(true);
     e.stopPropagation?.();
-  }, [localX, localY, onSelect, isLocked, onDoubleClick, onContextMenu, item.id]);
+  }, [localX, localY, onSelect, isLocked, onDoubleClick, item.id]);
 
   const onDragMove = useCallback((e) => {
-    if (!dragState.current) return;
+    if (!dragState.current || dragState.current.isRightClick) return;
     const event = e.data?.global || e.global || e;
     const scale = viewport.scale || 1;
     const dx = (event.x - dragState.current.startMouseX) / scale;
@@ -192,12 +198,22 @@ export default function DraggableElement({ item, isSelected, onSelect, onUpdate,
   }, [viewport.scale, sendPreview]);
 
   const onDragEnd = useCallback((e) => {
-    // Context menu тепер викликається одразу в onDragStart, тому тут нічого не робимо
-    if (e && (e.data?.button === 2 || e.button === 2 || e.nativeEvent?.button === 2)) {
+    if (!dragState.current) return;
+
+    if (dragState.current.isRightClick) {
+      const event = e.data?.global || e.global || e;
+      const dx = event.x - dragState.current.startMouseX;
+      const dy = event.y - dragState.current.startMouseY;
+      const dist = Math.hypot(dx, dy);
+
+      // Якщо курсор майже не рухався (простий клік), відкриваємо меню
+      if (dist < 5) {
+        onContextMenu?.(e.nativeEvent || e.data?.originalEvent || e, item.id);
+      }
+      dragState.current = null;
       return;
     }
 
-    if (!dragState.current) return;
     dragState.current = null;
     setIsDragging(false);
     
@@ -209,7 +225,7 @@ export default function DraggableElement({ item, isSelected, onSelect, onUpdate,
     setLocalScaleY(snapped.scaleY);
     
     sendUpdate({ x: snapped.x, y: snapped.y, scaleX: snapped.scaleX, scaleY: snapped.scaleY });
-  }, [localX, localY, localScaleX, localScaleY, item.width, item.height, gridSize, sendUpdate]);
+  }, [localX, localY, localScaleX, localScaleY, item.width, item.height, gridSize, sendUpdate, onContextMenu, item.id]);
 
   // ─── Resize handlers (Масштабування) ─────────────────────────────────────────────
 
@@ -393,9 +409,12 @@ export default function DraggableElement({ item, isSelected, onSelect, onUpdate,
         // eslint-disable-next-line react-hooks/refs
         renderContent(displayWidth, displayHeight, spriteCursor, {
           onPointerDown: onDragStart,
+          onRightDown: onDragStart, /* NOSONAR */
           onGlobalPointerMove: onDragMove,
           onPointerUp: onDragEnd,
+          onRightUp: onDragEnd, /* NOSONAR */
           onPointerUpOutside: onDragEnd,
+          onRightUpOutside: onDragEnd, /* NOSONAR */
         })
       ) : (
         <sprite
@@ -406,9 +425,12 @@ export default function DraggableElement({ item, isSelected, onSelect, onUpdate,
           eventMode="static" /* NOSONAR */
           cursor={spriteCursor}
           onPointerDown={onDragStart}
+          onRightDown={onDragStart} /* NOSONAR */
           onGlobalPointerMove={onDragMove /* NOSONAR */}
           onPointerUp={onDragEnd}
+          onRightUp={onDragEnd} /* NOSONAR */
           onPointerUpOutside={onDragEnd /* NOSONAR */}
+          onRightUpOutside={onDragEnd /* NOSONAR */}
         />
       )}
 
