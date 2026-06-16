@@ -745,6 +745,7 @@ class VttStateManager {
     // Шукаємо останній малюнок цього користувача (з кінця масиву)
     for (let i = drawLayer.items.length - 1; i >= 0; i--) {
       const item = drawLayer.items[i];
+      console.log('[VTT DEBUG] removeLastDrawing - item.userId:', item.userId, 'payload.userId:', userId);
       if (String(item.userId) === String(userId)) {
         drawLayer.items.splice(i, 1);
         return item.id;

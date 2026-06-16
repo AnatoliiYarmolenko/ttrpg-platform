@@ -169,7 +169,8 @@ async function handleVttDiceRoll(socket, payload, roomManager) {
     name, 
     strength: strength || 1,
     visibility: visibility || 'PUBLIC',
-    initiatorId
+    initiatorId,
+    meta: payload.meta || null
   };
   const entry = vttStateManager.addDiceRoll(sessionId, rollResult);
 
@@ -314,9 +315,12 @@ async function handleVttStateChange(socket, payload, roomManager, actionType) {
     case 'vtt:scene:removeDrawing':
       vttStateManager.removeDrawingById(sessionId, sceneId, payload.drawingId);
       break;
-    case 'vtt:scene:undoDrawing':
-      vttStateManager.removeLastDrawing(sessionId, sceneId, payload.userId);
+    case 'vtt:scene:undoDrawing': {
+      console.log('[VTT] undoDrawing received. sessionId:', sessionId, 'sceneId:', sceneId, 'userId:', payload.userId);
+      const removedId = vttStateManager.removeLastDrawing(sessionId, sceneId, payload.userId);
+      console.log('[VTT] undoDrawing result - removedId:', removedId);
       break;
+    }
     case 'vtt:scene:clearDrawings':
       vttStateManager.clearDrawings(sessionId, sceneId);
       roomManager.broadcast(getVttRoom(sessionId), { type: 'vtt:scene:clearAllPreviews' });
