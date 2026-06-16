@@ -38,10 +38,10 @@ const createSessionBodySchema = Joi.object({
     'number.min': 'Duration must be between 30 and 480 minutes',
     'number.max': 'Duration must be between 30 and 480 minutes',
   }),
-  maxPlayers: Joi.number().integer().min(1).max(20).optional().messages({
-    'number.base': 'Max players must be between 1 and 20',
-    'number.min': 'Max players must be between 1 and 20',
-    'number.max': 'Max players must be between 1 and 20',
+  maxPlayers: Joi.number().integer().min(1).max(8).optional().messages({
+    'number.base': 'Max players must be between 1 and 8',
+    'number.min': 'Max players must be between 1 and 8',
+    'number.max': 'Max players must be between 1 and 8',
   }),
   price: Joi.number().min(0).max(10000).optional().messages({
     'number.base': 'Price must be between 0 and 10000',
@@ -99,10 +99,10 @@ const updateSessionBodySchema = Joi.object({
     'number.min': 'Duration must be between 30 and 480 minutes',
     'number.max': 'Duration must be between 30 and 480 minutes',
   }),
-  maxPlayers: Joi.number().integer().min(1).max(20).optional().messages({
-    'number.base': 'Max players must be between 1 and 20',
-    'number.min': 'Max players must be between 1 and 20',
-    'number.max': 'Max players must be between 1 and 20',
+  maxPlayers: Joi.number().integer().min(1).max(8).optional().messages({
+    'number.base': 'Max players must be between 1 and 8',
+    'number.min': 'Max players must be between 1 and 8',
+    'number.max': 'Max players must be between 1 and 8',
   }),
   visibility: Joi.string().trim().valid(...VISIBILITY_VALUES).optional().messages({
     'any.only': 'Invalid visibility value',

@@ -31,9 +31,9 @@ export default function SessionTabRenderer({
 
   if (activeTab === SESSION_TABS.SETTINGS) {
     return {
-      leftPanel: <SessionSettingsWidget {...sessionSettingsProps} />,
+      leftPanel: viewingUserId ? profilePreviewNode : <SessionSettingsWidget {...sessionSettingsProps} />,
       rightPanel: <SessionPageParticipantsWidget {...participantsProps} />,
-      leftLabel: 'Керування',
+      leftLabel: viewingUserId ? 'Профіль' : 'Керування',
       rightLabel: 'Учасники',
     };
   }

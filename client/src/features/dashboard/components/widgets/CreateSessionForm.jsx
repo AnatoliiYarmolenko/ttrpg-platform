@@ -127,8 +127,8 @@ export default function CreateSessionForm({
       nextErrors.duration = 'Тривалість від 30 до 480 хвилин';
     }
 
-    if (formData.maxPlayers < 1 || formData.maxPlayers > 20) {
-      nextErrors.maxPlayers = 'Кількість гравців від 1 до 20';
+    if (formData.maxPlayers < 1 || formData.maxPlayers > 8) {
+      nextErrors.maxPlayers = 'Кількість гравців від 1 до 8';
     }
 
     if (formData.price < 0 || formData.price > 10000) {
@@ -384,7 +384,7 @@ export default function CreateSessionForm({
             value={formData.maxPlayers}
             onChange={handleChange}
             min={1}
-            max={20}
+            max={8}
             className={inputClass('maxPlayers')}
           />
           {errors.maxPlayers && <p className="text-red-500 text-xs mt-1">{errors.maxPlayers}</p>}

@@ -262,7 +262,7 @@ function SessionSettingsWidgetContent({
                   className={inputClasses}
                   disabled={isReadOnly}
                   min={1}
-                  max={20}
+                  max={8}
                   placeholder="6"
                 />
               </FormField>
