@@ -1,0 +1,222 @@
+paths:
+  /api/sessions/{id}/vtt/character:
+    get:
+      summary: Отримати аркуш персонажа гравця для VTT
+      description: |
+        Повертає аркуш персонажа для поточного гравця у контексті вказаної сесії.
+        
+        **Бізнес логіка**:
+        - Якщо сесія **не належить** до кампанії (one-shot): 1 персонаж на 1 сесію для юзера.
+        - Якщо сесія **належить** до кампанії: 1 персонаж на всю кампанію для юзера (спільний для всіх сесій кампанії).
+      tags: [VTT]
+      security: 
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Аркуш персонажа (або null, якщо ще не створений)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    nullable: true
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        403:
+          $ref: '#/components/responses/ForbiddenError'
+
+    put:
+      summary: Зберегти/оновити аркуш персонажа гравця для VTT
+      description: |
+        Створює або оновлює аркуш персонажа для поточного гравця. 
+        Логіка прив'язки (до сесії чи до кампанії) визначається автоматично на бекенді залежно від типу сесії.
+      tags: [VTT]
+      security: 
+        - cookieAuth: []
+        - csrfAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Будь-які поля аркуша персонажа
+      responses:
+        200:
+          description: Аркуш збережено
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        403:
+          $ref: '#/components/responses/ForbiddenError'
+
+  /api/sessions/{id}/vtt/creatures:
+    get:
+      summary: Отримати всіх істот GM-а для VTT
+      tags: [VTT]
+      security: 
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Масив істот GM-а
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        403:
+          $ref: '#/components/responses/ForbiddenError'
+
+  /api/sessions/{id}/vtt/creatures/sync:
+    post:
+      summary: Масова синхронізація GM-істот (перезапис)
+      tags: [VTT]
+      security: 
+        - cookieAuth: []
+        - csrfAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                creatures:
+                  type: array
+                  items:
+                    type: object
+      responses:
+        200:
+          description: Успішно синхронізовано
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        403:
+          $ref: '#/components/responses/ForbiddenError'
+
+  /api/sessions/{id}/vtt/creatures/{creatureId}:
+    put:
+      summary: Оновити окрему GM-істоту
+      tags: [VTT]
+      security: 
+        - cookieAuth: []
+        - csrfAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: creatureId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        200:
+          description: Істоту оновлено
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        403:
+          $ref: '#/components/responses/ForbiddenError'
+
+    delete:
+      summary: Видалити окрему GM-істоту
+      tags: [VTT]
+      security: 
+        - cookieAuth: []
+        - csrfAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: creatureId
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Істоту видалено
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        403:
+          $ref: '#/components/responses/ForbiddenError'
+
+  /api/sessions/{id}/vtt/dice-log:
+    get:
+      summary: Отримати історію кидків кубиків у VTT
+      tags: [VTT]
+      security: 
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 50
+      responses:
+        200:
+          description: Історія кидків
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+        401:
+          $ref: '#/components/responses/UnauthorizedError'
+        403:
+          $ref: '#/components/responses/ForbiddenError'
