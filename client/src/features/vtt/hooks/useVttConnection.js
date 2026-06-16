@@ -2,12 +2,13 @@ import { useEffect, useCallback, useRef } from 'react';
 import useVttStore from '@/stores/useVttStore';
 import useBattlefieldStore from '../components/battlefield/useBattlefieldStore';
 import useInitiativeStore from '@/stores/useInitiativeStore';
+import useAuthStore from '@/stores/useAuthStore';
 import useCharacterStore from '@/stores/useCharacterStore';
 import useGmCreaturesStore from '@/stores/useGmCreaturesStore';
 import { sharedWsManager } from '@/lib/shared-ws';
 
 export default function useVttConnection(sessionId, options = {}) {
-  const { enabled = true } = options;
+  const { enabled = true, isGM = false } = options;
 
   const setVttState = useBattlefieldStore((s) => s.setVttState);
   // Note: previewSceneItem is accessed dynamically via useBattlefieldStore.getState()
@@ -15,6 +16,10 @@ export default function useVttConnection(sessionId, options = {}) {
   
   const setVttOpen = useVttStore((s) => s.setVttOpen);
   const setIncomingRoll = useVttStore((s) => s.setIncomingRoll);
+
+  const sendEvent = useCallback((type, payload) => {
+    return sharedWsManager.send(type, { sessionId, ...payload });
+  }, [sessionId]);
 
   const handleVttMessage = useCallback((data) => { // nosonar
     // Ігноруємо якщо повідомлення не для цієї сесії
@@ -24,6 +29,9 @@ export default function useVttConnection(sessionId, options = {}) {
       case 'vtt:state':
         setVttOpen(sessionId, data.isOpen ?? true);
         setVttState(data);
+        if (data.initiative) {
+          useInitiativeStore.getState().setInitiative(data.initiative);
+        }
         break;
       case 'vtt:opened':
         setVttOpen(sessionId, data.isOpen);
@@ -38,8 +46,16 @@ export default function useVttConnection(sessionId, options = {}) {
       case 'vtt:dice:result':
         if (data.roll) {
           setIncomingRoll(data.roll);
+          globalThis.dispatchEvent(new CustomEvent('vtt:dice:result', { detail: data.roll }));
           if (data.roll.name === 'Ініціатива') {
             useInitiativeStore.getState().addRoll(data.roll);
+            // Синхронізація: якщо ми самі кинули кубик, відправляємо оновлений трекер на сервер
+            setTimeout(() => {
+              const currentUserId = useAuthStore.getState().user?.id;
+              if (currentUserId && String(data.roll.initiatorId) === String(currentUserId)) {
+                sendEvent('vtt:initiative:update', { initiative: useInitiativeStore.getState().entries });
+              }
+            }, 100);
           }
         }
         break;
@@ -88,7 +104,7 @@ export default function useVttConnection(sessionId, options = {}) {
       default:
         break;
     }
-  }, [sessionId, setVttOpen, setVttState, moveToken, setIncomingRoll]);
+  }, [sessionId, setVttOpen, setVttState, moveToken, setIncomingRoll, sendEvent]);
 
   const handleIncomingMessage = useCallback((data) => {
     if (!data || typeof data !== 'object') return;
@@ -97,18 +113,16 @@ export default function useVttConnection(sessionId, options = {}) {
     }
   }, [handleVttMessage]);
 
-  const sendEvent = useCallback((type, payload) => {
-    return sharedWsManager.send(type, { sessionId, ...payload });
-  }, [sessionId]);
-
   const joinVtt = useCallback(() => {
     if (!sessionId) return;
     sendEvent('vtt:join', {});
 
     // Завантажуємо дані з сервера після підключення/реконнекту (async, не блокує)
     useCharacterStore.getState().loadFromServer(sessionId).catch(() => {});
-    useGmCreaturesStore.getState().loadFromServer(sessionId).catch(() => {});
-  }, [sessionId, sendEvent]);
+    if (isGM) {
+      useGmCreaturesStore.getState().loadFromServer(sessionId).catch(() => {});
+    }
+  }, [sessionId, sendEvent, isGM]);
 
   const leaveVtt = useCallback(() => {
     if (!sessionId) return;
@@ -152,7 +166,7 @@ export default function useVttConnection(sessionId, options = {}) {
     sendVttTokenRemove: (sceneId, tokenId) => sendEvent('vtt:token_remove', { sceneId, tokenId }),
     sendVttTokenDrag: (sceneId, tokenId, x, y) => sendEvent('vtt:token_drag', { sceneId, tokenId, x, y }),
     sendVttTokenDrop: (sceneId, tokenId, x, y) => sendEvent('vtt:token_drop', { sceneId, tokenId, x, y }),
-    sendVttDiceRoll: (formula, name, strength, visibility, characterName) => sendEvent('vtt:dice:roll', { formula, name, strength, visibility, characterName }),
+    sendVttDiceRoll: (formula, name, strength, visibility, characterName, meta) => sendEvent('vtt:dice:roll', { formula, name, strength, visibility, characterName, meta }),
     sendVttSetBackground: (backgroundUrl, mapWidth, mapHeight) => sendEvent('vtt:set_background', { backgroundUrl, mapWidth, mapHeight }),
     sendVttSceneCreate: (data) => sendEvent('vtt:scene:create', data),
     sendVttSceneUpdate: (sceneId, updates) => sendEvent('vtt:scene:update', { sceneId, updates }),

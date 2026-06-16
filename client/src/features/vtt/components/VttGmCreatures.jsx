@@ -151,14 +151,21 @@ export default function VttGmCreatures({ vttConnection }) {
       {/* Вкладки (Tabs) */}
       <div className="flex items-center bg-black/40 border-b border-brand-light/10 overflow-x-auto custom-scrollbar shrink-0">
         {creatures.map((creature, index) => (
-          <button 
-            type="button"
+          <div
+            role="button"
+            tabIndex={0}
             key={creature.id}
             draggable={true}
             onDragStart={(e) => handleDragStart(e, index)}
             onDragOver={(e) => handleDragOver(e)}
             onDrop={(e) => handleDrop(e, index)}
             onClick={() => setActiveTab(creature.id)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setActiveTab(creature.id);
+              }
+            }}
             className={`flex items-center gap-2 px-4 py-2 cursor-pointer border-r border-brand-light/10 transition-colors whitespace-nowrap select-none outline-none ${activeTabId === creature.id ? 'bg-brand-medium/30 border-b-2 border-b-brand-accent text-white' : 'hover:bg-brand-medium/10 text-brand-light/70'} ${draggedIdx === index ? 'opacity-50' : ''}`}
           >
             {creature.type === 'monster' ? <Skull size={14} className="text-red-400" /> : <UserIcon size={14} className="text-blue-400" />}
@@ -174,7 +181,7 @@ export default function VttGmCreatures({ vttConnection }) {
             >
               <X size={12} />
             </button>
-          </button>
+          </div>
         ))}
         
         <button 
@@ -190,6 +197,7 @@ export default function VttGmCreatures({ vttConnection }) {
       <div className="h-full flex flex-col min-h-0 relative">
         {activeCreature ? (
           <CreatureSheetContent
+            id={activeCreature.frontendId}
             data={activeCreature.data}
             type={activeCreature.type}
             showNotesBtn={false}
