@@ -137,8 +137,9 @@ test('TelegramService Test Suite', async (suite) => {
       severity: 'INFO'
     };
     const result = service._formatMessage(payload);
-    assert.equal(result.includes('ℹ️ <b>New Session</b>'), true);
+    assert.equal(result.includes('<b>New Session</b>'), true);
     assert.equal(result.includes('Session is starting soon'), true);
+    assert.equal(result.includes('<a href="https://test.com/logo.png">&#8203;</a>'), true);
   });
 
   await t.test('escapes HTML tags in title and body', () => {
@@ -151,24 +152,14 @@ test('TelegramService Test Suite', async (suite) => {
     assert.equal(result.includes('a &amp; b &gt; c'), true);
   });
 
-  await t.test('resolves different severities to correct emojis', () => {
-    assert.equal(service._formatMessage({ title: 'T', severity: 'SUCCESS' }).includes('✅'), true);
-    assert.equal(service._formatMessage({ title: 'T', severity: 'WARNING' }).includes('⚠️'), true);
-    assert.equal(service._formatMessage({ title: 'T', severity: 'ERROR' }).includes('❌'), true);
-    assert.equal(service._formatMessage({ title: 'T', severity: 'CRITICAL' }).includes('🚨'), true);
-    assert.equal(service._formatMessage({ title: 'T', severity: 'SECURITY' }).includes('🔐'), true);
-    assert.equal(service._formatMessage({ title: 'T', severity: 'UNKNOWN' }).includes('ℹ️'), true);
-  });
+  await t.test('does not append links to text in formatting', () => {
+    const payloadLocalAbs = { title: 'T', link: 'http://localhost:5173/dashboard' };
+    const resLocalAbs = service._formatMessage(payloadLocalAbs);
+    assert.equal(resLocalAbs.includes('Перейти'), false);
 
-  await t.test('appends links correctly (absolute and relative)', () => {
-    const payloadAbs = { title: 'T', link: 'https://google.com' };
-    const resAbs = service._formatMessage(payloadAbs);
-    assert.equal(resAbs.includes('<a href="https://google.com">Перейти</a>'), true);
-
-    const payloadRel = { title: 'T', link: '/dashboard' };
-    const resRel = service._formatMessage(payloadRel);
-
-    assert.equal(resRel.includes('<a href="https://test.com/dashboard">Перейти</a>'), true);
+    const payloadPublic = { title: 'T', link: 'https://google.com' };
+    const resPublic = service._formatMessage(payloadPublic);
+    assert.equal(resPublic.includes('Перейти'), false);
   });
 
   await t.test('handles null body gracefully', () => {
@@ -195,9 +186,9 @@ test('TelegramService Test Suite', async (suite) => {
     );
   });
 
-  await t.test('sends formatted message via telegraf', async (t) => {
+  await t.test('sends formatted message via telegraf with inline keyboard for public link', async (t) => {
     const { telegramService } = loadTelegramServiceWithMocks(t, {
-      configMock: { telegramBotToken: 'mock-token' },
+      configMock: { telegramBotToken: 'mock-token', frontendUrl: 'https://test.com' },
       profileServiceMock: {},
       telegrafMock: MockTelegraf,
       loggerMock: defaultLoggerMock,
@@ -205,13 +196,18 @@ test('TelegramService Test Suite', async (suite) => {
     
     telegramService.isInitialized = true;
     
-    await telegramService.sendMessage(12345, { title: 'Test Title' });
+    await telegramService.sendMessage(12345, { title: 'Нова сесія', link: '/sessions/1' });
     
     const botMock = telegramService.bot;
     assert.equal(botMock.sentMessages.length, 1);
     assert.equal(botMock.sentMessages[0].chatId, 12345);
-    assert.equal(botMock.sentMessages[0].text.includes('Test Title'), true);
+    assert.equal(botMock.sentMessages[0].text.includes('Перейти'), false);
     assert.equal(botMock.sentMessages[0].extra.parse_mode, 'HTML');
+    assert.deepEqual(botMock.sentMessages[0].extra.reply_markup, {
+      inline_keyboard: [
+        [{ text: 'Перейти до сесії', url: 'https://test.com/sessions/1' }]
+      ]
+    });
   });
 
   await t.test('throws and logs error when sending fails', async (t) => {
