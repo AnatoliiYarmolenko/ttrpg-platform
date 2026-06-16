@@ -85,7 +85,20 @@ export default function VttPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageData?.actions?.canOpenVtt, chatController.isConnected]);
 
-
+  // При виході зі сторінки: GM закриває VTT (зберігає сцени), гравці зберігають персонажа
+  useEffect(() => {
+    if (!id || !pageData) return;
+    const canOpenVtt = Boolean(pageData?.actions?.canOpenVtt);
+    const sessionId = Number(id);
+    return () => {
+      if (canOpenVtt) {
+        vttConnection.sendVttClose?.();
+      } else {
+        useCharacterStore.getState().saveToServer(sessionId).catch(() => {});
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, Boolean(pageData)]);
 
   // Редірект якщо немає доступу
   useEffect(() => {
