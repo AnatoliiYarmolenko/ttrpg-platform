@@ -2,6 +2,8 @@ import React, { useRef, useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { User, Shield, Zap, Activity, Heart, Upload, Plus, Book, ChevronDown, ChevronRight, Swords, Trash2, Dices } from 'lucide-react';
 import { toast } from '@/stores/useToastStore';
+import ConfirmModal from '@/components/shared/ConfirmModal';
+import InputModal from '@/components/shared/InputModal';
 
 const calcMod = (score) => Math.floor((Number(score) - 10) / 2);
 const formatMod = (mod) => (mod >= 0 ? `+${mod}` : `${mod}`);
@@ -37,6 +39,7 @@ const STATS_MAP = {
 };
 
 export default function CreatureSheetContent({
+  id,
   data,
   type = 'player', // 'player' | 'human' | 'monster'
   showNotesBtn = true,
@@ -58,6 +61,7 @@ export default function CreatureSheetContent({
   },
   isTokenOnTable
 }) {
+  const [showNoHitDiceModal, setShowNoHitDiceModal] = useState(false);
   const fileInputRef = useRef(null);
   
   const [localColor, setLocalColor] = useState(data.tokenBorderColor || (type === 'monster' ? '#e74c3c' : '#2ecc71'));
@@ -109,34 +113,90 @@ export default function CreatureSheetContent({
     hitDiceCurrent, hitDiceMax, hitDiceType
   } = data;
 
-  const handleAvatarChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        updateField('avatarUrl', reader.result);
-      };
-      reader.readAsDataURL(file);
+  // Слухаємо глобальні результати кидків кубиків, щоб відновити HP
+  useEffect(() => {
+    const handleDiceResult = (e) => {
+      const roll = e.detail;
+      // Перевіряємо, чи це кидок саме нашої істоти (за унікальним id в meta)
+      if (roll?.meta?.id === id && roll.name === 'Кість хітів (Лікування)') {
+        const healAmount = roll.total || 0;
+        updateField('hpCurrent', Math.min(hpMax, hpCurrent + healAmount));
+      }
+    };
+    globalThis.addEventListener('vtt:dice:result', handleDiceResult);
+    return () => globalThis.removeEventListener('vtt:dice:result', handleDiceResult);
+  }, [id, hpCurrent, hpMax, updateField]);
+
+  const [hpModalVisible, setHpModalVisible] = useState(false);
+
+  const handleHpChange = (value) => {
+    setHpModalVisible(false);
+    if (!value) return;
+    
+    const isRelative = value.startsWith('+') || value.startsWith('-');
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isNaN(parsed)) return;
+
+    if (isRelative) {
+      updateField('hpCurrent', Math.max(0, Math.min(hpMax, hpCurrent + parsed)));
+    } else {
+      updateField('hpCurrent', Math.max(0, Math.min(hpMax, parsed)));
     }
   };
 
-  const rollDice = (rollName, bonus, baseDice = '1d20') => {
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 1024;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height *= MAX_SIZE / width;
+            width = MAX_SIZE;
+          }
+        } else if (height > MAX_SIZE) {
+          width *= MAX_SIZE / height;
+          height = MAX_SIZE;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const resizedDataUrl = canvas.toDataURL('image/webp', 0.85);
+        updateField('avatarUrl', resizedDataUrl);
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const rollDice = (rollName, bonus, baseDice = '1d20', meta = null) => {
     if (!vttConnection?.sendVttDiceRoll) return;
     const formula = bonus >= 0 ? `${baseDice}+${bonus}` : `${baseDice}${bonus}`;
     const strength = rollStrength || 1;
     const finalCharName = (name && name !== 'Без імені') ? name : undefined;
-    vttConnection.sendVttDiceRoll(formula, rollName, strength, 'public', finalCharName);
+    vttConnection.sendVttDiceRoll(formula, rollName, strength, 'public', finalCharName, meta);
   };
 
   const handleRollHitDice = () => {
     if (hitDiceCurrent <= 0) {
-      alert("Немає доступних костей хітів!");
+      setShowNoHitDiceModal(true);
       return;
     }
     let typeStr = hitDiceType.trim();
     if (!typeStr.startsWith('d')) typeStr = 'd' + typeStr;
     const conMod = calcMod(stats.con || 10);
-    rollDice('Кість хітів (Лікування)', conMod, `1${typeStr}`);
+    rollDice('Кість хітів (Лікування)', conMod, `1${typeStr}`, { id });
     updateField('hitDiceCurrent', hitDiceCurrent - 1);
   };
 
@@ -149,7 +209,7 @@ export default function CreatureSheetContent({
       <div className="flex flex-col items-center gap-4 w-40 shrink-0">
         <button 
           type="button"
-          className="w-32 h-32 rounded-full border-4 flex items-center justify-center cursor-pointer relative group bg-brand-dark overflow-hidden transition-all outline-none focus:ring-2 focus:ring-brand-accent/50"
+          className="w-32 h-32 shrink-0 rounded-full border-4 flex items-center justify-center cursor-pointer relative group bg-brand-dark overflow-hidden transition-all outline-none focus:ring-2 focus:ring-brand-accent/50"
           style={{ borderColor: tokenBorderColor }}
           onClick={() => fileInputRef.current?.click()}
         >
@@ -349,12 +409,13 @@ export default function CreatureSheetContent({
                   <Heart size={10} className="text-red-400"/>
                   Поточне
                 </span>
-                <input 
-                  type="number" 
-                  value={hpCurrent} 
-                  onChange={(e) => updateField('hpCurrent', Number(e.target.value))}
-                  className="w-12 sm:w-14 bg-transparent text-right text-white font-bold text-lg outline-none no-spinners"
-                />
+                <button 
+                  type="button"
+                  onClick={() => setHpModalVisible(true)}
+                  className="w-12 sm:w-14 bg-transparent text-right text-white font-bold text-lg outline-none cursor-pointer hover:text-brand-primary transition-colors"
+                >
+                  {hpCurrent}
+                </button>
               </div>
             </div>
           </div>
@@ -673,11 +734,35 @@ export default function CreatureSheetContent({
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showNoHitDiceModal}
+        title="Немає костей хітів"
+        message="У вас більше немає доступних костей хітів для відпочинку. Зробіть Тривалий відпочинок, щоб їх відновити."
+        confirmText="Зрозуміло"
+        cancelText="Закрити"
+        onConfirm={() => setShowNoHitDiceModal(false)}
+        onCancel={() => setShowNoHitDiceModal(false)}
+        theme="dark"
+      />
+
+      <InputModal
+        isOpen={hpModalVisible}
+        title="Відновлення чи втрата HP"
+        message="Введіть +10 для лікування, -5 для шкоди, або просто число щоб встановити нове значення."
+        placeholder="+10 або -5"
+        confirmText="Змінити"
+        cancelText="Скасувати"
+        theme="dark"
+        onConfirm={handleHpChange}
+        onCancel={() => setHpModalVisible(false)}
+      />
     </div>
   );
 }
 
 CreatureSheetContent.propTypes = {
+  id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
   data: PropTypes.object.isRequired,
   type: PropTypes.oneOf(['player', 'human', 'monster']),
   showNotesBtn: PropTypes.bool,

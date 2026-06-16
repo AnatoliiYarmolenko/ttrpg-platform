@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 /**
  * findNewSceneId — знаходить ID нової сцени яку додали до словника.
@@ -14,6 +15,7 @@ export function findNewSceneId(prevScenes, nextScenes) {
   const prevKeys = Object.keys(prevScenes || {});
   const nextKeys = Object.keys(nextScenes || {});
 
+  if (prevKeys.length === 0) return null; // Захист від стрибків при початковому завантаженні
   if (nextKeys.length <= prevKeys.length) return null;
 
   return nextKeys.find((id) => !prevKeys.includes(id)) ?? null;
@@ -38,8 +40,10 @@ export function findNewSceneId(prevScenes, nextScenes) {
  *   setGridSize: (size: number) => void,
  * }>>}
  */
-const useBattlefieldStore = create((set) => ({
-  gridSize: 64,
+const useBattlefieldStore = create(
+  persist(
+    (set) => ({
+      gridSize: 64,
 
   activeSceneId: null,
   gmViewSceneId: null,
@@ -68,8 +72,10 @@ const useBattlefieldStore = create((set) => ({
     let gmViewSceneId = prev.gmViewSceneId;
     const activeSceneId = state.activeSceneId ?? null;
 
-    // Якщо поточна перегляд-сцена GM більше не існує — перемикаємося
-    if (gmViewSceneId && !state.scenes?.[gmViewSceneId]) {
+    const hasScenes = state.scenes && Object.keys(state.scenes).length > 0;
+
+    // Якщо поточна перегляд-сцена GM більше не існує (але при цьому сервер надіслав не пустий список сцен) — перемикаємося
+    if (gmViewSceneId && hasScenes && !state.scenes[gmViewSceneId]) {
       gmViewSceneId = activeSceneId;
     }
 
@@ -287,6 +293,12 @@ const useBattlefieldStore = create((set) => ({
     return { remoteRulers: { ...state.remoteRulers, [userId]: ruler } };
   }),
   clearAllRemoteRulers: () => set({ remoteRulers: {} }),
-}));
+    }),
+    {
+      name: 'vtt-battlefield-storage',
+      partialize: (state) => ({ gmViewSceneId: state.gmViewSceneId }),
+    }
+  )
+);
 
 export default useBattlefieldStore;

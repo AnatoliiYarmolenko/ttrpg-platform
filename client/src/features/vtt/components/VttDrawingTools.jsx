@@ -28,6 +28,12 @@ export default function VttDrawingTools({ userId, sceneId, vttConnection }) {
   
   const { isDrawingToolsOpen, toggleDrawingTools } = useVttStore();
 
+  React.useEffect(() => {
+    if (!isDrawingToolsOpen) {
+      setDrawingTool(null);
+    }
+  }, [isDrawingToolsOpen, setDrawingTool]);
+
   const [showSettings, setShowSettings] = useState(false);
 
   const tools = [
@@ -44,7 +50,11 @@ export default function VttDrawingTools({ userId, sceneId, vttConnection }) {
   ];
 
   const handleUndo = () => {
-    if (!sceneId) return;
+    console.log('[UNDO] clicked. sceneId:', sceneId, 'userId:', userId, 'hasConnection:', !!vttConnection, 'hasFn:', !!vttConnection?.sendVttSceneUndoDrawing);
+    if (!sceneId) {
+      console.warn('[UNDO] aborted: sceneId is null/undefined');
+      return;
+    }
     vttConnection?.sendVttSceneUndoDrawing?.(sceneId, userId);
   };
 
@@ -137,7 +147,7 @@ export default function VttDrawingTools({ userId, sceneId, vttConnection }) {
             return (
               <button
                 key={String(tool.id)}
-                onClick={() => setDrawingTool(tool.id)}
+                onClick={() => isActive ? setDrawingTool(null) : setDrawingTool(tool.id)}
                 title={tool.title}
                 className={`flex items-center justify-center p-2 rounded transition-colors border ${
                   isActive 

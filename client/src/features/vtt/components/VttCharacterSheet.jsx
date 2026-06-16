@@ -197,6 +197,7 @@ export default function VttCharacterSheet({ isGM, vttConnection }) {
       <div className="h-full flex flex-col">
         {viewMode === 'main' ? (
           <CreatureSheetContent
+            id="player"
             data={characterData}
             type="player"
             showNotesBtn={true}

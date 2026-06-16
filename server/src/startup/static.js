@@ -3,7 +3,7 @@
  */
 
 const express = require('express');
-const path = require('path');
+const path = require('node:path');
 const { logger } = require('../lib/logger');
 
 /**
@@ -27,6 +27,11 @@ function setupStaticFiles(app, options = {}) {
 
   // Статична папка для завантажених файлів (аватари тощо)
   app.use(uploadsRoute, express.static(absoluteUploadsPath));
+  
+  // Додаємо аліас /api/uploads для сумісності з Nginx (який зазвичай проксіює лише /api)
+  if (!uploadsRoute.startsWith('/api/')) {
+    app.use(`/api${uploadsRoute}`, express.static(absoluteUploadsPath));
+  }
 
   logger.info({ uploadsRoute, absoluteUploadsPath }, 'Статичні файли налаштовано');
 }

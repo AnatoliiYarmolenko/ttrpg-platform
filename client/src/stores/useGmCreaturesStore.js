@@ -58,10 +58,14 @@ const useGmCreaturesStore = create(
 
       addCreature: (type) => set((state) => {
         const id = Date.now().toString() + Math.floor(Math.random() * 1000);
+        const defaultData = createDefaultCreatureData(type);
         const newCreature = {
           id,
           type,
-          data: createDefaultCreatureData(type)
+          data: {
+            ...defaultData,
+            stats: { ...defaultData.stats, frontendId: id }
+          }
         };
         return {
           creatures: [...state.creatures, newCreature],
@@ -189,7 +193,7 @@ const useGmCreaturesStore = create(
           if (Array.isArray(dbCreatures) && dbCreatures.length > 0) {
             // Конвертуємо DB-формат → внутрішній (c.data nested structure)
             const creatures = dbCreatures.map((c) => ({
-              id: String(c.id),         // DB ідентифікатор (Int)
+              id: c.stats?.frontendId || String(c.id),         // Використовуємо стабільний frontendId
               type: c.type === 'HUMAN' ? 'human' : 'monster',
               data: {
                 name: c.name,
@@ -239,7 +243,16 @@ const useGmCreaturesStore = create(
       syncToServer: async (sessionId) => {
         try {
           const { creatures } = useGmCreaturesStore.getState();
-          await api.post(`/sessions/${sessionId}/vtt/creatures/sync`, { creatures });
+          // Зберігаємо стабільний frontendId у полі stats перед відправкою, 
+          // щоб при оновленні сторінки токени не втрачали зв'язок
+          const payload = creatures.map(c => ({
+            ...c,
+            data: {
+              ...c.data,
+              stats: { ...c.data.stats, frontendId: c.id }
+            }
+          }));
+          await api.post(`/sessions/${sessionId}/vtt/creatures/sync`, { creatures: payload });
         } catch (err) {
           console.warn('[GmCreaturesStore] Failed to sync to server', err?.message);
         }

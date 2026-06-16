@@ -46,7 +46,7 @@ export default function DiceRoller3D({ incomingRoll }) {
 
     // Створюємо інстанс DiceBox
     const diceBox = new DiceBox('#dice-canvas-container', {
-      assetPath: '/assets/dice-box-threejs/', // шлях до асетів у public folder
+      assetPath: '/assets/dice-box/', // шлях до асетів у public folder
       theme_customColorset: {
         background: "#8a0303", // Темно-червоний / кровавий
         foreground: "#ffffff", // Білі цифри
@@ -103,11 +103,36 @@ export default function DiceRoller3D({ incomingRoll }) {
       const diceGroups = [];
       const forcedValues = [];
       incomingRoll.details.forEach(detail => {
-        // Collect dice notation, e.g. 1d20 or 2d6
-        diceGroups.push(`${detail.qty}d${detail.sides}`);
-        // Collect all rolled values for these dice
-        if (detail.values && detail.values.length > 0) {
-          forcedValues.push(...detail.values);
+        if (detail.sides === 100) {
+          // За правилами D&D: d100 кидається як два кубика (percentile 00-90 + d10 0-9)
+          const actualRolls = detail.values || [];
+          for (let i = 0; i < detail.qty; i++) {
+            const val = actualRolls[i] || 100;
+            let tens = Math.floor(val / 10) * 10;
+            let ones = val % 10;
+            
+            if (val === 100) {
+              tens = 0;
+              ones = 10;
+            } else if (ones === 0) {
+              ones = 10;
+            } else if (tens === 0) {
+              tens = 0;
+            }
+
+            diceGroups.push('1d100');
+            forcedValues.push(tens);
+            
+            diceGroups.push('1d10');
+            forcedValues.push(ones);
+          }
+        } else {
+          // Collect dice notation, e.g. 1d20 or 2d6
+          diceGroups.push(`${detail.qty}d${detail.sides}`);
+          // Collect all rolled values for these dice
+          if (detail.values && detail.values.length > 0) {
+            forcedValues.push(...detail.values);
+          }
         }
       });
       
@@ -153,7 +178,10 @@ export default function DiceRoller3D({ incomingRoll }) {
         diceBoxRef.current.roll(rollString).catch(err => {
           console.error('Roll failed with forced values, attempting fallback:', err);
           // Fallback: unforced string e.g. '2d12+1d100'
-          const fallbackString = incomingRoll.details.map(d => `${d.qty}d${d.sides}`).join('+');
+          const fallbackString = incomingRoll.details.map(d => {
+            if (d.sides === 100) return new Array(d.qty).fill('1d100+1d10').join('+');
+            return `${d.qty}d${d.sides}`;
+          }).join('+');
           diceBoxRef.current.roll(fallbackString).catch(fallbackErr => {
             console.error('Fallback roll also failed:', fallbackErr);
           });

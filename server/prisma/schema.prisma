@@ -488,10 +488,10 @@ model VttScene {
   width           Int          @default(2048)
   height          Int          @default(2048)
   gridSize        Int          @default(64)
-  backgroundColor Int          @default(10337421) // 0x9DC88D
+  backgroundColor Int          @default(0) // 0x000000
   gridEnabled     Boolean      @default(true)
   gridType        VttGridType  @default(SQUARE)
-  gridColor       Int          @default(10337421)
+  gridColor       Int          @default(3800852) // 0x39FF14
   gridOpacity     Float        @default(0.4)
   gridScale       Float        @default(5)
   isActive        Boolean      @default(false)

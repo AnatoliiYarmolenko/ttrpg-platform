@@ -10,6 +10,8 @@ import DiceRoller3D from '../components/DiceRoller3D';
 import QuickBar from '../components/QuickBar';
 import RollMaker from '../components/RollMaker';
 import useCharacterStore from '@/stores/useCharacterStore';
+import useGmCreaturesStore from '@/stores/useGmCreaturesStore';
+import useAuthStore from '@/stores/useAuthStore';
 import VttSidebar from '../components/VttSidebar';
 import VttFloatingChat from '../components/VttFloatingChat';
 import VttFloatingCall from '../components/VttFloatingCall';
@@ -39,6 +41,8 @@ import useVttStore from '@/stores/useVttStore';
 export default function VttPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const currentUser = useAuthStore(s => s.user);
+  const actualUserId = currentUser?.id || 'me';
   
   // Ініціалізуємо підключення до сигнального сервера дзвінків
   useCallViewerSync(id);
@@ -62,19 +66,20 @@ export default function VttPage() {
     }
   }, [id, setVttOpen]);
 
-  const { data: pageData, isLoading } = useSessionPageQuery({ sessionId: id ? Number(id) : null });
+  const { data: pageData, isLoading, isError } = useSessionPageQuery({ sessionId: id ? Number(id) : null });
   const actions = pageData?.actions || {};
 
   const chatController = useChatController('session', Number.parseInt(id, 10), {
     enabled: Boolean(id && pageData),
   });
 
-  const vttConnection = useVttConnection(id, {
-    enabled: Boolean(id && pageData),
-  });
-
   const canAccess = Boolean(actions.canOpenVtt || actions.canJoinVtt);
   const isGM = Boolean(pageData?.viewer?.isSessionOwner || pageData?.viewer?.role === 'GM' || actions.canManageParticipants);
+
+  const vttConnection = useVttConnection(id, {
+    enabled: Boolean(id && pageData),
+    isGM: isGM,
+  });
 
   // GM автоматично відкриває VTT при вході на сторінку
   useEffect(() => {
@@ -93,6 +98,7 @@ export default function VttPage() {
     return () => {
       if (canOpenVtt) {
         vttConnection.sendVttClose?.();
+        useGmCreaturesStore.getState().syncToServer(sessionId).catch(() => {});
       } else {
         useCharacterStore.getState().saveToServer(sessionId).catch(() => {});
       }
@@ -100,12 +106,48 @@ export default function VttPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, Boolean(pageData)]);
 
-  // Редірект якщо немає доступу
+  // Автозбереження стану (істоти та персонаж) при локальних змінах
   useEffect(() => {
-    if (!isLoading && !canAccess) {
+    if (!id) return;
+    const sessionId = Number(id);
+    let charTimeout;
+    let gmTimeout;
+
+    const noop = () => {};
+
+    const syncChar = () => {
+      useCharacterStore.getState().saveToServer(sessionId).catch(noop);
+    };
+
+    const syncGm = () => {
+      useGmCreaturesStore.getState().syncToServer(sessionId).catch(noop);
+    };
+
+    const unsubChar = useCharacterStore.subscribe((state, prevState) => {
+      if (state._serverSynced !== prevState._serverSynced) return;
+      clearTimeout(charTimeout);
+      charTimeout = setTimeout(syncChar, 2000);
+    });
+
+    const unsubGm = useGmCreaturesStore.subscribe(() => {
+      clearTimeout(gmTimeout);
+      gmTimeout = setTimeout(syncGm, 2000);
+    });
+
+    return () => {
+      unsubChar();
+      unsubGm();
+      clearTimeout(charTimeout);
+      clearTimeout(gmTimeout);
+    };
+  }, [id]);
+
+  // Редірект якщо немає доступу або помилка завантаження
+  useEffect(() => {
+    if ((!isLoading && !canAccess) || isError) {
       navigate(`/session/${id}`);
     }
-  }, [isLoading, canAccess, id, navigate]);
+  }, [isLoading, canAccess, isError, id, navigate]);
 
   const handleClearDrawings = useCallback(() => {
     const sceneId = isGM ? (gmViewSceneId || activeSceneId) : activeSceneId;
@@ -193,10 +235,10 @@ export default function VttPage() {
         />
 
         {/* Drawing Tools */}
-        <VttDrawingTools isGM={isGM} userId={pageData?.viewer?.id || 'me'} sceneId={isGM ? (gmViewSceneId || activeSceneId) : activeSceneId} vttConnection={vttConnection} />
+        <VttDrawingTools isGM={isGM} userId={actualUserId} sceneId={isGM ? (gmViewSceneId || activeSceneId) : activeSceneId} vttConnection={vttConnection} />
         
         {/* Ruler Tools */}
-        <VttRulerTools isGM={isGM} userId={pageData?.viewer?.id || 'me'} sceneId={isGM ? (gmViewSceneId || activeSceneId) : activeSceneId} vttConnection={vttConnection} />
+        <VttRulerTools isGM={isGM} userId={actualUserId} sceneId={isGM ? (gmViewSceneId || activeSceneId) : activeSceneId} vttConnection={vttConnection} />
 
         {/* Character Sheet & GM Panel */}
         <VttCharacterSheet isGM={isGM} vttConnection={vttConnection} />

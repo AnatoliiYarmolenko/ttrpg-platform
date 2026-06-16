@@ -101,6 +101,9 @@ async function handleVttOpen(socket, payload, roomManager) {
   startAutoSave(sessionId, sessionPage.campaignId || null);
 
   sendEvent(socket, 'vtt:opened', { sessionId, isOpen: true });
+  
+  // Надсилаємо повний стан (включно зі сценами, щойно завантаженими з БД) майстру
+  sendEvent(socket, 'vtt:state', { sessionId, ...getFilteredState(vttStateManager.getVttState(sessionId), userId) });
 
   roomManager.broadcastExcept(getVttRoom(sessionId), {
     type: 'vtt:opened',
@@ -166,7 +169,8 @@ async function handleVttDiceRoll(socket, payload, roomManager) {
     name, 
     strength: strength || 1,
     visibility: visibility || 'PUBLIC',
-    initiatorId
+    initiatorId,
+    meta: payload.meta || null
   };
   const entry = vttStateManager.addDiceRoll(sessionId, rollResult);
 
@@ -311,9 +315,12 @@ async function handleVttStateChange(socket, payload, roomManager, actionType) {
     case 'vtt:scene:removeDrawing':
       vttStateManager.removeDrawingById(sessionId, sceneId, payload.drawingId);
       break;
-    case 'vtt:scene:undoDrawing':
-      vttStateManager.removeLastDrawing(sessionId, sceneId, payload.userId);
+    case 'vtt:scene:undoDrawing': {
+      console.log('[VTT] undoDrawing received. sessionId:', sessionId, 'sceneId:', sceneId, 'userId:', payload.userId);
+      const removedId = vttStateManager.removeLastDrawing(sessionId, sceneId, payload.userId);
+      console.log('[VTT] undoDrawing result - removedId:', removedId);
       break;
+    }
     case 'vtt:scene:clearDrawings':
       vttStateManager.clearDrawings(sessionId, sceneId);
       roomManager.broadcast(getVttRoom(sessionId), { type: 'vtt:scene:clearAllPreviews' });

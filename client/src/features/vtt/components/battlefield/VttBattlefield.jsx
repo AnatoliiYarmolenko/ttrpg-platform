@@ -288,7 +288,7 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection
       {/* 1. Суцільний фон самої сцени (він перехоплює події малювання) 
           Збільшено до 100000 для можливості малювання поза межами сцени */}
       <graphics
-        eventMode={drawingTool || rulerTool ? "static" : "auto"} // nosonar
+        eventMode={(drawingTool && drawingTool !== 'none') || rulerTool ? "static" : "auto"} // nosonar
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}

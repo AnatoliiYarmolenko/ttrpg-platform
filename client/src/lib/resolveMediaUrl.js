@@ -25,8 +25,24 @@ export function resolveMediaUrl(url) {
     return url;
   }
 
-  const baseUrl = getApiBaseUrl();
+  const apiUrl = getApiBaseUrlRaw();
+
+  // Маршрутизуємо завантаження через /api/uploads, щоб Nginx на проді коректно їх проксіював до бекенду
+  if (url.startsWith('/uploads')) {
+    const cleanApiUrl = apiUrl.replace(/\/$/, '');
+    return `${cleanApiUrl}${url}`;
+  }
+
+  const baseUrl = apiUrl.replace(/\/api\/?$/, '');
   return `${baseUrl}${url}`;
+}
+
+function getApiBaseUrlRaw() {
+  let apiUrl = null;
+  if (import.meta !== undefined) {
+    apiUrl = import.meta.env?.VITE_API_URL;
+  }
+  return apiUrl || 'http://localhost:5000/api';
 }
 
 /**
@@ -34,12 +50,7 @@ export function resolveMediaUrl(url) {
  * @returns {string}
  */
 export function getApiBaseUrl() {
-  let apiUrl = null;
-  if (import.meta !== undefined) {
-    apiUrl = import.meta.env?.VITE_API_URL;
-  }
-
-  return (apiUrl || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
+  return getApiBaseUrlRaw().replace(/\/api\/?$/, '');
 }
 
 /**

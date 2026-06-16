@@ -140,6 +140,8 @@ const useVttStore = create(
         isDrawingToolsOpen: state.isDrawingToolsOpen,
         isRulerToolsOpen: state.isRulerToolsOpen,
         isInitiativeTrackerOpen: state.isInitiativeTrackerOpen,
+        isGmCreaturesOpen: state.isGmCreaturesOpen,
+        isCharacterSheetOpen: state.isCharacterSheetOpen,
         rollHistory: state.rollHistory,
       }),
     }

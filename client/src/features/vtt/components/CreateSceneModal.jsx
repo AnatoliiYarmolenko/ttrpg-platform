@@ -88,10 +88,10 @@ export default function CreateSceneModal({ isOpen, onClose, onCreate, onUpdate, 
           setName(initialData.name || '');
           setWidth(initialData.width || 1920);
           setHeight(initialData.height || 1080);
-          setBackgroundColor(numToHex(initialData.backgroundColor) || '#3d5a3e');
+          setBackgroundColor(initialData.backgroundColor === undefined ? '#000000' : numToHex(initialData.backgroundColor));
           setGridEnabled(initialData.gridEnabled ?? true);
           setGridType(initialData.gridType || 'SQUARE');
-          setGridColor(numToHex(initialData.gridColor) || '#9dc88d');
+          setGridColor(initialData.gridColor === undefined ? '#39ff14' : numToHex(initialData.gridColor));
           setGridSize(initialData.gridSize || 64);
           setGridOpacity(initialData.gridOpacity || 0.4);
           setGridScale(initialData.gridScale || 5);
@@ -99,10 +99,10 @@ export default function CreateSceneModal({ isOpen, onClose, onCreate, onUpdate, 
           setName('');
           setWidth(1920);
           setHeight(1080);
-          setBackgroundColor('#3d5a3e');
+          setBackgroundColor('#000000');
           setGridEnabled(true);
           setGridType('SQUARE');
-          setGridColor('#9dc88d');
+          setGridColor('#39ff14');
           setGridSize(64);
           setGridOpacity(0.4);
           setGridScale(5);
@@ -262,8 +262,6 @@ export default function CreateSceneModal({ isOpen, onClose, onCreate, onUpdate, 
 
           {/* Feature Toggles (stubs and active Grid) */}
           <div className="flex flex-col gap-2">
-            <ToggleRow label="Динамічне освітлення" />
-            
             {/* Active Grid Control */}
             <div className="flex flex-col gap-2 py-3 px-4 border border-brand-light/10 rounded-lg bg-black/30">
               <div className="flex items-center gap-3">
@@ -360,8 +358,6 @@ export default function CreateSceneModal({ isOpen, onClose, onCreate, onUpdate, 
                 </div>
               )}
             </div>
-
-            <ToggleRow label="Туман війни" />
           </div>
 
           {/* Divider */}
