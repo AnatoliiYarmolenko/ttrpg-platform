@@ -2,7 +2,9 @@ import { useEffect, useCallback, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from '@/stores/useToastStore';
 import { useSessionPageQuery, useSessionMutations, useSessionShareLinkQuery } from './useSessionQueries';
+import { useQueryClient } from '@tanstack/react-query';
 import useAuthStore from '@/stores/useAuthStore';
+import { sharedWsManager } from '@/lib/shared-ws';
 import {
   SESSION_TABS,
   SESSION_TAB_VALUES,
@@ -194,6 +196,24 @@ export default function useSessionPageController() {
     sessionId: null,
     value: '',
   });
+
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!sessionIdNumber) return;
+
+    const unsubMsg = sharedWsManager.subscribeMessage((data) => {
+      if (!data || typeof data !== 'object') return;
+      if (
+        (data.type === 'vtt:opened' || data.type === 'vtt:closed') && 
+        String(data.sessionId) === String(sessionIdNumber)
+      ) {
+        queryClient.invalidateQueries({ queryKey: ['session-page', sessionIdNumber] });
+      }
+    });
+
+    return () => unsubMsg();
+  }, [sessionIdNumber, queryClient]);
 
   const hasShareToken = typeof routeShareToken === 'string' && routeShareToken.trim().length > 0;
   const isValidId = Number.isInteger(sessionIdNumber) && sessionIdNumber > 0;

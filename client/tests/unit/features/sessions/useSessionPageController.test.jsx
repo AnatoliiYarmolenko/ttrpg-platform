@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import PropTypes from 'prop-types';
 import useSessionPageController from '@/features/sessions/hooks/useSessionPageController';
 import { SESSION_TABS } from '@/features/sessions/constants/sessionTabs';
@@ -72,13 +73,19 @@ function buildSessionPageData(overrides = {}) {
 }
 
 function createWrapper(initialEntry) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+
   function Wrapper({ children }) {
     return (
-      <MemoryRouter initialEntries={[initialEntry]}>
-        <Routes>
-          <Route path="/session/:id" element={children} />
-        </Routes>
-      </MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={[initialEntry]}>
+          <Routes>
+            <Route path="/session/:id" element={children} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
     );
   }
 
@@ -109,7 +116,7 @@ describe('useSessionPageController tab state', () => {
     });
   });
 
-  it('falls back from manage tab when viewer has no manage permission', async () => {
+  it('falls back from settings tab when viewer has no manage permission', async () => {
     mockUseSessionPageQuery.mockReturnValue({
       data: buildSessionPageData(),
       isLoading: false,
@@ -117,7 +124,7 @@ describe('useSessionPageController tab state', () => {
     });
 
     const { result } = renderHook(() => useSessionPageController(), {
-      wrapper: createWrapper('/session/5?tab=manage'),
+      wrapper: createWrapper('/session/5?tab=settings'),
     });
 
     await waitFor(() => {
