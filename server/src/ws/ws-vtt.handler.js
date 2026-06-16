@@ -3,6 +3,12 @@ const { vttStateManager } = require('../vtt/vtt-state.manager');
 const sessionService = require('../services/session.service');
 const { rollDice } = require('../vtt/dice-engine');
 const { sendEvent } = require('./ws-utils');
+const vttSceneService = require('../services/vtt-scene.service');
+const { logger } = require('../lib/logger');
+
+// Трекуємо auto-save інтервали по sessionId (Map<string, NodeJS.Timeout>)
+const autoSaveIntervals = new Map();
+const AUTO_SAVE_INTERVAL_MS = 5 * 60 * 1000; // 5 хв
 
 function parseSessionId(value) {
   const parsed = Number.parseInt(value, 10);
@@ -67,7 +73,32 @@ async function handleVttOpen(socket, payload, roomManager) {
     throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'Тільки GM може відкрити Ігровий стіл');
   }
 
+  // Гідруємо in-memory з БД якщо сцен ще немає
+  const currentState = vttStateManager.getVttState(sessionId);
+  const hasScenes = Object.keys(currentState.scenes || {}).length > 0;
+
+  if (!hasScenes) {
+    try {
+      const campaignId = sessionPage.campaignId || null;
+      const dbState = await vttSceneService.loadVttState(sessionId, campaignId);
+
+      if (Object.keys(dbState.scenes).length > 0) {
+        // Завантажуємо сцени з БД в in-memory
+        const room = vttStateManager._ensureRoom(sessionId);
+        room.scenes = dbState.scenes;
+        room.activeSceneId = dbState.activeSceneId;
+        room.initiative = dbState.initiative;
+        logger.info({ sessionId, sceneCount: Object.keys(dbState.scenes).length }, '[VTT] Hydrated from DB');
+      }
+    } catch (err) {
+      logger.error({ err, sessionId }, '[VTT] Failed to load state from DB, starting fresh');
+    }
+  }
+
   vttStateManager.openVtt(sessionId, userId);
+
+  // Запускаємо auto-save інтервал якщо ще не запущений
+  startAutoSave(sessionId, sessionPage.campaignId || null);
 
   sendEvent(socket, 'vtt:opened', { sessionId, isOpen: true });
 
@@ -139,6 +170,13 @@ async function handleVttDiceRoll(socket, payload, roomManager) {
   };
   const entry = vttStateManager.addDiceRoll(sessionId, rollResult);
 
+  // Асинхронне збереження в БД (не блокує WS)
+  vttSceneService.saveDiceRoll(
+    sessionId,
+    entry,
+    socket.user?.id ? Number(socket.user.id) : null
+  ).catch((err) => logger.error({ err, sessionId }, '[VTT] dice roll DB save failed'));
+
   if (entry.visibility === 'GM_ONLY') {
     const vttState = vttStateManager.getVttState(sessionId);
     const gmId = vttState.openedBy ? String(vttState.openedBy) : null;
@@ -157,6 +195,73 @@ async function handleVttDiceRoll(socket, payload, roomManager) {
       roll: entry
     });
   }
+}
+
+// ─── Auto-Save Helpers ───────────────────────────────────────────────────────────────
+
+/**
+ * Запускає автозбереження кожні 5 хв.
+ * @param {number} sessionId
+ * @param {number|null} campaignId
+ */
+function startAutoSave(sessionId, campaignId) {
+  const key = String(sessionId);
+  if (autoSaveIntervals.has(key)) return; // вже запущений
+
+  const interval = setInterval(async () => {
+    try {
+      const state = vttStateManager.getVttState(sessionId);
+      if (state.isOpen) {
+        await vttSceneService.saveVttState(sessionId, campaignId, state);
+      }
+    } catch (err) {
+      logger.error({ err, sessionId }, '[VTT] Auto-save failed');
+    }
+  }, AUTO_SAVE_INTERVAL_MS);
+
+  autoSaveIntervals.set(key, interval);
+  logger.info({ sessionId }, '[VTT] Auto-save started (5 min)');
+}
+
+/**
+ * Зупиняє автозбереження і зберігає стан в БД.
+ * @param {number} sessionId
+ * @param {number|null} campaignId
+ */
+async function stopAutoSave(sessionId, campaignId) {
+  const key = String(sessionId);
+  const interval = autoSaveIntervals.get(key);
+  if (interval) {
+    clearInterval(interval);
+    autoSaveIntervals.delete(key);
+  }
+
+  try {
+    const state = vttStateManager.getVttState(sessionId);
+    await vttSceneService.saveVttState(sessionId, campaignId, state);
+    logger.info({ sessionId }, '[VTT] Final save on close ✓');
+  } catch (err) {
+    logger.error({ err, sessionId }, '[VTT] Final save failed');
+  }
+}
+
+async function handleVttClose(socket, payload, roomManager) {
+  const sessionId = parseSessionId(payload.sessionId);
+  const userId = socket.user?.id;
+
+  const sessionPage = await sessionService.getSessionPageById(sessionId, userId);
+  if (!sessionPage.actions.canOpenVtt) {
+    throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'Тільки GM може закрити VTT');
+  }
+
+  vttStateManager.closeVtt(sessionId);
+  await stopAutoSave(sessionId, sessionPage.campaignId || null);
+
+  roomManager.broadcast(getVttRoom(sessionId), {
+    type: 'vtt:closed',
+    sessionId,
+    isOpen: false,
+  });
 }
 
 async function handleVttStateChange(socket, payload, roomManager, actionType) {
@@ -245,6 +350,9 @@ const vttHandler = async (socket, type, payload, roomManager) => {
       break;
     case 'vtt:open':
       await handleVttOpen(socket, payload, roomManager);
+      break;
+    case 'vtt:close':
+      await handleVttClose(socket, payload, roomManager);
       break;
     case 'vtt:token_drag':
     case 'vtt:token_drop':
