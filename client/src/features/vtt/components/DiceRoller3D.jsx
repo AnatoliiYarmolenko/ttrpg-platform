@@ -46,7 +46,7 @@ export default function DiceRoller3D({ incomingRoll }) {
 
     // Створюємо інстанс DiceBox
     const diceBox = new DiceBox('#dice-canvas-container', {
-      assetPath: '/assets/dice-box-threejs/', // шлях до асетів у public folder
+      assetPath: '/assets/dice-box/', // шлях до асетів у public folder
       theme_customColorset: {
         background: "#8a0303", // Темно-червоний / кровавий
         foreground: "#ffffff", // Білі цифри

@@ -101,39 +101,16 @@ const vttCreaturesService = {
       throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Істота не знайдена');
     }
 
-    const {
-      name, level, characterClass, race, avatarUrl,
-      hpCurrent, hpMax, tempHp, ac, speed,
-      initiativeBonus, proficiencyBonus,
-      hitDiceCurrent, hitDiceMax, hitDiceType,
-      tokenBorderColor, sortOrder,
-      stats, savingThrows, skills, coins, attacks,
-    } = data;
+    const payload = {};
+    const numFields = ['level', 'hpCurrent', 'hpMax', 'tempHp', 'ac', 'speed', 'initiativeBonus', 'proficiencyBonus', 'hitDiceCurrent', 'hitDiceMax', 'sortOrder'];
+    const directFields = ['name', 'characterClass', 'race', 'avatarUrl', 'hitDiceType', 'tokenBorderColor', 'stats', 'savingThrows', 'skills', 'coins', 'attacks'];
 
-    const payload = {
-      ...(name !== undefined && { name }),
-      ...(level !== undefined && { level: Number(level) }),
-      ...(characterClass !== undefined && { characterClass }),
-      ...(race !== undefined && { race }),
-      ...(avatarUrl !== undefined && { avatarUrl }),
-      ...(hpCurrent !== undefined && { hpCurrent: Number(hpCurrent) }),
-      ...(hpMax !== undefined && { hpMax: Number(hpMax) }),
-      ...(tempHp !== undefined && { tempHp: Number(tempHp) }),
-      ...(ac !== undefined && { ac: Number(ac) }),
-      ...(speed !== undefined && { speed: Number(speed) }),
-      ...(initiativeBonus !== undefined && { initiativeBonus: Number(initiativeBonus) }),
-      ...(proficiencyBonus !== undefined && { proficiencyBonus: Number(proficiencyBonus) }),
-      ...(hitDiceCurrent !== undefined && { hitDiceCurrent: Number(hitDiceCurrent) }),
-      ...(hitDiceMax !== undefined && { hitDiceMax: Number(hitDiceMax) }),
-      ...(hitDiceType !== undefined && { hitDiceType }),
-      ...(tokenBorderColor !== undefined && { tokenBorderColor }),
-      ...(sortOrder !== undefined && { sortOrder: Number(sortOrder) }),
-      ...(stats !== undefined && { stats }),
-      ...(savingThrows !== undefined && { savingThrows }),
-      ...(skills !== undefined && { skills }),
-      ...(coins !== undefined && { coins }),
-      ...(attacks !== undefined && { attacks }),
-    };
+    for (const key of numFields) {
+      if (data[key] !== undefined) payload[key] = Number(data[key]);
+    }
+    for (const key of directFields) {
+      if (data[key] !== undefined) payload[key] = data[key];
+    }
 
     return prisma.vttGmCreature.update({
       where: { id: creatureId },
@@ -188,7 +165,7 @@ const vttCreaturesService = {
           data: creatures.map((c, idx) => ({
             gmUserId,
             sessionId,
-            type: c.type === 'HUMAN' ? 'HUMAN' : 'MONSTER',
+            type: String(c.type).toUpperCase() === 'HUMAN' ? 'HUMAN' : 'MONSTER',
             name: c.data?.name || 'Ворог',
             level: Number(c.data?.level) || 1,
             characterClass: c.data?.characterClass || null,

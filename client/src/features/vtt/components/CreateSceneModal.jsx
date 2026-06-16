@@ -262,8 +262,6 @@ export default function CreateSceneModal({ isOpen, onClose, onCreate, onUpdate, 
 
           {/* Feature Toggles (stubs and active Grid) */}
           <div className="flex flex-col gap-2">
-            <ToggleRow label="Динамічне освітлення" />
-            
             {/* Active Grid Control */}
             <div className="flex flex-col gap-2 py-3 px-4 border border-brand-light/10 rounded-lg bg-black/30">
               <div className="flex items-center gap-3">
@@ -360,8 +358,6 @@ export default function CreateSceneModal({ isOpen, onClose, onCreate, onUpdate, 
                 </div>
               )}
             </div>
-
-            <ToggleRow label="Туман війни" />
           </div>
 
           {/* Divider */}
