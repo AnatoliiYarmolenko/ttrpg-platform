@@ -2,6 +2,8 @@ import { useEffect, useCallback, useRef } from 'react';
 import useVttStore from '@/stores/useVttStore';
 import useBattlefieldStore from '../components/battlefield/useBattlefieldStore';
 import useInitiativeStore from '@/stores/useInitiativeStore';
+import useCharacterStore from '@/stores/useCharacterStore';
+import useGmCreaturesStore from '@/stores/useGmCreaturesStore';
 import { sharedWsManager } from '@/lib/shared-ws';
 
 export default function useVttConnection(sessionId, options = {}) {
@@ -79,6 +81,10 @@ export default function useVttConnection(sessionId, options = {}) {
           useInitiativeStore.getState().setInitiative(data.initiative);
         }
         break;
+      case 'vtt:closed':
+        // GM закрив VTT — оновлюємо стан відкритості
+        setVttOpen(sessionId, false);
+        break;
       default:
         break;
     }
@@ -98,6 +104,10 @@ export default function useVttConnection(sessionId, options = {}) {
   const joinVtt = useCallback(() => {
     if (!sessionId) return;
     sendEvent('vtt:join', {});
+
+    // Завантажуємо дані з сервера після підключення/реконнекту (async, не блокує)
+    useCharacterStore.getState().loadFromServer(sessionId).catch(() => {});
+    useGmCreaturesStore.getState().loadFromServer(sessionId).catch(() => {});
   }, [sessionId, sendEvent]);
 
   const leaveVtt = useCallback(() => {
@@ -135,6 +145,7 @@ export default function useVttConnection(sessionId, options = {}) {
 
   return {
     sendVttOpen: () => sendEvent('vtt:open', {}),
+    sendVttClose: () => sendEvent('vtt:close', {}),
     sendVttGetState: () => sendEvent('vtt:getState', {}),
     sendVttTokenAdd: (sceneId, tokenData) => sendEvent('vtt:token_add', { sceneId, tokenData }),
     sendVttTokenUpdate: (sceneId, tokenId, updates) => sendEvent('vtt:token_update', { sceneId, tokenId, updates }),
