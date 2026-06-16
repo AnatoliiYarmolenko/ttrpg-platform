@@ -53,6 +53,12 @@ model User {
   emailChangeTokens       EmailChangeToken[]
   notifications           NotificationRecipient[]
   notificationPreference  NotificationPreference?
+  // ─── VTT Relations ───
+  vttRoomsOpened          VttRoom[]                @relation("VttRoomOpenedBy")
+  vttCharacterSheets      VttCharacterSheet[]      @relation("VttCharacterOwner")
+  vttGmCreatures          VttGmCreature[]          @relation("VttGmCreatureOwner")
+  vttDiceRolls            VttDiceRoll[]            @relation("VttDiceRollInitiator")
+  vttLayerItems           VttLayerItem[]           @relation("VttLayerItemAuthor")
 }
 
 model Wallet {
@@ -90,6 +96,9 @@ model Campaign {
   chat                Chat?
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
+  // ─── VTT Relations ───
+  vttScenes           VttScene[]         @relation("CampaignVttScenes")
+  vttCharacterSheets  VttCharacterSheet[] @relation("VttCharacterCampaign")
 }
 
 enum CampaignStatus {
@@ -145,6 +154,10 @@ model Session {
   chat                Chat?
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
+  // ─── VTT Relations ───
+  vttRoom             VttRoom?
+  vttCharacterSheets  VttCharacterSheet[] @relation("VttCharacterSession")
+  vttGmCreatures      VttGmCreature[]     @relation("VttGmCreatureSession")
 
   @@index([date, system])
   @@index([status])
@@ -397,4 +410,339 @@ model DeliveryAttempt {
   outbox OutboxEvent @relation(fields: [outboxId], references: [id], onDelete: Cascade)
 
   @@index([outboxId, channel])
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// VTT — Virtual Tabletop Domain
+// ════════════════════════════════════════════════════════════════════════════════
+
+enum VttLayerType {
+  BACKGROUND
+  GRID
+  TOKEN
+  DRAWING
+  GENERIC
+}
+
+enum VttGridType {
+  SQUARE
+  HEXAGONAL
+}
+
+enum VttTokenType {
+  PLAYER
+  MONSTER
+  NPC
+  GENERIC
+}
+
+enum VttItemType {
+  IMAGE
+  DRAWING
+}
+
+enum VttDiceVisibility {
+  PUBLIC
+  GM_ONLY
+}
+
+enum VttCreatureType {
+  MONSTER
+  HUMAN
+}
+
+// ─── VTT Room ─────────────────────────────────────────────────────────────────
+// Одна кімната на сесію. Зберігає стан VTT (відкрита/закрита, активна сцена).
+// lastSavedAt — час останнього автозбереження (кожні 5 хв + при closeVtt).
+
+model VttRoom {
+  id            Int       @id @default(autoincrement())
+  sessionId     Int       @unique
+  session       Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  isOpen        Boolean   @default(false)
+  openedAt      DateTime?
+  openedById    Int?
+  openedBy      User?     @relation("VttRoomOpenedBy", fields: [openedById], references: [id])
+  activeSceneId Int?      // посилання на VttScene.id (зберігається як plain Int, не FK)
+  lastSavedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  scenes        VttScene[]
+  diceRolls     VttDiceRoll[]
+  initiative    VttInitiativeEntry[]
+
+  @@index([sessionId])
+}
+
+// ─── VTT Scene ────────────────────────────────────────────────────────────────
+// Сцена може належати ОДНОМУ з двох:
+//   roomId     NOT NULL → прив'язана до конкретної сесії (standalone)
+//   campaignId NOT NULL → спільна для всіх сесій кампанії (campaign-level)
+// Обмеження: рівно одне з двох має бути NOT NULL (enforced на рівні застосунку).
+
+model VttScene {
+  id              Int          @id @default(autoincrement())
+  sceneKey        String       // client-side UUID (напр. "scene-abc123") для сумісності з in-memory
+  name            String       @default("New Scene")
+  width           Int          @default(2048)
+  height          Int          @default(2048)
+  gridSize        Int          @default(64)
+  backgroundColor Int          @default(10337421) // 0x9DC88D
+  gridEnabled     Boolean      @default(true)
+  gridType        VttGridType  @default(SQUARE)
+  gridColor       Int          @default(10337421)
+  gridOpacity     Float        @default(0.4)
+  gridScale       Float        @default(5)
+  isActive        Boolean      @default(false)
+  sortOrder       Int          @default(0)
+
+  // Для session-specific сцен
+  roomId          Int?
+  room            VttRoom?     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  // Для campaign-level shared сцен
+  campaignId      Int?
+  campaign        Campaign?    @relation("CampaignVttScenes", fields: [campaignId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  layers          VttLayer[]
+  tokens          VttToken[]
+
+  @@index([roomId])
+  @@index([campaignId])
+}
+
+// ─── VTT Layer ────────────────────────────────────────────────────────────────
+// Шар всередині сцени. Тип визначає зміст (фон, сітка, токени, малюнки, тощо).
+
+model VttLayer {
+  id        Int          @id @default(autoincrement())
+  layerKey  String       // UUID
+  name      String       @default("Layer")
+  type      VttLayerType @default(GENERIC)
+  isVisible Boolean      @default(true)
+  isLocked  Boolean      @default(false)
+  opacity   Float        @default(1.0)
+  sortOrder Int          @default(0)
+
+  sceneId   Int
+  scene     VttScene     @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+
+  items     VttLayerItem[]
+
+  @@unique([sceneId, layerKey])
+  @@index([sceneId])
+}
+
+// ─── VTT Layer Item ───────────────────────────────────────────────────────────
+// Елемент шару: зображення (IMAGE) або малюнок (DRAWING).
+// Зображення прив'язані до шару → сцени — окрема asset-таблиця не потрібна.
+
+model VttLayerItem {
+  id        Int         @id @default(autoincrement())
+  itemKey   String      // UUID (напр. "img-abc" або "draw-abc")
+  type      VttItemType @default(IMAGE)
+
+  // IMAGE fields
+  url       String?
+  x         Float       @default(0)
+  y         Float       @default(0)
+  width     Float?
+  height    Float?
+  scaleX    Float       @default(1)
+  scaleY    Float       @default(1)
+  rotation  Float       @default(0)
+
+  // DRAWING fields
+  points    Json?       // [{x, y}, ...]
+  color     String?
+  thickness Float?
+  drawTool  String?
+
+  layerId   Int
+  layer     VttLayer    @relation(fields: [layerId], references: [id], onDelete: Cascade)
+  authorId  Int?        // хто намалював (для undo по userId)
+  author    User?       @relation("VttLayerItemAuthor", fields: [authorId], references: [id])
+
+  createdAt DateTime    @default(now())
+
+  @@unique([layerId, itemKey])
+  @@index([layerId])
+}
+
+// ─── VTT Token ────────────────────────────────────────────────────────────────
+// Токен на сцені. Може бути прив'язаний до персонажа гравця або GM-істоти.
+
+model VttToken {
+  id               Int                @id @default(autoincrement())
+  tokenKey         String             // UUID (напр. "token-abc" або "token-gm-{id}")
+  type             VttTokenType       @default(GENERIC)
+  name             String?
+  avatarUrl        String?
+  x                Float              @default(0)
+  y                Float              @default(0)
+  size             Float              @default(1)
+  color            String?            // tokenBorderColor
+  hpCurrent        Int?
+  hpMax            Int?
+  isVisible        Boolean            @default(true)
+
+  sceneId          Int
+  scene            VttScene           @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+
+  // Опціональний зв'язок — або персонаж гравця, або GM-істота
+  characterSheetId Int?
+  characterSheet   VttCharacterSheet? @relation(fields: [characterSheetId], references: [id], onDelete: SetNull)
+  gmCreatureId     Int?
+  gmCreature       VttGmCreature?     @relation(fields: [gmCreatureId], references: [id], onDelete: SetNull)
+
+  @@unique([sceneId, tokenKey])
+  @@index([sceneId])
+}
+
+// ─── VTT Character Sheet ──────────────────────────────────────────────────────
+// Аркуш персонажа гравця. Два режими (рівно ONE з двох NOT NULL):
+//   sessionId  NOT NULL, campaignId NULL → standalone сесія
+//   campaignId NOT NULL, sessionId  NULL → shared між сесіями кампанії
+
+model VttCharacterSheet {
+  id               Int       @id @default(autoincrement())
+  userId           Int
+  user             User      @relation("VttCharacterOwner", fields: [userId], references: [id])
+
+  // Для standalone сесій
+  sessionId        Int?
+  session          Session?  @relation("VttCharacterSession", fields: [sessionId], references: [id], onDelete: Cascade)
+
+  // Для сесій в рамках кампанії (спільний персонаж між сесіями)
+  campaignId       Int?
+  campaign         Campaign? @relation("VttCharacterCampaign", fields: [campaignId], references: [id], onDelete: Cascade)
+
+  name             String    @default("Без імені")
+  level            Int       @default(1)
+  characterClass   String?
+  race             String?
+  avatarUrl        String?
+
+  hpCurrent        Int       @default(10)
+  hpMax            Int       @default(10)
+  tempHp           Int       @default(0)
+  ac               Int       @default(10)
+  speed            Int       @default(30)
+  initiativeBonus  Int       @default(0)
+  proficiencyBonus Int       @default(2)
+  hitDiceCurrent   Int       @default(1)
+  hitDiceMax       Int       @default(1)
+  hitDiceType      String    @default("d8")
+
+  tokenBorderColor String    @default("#eab308")
+
+  stats            Json      @default("{\"str\":10,\"dex\":10,\"con\":10,\"int\":10,\"wis\":10,\"cha\":10}")
+  savingThrows     Json      @default("{\"str\":false,\"dex\":false,\"con\":false,\"int\":false,\"wis\":false,\"cha\":false}")
+  skills           Json      @default("{\"acrobatics\":false,\"animalHandling\":false,\"arcana\":false,\"athletics\":false,\"deception\":false,\"history\":false,\"insight\":false,\"intimidation\":false,\"investigation\":false,\"medicine\":false,\"nature\":false,\"perception\":false,\"performance\":false,\"persuasion\":false,\"religion\":false,\"sleightOfHand\":false,\"stealth\":false,\"survival\":false}")
+  coins            Json      @default("{\"cp\":0,\"sp\":0,\"ep\":0,\"gp\":0,\"pp\":0}")
+  attacks          Json      @default("[]")
+
+  notes            String?   @db.Text
+  features         String?   @db.Text
+  backpack         String?   @db.Text
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  tokens           VttToken[]
+
+  @@unique([userId, sessionId])
+  @@unique([userId, campaignId])
+  @@index([sessionId])
+  @@index([campaignId])
+}
+
+// ─── VTT GM Creature ─────────────────────────────────────────────────────────
+// NPC або монстр у GM-бестіарії. Прив'язаний до конкретної сесії.
+
+model VttGmCreature {
+  id               Int             @id @default(autoincrement())
+  gmUserId         Int
+  gmUser           User            @relation("VttGmCreatureOwner", fields: [gmUserId], references: [id])
+  sessionId        Int
+  session          Session         @relation("VttGmCreatureSession", fields: [sessionId], references: [id], onDelete: Cascade)
+
+  type             VttCreatureType @default(MONSTER)
+  name             String          @default("Новий ворог")
+  level            Int             @default(1)
+  characterClass   String?
+  race             String?
+  avatarUrl        String?
+
+  hpCurrent        Int             @default(10)
+  hpMax            Int             @default(10)
+  tempHp           Int             @default(0)
+  ac               Int             @default(10)
+  speed            Int             @default(30)
+  initiativeBonus  Int             @default(0)
+  proficiencyBonus Int             @default(2)
+  hitDiceCurrent   Int             @default(1)
+  hitDiceMax       Int             @default(1)
+  hitDiceType      String          @default("d8")
+
+  tokenBorderColor String          @default("#ef4444")
+  sortOrder        Int             @default(0)
+
+  stats            Json            @default("{\"str\":10,\"dex\":10,\"con\":10,\"int\":10,\"wis\":10,\"cha\":10}")
+  savingThrows     Json            @default("{\"str\":false,\"dex\":false,\"con\":false,\"int\":false,\"wis\":false,\"cha\":false}")
+  skills           Json            @default("{\"acrobatics\":false,\"animalHandling\":false,\"arcana\":false,\"athletics\":false,\"deception\":false,\"history\":false,\"insight\":false,\"intimidation\":false,\"investigation\":false,\"medicine\":false,\"nature\":false,\"perception\":false,\"performance\":false,\"persuasion\":false,\"religion\":false,\"sleightOfHand\":false,\"stealth\":false,\"survival\":false}")
+  coins            Json            @default("{\"cp\":0,\"sp\":0,\"ep\":0,\"gp\":0,\"pp\":0}")
+  attacks          Json            @default("[]")
+
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  tokens           VttToken[]
+
+  @@index([sessionId, gmUserId])
+}
+
+// ─── VTT Dice Roll Log ────────────────────────────────────────────────────────
+// Лог кидків кубиків сесії. Зберігається асинхронно (не блокує WS).
+
+model VttDiceRoll {
+  id            Int                @id @default(autoincrement())
+  rollKey       String             // UUID
+  formula       String             // напр. "2d20+5"
+  total         Int
+  details       Json               // [{qty, sides, values, label, sign}, ...]
+  player        String
+  characterName String?
+  name          String?            // назва кидка ("Атака", "Ініціатива", тощо)
+  strength      Int                @default(1)
+  visibility    VttDiceVisibility  @default(PUBLIC)
+
+  roomId        Int
+  room          VttRoom            @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  initiatorId   Int?
+  initiator     User?              @relation("VttDiceRollInitiator", fields: [initiatorId], references: [id])
+
+  rolledAt      DateTime           @default(now())
+
+  @@index([roomId, rolledAt])
+}
+
+// ─── VTT Initiative Entry ─────────────────────────────────────────────────────
+// Запис у трекері ініціативи. Зберігається в БД для відновлення після реконнекту.
+
+model VttInitiativeEntry {
+  id        Int      @id @default(autoincrement())
+  entryKey  String   // UUID або рядковий ідентифікатор
+  name      String
+  value     Int      @default(0)
+  sortOrder Int      @default(0)
+
+  roomId    Int
+  room      VttRoom  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
 }
