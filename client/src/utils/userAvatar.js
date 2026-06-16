@@ -17,9 +17,17 @@ export function resolveAvatarUrl(url) {
     return url;
   }
 
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  
+  // Якщо це завантажений файл (наприклад, з /uploads), пропускаємо його через /api
+  // Це гарантує, що Nginx на проді правильно скерує запит на бекенд
+  if (url.startsWith('/uploads')) {
+    const cleanApiUrl = apiUrl.replace(/\/$/, '');
+    return `${cleanApiUrl}${url}`;
+  }
+
   if (import.meta.env.DEV) {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-    const baseUrl = apiUrl.replace(/\/api$/, '');
+    const baseUrl = apiUrl.replace(/\/api\/?$/, '');
     return `${baseUrl}${url}`;
   }
 
