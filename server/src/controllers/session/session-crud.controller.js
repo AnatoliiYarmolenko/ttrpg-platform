@@ -1,4 +1,10 @@
 const sessionService = require('../../services/session.service');
+const notificationSSEService = require('../../services/notification/notification-sse.service');
+
+const SESSION_LIST_INVALIDATION = {
+  type: 'cache:invalidate',
+  queryKeys: [['sessions', 'daily'], ['search', 'sessions'], ['dashboard', 'home']],
+};
 
 const sessionCrudController = {
   async createSession(req, res, next) {
@@ -30,6 +36,10 @@ const sessionCrudController = {
         system: system || null,
         isGm,
       });
+
+      if (session.visibility === 'PUBLIC') {
+        notificationSSEService.broadcastToAll(SESSION_LIST_INVALIDATION);
+      }
 
       res.status(201).json({
         success: true,
@@ -192,6 +202,8 @@ const sessionCrudController = {
         { preloadedSession }
       );
 
+      notificationSSEService.broadcastToAll(SESSION_LIST_INVALIDATION);
+
       res.json({
         success: true,
         message: 'Сесія оновлена успішно!',
@@ -209,6 +221,8 @@ const sessionCrudController = {
       const preloadedSession = req.sessionContext || null;
 
       await sessionService.deleteSession(sessionId, ownerId, { preloadedSession });
+
+      notificationSSEService.broadcastToAll(SESSION_LIST_INVALIDATION);
 
       res.json({
         success: true,
@@ -250,6 +264,8 @@ const sessionCrudController = {
       const preloadedSession = req.sessionContext || null;
 
       const session = await sessionService.cancelSession(sessionId, userId, { preloadedSession });
+
+      notificationSSEService.broadcastToAll(SESSION_LIST_INVALIDATION);
 
       res.json({
         success: true,

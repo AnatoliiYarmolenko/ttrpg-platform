@@ -189,6 +189,27 @@ class NotificationSSEService {
     const userConnections = this.connections.get(userId);
     return userConnections && userConnections.size > 0;
   }
+
+  /**
+   * Надіслати повідомлення всім підключеним користувачам.
+   * Використовується для сигналів інвалідації кешу (не персональних сповіщень).
+   * @param {Object} payload - Дані для відправки
+   */
+  broadcastToAll(payload) {
+    let sentCount = 0;
+    this.connections.forEach((userConnections, userId) => {
+      userConnections.forEach((res) => {
+        try {
+          this.sendToConnection(res, payload);
+          sentCount++;
+        } catch (error) {
+          logger.error({ err: error, userId }, '[SSE] broadcastToAll error');
+          this.removeConnection(userId, res);
+        }
+      });
+    });
+    return sentCount;
+  }
 }
 
 module.exports = new NotificationSSEService();

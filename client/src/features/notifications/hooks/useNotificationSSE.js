@@ -75,6 +75,13 @@ const getNotificationCampaignId = (notification) => {
   return null;
 };
 
+const KNOWN_EVENT_SETS = [
+  CAMPAIGN_MEMBERSHIP_EVENTS,
+  CAMPAIGN_JOIN_REQUEST_EVENTS,
+  SESSION_PARTICIPATION_EVENTS,
+  SESSION_JOIN_REQUEST_EVENTS,
+];
+
 const invalidateQueriesByNotification = (notification) => {
   const eventCode = normalizeEventCode(notification);
 
@@ -93,8 +100,6 @@ const invalidateQueriesByNotification = (notification) => {
     } else {
       invalidateCampaignPage(queryClient);
     }
-
-    
   }
 
   if (CAMPAIGN_JOIN_REQUEST_EVENTS.has(eventCode)) {
@@ -138,6 +143,16 @@ const invalidateQueriesByNotification = (notification) => {
     if (sessionId) {
       invalidateSessionPage(queryClient, { sessionId });
       queryClient.invalidateQueries({ queryKey: sessionQueryKeys.detail(sessionId) });
+    }
+  }
+
+  const isHandled = eventCode && KNOWN_EVENT_SETS.some((set) => set.has(eventCode));
+  if (!isHandled && eventCode) {
+    const category = notification.category;
+    if (category === 'session') {
+      invalidateSessionCollectionQueries(queryClient);
+    } else if (category === 'campaign') {
+      invalidateCampaignCollectionQueries(queryClient, { includeGames: true, includeHome: true });
     }
   }
 };
@@ -186,6 +201,13 @@ export default function useNotificationSSE(enabled = true) {
         }
 
         if (data.type === 'heartbeat') {
+          return;
+        }
+
+        if (data.type === 'cache:invalidate' && Array.isArray(data.queryKeys)) {
+          data.queryKeys.forEach((queryKey) => {
+            queryClient.invalidateQueries({ queryKey });
+          });
           return;
         }
 

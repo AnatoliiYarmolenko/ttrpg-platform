@@ -41,7 +41,7 @@ export function PeerVideoCard({
         autoPlay
         playsInline
         muted 
-        className={`w-full h-full object-contain ${camEnabled ? 'opacity-100' : 'opacity-0'}`}
+        className={`w-full h-full object-cover ${camEnabled ? 'opacity-100' : 'opacity-0'}`}
         style={{ transform: isLocal ? 'scaleX(-1)' : 'none' }} 
       />
 

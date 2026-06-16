@@ -29,7 +29,6 @@ class TelegramService {
       }
 
       try {
-        // Ліниве завантаження для уникнення циклічних залежностей
         const profileService = require('./profile.service');
         const success = await profileService.linkTelegram(payload, chatId);
         
@@ -56,7 +55,6 @@ class TelegramService {
       }
     });
 
-    // Обробник для всіх інших повідомлень 
     this.bot.on('message', async (ctx) => {
       if (ctx.chat.type !== 'private') return;
       
@@ -118,14 +116,55 @@ class TelegramService {
     try {
       const text = this._formatMessage(payload);
       
-      const message = await this.bot.telegram.sendMessage(chatId, text, {
+      const options = {
         parse_mode: 'HTML',
-        disable_web_page_preview: true,
-      });
+        disable_web_page_preview: false,
+      };
+
+      if (payload.link) {
+        const fullLink = payload.link.startsWith('http') ? payload.link : `${config.frontendUrl}${payload.link}`;
+        
+        if (!this._isLocalUrl(fullLink)) {
+          const safeLink = this._escapeHtml(fullLink);
+          let buttonText = 'Перейти';
+          
+          const titleLower = (payload.title || '').toLowerCase();
+          if (titleLower.includes('сесі')) {
+            buttonText = 'Перейти до сесії';
+          } else if (titleLower.includes('кампан')) {
+            buttonText = 'Перейти до кампанії';
+          } else if (titleLower.includes('баланс') || titleLower.includes('гаман')) {
+            buttonText = 'До гаманця';
+          }
+
+          options.reply_markup = {
+            inline_keyboard: [
+              [{ text: buttonText, url: safeLink }]
+            ]
+          };
+        }
+      }
+
+      const message = await this.bot.telegram.sendMessage(chatId, text, options);
       return message;
     } catch (error) {
       logger.error({ err: error, chatId }, 'Помилка відправки Telegram повідомлення');
       throw error;
+    }
+  }
+
+  _isLocalUrl(url) {
+    try {
+      const parsed = new URL(url);
+      const hostname = parsed.hostname.toLowerCase();
+      return (
+        hostname === 'localhost' ||
+        hostname === '127.0.0.1' ||
+        hostname === '::1' ||
+        hostname.endsWith('.local')
+      );
+    } catch {
+      return true;
     }
   }
 
@@ -134,21 +173,15 @@ class TelegramService {
    * @private
    */
   _formatMessage({ title, body, severity, link }) {
-    const emoji = this._getSeverityEmoji(severity);
-    
-    // Екранування HTML символів для безпеки
     const safeTitle = this._escapeHtml(title);
     const safeBody = this._escapeHtml(body);
     
-    let text = `${emoji} <b>${safeTitle}</b>\n`;
+    const logoUrl = `${config.frontendUrl}/logo.png`;
+    const logoPrefix = this._isLocalUrl(logoUrl) ? '' : `<a href="${logoUrl}">&#8203;</a>`;
+    
+    let text = `${logoPrefix}<b>${safeTitle}</b>\n`;
     if (safeBody) {
       text += `${safeBody}\n`;
-    }
-    
-    if (link) {
-      const fullLink = link.startsWith('http') ? link : `${config.frontendUrl}${link}`;
-      const safeLink = this._escapeHtml(fullLink);
-      text += `\n<a href="${safeLink}">Перейти</a>`;
     }
     
     return text;
@@ -162,18 +195,6 @@ class TelegramService {
       .replaceAll('>', '&gt;')
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#039;');
-  }
-
-  _getSeverityEmoji(severity) {
-    const map = {
-      SUCCESS: '✅',
-      INFO: 'ℹ️',
-      WARNING: '⚠️',
-      ERROR: '❌',
-      CRITICAL: '🚨',
-      SECURITY: '🔐'
-    };
-    return map[severity?.toUpperCase()] || 'ℹ️';
   }
 }
 
