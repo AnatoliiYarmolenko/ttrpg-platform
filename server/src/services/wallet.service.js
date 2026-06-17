@@ -97,25 +97,27 @@ class WalletService {
         },
       });
 
-      return walletUpdate;
-    });
+      try {
+        await notificationService.createNotification({
+          eventKey: `wallet_top_up:${targetUserId}:${transactionRecord.id}`,
+          type: 'WALLET_TOPPED_UP',
+          severity: 'SUCCESS',
+          category: 'payment',
+          title: 'Баланс поповнено',
+          body: `Ваш гаманець успішно поповнено на ${decAmount.toString()} Demo Coins.`,
+          link: '/?tab=profile&section=balance',
+          recipientIds: [targetUserId],
+          metadata: {
+            userId: targetUserId,
+            transactionId: transactionRecord.id,
+            amount: decAmount.toString(),
+          },
+        }, tx);
+      } catch (err) {
+        logger.error({ err, userId: targetUserId, amount: decAmount.toString() }, 'Помилка відправки сповіщення WALLET_TOPPED_UP');
+      }
 
-    notificationService.createNotification({
-      eventKey: `wallet_top_up:${targetUserId}:${transactionRecord.id}`,
-      type: 'WALLET_TOPPED_UP',
-      severity: 'SUCCESS',
-      category: 'payment',
-      title: 'Баланс поповнено',
-      body: `Ваш гаманець успішно поповнено на ${decAmount.toString()} Demo Coins.`,
-      link: '/?tab=profile&section=balance',
-      recipientIds: [targetUserId],
-      metadata: {
-        userId: targetUserId,
-        transactionId: transactionRecord.id,
-        amount: decAmount.toString(),
-      },
-    }).catch((err) => {
-      logger.error({ err, userId: targetUserId, amount: decAmount.toString() }, 'Помилка відправки сповіщення WALLET_TOPPED_UP');
+      return walletUpdate;
     });
 
     return updatedWallet;

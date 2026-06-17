@@ -17,10 +17,12 @@ function createCampaignMembersService({
     }
   };
 
-  async function notifyManagersAboutJoinRequest(campaign, userId) {
+  async function notifyManagersAboutJoinRequest(campaign, userId, tx) {
     if (!notificationService) return;
 
-    const pendingCount = await prisma.joinRequest.count({
+    const client = tx || prisma;
+
+    const pendingCount = await client.joinRequest.count({
       where: {
         campaignId: campaign.id,
         status: 'PENDING',
@@ -35,52 +37,58 @@ function createCampaignMembersService({
 
     const campaignTitle = campaign.title || 'Нова кампанія';
 
-    notificationService.createNotification({
-      eventKey: `campaign_join_requests:${campaign.id}`,
-      type: 'CAMPAIGN_JOIN_REQUESTS_UPDATED',
-      severity: 'INFO',
-      category: 'campaign',
-      title: `До кампанії "${campaignTitle}" подано нові заявки`,
-      body: `Очікує підтвердження: ${pendingCount}`,
-      link: `/campaign/${campaign.id}`,
-      recipientIds: managers,
-      dedupeKey: `campaign:${campaign.id}:join_requests`,
-      dedupeWindowMs: 10 * 60 * 1000, // 10 minutes
-      metadata: {
-        campaignId: campaign.id,
-        pendingCount,
-        requesterId: userId,
-      },
-    }).catch(() => {
+    try {
+      await notificationService.createNotification({
+        eventKey: `campaign_join_requests:${campaign.id}`,
+        type: 'CAMPAIGN_JOIN_REQUESTS_UPDATED',
+        severity: 'INFO',
+        category: 'campaign',
+        title: `До кампанії "${campaignTitle}" подано нові заявки`,
+        body: `Очікує підтвердження: ${pendingCount}`,
+        link: `/campaign/${campaign.id}`,
+        recipientIds: managers,
+        dedupeKey: `campaign:${campaign.id}:join_requests`,
+        dedupeWindowMs: 10 * 60 * 1000, // 10 minutes
+        metadata: {
+          campaignId: campaign.id,
+          pendingCount,
+          requesterId: userId,
+        },
+      }, tx);
+    } catch {
       // Silently fail
-    });
+    }
   }
 
-  async function notifyUserCampaignConfirmed(campaign, userId) {
+  async function notifyUserCampaignConfirmed(campaign, userId, tx) {
     if (!notificationService) return;
 
-    notificationService.createNotification({
-      eventKey: `campaign_confirmed:${userId}:${campaign.id}`,
-      type: 'CAMPAIGN_PARTICIPATION_CONFIRMED',
-      severity: 'SUCCESS',
-      category: 'campaign',
-      title: 'Ви додані до кампанії',
-      body: `Вас додано до кампанії "${campaign.title || 'Нова кампанія'}".`,
-      link: `/campaign/${campaign.id}`,
-      recipientIds: [userId],
-      metadata: {
-        campaignId: campaign.id,
-        userId,
-      },
-    }).catch(() => {
+    try {
+      await notificationService.createNotification({
+        eventKey: `campaign_confirmed:${userId}:${campaign.id}`,
+        type: 'CAMPAIGN_PARTICIPATION_CONFIRMED',
+        severity: 'SUCCESS',
+        category: 'campaign',
+        title: 'Ви додані до кампанії',
+        body: `Вас додано до кампанії "${campaign.title || 'Нова кампанія'}".`,
+        link: `/campaign/${campaign.id}`,
+        recipientIds: [userId],
+        metadata: {
+          campaignId: campaign.id,
+          userId,
+        },
+      }, tx);
+    } catch {
       // Silently fail
-    });
+    }
   }
 
-  async function notifyUserCampaignDeclined(campaignId, userId) {
+  async function notifyUserCampaignDeclined(campaignId, userId, tx) {
     if (!notificationService) return;
 
-    const campaign = await prisma.campaign.findUnique({
+    const client = tx || prisma;
+
+    const campaign = await client.campaign.findUnique({
       where: { id: campaignId },
       select: { id: true, title: true },
     });
@@ -88,28 +96,32 @@ function createCampaignMembersService({
     const link = campaign ? `/campaign/${campaignId}` : '/';
     const campaignTitle = campaign?.title || 'Нова кампанія';
 
-    notificationService.createNotification({
-      eventKey: `campaign_declined:${userId}:${campaignId}`,
-      type: 'CAMPAIGN_PARTICIPATION_DECLINED',
-      severity: 'ERROR',
-      category: 'campaign',
-      title: 'Заявку відхилено',
-      body: `Вашу заявку на кампанію "${campaignTitle}" відхилено.`,
-      link,
-      recipientIds: [userId],
-      metadata: {
-        campaignId,
-        userId,
-      },
-    }).catch(() => {
+    try {
+      await notificationService.createNotification({
+        eventKey: `campaign_declined:${userId}:${campaignId}`,
+        type: 'CAMPAIGN_PARTICIPATION_DECLINED',
+        severity: 'ERROR',
+        category: 'campaign',
+        title: 'Заявку відхилено',
+        body: `Вашу заявку на кампанію "${campaignTitle}" відхилено.`,
+        link,
+        recipientIds: [userId],
+        metadata: {
+          campaignId,
+          userId,
+        },
+      }, tx);
+    } catch {
       // Silently fail
-    });
+    }
   }
 
-  async function notifyUserCampaignRemoved(campaignId, userId) {
+  async function notifyUserCampaignRemoved(campaignId, userId, tx) {
     if (!notificationService) return;
 
-    const campaign = await prisma.campaign.findUnique({
+    const client = tx || prisma;
+
+    const campaign = await client.campaign.findUnique({
       where: { id: campaignId },
       select: { id: true, title: true },
     });
@@ -117,26 +129,28 @@ function createCampaignMembersService({
     const link = '/';
     const campaignTitle = campaign?.title || 'Нова кампанія';
 
-    notificationService.createNotification({
-      eventKey: `campaign_removed:${userId}:${campaignId}`,
-      type: 'CAMPAIGN_MEMBER_REMOVED',
-      severity: 'WARNING',
-      category: 'campaign',
-      title: 'Вас видалено з кампанії',
-      body: `Вас видалено з кампанії "${campaignTitle}".`,
-      link,
-      recipientIds: [userId],
-      metadata: {
-        campaignId,
-        userId,
-      },
-    }).catch(() => {
+    try {
+      await notificationService.createNotification({
+        eventKey: `campaign_removed:${userId}:${campaignId}`,
+        type: 'CAMPAIGN_MEMBER_REMOVED',
+        severity: 'WARNING',
+        category: 'campaign',
+        title: 'Вас видалено з кампанії',
+        body: `Вас видалено з кампанії "${campaignTitle}".`,
+        link,
+        recipientIds: [userId],
+        metadata: {
+          campaignId,
+          userId,
+        },
+      }, tx);
+    } catch {
       // Silently fail
-    });
+    }
   }
 
-  const upsertJoinRequest = async (campaignId, userId, message = null) => {
-    const existingRequest = await prisma.joinRequest.findUnique({
+  const upsertJoinRequest = async (campaignId, userId, message = null, client = prisma) => {
+    const existingRequest = await client.joinRequest.findUnique({
       where: {
         userId_campaignId: {
           userId,
@@ -150,7 +164,7 @@ function createCampaignMembersService({
         throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Ви вже подали заявку на цю кампанію');
       }
 
-      return prisma.joinRequest.update({
+      return client.joinRequest.update({
         where: { id: existingRequest.id },
         data: {
           status: 'PENDING',
@@ -167,7 +181,7 @@ function createCampaignMembersService({
       });
     }
 
-    return prisma.joinRequest.create({
+    return client.joinRequest.create({
       data: {
         userId,
         campaignId,
@@ -381,20 +395,24 @@ function createCampaignMembersService({
         throw new AppError(ERROR_CODES.USER_NOT_FOUND, 'Користувач не знайдений');
       }
 
-      const member = await prisma.campaignMember.create({
-        data: {
-          userId: Number.parseInt(newMemberId, 10),
-          campaignId: Number.parseInt(campaignId, 10),
-          role: targetRole,
-        },
-        include: {
-          user: {
-            select: { id: true, username: true, displayName: true, avatarUrl: true },
+      const member = await prisma.$transaction(async (tx) => {
+        const created = await tx.campaignMember.create({
+          data: {
+            userId: Number.parseInt(newMemberId, 10),
+            campaignId: Number.parseInt(campaignId, 10),
+            role: targetRole,
           },
-        },
-      });
+          include: {
+            user: {
+              select: { id: true, username: true, displayName: true, avatarUrl: true },
+            },
+          },
+        });
 
-      notifyUserCampaignConfirmed(campaign, Number.parseInt(newMemberId, 10));
+        await notifyUserCampaignConfirmed(campaign, Number.parseInt(newMemberId, 10), tx);
+
+        return created;
+      });
 
       return member;
     },
@@ -444,8 +462,6 @@ function createCampaignMembersService({
         return;
       }
 
-      notifyUserCampaignRemoved(campaignIdInt, memberIdInt);
-
       const requesterRole = permissionHelpers._requireCampaignRoles(
         errorDeps,
         campaign,
@@ -465,13 +481,17 @@ function createCampaignMembersService({
         );
       }
 
-      await prisma.campaignMember.delete({
-        where: {
-          userId_campaignId: {
-            userId: memberIdInt,
-            campaignId: campaignIdInt,
+      await prisma.$transaction(async (tx) => {
+        await tx.campaignMember.delete({
+          where: {
+            userId_campaignId: {
+              userId: memberIdInt,
+              campaignId: campaignIdInt,
+            },
           },
-        },
+        });
+
+        await notifyUserCampaignRemoved(campaignIdInt, memberIdInt, tx);
       });
     },
 
@@ -559,9 +579,11 @@ function createCampaignMembersService({
         throw new AppError(ERROR_CODES.VALIDATION_FAILED, 'Ви вже член цієї кампанії');
       }
 
-      const joinRequest = await upsertJoinRequest(campaignIdInt, userId, message);
-
-      notifyManagersAboutJoinRequest(campaign, userId);
+      const joinRequest = await prisma.$transaction(async (tx) => {
+        const created = await upsertJoinRequest(campaignIdInt, userId, message, tx);
+        await notifyManagersAboutJoinRequest(campaign, userId, tx);
+        return created;
+      });
 
       return joinRequest;
     },
@@ -688,7 +710,7 @@ function createCampaignMembersService({
             },
           });
 
-          notifyUserCampaignConfirmed(campaign, joinRequest.userId);
+          await notifyUserCampaignConfirmed(campaign, joinRequest.userId, tx);
 
           return member;
         } catch (error) {
@@ -708,7 +730,7 @@ function createCampaignMembersService({
             });
 
             if (existingMember) {
-              notifyUserCampaignConfirmed(campaign, joinRequest.userId);
+              await notifyUserCampaignConfirmed(campaign, joinRequest.userId, tx);
               return existingMember;
             }
           }
@@ -743,11 +765,13 @@ function createCampaignMembersService({
         'Ви не маєте права відхиляти заявки'
       );
 
-      await prisma.joinRequest.delete({
-        where: { id: requestIdInt },
-      });
+      await prisma.$transaction(async (tx) => {
+        await tx.joinRequest.delete({
+          where: { id: requestIdInt },
+        });
 
-      notifyUserCampaignDeclined(joinRequest.campaignId, joinRequest.userId);
+        await notifyUserCampaignDeclined(joinRequest.campaignId, joinRequest.userId, tx);
+      });
     },
   };
 }
