@@ -318,8 +318,6 @@ class AdminService {
       throw new AppError(ERROR_CODES.SECURITY_ACCESS_DENIED, 'Неможливо заблокувати адміністратора');
     }
 
-    const notificationsToSend = [];
-
     await prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: targetUserId },
@@ -409,12 +407,25 @@ class AdminService {
 
         const memberIds = members.map((m) => m.userId);
         if (memberIds.length > 0) {
-          notificationsToSend.push({
-            type: 'campaign',
-            targetId: campaign.id,
-            title: campaign.title,
-            recipientIds: memberIds,
-          });
+          try {
+            await notificationService.createNotification({
+              eventKey: `campaign_finished:${campaign.id}`,
+              type: 'CAMPAIGN_FINISHED',
+              severity: 'INFO',
+              category: 'campaign',
+              title: 'Кампанію завершено',
+              body: `Кампанію "${campaign.title}" було завершено.`,
+              link: `/campaign/${campaign.id}`,
+              recipientIds: memberIds,
+              metadata: {
+                campaignId: campaign.id,
+                campaignTitle: campaign.title,
+                status: 'FINISHED',
+              },
+            }, tx);
+          } catch (err) {
+            logger.error({ err, campaignId: campaign.id }, '[AdminService] Помилка відправки сповіщення CAMPAIGN_FINISHED');
+          }
         }
       }
       
@@ -472,30 +483,6 @@ class AdminService {
 
     await markUserAsBanned(targetUserId);
     disconnectUser(targetUserId);
-
-    for (const notif of notificationsToSend) {
-      try {
-        if (notif.type === 'campaign') {
-          await notificationService.createNotification({
-            eventKey: `campaign_finished:${notif.targetId}`,
-            type: 'CAMPAIGN_FINISHED',
-            severity: 'INFO',
-            category: 'campaign',
-            title: 'Кампанію завершено',
-            body: `Кампанію "${notif.title}" було завершено.`,
-            link: `/campaign/${notif.targetId}`,
-            recipientIds: notif.recipientIds,
-            metadata: {
-              campaignId: notif.targetId,
-              campaignTitle: notif.title,
-              status: 'FINISHED',
-            },
-          });
-        }
-      } catch (err) {
-        logger.error({ err, notif }, '[AdminService] Помилка відправки сповіщення');
-      }
-    }
 
     return { message: `Користувача "${targetUser.username}" успішно заблоковано` };
   }

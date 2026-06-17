@@ -176,22 +176,24 @@ async function declinePendingParticipant({
     }
 
     if (notificationService) {
-      notificationService.createNotification({
-        eventKey: `session_declined:${participant.userId}:${session.id}`,
-        type: 'SESSION_PARTICIPATION_DECLINED',
-        severity: 'ERROR',
-        category: 'session',
-        title: 'Заявку відхилено',
-        body: `Вашу заявку на сесію "${session.title || 'Нова сесія'}" відхилено.`,
-        link: `/session/${session.id}`,
-        recipientIds: [participant.userId],
-        metadata: {
-          sessionId: session.id,
-          userId: participant.userId,
-        },
-      }).catch((err) => {
+      try {
+        await notificationService.createNotification({
+          eventKey: `session_declined:${participant.userId}:${session.id}`,
+          type: 'SESSION_PARTICIPATION_DECLINED',
+          severity: 'ERROR',
+          category: 'session',
+          title: 'Заявку відхилено',
+          body: `Вашу заявку на сесію "${session.title || 'Нова сесія'}" відхилено.`,
+          link: `/session/${session.id}`,
+          recipientIds: [participant.userId],
+          metadata: {
+            sessionId: session.id,
+            userId: participant.userId,
+          },
+        }, tx);
+      } catch (err) {
         logger.error({ err, userId: participant.userId, sessionId: session.id }, 'Помилка відправки сповіщення про відхилення заявки');
-      });
+      }
     }
 
     return {
@@ -210,8 +212,8 @@ async function confirmGmParticipant({
   const participantIdInt = parseId(participantId);
   const sessionIdInt = parseId(sessionId);
 
-  const [updatedParticipant] = await prisma.$transaction([
-    prisma.sessionParticipant.update({
+  return prisma.$transaction(async (tx) => {
+    const updatedParticipant = await tx.sessionParticipant.update({
       where: { id: participantIdInt },
       data: { status: 'CONFIRMED' },
       include: {
@@ -219,77 +221,84 @@ async function confirmGmParticipant({
           select: { id: true, username: true, displayName: true, avatarUrl: true },
         },
       },
-    }),
-    prisma.sessionParticipant.deleteMany({
+    });
+
+    await tx.sessionParticipant.deleteMany({
       where: {
         sessionId: sessionIdInt,
         role: 'GM',
         status: 'PENDING',
         NOT: { id: participantIdInt },
       },
-    }),
-  ]);
-
-  if (notificationService && updatedParticipant) {
-    const session = await prisma.session.findUnique({
-      where: { id: sessionIdInt },
-      select: { id: true, title: true },
     });
-    if (session) {
-      notificationService.createNotification({
-        eventKey: `session_confirmed:${updatedParticipant.userId}:${sessionIdInt}`,
-        type: 'SESSION_PARTICIPATION_CONFIRMED',
-        severity: 'SUCCESS',
-        category: 'session',
-        title: 'Ви додані до сесії',
-        body: `Вас додано до сесії "${session.title || 'Нова сесія'}".`,
-        link: `/session/${sessionIdInt}`,
-        recipientIds: [updatedParticipant.userId],
-        metadata: {
-          sessionId: sessionIdInt,
-          participantId: updatedParticipant.id,
-          role: updatedParticipant.role,
-        },
-      }).catch((err) => {
-        logger.error({ err, userId: updatedParticipant.userId, sessionId: sessionIdInt }, 'Помилка відправки сповіщення про підтвердження GM');
-      });
-    }
-  }
 
-  return updatedParticipant;
+    if (notificationService && updatedParticipant) {
+      const session = await tx.session.findUnique({
+        where: { id: sessionIdInt },
+        select: { id: true, title: true },
+      });
+      if (session) {
+        try {
+          await notificationService.createNotification({
+            eventKey: `session_confirmed:${updatedParticipant.userId}:${sessionIdInt}`,
+            type: 'SESSION_PARTICIPATION_CONFIRMED',
+            severity: 'SUCCESS',
+            category: 'session',
+            title: 'Ви додані до сесії',
+            body: `Вас додано до сесії "${session.title || 'Нова сесія'}".`,
+            link: `/session/${sessionIdInt}`,
+            recipientIds: [updatedParticipant.userId],
+            metadata: {
+              sessionId: sessionIdInt,
+              participantId: updatedParticipant.id,
+              role: updatedParticipant.role,
+            },
+          }, tx);
+        } catch (err) {
+          logger.error({ err, userId: updatedParticipant.userId, sessionId: sessionIdInt }, 'Помилка відправки сповіщення про підтвердження GM');
+        }
+      }
+    }
+
+    return updatedParticipant;
+  });
 }
 
 async function updateParticipantStatusRecord({ prisma, participantId, status, notificationService }) {
-  const participant = await prisma.sessionParticipant.update({
-    where: { id: parseId(participantId) },
-    data: { status },
-    include: {
-      session: { select: { id: true, title: true } },
-      user: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-    },
-  });
-
-  if (notificationService && status === 'CONFIRMED' && participant.session) {
-    notificationService.createNotification({
-      eventKey: `session_confirmed:${participant.userId}:${participant.sessionId}`,
-      type: 'SESSION_PARTICIPATION_CONFIRMED',
-      severity: 'SUCCESS',
-      category: 'session',
-      title: 'Ви додані до сесії',
-      body: `Вас додано до сесії "${participant.session.title || 'Нова сесія'}".`,
-      link: `/session/${participant.sessionId}`,
-      recipientIds: [participant.userId],
-      metadata: {
-        sessionId: participant.sessionId,
-        participantId: participant.id,
-        role: participant.role,
+  return prisma.$transaction(async (tx) => {
+    const participant = await tx.sessionParticipant.update({
+      where: { id: parseId(participantId) },
+      data: { status },
+      include: {
+        session: { select: { id: true, title: true } },
+        user: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
       },
-    }).catch((err) => {
-      logger.error({ err, userId: participant.userId, sessionId: participant.sessionId }, 'Помилка відправки сповіщення про підтвердження учасника');
     });
-  }
 
-  return participant;
+    if (notificationService && status === 'CONFIRMED' && participant.session) {
+      try {
+        await notificationService.createNotification({
+          eventKey: `session_confirmed:${participant.userId}:${participant.sessionId}`,
+          type: 'SESSION_PARTICIPATION_CONFIRMED',
+          severity: 'SUCCESS',
+          category: 'session',
+          title: 'Ви додані до сесії',
+          body: `Вас додано до сесії "${participant.session.title || 'Нова сесія'}".`,
+          link: `/session/${participant.sessionId}`,
+          recipientIds: [participant.userId],
+          metadata: {
+            sessionId: participant.sessionId,
+            participantId: participant.id,
+            role: participant.role,
+          },
+        }, tx);
+      } catch (err) {
+        logger.error({ err, userId: participant.userId, sessionId: participant.sessionId }, 'Помилка відправки сповіщення про підтвердження учасника');
+      }
+    }
+
+    return participant;
+  });
 }
 
 function createSessionParticipantsService({
@@ -327,7 +336,7 @@ function createSessionParticipantsService({
 
 
 
-  async function notifyManagersAboutJoinRequest(session, participant) {
+  async function notifyManagersAboutJoinRequest(session, participant, tx) {
     if (!notificationService) return;
     const existingPending = session.participants.filter(
       (p) => p.status === 'PENDING'
@@ -337,55 +346,59 @@ function createSessionParticipantsService({
 
     const sessionTitle = session.title || 'Нова сесія';
 
-    notificationService.createNotification({
-      eventKey: `session_join_requests:${session.id}`,
-      type: 'SESSION_JOIN_REQUESTS_UPDATED',
-      severity: 'INFO',
-      category: 'session',
-      title: `До сесії "${sessionTitle}" подано нові заявки`,
-      body: `Очікує підтвердження: ${pendingCount}`,
-      link: `/session/${session.id}`,
-      audience: ['session_managers'],
-      context: { sessionId: session.id },
-      dedupeKey: `session:${session.id}:join_requests`,
-      dedupeWindowMs: 10 * 60 * 1000, // 10 minutes
-      metadata: {
-        sessionId: session.id,
-        pendingCount,
-        requesterId: participant.userId,
-        role: participant.role,
-      },
-    }).catch((err) => {
+    try {
+      await notificationService.createNotification({
+        eventKey: `session_join_requests:${session.id}`,
+        type: 'SESSION_JOIN_REQUESTS_UPDATED',
+        severity: 'INFO',
+        category: 'session',
+        title: `До сесії "${sessionTitle}" подано нові заявки`,
+        body: `Очікує підтвердження: ${pendingCount}`,
+        link: `/session/${session.id}`,
+        audience: ['session_managers'],
+        context: { sessionId: session.id },
+        dedupeKey: `session:${session.id}:join_requests`,
+        dedupeWindowMs: 10 * 60 * 1000, // 10 minutes
+        metadata: {
+          sessionId: session.id,
+          pendingCount,
+          requesterId: participant.userId,
+          role: participant.role,
+        },
+      }, tx);
+    } catch (err) {
       logger.error({ err, sessionId: session.id }, 'Помилка відправки сповіщення менеджерам про нову заявку');
-    });
+    }
   }
 
-  async function notifyManagersAboutConfirmedJoin(session, participant) {
+  async function notifyManagersAboutConfirmedJoin(session, participant, tx) {
     if (!notificationService) return;
 
     const userName = participant.user?.displayName || participant.user?.username || 'Новий учасник';
     const roleLabel = participant.role === 'GM' ? 'гравець-майстер' : 'гравець';
     const sessionTitle = session.title || 'Нова сесія';
 
-    notificationService.createNotification({
-      eventKey: `session_confirmed_join:${session.id}:${participant.userId}`,
-      type: 'SESSION_PARTICIPANT_JOINED',
-      severity: 'INFO',
-      category: 'session',
-      title: `До сесії "${sessionTitle}" приєднався новий учасник`,
-      body: `${userName} (${roleLabel}) приєднався до сесії.`,
-      link: `/session/${session.id}`,
-      audience: ['session_managers'],
-      context: { sessionId: session.id },
-      metadata: {
-        sessionId: session.id,
-        participantId: participant.id,
-        userId: participant.userId,
-        role: participant.role,
-      },
-    }).catch((err) => {
+    try {
+      await notificationService.createNotification({
+        eventKey: `session_confirmed_join:${session.id}:${participant.userId}`,
+        type: 'SESSION_PARTICIPANT_JOINED',
+        severity: 'INFO',
+        category: 'session',
+        title: `До сесії "${sessionTitle}" приєднався новий учасник`,
+        body: `${userName} (${roleLabel}) приєднався до сесії.`,
+        link: `/session/${session.id}`,
+        audience: ['session_managers'],
+        context: { sessionId: session.id },
+        metadata: {
+          sessionId: session.id,
+          participantId: participant.id,
+          userId: participant.userId,
+          role: participant.role,
+        },
+      }, tx);
+    } catch (err) {
       logger.error({ err, userId: participant.userId, sessionId: session.id }, 'Помилка відправки сповіщення менеджерам про приєднання учасника');
-    });
+    }
   }
 
 
@@ -438,14 +451,14 @@ function createSessionParticipantsService({
           });
         }
 
+        if (newParticipant.status === 'PENDING') {
+          await notifyManagersAboutJoinRequest(session, newParticipant, tx);
+        } else if (newParticipant.status === 'CONFIRMED') {
+          await notifyManagersAboutConfirmedJoin(session, newParticipant, tx);
+        }
+
         return newParticipant;
       });
-
-      if (participant.status === 'PENDING') {
-        notifyManagersAboutJoinRequest(session, participant);
-      } else if (participant.status === 'CONFIRMED') {
-        notifyManagersAboutConfirmedJoin(session, participant);
-      }
 
       return participant;
     },

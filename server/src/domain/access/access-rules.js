@@ -29,16 +29,6 @@ const JOIN_MODES = Object.freeze({
   NOT_APPLICABLE: 'NOT_APPLICABLE',
 });
 
-/**
- * Rule semantics:
- * - outsiderDiscoverable: can a non-owner/non-member/non-participant discover the resource in public listings
- * - outsiderCanOpenDirectly: can such a viewer open the resource without a share token
- * - outsiderNeedsShareToken: if direct open is forbidden, can the viewer open it with a valid share token
- * - joinMode: what join behavior should the UI/backend expose for outsiders
- *
- * Owner/member/participant access is not duplicated in the rule objects.
- * It is handled uniformly by the policy functions below.
- */
 const CAMPAIGN_ACCESS_RULES = Object.freeze({
   [ACCESS_VISIBILITY.PUBLIC]: Object.freeze({
     outsiderDiscoverable: true,

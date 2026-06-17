@@ -51,13 +51,13 @@ function buildScheduleSignature(session) {
   return `${dateValue}:${durationValue}`;
 }
 
-async function createNotificationSafely(notificationService, payload) {
+async function createNotificationSafely(notificationService, payload, tx) {
   if (!notificationService?.createNotification) {
     return;
   }
 
   try {
-    await notificationService.createNotification(payload);
+    await notificationService.createNotification(payload, tx);
   } catch {
   }
 }
@@ -232,6 +232,7 @@ async function notifySessionRescheduled({
   session,
   updatedSession,
   requesterId,
+  tx,
 }) {
   const scheduleSignature = buildScheduleSignature(updatedSession);
   const sessionTitle = getSessionTitle(updatedSession);
@@ -254,7 +255,7 @@ async function notifySessionRescheduled({
       date: updatedSession.date,
       duration: updatedSession.duration,
     },
-  });
+  }, tx);
 }
 
 async function notifyConflictingParticipants({
@@ -262,6 +263,7 @@ async function notifyConflictingParticipants({
   session,
   updatedSession,
   conflictingParticipants,
+  tx,
 }) {
   if (!conflictingParticipants.length) {
     return;
@@ -288,7 +290,7 @@ async function notifyConflictingParticipants({
       participantId: participant.id,
       userId: participant.userId,
     },
-  })));
+  }, tx)));
 }
 
 
@@ -298,6 +300,7 @@ async function notifySessionCancelled({
   session,
   requesterId,
   reason = null,
+  tx,
 }) {
   const sessionTitle = getSessionTitle(session);
   let title = 'Сесію скасовано';
@@ -330,7 +333,7 @@ async function notifySessionCancelled({
       status: 'CANCELED',
       reason,
     },
-  });
+  }, tx);
 }
 
 function assertValidStatusTransition({
@@ -577,6 +580,12 @@ function createSessionLifecycleService({
 
       const sessionIdInt = sessionQueryService.parsePositiveInt(sessionId, 'Session ID');
 
+      const dateChanged = hasOwnField(normalizedUpdateData, 'date')
+        && new Date(normalizedUpdateData.date).getTime() !== new Date(session.date).getTime();
+      const durationChanged = hasOwnField(normalizedUpdateData, 'duration')
+        && normalizedUpdateData.duration !== session.duration;
+      const scheduleChanged = dateChanged || durationChanged;
+
       const executeUpdate = async (tx) => {
         const rows = await tx.$queryRaw`
           SELECT visibility, "shareTokenHash", status, price, "heldAmount", "platformFeePercent" 
@@ -708,6 +717,32 @@ function createSessionLifecycleService({
           }
         }
 
+        if (normalizedUpdateData.status === 'CANCELED') {
+          await notifySessionCancelled({
+            notificationService,
+            session,
+            requesterId,
+            reason: options.reason,
+            tx,
+          });
+        } else if (normalizedUpdateData.status !== 'FINISHED' && scheduleChanged) {
+          await notifySessionRescheduled({
+            notificationService,
+            session,
+            updatedSession: sessionUpdateResult,
+            requesterId,
+            tx,
+          });
+
+          await notifyConflictingParticipants({
+            notificationService,
+            session,
+            updatedSession: sessionUpdateResult,
+            conflictingParticipants,
+            tx,
+          });
+        }
+
         return { sessionUpdateResult, shareTokenState };
       };
 
@@ -716,35 +751,6 @@ function createSessionLifecycleService({
         : await prisma.$transaction(executeUpdate);
 
       const { sessionUpdateResult: updated, shareTokenState } = transactionResult;
-
-      const dateChanged = hasOwnField(normalizedUpdateData, 'date')
-        && new Date(normalizedUpdateData.date).getTime() !== new Date(session.date).getTime();
-      const durationChanged = hasOwnField(normalizedUpdateData, 'duration')
-        && normalizedUpdateData.duration !== session.duration;
-      const scheduleChanged = dateChanged || durationChanged;
-
-      if (normalizedUpdateData.status === 'CANCELED') {
-        await notifySessionCancelled({
-          notificationService,
-          session,
-          requesterId,
-          reason: options.reason,
-        });
-      } else if (normalizedUpdateData.status !== 'FINISHED' && scheduleChanged) {
-        await notifySessionRescheduled({
-          notificationService,
-          session,
-          updatedSession: updated,
-          requesterId,
-        });
-
-        await notifyConflictingParticipants({
-          notificationService,
-          session,
-          updatedSession: updated,
-          conflictingParticipants,
-        });
-      }
 
       if (['FINISHED', 'CANCELED'].includes(normalizedUpdateData.status)) {
         vttStateManager.closeVtt(sessionId);
@@ -847,7 +853,7 @@ function createSessionLifecycleService({
           }
         }
 
-        return await tx.session.update({
+        const updatedSession = await tx.session.update({
           where: { id: sessionIdInt },
           data: {
             status: 'CANCELED',
@@ -862,18 +868,21 @@ function createSessionLifecycleService({
             },
           },
         });
+
+        await notifySessionCancelled({
+          notificationService,
+          session: updatedSession,
+          requesterId: userId,
+          reason: options.reason,
+          tx,
+        });
+
+        return updatedSession;
       };
 
       const updated = externalTx
         ? await runCancelTransaction(externalTx)
         : await prisma.$transaction(runCancelTransaction);
-
-      await notifySessionCancelled({
-        notificationService,
-        session: updated,
-        requesterId: userId,
-        reason: options.reason,
-      });
 
       vttStateManager.closeVtt(sessionId);
       try {

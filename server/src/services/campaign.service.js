@@ -525,6 +525,31 @@ class CampaignService {
             members: { include: { user: { select: { id: true, username: true, displayName: true } } } },
           },
         });
+
+        const recipientIds = result.members
+          .map((m) => m.userId)
+          .filter((id) => id !== userId);
+        if (recipientIds.length > 0) {
+          try {
+            await notificationService.createNotification({
+              eventKey: `campaign_finished:${campaignIdInt}`,
+              type: 'CAMPAIGN_FINISHED',
+              severity: 'INFO',
+              category: 'campaign',
+              title: 'Кампанію завершено',
+              body: `Кампанію "${result.title}" було завершено.`,
+              link: `/campaign/${campaignIdInt}`,
+              recipientIds,
+              metadata: {
+                campaignId: campaignIdInt,
+                campaignTitle: result.title,
+                status: 'FINISHED',
+              },
+            }, tx);
+          } catch (err) {
+            logger.error({ err, campaignId: campaignIdInt }, 'Помилка відправки сповіщення CAMPAIGN_FINISHED');
+          }
+        }
       } else {
         result = await tx.campaign.update({
           where: { id: campaignIdInt },
@@ -550,32 +575,6 @@ class CampaignService {
       } catch (err) {
         logger.error({ err, sessionId }, '[CampaignService] Помилка очищення VTT/дзвінка при завершенні кампанії');
       }
-    }
-
-    if (isFinishingCampaign) {
-      prisma.campaignMember.findMany({
-        where: { campaignId: campaignIdInt, userId: { not: userId } },
-        select: { userId: true },
-      }).then((members) => {
-        const recipientIds = members.map((m) => m.userId);
-        if (recipientIds.length > 0) {
-          notificationService.createNotification({
-            eventKey: `campaign_finished:${campaignIdInt}`,
-            type: 'CAMPAIGN_FINISHED',
-            severity: 'INFO',
-            category: 'campaign',
-            title: 'Кампанію завершено',
-            body: `Кампанію "${updatedCampaign.title}" було завершено.`,
-            link: `/campaign/${campaignIdInt}`,
-            recipientIds,
-            metadata: {
-              campaignId: campaignIdInt,
-              campaignTitle: updatedCampaign.title,
-              status: 'FINISHED',
-            },
-          }).catch(() => {});
-        }
-      }).catch(() => {});
     }
 
     delete updatedCampaign.shareTokenHash;
