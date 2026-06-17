@@ -163,39 +163,12 @@ function buildMembersServiceContext(options = {}) {
     $transaction: async (arg) => {
       if (typeof arg === 'function') {
         const tx = {
+          ...prisma,
           joinRequest: {
+            ...prisma.joinRequest,
             updateMany: async (args) => {
               state.updatedJoinRequests.push(args);
               return { count: 1 };
-            },
-            delete: async (args) => {
-              state.deletedJoinRequests.push(args);
-              return { id: args.where?.id || 502 };
-            },
-          },
-          campaignMember: {
-            create: async ({ data }) => {
-              state.createdMembers.push(data);
-              return {
-                id: 999,
-                ...data,
-                user: { id: data.userId, username: `user_${data.userId}` },
-              };
-            },
-            findUnique: async ({ where }) => {
-              const lookupUserId = where?.userId_campaignId?.userId;
-              if (
-                options.memberRecord
-                && Number(lookupUserId) === Number(options.memberRecord.userId)
-              ) {
-                return options.memberRecord;
-              }
-
-              if (Object.hasOwn(options, 'existingMember')) {
-                return options.existingMember;
-              }
-
-              return null;
             },
           },
         };

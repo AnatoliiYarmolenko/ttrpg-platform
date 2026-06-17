@@ -7,6 +7,7 @@ const { createCallHandler } = require('../../src/ws/ws-call.handler');
 const { callService } = require('../../src/call/call.service');
 const { callRoomManager } = require('../../src/call/call-room.manager');
 const mediasoupLib = require('../../src/lib/mediasoup');
+const { redis, waitForRedisReady } = require('../../src/lib/redis');
 
 const testDbUrl = process.env.DATABASE_URL_TEST || process.env.DATABASE_URL;
 
@@ -42,12 +43,18 @@ async function cleanupTestData() {
 
 test.before(async () => {
   await testPrisma.$connect();
+  // Rate-limiter у WS call-хендлері залежить від Redis; чекаємо його готовності,
+  // щоб уникнути cold-start гонки ("Redis is not ready"), яка фейлила waitForEvent.
+  await waitForRedisReady().catch(() => {});
   await cleanupTestData();
 });
 
 test.after(async () => {
   await cleanupTestData();
   await testPrisma.$disconnect();
+  // Закриваємо Redis-з'єднання, відкрите під час warmup/rate-limit,
+  // інакше відкритий сокет тримає event loop і процес не завершується.
+  await redis.quit().catch(() => {});
 });
 
 async function createTestUser(overrides = {}) {
@@ -55,7 +62,7 @@ async function createTestUser(overrides = {}) {
   return testPrisma.user.create({
     data: {
       username: `test_call_user_${timestamp}_${Math.random().toString(36).slice(2, 7)}`,
-      email: `test_call_${timestamp}@example.com`,
+      email: `test_call_${timestamp}_${Math.random().toString(36).slice(2, 7)}@example.com`,
       password: 'password123',
       displayName: 'Test User',
       ...overrides,
@@ -135,7 +142,7 @@ class MockSocket {
   }
 }
 
-async function waitForEvent(socket, type, timeout = 2000) {
+async function waitForEvent(socket, type, timeout = 5000) {
   const start = Date.now();
   while (Date.now() - start < timeout) {
     const events = socket.getEventsByType(type);
@@ -145,7 +152,7 @@ async function waitForEvent(socket, type, timeout = 2000) {
   return [];
 }
 
-async function waitForSpecificEvent(socket, type, eventName, timeout = 2000) {
+async function waitForSpecificEvent(socket, type, eventName, timeout = 5000) {
   const start = Date.now();
   while (Date.now() - start < timeout) {
     const events = socket.getEventsByType(type).filter(e => e.event === eventName);
@@ -155,7 +162,7 @@ async function waitForSpecificEvent(socket, type, eventName, timeout = 2000) {
   return [];
 }
 
-async function waitForResponse(socket, id, timeout = 2000) {
+async function waitForResponse(socket, id, timeout = 5000) {
   const start = Date.now();
   while (Date.now() - start < timeout) {
     const events = socket.getEventsByType('call:response').filter(e => e.id === id);
