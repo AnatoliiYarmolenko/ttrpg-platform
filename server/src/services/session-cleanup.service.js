@@ -394,11 +394,31 @@ class SessionCleanupService {
     }
   }
 
-  _formatTime(dateVal) {
+  _isValidTimeZone(timeZone) {
+    if (!timeZone) return false;
+    try {
+      Intl.DateTimeFormat('en-US', { timeZone }).format(new Date());
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  _formatTime(dateVal, timeZone) {
     const d = new Date(dateVal);
-    const hours = String(d.getHours()).padStart(2, '0');
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    return `${hours}:${minutes}`;
+    const tz = timeZone && this._isValidTimeZone(timeZone) ? timeZone : 'Europe/Kyiv';
+    try {
+      return new Intl.DateTimeFormat('uk-UA', {
+        timeZone: tz,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).format(d);
+    } catch {
+      const hours = String(d.getUTCHours()).padStart(2, '0');
+      const minutes = String(d.getUTCMinutes()).padStart(2, '0');
+      return `${hours}:${minutes}`;
+    }
   }
 
   async sendUpcomingSessionReminders() {
@@ -422,6 +442,11 @@ class SessionCleanupService {
             },
             select: {
               userId: true,
+              user: {
+                select: {
+                  timezone: true,
+                },
+              },
             },
           },
         },
@@ -438,46 +463,58 @@ class SessionCleanupService {
         const diffMs = new Date(session.date).getTime() - now.getTime();
         const diffHours = diffMs / (60 * 60 * 1000);
 
-        const recipientIds = session.participants.map((p) => p.userId);
-        if (recipientIds.length === 0) {
+        if (session.participants.length === 0) {
           continue;
         }
 
         const sessionTitle = session.title || 'Нова сесія';
-        const timeStr = this._formatTime(session.date);
 
-        // 24 години до старту (23.5 - 24.5 год)
-        if (diffHours >= 23.5 && diffHours < 24.5) {
-          await notificationService.createNotification({
-            eventKey: `session_upcoming_24h:${session.id}`,
-            type: 'SESSION_REMINDER',
-            severity: 'INFO',
-            category: 'session',
-            title: 'Гра почнеться за 24 години',
-            body: `Нагадування: ваша сесія "${sessionTitle}" запланована на завтра о ${timeStr}.`,
-            link: `/session/${session.id}`,
-            recipientIds,
-            dedupeKey: `session:${session.id}:reminder:24h`,
-            dedupeWindowMs: 48 * 60 * 60 * 1000,
-          });
-          remindersSent += recipientIds.length;
+        const tzGroups = {};
+        for (const p of session.participants) {
+          const rawTz = p.user?.timezone;
+          const tz = rawTz && this._isValidTimeZone(rawTz) ? rawTz : 'Europe/Kyiv';
+          if (!tzGroups[tz]) {
+            tzGroups[tz] = [];
+          }
+          tzGroups[tz].push(p.userId);
         }
 
-        // 1 година до старту (0.75 - 1.75 год)
-        if (diffHours >= 0.75 && diffHours < 1.75) {
-          await notificationService.createNotification({
-            eventKey: `session_upcoming_1h:${session.id}`,
-            type: 'SESSION_REMINDER',
-            severity: 'INFO',
-            category: 'session',
-            title: 'Гра почнеться за 1 годину',
-            body: `Нагадування: ваша сесія "${sessionTitle}" почнеться за 1 годину (о ${timeStr}).`,
-            link: `/session/${session.id}`,
-            recipientIds,
-            dedupeKey: `session:${session.id}:reminder:1h`,
-            dedupeWindowMs: 48 * 60 * 60 * 1000,
-          });
-          remindersSent += recipientIds.length;
+        for (const [tz, uids] of Object.entries(tzGroups)) {
+          const timeStr = this._formatTime(session.date, tz);
+
+          // 24 години до старту (23.5 - 24.5 год)
+          if (diffHours >= 23.5 && diffHours < 24.5) {
+            await notificationService.createNotification({
+              eventKey: `session_upcoming_24h:${session.id}:${tz}`,
+              type: 'SESSION_REMINDER',
+              severity: 'INFO',
+              category: 'session',
+              title: 'Гра почнеться за 24 години',
+              body: `Нагадування: ваша сесія "${sessionTitle}" запланована на завтра о ${timeStr}.`,
+              link: `/session/${session.id}`,
+              recipientIds: uids,
+              dedupeKey: `session:${session.id}:reminder:24h:${tz}`,
+              dedupeWindowMs: 48 * 60 * 60 * 1000,
+            });
+            remindersSent += uids.length;
+          }
+
+          // 1 година до старту (0.75 - 1.75 год)
+          if (diffHours >= 0.75 && diffHours < 1.75) {
+            await notificationService.createNotification({
+              eventKey: `session_upcoming_1h:${session.id}:${tz}`,
+              type: 'SESSION_REMINDER',
+              severity: 'INFO',
+              category: 'session',
+              title: 'Гра почнеться за 1 годину',
+              body: `Нагадування: ваша сесія "${sessionTitle}" почнеться за 1 годину (о ${timeStr}).`,
+              link: `/session/${session.id}`,
+              recipientIds: uids,
+              dedupeKey: `session:${session.id}:reminder:1h:${tz}`,
+              dedupeWindowMs: 48 * 60 * 60 * 1000,
+            });
+            remindersSent += uids.length;
+          }
         }
       }
 
@@ -514,6 +551,11 @@ class SessionCleanupService {
               userId: true,
               role: true,
               status: true,
+              user: {
+                select: {
+                  timezone: true,
+                },
+              },
             },
           },
         },
@@ -547,11 +589,13 @@ class SessionCleanupService {
         const gmUserId = gmParticipant ? gmParticipant.userId : null;
 
         const sessionTitle = session.title || 'Нова сесія';
-        const timeStr = this._formatTime(session.date);
 
         // Попередження: від 30 хвилин до 24 годин
         if (diffHours >= 0.5 && diffHours < 24) {
           if (gmUserId) {
+            const rawTz = gmParticipant.user?.timezone;
+            const gmTz = rawTz && this._isValidTimeZone(rawTz) ? rawTz : 'Europe/Kyiv';
+            const timeStr = this._formatTime(session.date, gmTz);
             await notificationService.createNotification({
               eventKey: `session_forgotten_warning:${session.id}`,
               type: 'SESSION_START_WARNING',
