@@ -33,15 +33,36 @@ function getSessionTitle(session) {
   return session?.title || 'Нова сесія';
 }
 
-function formatSessionTime(session) {
+function isValidTimeZone(timeZone) {
+  if (!timeZone) return false;
+  try {
+    Intl.DateTimeFormat('en-US', { timeZone }).format(new Date());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function formatSessionTime(session, timeZone = 'Europe/Kyiv') {
   if (!session?.date) return 'невідомий час';
   const date = new Date(session.date);
-  return date.toLocaleString('uk-UA', {
-    day: 'numeric',
-    month: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const tz = timeZone && isValidTimeZone(timeZone) ? timeZone : 'Europe/Kyiv';
+  try {
+    return date.toLocaleString('uk-UA', {
+      timeZone: tz,
+      day: 'numeric',
+      month: 'long',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return date.toLocaleString('uk-UA', {
+      day: 'numeric',
+      month: 'long',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
 }
 
 function buildScheduleSignature(session) {
@@ -270,27 +291,37 @@ async function notifyConflictingParticipants({
   }
 
   const scheduleSignature = buildScheduleSignature(updatedSession);
-  const newTime = formatSessionTime(updatedSession);
 
-  await Promise.all(conflictingParticipants.map((participant) => createNotificationSafely(notificationService, {
-    eventKey: `session_time_conflict:${session.id}:${participant.userId}:${scheduleSignature}`,
-    type: NotificationType.SESSION_TIME_CONFLICT,
-    severity: NotificationSeverity.WARNING,
-    category: NotificationCategory.SESSION,
-    title: 'Конфлікт часу',
-    body: `Перенесено на ${newTime}. У вас вже є сесія на цей час.`,
-    link: `/session/${session.id}`,
-    recipientIds: [participant.userId],
-    dedupeKey: `session:${session.id}:time_conflict:${participant.userId}:${scheduleSignature}`,
-    dedupeWindowMs: 15 * 60 * 1000,
-    metadata: {
-      sessionId: session.id,
-      sessionTitle: session.title,
-      newDate: updatedSession.date,
-      participantId: participant.id,
-      userId: participant.userId,
-    },
-  }, tx)));
+  await Promise.all(conflictingParticipants.map(async (participant) => {
+    const user = tx?.user?.findUnique
+      ? await tx.user.findUnique({
+          where: { id: participant.userId },
+          select: { timezone: true },
+        })
+      : null;
+    const userTz = user?.timezone || 'Europe/Kyiv';
+    const newTime = formatSessionTime(updatedSession, userTz);
+
+    await createNotificationSafely(notificationService, {
+      eventKey: `session_time_conflict:${session.id}:${participant.userId}:${scheduleSignature}`,
+      type: NotificationType.SESSION_TIME_CONFLICT,
+      severity: NotificationSeverity.WARNING,
+      category: NotificationCategory.SESSION,
+      title: 'Конфлікт часу',
+      body: `Перенесено на ${newTime}. У вас вже є сесія на цей час.`,
+      link: `/session/${session.id}`,
+      recipientIds: [participant.userId],
+      dedupeKey: `session:${session.id}:time_conflict:${participant.userId}:${scheduleSignature}`,
+      dedupeWindowMs: 15 * 60 * 1000,
+      metadata: {
+        sessionId: session.id,
+        sessionTitle: session.title,
+        newDate: updatedSession.date,
+        participantId: participant.id,
+        userId: participant.userId,
+      },
+    }, tx);
+  }));
 }
 
 

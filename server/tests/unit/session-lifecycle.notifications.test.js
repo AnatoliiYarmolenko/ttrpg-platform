@@ -57,6 +57,9 @@ function createLifecycleService(overrides = {}) {
       userStats: {
         upsert: mock.fn(async () => null),
       },
+      user: {
+        findUnique: mock.fn(async () => ({ timezone: 'Europe/Kyiv' })),
+      },
     })),
     session: {
       update: sessionUpdateMock,
