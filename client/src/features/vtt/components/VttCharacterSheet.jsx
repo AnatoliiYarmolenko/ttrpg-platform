@@ -25,9 +25,10 @@ export default function VttCharacterSheet({ isGM, vttConnection }) {
   const user = useAuthStore((s) => s.user);
   const myTokenId = `token-player-${user?.id || 'guest'}`;
 
+  const storeScenes = useBattlefieldStore((s) => s.scenes);
   const storeActiveSceneId = useBattlefieldStore((s) => s.activeSceneId);
   const storeGmViewSceneId = useBattlefieldStore((s) => s.gmViewSceneId);
-  const activeSceneId = isGM ? (storeGmViewSceneId || storeActiveSceneId) : storeActiveSceneId;
+  const activeSceneId = isGM ? (storeGmViewSceneId && storeScenes?.[storeGmViewSceneId] ? storeGmViewSceneId : storeActiveSceneId) : storeActiveSceneId;
   
   const activeScene = useBattlefieldStore((s) => s.scenes?.[activeSceneId]);
   const isTokenOnTable = activeScene?.tokens?.[myTokenId] !== undefined;

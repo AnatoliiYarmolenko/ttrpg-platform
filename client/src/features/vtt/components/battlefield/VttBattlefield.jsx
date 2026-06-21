@@ -68,9 +68,12 @@ function BattlefieldContent({ screenWidth, screenHeight, viewport, vttConnection
     localDrawingRef.current = drawing;
   }, []);
 
-  // Гравці завжди бачать активну сцену. GM бачить те, що обрав (gmViewSceneId) або активну
-  const viewedSceneId = isGM ? (gmViewSceneId || activeSceneId) : activeSceneId;
-  const currentScene = viewedSceneId ? scenes[viewedSceneId] : null;
+  // Гравці завжди бачать активну сцену. GM бачить те, що обрав (gmViewSceneId) або активну.
+  // Захист: якщо gmViewSceneId не існує в поточному словнику scenes — fallback на activeSceneId.
+  const viewedSceneId = isGM
+    ? (gmViewSceneId && scenes?.[gmViewSceneId] ? gmViewSceneId : activeSceneId)
+    : activeSceneId;
+  const currentScene = viewedSceneId && scenes ? scenes[viewedSceneId] : null;
 
   useEffect(() => {
     // Очищаємо локальні малюнки та прев'ю при зміні сцени
@@ -478,8 +481,11 @@ export default function VttBattlefield({ vttConnection, isGM }) {
   
   const activeSceneId = useBattlefieldStore((s) => s.activeSceneId);
   const gmViewSceneId = useBattlefieldStore((s) => s.gmViewSceneId);
-  const viewedSceneId = isGM ? (gmViewSceneId || activeSceneId) : activeSceneId;
   const scenes = useBattlefieldStore((s) => s.scenes);
+  // Захист: якщо gmViewSceneId застарів і не існує в scenes — fallback на activeSceneId.
+  const viewedSceneId = isGM
+    ? (gmViewSceneId && scenes?.[gmViewSceneId] ? gmViewSceneId : activeSceneId)
+    : activeSceneId;
   const currentScene = viewedSceneId && scenes ? scenes[viewedSceneId] : null;
   
   const selectedImageId = useBattlefieldStore((s) => s.selectedImageId);
