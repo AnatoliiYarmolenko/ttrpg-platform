@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 
 /**
  * findNewSceneId — знаходить ID нової сцени яку додали до словника.
@@ -41,8 +40,7 @@ export function findNewSceneId(prevScenes, nextScenes) {
  * }>>}
  */
 const useBattlefieldStore = create(
-  persist(
-    (set) => ({
+  (set) => ({
       gridSize: 64,
 
   activeSceneId: null,
@@ -293,12 +291,7 @@ const useBattlefieldStore = create(
     return { remoteRulers: { ...state.remoteRulers, [userId]: ruler } };
   }),
   clearAllRemoteRulers: () => set({ remoteRulers: {} }),
-    }),
-    {
-      name: 'vtt-battlefield-storage',
-      partialize: (state) => ({ gmViewSceneId: state.gmViewSceneId }),
-    }
-  )
+  })
 );
 
 export default useBattlefieldStore;

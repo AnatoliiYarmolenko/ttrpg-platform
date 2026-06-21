@@ -16,9 +16,10 @@ export default function VttGmCreatures({ vttConnection }) {
     toggleCreatureSavingThrow, toggleCreatureSkill 
   } = useGmCreaturesStore();
 
+  const storeScenes = useBattlefieldStore((s) => s.scenes);
   const storeActiveSceneId = useBattlefieldStore((s) => s.activeSceneId);
   const storeGmViewSceneId = useBattlefieldStore((s) => s.gmViewSceneId);
-  const activeSceneId = storeGmViewSceneId || storeActiveSceneId;
+  const activeSceneId = (storeGmViewSceneId && storeScenes?.[storeGmViewSceneId]) ? storeGmViewSceneId : storeActiveSceneId;
   const activeScene = useBattlefieldStore((s) => s.scenes?.[activeSceneId]);
 
   const [showTypeModal, setShowTypeModal] = useState(false);
@@ -61,7 +62,9 @@ export default function VttGmCreatures({ vttConnection }) {
       updateCreatureData(id, field, value);
       
       if (['name', 'avatarUrl', 'hpCurrent', 'hpMax', 'tempHp', 'tokenBorderColor'].includes(field)) {
-        const sceneId = useBattlefieldStore.getState().gmViewSceneId || useBattlefieldStore.getState().activeSceneId;
+        const storeState = useBattlefieldStore.getState();
+        const gmView = storeState.gmViewSceneId;
+        const sceneId = (gmView && storeState.scenes?.[gmView]) ? gmView : storeState.activeSceneId;
         const myTokenId = `token-gm-${id}`;
         const scene = useBattlefieldStore.getState().scenes?.[sceneId];
         
@@ -82,7 +85,9 @@ export default function VttGmCreatures({ vttConnection }) {
     updateAttack: (attackId, field, value) => useGmCreaturesStore.getState().updateCreatureAttack(id, attackId, field, value),
     removeAttack: (attackId) => useGmCreaturesStore.getState().removeCreatureAttack(id, attackId),
     handleRemoveToken: () => {
-      const sceneId = useBattlefieldStore.getState().gmViewSceneId || useBattlefieldStore.getState().activeSceneId;
+      const storeState = useBattlefieldStore.getState();
+      const gmView = storeState.gmViewSceneId;
+      const sceneId = (gmView && storeState.scenes?.[gmView]) ? gmView : storeState.activeSceneId;
       if (!sceneId) return;
       vttConnection?.sendVttTokenRemove?.(sceneId, `token-gm-${id}`);
       
@@ -96,7 +101,9 @@ export default function VttGmCreatures({ vttConnection }) {
       });
     },
     handleAddToken: () => {
-      const sceneId = useBattlefieldStore.getState().gmViewSceneId || useBattlefieldStore.getState().activeSceneId;
+      const storeState = useBattlefieldStore.getState();
+      const gmView = storeState.gmViewSceneId;
+      const sceneId = (gmView && storeState.scenes?.[gmView]) ? gmView : storeState.activeSceneId;
       if (!sceneId) return;
 
       const creature = creatures.find(c => c.id === id);

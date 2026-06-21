@@ -150,7 +150,10 @@ export default function VttPage() {
   }, [isLoading, canAccess, isError, id, navigate]);
 
   const handleClearDrawings = useCallback(() => {
-    const sceneId = isGM ? (gmViewSceneId || activeSceneId) : activeSceneId;
+    const scenes = useBattlefieldStore.getState().scenes;
+    const sceneId = isGM
+      ? (gmViewSceneId && scenes?.[gmViewSceneId] ? gmViewSceneId : activeSceneId)
+      : activeSceneId;
     if (sceneId) {
       vttConnection?.sendVttSceneClearDrawings?.(sceneId);
     }
@@ -158,7 +161,10 @@ export default function VttPage() {
   }, [isGM, gmViewSceneId, activeSceneId, vttConnection, setClearPromptVisible]);
 
   const handleAddText = useCallback((text) => {
-    const sceneId = isGM ? (gmViewSceneId || activeSceneId) : activeSceneId;
+    const scenes = useBattlefieldStore.getState().scenes;
+    const sceneId = isGM
+      ? (gmViewSceneId && scenes?.[gmViewSceneId] ? gmViewSceneId : activeSceneId)
+      : activeSceneId;
     if (text.trim() && sceneId && textPrompt) {
       const fontSize = 24 * (drawingThickness / 4);
       const estimatedWidth = Math.max(text.length * fontSize * 0.6, 50);
@@ -235,10 +241,10 @@ export default function VttPage() {
         />
 
         {/* Drawing Tools */}
-        <VttDrawingTools isGM={isGM} userId={actualUserId} sceneId={isGM ? (gmViewSceneId || activeSceneId) : activeSceneId} vttConnection={vttConnection} />
+        <VttDrawingTools isGM={isGM} userId={actualUserId} sceneId={isGM ? (gmViewSceneId && useBattlefieldStore.getState().scenes?.[gmViewSceneId] ? gmViewSceneId : activeSceneId) : activeSceneId} vttConnection={vttConnection} />
         
         {/* Ruler Tools */}
-        <VttRulerTools isGM={isGM} userId={actualUserId} sceneId={isGM ? (gmViewSceneId || activeSceneId) : activeSceneId} vttConnection={vttConnection} />
+        <VttRulerTools isGM={isGM} userId={actualUserId} sceneId={isGM ? (gmViewSceneId && useBattlefieldStore.getState().scenes?.[gmViewSceneId] ? gmViewSceneId : activeSceneId) : activeSceneId} vttConnection={vttConnection} />
 
         {/* Character Sheet & GM Panel */}
         <VttCharacterSheet isGM={isGM} vttConnection={vttConnection} />

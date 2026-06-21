@@ -45,9 +45,10 @@ function useMapUpload(sessionId, vttConnection) {
       return;
     }
 
-    // Визначаємо активну сцену для додавання зображення
-    const activeSceneId = useBattlefieldStore.getState().gmViewSceneId
-      || useBattlefieldStore.getState().activeSceneId;
+    // Визначаємо активну сцену для додавання зображення (з захистом від застарілого gmViewSceneId)
+    const storeState = useBattlefieldStore.getState();
+    const gmView = storeState.gmViewSceneId;
+    const activeSceneId = (gmView && storeState.scenes?.[gmView]) ? gmView : storeState.activeSceneId;
 
     if (!activeSceneId) {
       alert('Спочатку створіть або оберіть сцену');
@@ -102,8 +103,8 @@ export default function SceneManager({ vttConnection }) {
   const { isUploading, handleFileChange } = useMapUpload(sessionId, vttConnection);
 
 
-  // GM-сцена яку він зараз переглядає
-  const viewedSceneId = gmViewSceneId || activeSceneId;
+  // GM-сцена яку він зараз переглядає (з захистом від застарілого ID)
+  const viewedSceneId = gmViewSceneId && scenes?.[gmViewSceneId] ? gmViewSceneId : activeSceneId;
   const currentScene = viewedSceneId ? scenes[viewedSceneId] : null;
 
   // Чи сцена GM відрізняється від сцени гравців

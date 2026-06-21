@@ -94,7 +94,7 @@ export default function ScenesBrowserModal({ isOpen, onClose, vttConnection, onE
         ) : (
           filteredScenes.map(scene => {
             const isActive = scene.id === activeSceneId;
-            const isViewed = scene.id === (gmViewSceneId || activeSceneId);
+            const isViewed = scene.id === (gmViewSceneId && scenes?.[gmViewSceneId] ? gmViewSceneId : activeSceneId);
 
             let cardClass = 'border-brand-light/10 bg-brand-dark/50 hover:bg-brand-medium/20 hover:border-brand-light/30';
             if (isActive) {
