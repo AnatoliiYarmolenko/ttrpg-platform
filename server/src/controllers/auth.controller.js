@@ -11,7 +11,6 @@ class AuthController {
       if (result.success) {
         res.status(200).json({ success: true, message: 'Email успішно підтверджено!' });
       } else {
-        // Повертаємо 400 Bad Request, щоб клієнт знав, що токен не ок
         res.status(400).json({ success: false, message: result.message });
       }
     } catch (error) {
@@ -19,15 +18,11 @@ class AuthController {
     }
   }
 
-  // Повторна відправка листа верифікації (НОВЕ)
   async resendVerification(req, res, next) {
     try {
       const { email } = req.body;
       const result = await authService.resendVerificationEmail(email);
       
-      // Навіть якщо email не знайдено, з міркувань безпеки часто повертають успіх,
-      // але для зручності юзера тут повертаємо реальний статус.
-      // Якщо хочеш максимальну безпеку - завжди повертай 200.
       res.json(result);
     } catch (error) {
       next(error);

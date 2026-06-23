@@ -1,7 +1,6 @@
 /**
  * Модуль для ініціалізації cleanup jobs
  * - Очистка прострочених токенів
- * Note: Rate limit cleanup більше не потрібна — Redis TTL автоматично видаляє застарілі записи
  */
 
 const tokenCleanupService = require('../services/token-cleanup.service');

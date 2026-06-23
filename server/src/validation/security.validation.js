@@ -1,7 +1,5 @@
 const Joi = require('joi');
 
-// ===== ПРАВИЛА ДЛЯ ПАРОЛІВ =====
-
 // Правило для поточного пароля (тільки required, без pattern - будемо перевіряти хеш)
 const currentPasswordRule = Joi.string()
   .min(1)
@@ -24,7 +22,6 @@ const newPasswordRule = Joi.string()
     'any.required': 'Новий пароль обов\'язковий',
   });
 
-// ===== СХЕМИ ВАЛІДАЦІЇ =====
 
 // Схема зміни пароля
 const changePasswordSchema = Joi.object({

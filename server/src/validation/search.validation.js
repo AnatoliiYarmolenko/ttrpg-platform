@@ -2,7 +2,6 @@ const Joi = require('joi');
 const { validateQuery } = require('../middlewares/validation.middleware');
 const { GAME_SYSTEM_VALUES } = require('../constants/game-systems');
 
-// === Валідація для пошуку кампаній ===
 
 const searchCampaignsQuerySchema = Joi.object({
   q: Joi.string().trim().max(200).optional().messages({
@@ -33,7 +32,6 @@ const searchCampaignsQuerySchema = Joi.object({
 
 const validateSearchCampaigns = [validateQuery(searchCampaignsQuerySchema)];
 
-// === Валідація для пошуку сесій ===
 
 const searchSessionsQuerySchema = Joi.object({
   q: Joi.string().trim().max(200).optional().messages({

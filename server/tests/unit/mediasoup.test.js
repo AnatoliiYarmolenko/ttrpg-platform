@@ -1,3 +1,4 @@
+delete process.env.MEDIASOUP_NUM_WORKERS;
 const { test, describe, beforeEach, afterEach, mock } = require('node:test');
 const assert = require('node:assert');
 const os = require('node:os');

@@ -9,8 +9,6 @@ const { TOKEN_TTL_MS } = require('../config/tokens.config');
 // Визначаємо, чи ми в production
 const isProduction = nodeEnv === 'production';
 
-// ===== КОНФІГУРАЦІЯ =====
-
 /**
  * Базові опції для cookies
  */
@@ -37,8 +35,6 @@ const COOKIE_NAMES = {
   REFRESH_TOKEN: 'refreshToken',
   XSRF_TOKEN: 'XSRF-TOKEN',
 };
-
-// ===== ФУНКЦІЇ =====
 
 /**
  * Отримати базові опції для cookies

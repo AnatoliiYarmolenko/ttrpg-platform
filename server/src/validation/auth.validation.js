@@ -59,12 +59,10 @@ const loginSchema = Joi.object({
   password: loginPasswordRule.required(),
 });
 
-// 🔐 Валідація для забутого пароля
 const forgotPasswordSchema = Joi.object({
   email: emailRule.required(),
 });
 
-// 🔐 Валідація для ресету пароля
 const resetPasswordSchema = Joi.object({
   resetToken: Joi.string()
     .required()

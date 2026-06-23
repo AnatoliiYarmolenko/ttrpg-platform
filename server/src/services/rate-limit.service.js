@@ -1,14 +1,3 @@
-/**
- * Rate Limit Service (Redis-backed)
- *
- * Використовує Redis для зберігання лічильників запитів:
- *  - Лічильник: INCR + EXPIRE NX (атомарно через pipeline, Redis 7+)
- *  - Блокування: SET blocked:key 1 EX blockDurationSeconds (атомарно в один запит)
- *
- * При горизонтальному масштабуванні всі інстанси читають один Redis →
- * rate limit діє глобально, не обходиться балансуванням.
- */
-
 const { redis, isRedisReady, recordRedisDegradation } = require('../lib/redis');
 const { createError } = require('../constants/errors');
 const { logger } = require('../lib/logger');
@@ -119,34 +108,25 @@ async function checkRateLimit(type, identifier, customConfig = null) {
   }
 
   try {
-    // 1. Перевіряємо чи заблокований (один GET запит)
     const ttlRemaining = await redis.ttl(blockedKey);
     if (ttlRemaining > 0) {
       throw createError.rateLimitExceeded(ttlRemaining);
     }
 
-    // 2. Атомарний підрахунок через pipeline:
-    //    INCR — збільшуємо лічильник (або створюємо з 1)
-    //    EXPIRE NX — встановлюємо TTL ТІЛЬКИ якщо його ще немає (перший запит у вікні)
-    //    Це усуває race condition між INCR і EXPIRE
     const results = await redis.pipeline()
       .incr(counterKey)
       .expire(counterKey, windowSeconds, 'NX')
       .exec();
 
-    // results[0] = [error, count], results[1] = [error, expireResult]
     const count = results[0][1];
 
-    // 3. Перевіряємо чи перевищено ліміт
     if (count > config.maxRequests) {
-      // Встановлюємо блокування (SET ... EX — атомарно в один запит)
       await redis.set(blockedKey, '1', 'EX', blockSeconds);
       throw createError.rateLimitExceeded(blockSeconds);
     }
 
     return true;
   } catch (err) {
-    // Пробрасуємо лише AppError 429 далі
     if (err?.status === 429) {
       throw err;
     }

@@ -1,7 +1,5 @@
 const Joi = require('joi');
 
-// ===== ПРАВИЛА ДЛЯ ПРОФІЛЮ =====
-
 // Правило для displayName
 const displayNameRule = Joi.string()
   .min(2)

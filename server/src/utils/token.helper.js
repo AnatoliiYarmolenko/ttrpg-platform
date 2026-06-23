@@ -7,7 +7,6 @@ function resolveShareTokenSecret() {
     return secret;
   }
 
-  // Node test runner executes isolated files where .env may be absent.
   if (typeof process.env.NODE_TEST_CONTEXT === 'string') {
     return 'test-share-token-secret';
   }

@@ -16,7 +16,10 @@ async function initWorkers() {
     return;
   }
 
-  const numWorkers = Object.keys(os.cpus()).length || 1;
+  const envWorkers = process.env.MEDIASOUP_NUM_WORKERS
+    ? parseInt(process.env.MEDIASOUP_NUM_WORKERS, 10)
+    : 0;
+  const numWorkers = envWorkers > 0 ? envWorkers : (Object.keys(os.cpus()).length || 1);
   logger.info({ numWorkers }, 'Ініціалізація mediasoup workers...');
 
   for (let i = 0; i < numWorkers; i++) {
@@ -25,9 +28,6 @@ async function initWorkers() {
     });
 
     worker.on('died', () => {
-      // Worker падає дуже рідко (C++ crash).
-      // Всі його routers/transports/producers будуть закриті, 
-      // тому ми логуємо fatal і завершуємо процес (PM2 або Docker його перезапустять).
       logger.fatal(
         `Mediasoup worker died [pid:${worker.pid}], exiting in 2 seconds...`
       );
