@@ -1,11 +1,11 @@
-# myttrpg.me — Платформа для організації та проведення TTRPG-кампаній
+# myttrpg.me — Platform for organizing and running TTRPG campaigns
 
 <p align="center">
   <img src="client/public/logo.svg" alt="myttrpg.me Logo" width="150px" />
 </p>
 
 <p align="center">
-  <strong>Сучасний вебпростір для поціновувачів настільних рольових ігор (TTRPG)</strong>
+  <strong>Modern web space for tabletop role-playing game (TTRPG) enthusiasts</strong>
 </p>
 
 <p align="center">
@@ -22,108 +22,108 @@
 
 ---
 
-# Живий застосунок
+# Live Application
 
-Платформа є розгорнутою та доступною для використання в реальному часі:
+The platform is deployed and available for real-time use:
 
-**URL-адреса:** [https://myttrpg.me](https://myttrpg.me)
-
----
-
-## Про проєкт
-
-**myttrpg.me** – це інтегрована вебплатформа, що забезпечує повний життєвий цикл організації, координації та безпосереднього проведення настільних рольових ігор (TTRPG). Застосунок об'єднує організаційні інструменти (управління кампаніями, планування ігор, фінансовий баланс) з інтерактивними ігровими засобами (відеозв'язок, спільний ігровий чат, віртуальний стіл VTT).
-
-Платформа покликана спростити комунікацію між Гейм-майстрами (GMs) та гравцями, автоматизувати процеси реєстрації на ігри та надати якісний зв'язок без залучення стороннього програмного забезпечення.
+**URL:** [https://myttrpg.me](https://myttrpg.me)
 
 ---
 
-## Ключові можливості
+## About the Project
 
-### Управління кампаніями та сесіями
+**myttrpg.me** is an integrated web platform that provides the complete lifecycle of organizing, coordinating, and running tabletop role-playing games (TTRPGs). The application combines organizational tools (campaign management, game scheduling, financial balance) with interactive gaming tools (video communication, shared game chat, VTT virtual tabletop).
 
-* **Кампанії:** Створення кампаній з детальним описом, встановленням ігрової системи (D&D, Pathfinder тощо), керуванням видимістю (публічна або за посиланням) та унікальними токенами доступу.
-* **Сесії:** Планування конкретних ігор зі встановленням дати, часу, тривалості, вартості участі та ліміту гравців.
-* **Запити на приєднання (Join Requests):** Зручний механізм подачі та модерації заявок на участь у кампаніях з відстеженням статусу.
-
-### Інтерактивні медіадзвінки (WebRTC / Mediasoup SFU)
-
-* Вбудована система аудіо- та відеоконференцій прямо в ігровій сесії.
-* Базується на сучасній архітектурі **Mediasoup SFU (Selective Forwarding Unit)**, що гарантує низьку затримку та мінімальне навантаження на процесори користувачів завдяки розумній ретрансляції потоків замість повного перекодування.
-
-### Чат-система в реальному часі
-
-* Окремі інтерактивні чати для кожної кампанії та сесії.
-* Підтримка текстового спілкування, системних повідомлень (наприклад, про приєднання нового гравця), а також можливість редагування та видалення повідомлень.
-
-### Вбудована фінансова система (Wallet & Transactions)
-
-* Власні віртуальні гаманці користувачів з підтримкою історії транзакцій.
-* Проведення платних сесій з автоматичним розрахунком сервісного збору (Platform Fee) та безпечним утриманням коштів (hold) до підтвердження проведення гри.
-
-### Багатоканальні сповіщення
-
-* Транзакційна черга повідомлень на основі патерну **Outbox**.
-* Можливість отримувати сповіщення трьома каналами:
-  * Внутрішньосистемні сповіщення (In-App)
-  * Telegram-бот (зручне підключення через Telegram Chat ID)
-  * Повідомлення на електронну пошту
-* Детальні налаштування профілю: тихі години (quiet hours), мутинг категорій та рівнів критичності сповіщень.
-
-### Віртуальний ігровий стіл (VTT) та логування
-
-* Візуалізація карт ігрових світів та робота з токенами.
-* **Client-side Event Logger:** Система збору клієнтських логів безпеки та помилок для оперативного моніторингу та виправлення збоїв у роботі клієнта.
+The platform is designed to simplify communication between Game Masters (GMs) and players, automate game registration processes, and provide high-quality connection without relying on third-party software.
 
 ---
 
-## Технологічний стек
+## Key Features
 
-Платформа побудована на основі сучасних та високопродуктивних технологій:
+### Campaign and Session Management
+
+* **Campaigns:** Create campaigns with detailed descriptions, set the game system (D&D, Pathfinder, etc.), manage visibility (public or via link), and configure unique access tokens.
+* **Sessions:** Schedule specific games by setting the date, time, duration, cost of participation, and player limit.
+* **Join Requests:** An easy-to-use mechanism for submitting and moderating participation requests in campaigns, complete with status tracking.
+
+### Interactive Media Calls (WebRTC / Mediasoup SFU)
+
+* Built-in audio and video conferencing system directly within the game session.
+* Based on the modern **Mediasoup SFU (Selective Forwarding Unit)** architecture, which guarantees low latency and minimal CPU load on user devices by intelligently routing streams instead of re-encoding them.
+
+### Real-time Chat System
+
+* Separate interactive chats for each campaign and session.
+* Support for text communication, system messages (e.g., when a new player joins), as well as message editing and deletion.
+
+### Built-in Financial System (Wallet & Transactions)
+
+* Users' own virtual wallets with support for transaction history.
+* Hosting paid sessions with automatic platform fee calculation and secure holding (escrow) of funds until the game is confirmed.
+
+### Multi-channel Notifications
+
+* Transactional message queue based on the **Outbox** pattern.
+* Ability to receive notifications through three channels:
+  * In-App notifications
+  * Telegram bot (convenient connection using Telegram Chat ID)
+  * Email notifications
+* Detailed profile settings: quiet hours, category muting, and notification severity level configurations.
+
+### Virtual Tabletop (VTT) and Logging
+
+* Map visualization of game worlds and token management.
+* **Client-side Event Logger:** A system for collecting client-side security and error logs for rapid monitoring and troubleshooting of client-side failures.
+
+---
+
+## Technology Stack
+
+The platform is built on modern and high-performance technologies:
 
 ### Frontend
 
-* **React 19** & **Vite 7** — швидкий рендеринг та сучасна збірка застосунку
-* **React Router 7** — маршрутизація
-* **TanStack Query** (React Query) — ефективне керування асинхронним станом та кешуванням
-* **Zustand** — легковажне управління глобальним станом
-* **Tailwind CSS** — адаптивна та гнучка стилізація
-* **Mediasoup Client** — інтеграція з WebRTC SFU медіасервером
+* **React 19** & **Vite 7** — fast rendering and modern application build tool
+* **React Router 7** — routing
+* **TanStack Query** (React Query) — efficient asynchronous state management and caching
+* **Zustand** — lightweight global state management
+* **Tailwind CSS** — responsive and flexible styling
+* **Mediasoup Client** — integration with the WebRTC SFU media server
 
 ### Backend
 
-* **Node.js 22** & **Express 5** — стабільна серверна платформа та API
-* **Prisma ORM** — об'єктно-реляційне відображення для зручної роботи з базою даних
-* **Socket.io (WebSockets)** — реалізація двостороннього обміну повідомленнями в чаті
-* **Mediasoup SFU** — обробка та ретрансляція аудіо/відео потоків
+* **Node.js 22** & **Express 5** — stable server platform and API
+* **Prisma ORM** — object-relational mapping for convenient database interaction
+* **Socket.io (WebSockets)** — bi-directional chat messaging implementation
+* **Mediasoup SFU** — processing and routing of audio/video streams
 
-### База даних та кеш
+### Database and Cache
 
-* **PostgreSQL 15** — збереження транзакційних та реляційних даних
-* **Redis 7** — лімітування запитів (Rate Limiting), сесії та кешування
+* **PostgreSQL 15** — transactional and relational data storage
+* **Redis 7** — rate limiting, sessions, and caching
 
-### Тестування та якість коду
+### Testing and Code Quality
 
-* **Vitest & Testing Library** — модульне тестування інтерфейсу користувача
-* **Playwright** — наскрізне (E2E) тестування критичних сценаріїв
-* **Node Test Runner & c8** — тестування серверної логіки та аналіз покриття
-* **SonarCloud** — безперервний аналіз якості коду та безпеки
+* **Vitest & Testing Library** — unit testing of the user interface
+* **Playwright** — end-to-end (E2E) testing of critical user scenarios
+* **Node Test Runner & c8** — server logic testing and coverage analysis
+* **SonarCloud** — continuous code quality and security analysis
 
 ---
 
-## Архітектура системи
+## System Architecture
 
-Наступна схема демонструє взаємодію основних компонентів системи:
+The following diagram demonstrates the interaction of the main system components:
 
 ```mermaid
 graph TD
-    subgraph Client ["Клієнт (React / Vite)"]
+    subgraph Client ["Client (React / Vite)"]
         UI["React 19 Single Page App"]
         WS_C["Socket.io Client"]
         RTC_C["Mediasoup Client"]
     end
 
-    subgraph Backend ["Сервер (Node.js / Express)"]
+    subgraph Backend ["Backend (Node.js / Express)"]
         API["Express App (REST API)"]
         WS_S["Socket.io Server (Real-time Chat)"]
         SFU["Mediasoup SFU (WebRTC Audio/Video)"]
@@ -131,12 +131,12 @@ graph TD
         Outbox["Outbox Worker (Notifications)"]
     end
 
-    subgraph Data ["База даних та Кеш"]
+    subgraph Data ["Database and Cache"]
         DB[("PostgreSQL 15")]
         Cache[("Redis 7 (Rate limit / Sessions)")]
     end
 
-    subgraph External ["Зовнішні сервіси"]
+    subgraph External ["External Services"]
         TG["Telegram Bot API"]
         Email["SMTP Email Server"]
     end
@@ -157,63 +157,63 @@ graph TD
 ---
 
 <details>
-<summary>🛠️ Інструкція для локального запуску та розробки</summary>
+<summary>Local Startup and Development Guide</summary>
 
-### Менеджмент залежностей
+### Dependency Management
 
-Проєкт використовує режим **npm workspaces** на рівні кореня:
+The project uses **npm workspaces** at the root level:
 
-* Усі залежності встановлюються з кореневої директорії.
-* Використовується єдиний файл `package-lock.json`.
-* **Важливо:** Не створюйте окремі lock-файли у директоріях `client/` або `server/`.
+* All dependencies are installed from the root directory.
+* A single `package-lock.json` file is used.
+* **Important:** Do not create separate lock files in `client/` or `server/` directories.
 
-#### Встановлення залежностей
+#### Installing Dependencies
 
 ```bash
 npm ci
 ```
 
-### Локальний запуск
+### Local Startup
 
-#### Запуск за допомогою Docker Compose (Рекомендовано)
+#### Startup using Docker Compose (Recommended)
 
-Усі необхідні сервіси (Node, React, PostgreSQL, Redis) налаштовані для спільного запуску:
+All necessary services (Node, React, PostgreSQL, Redis) are configured for running together:
 
 ```bash
 docker compose up --build
 ```
 
-#### Запуск без Docker (необхідно мати локально встановлені Postgres та Redis)
+#### Startup without Docker (requires locally installed Postgres and Redis)
 
-Запустіть сервер та клієнт у різних терміналах:
+Run the server and the client in different terminals:
 
 ```bash
-# Запуск бекенду
+# Run backend
 npm run dev:server
 
-# Запуск фронтенду
+# Run frontend
 npm run dev:client
 ```
 
-### Корисні скрипти розробника
+### Useful Developer Scripts
 
 ```bash
-# Збірка проєкту
+# Build the project
 npm run build
 npm run build:client
 
-# Статичний аналіз (Linter)
+# Static analysis (Linter)
 npm run lint
 npm run lint:client
 npm run lint:server
 
-# Запуск тестів
+# Run tests
 npm run test
 npm run test:client
 npm run test:server
 npm run test:e2e
 
-# Аналіз покриття тестами (Coverage)
+# Test coverage analysis (Coverage)
 npm run test:coverage
 ```
 
