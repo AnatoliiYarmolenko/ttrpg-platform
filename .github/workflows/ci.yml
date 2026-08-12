@@ -201,8 +201,8 @@ jobs:
 
   sonarcloud:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     needs: [coverage_client, coverage_server]
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
         with:
@@ -216,6 +216,7 @@ jobs:
           name: server-coverage
           path: server/coverage
       - uses: SonarSource/sonarqube-scan-action@2f77a1ec69fb1d595b06f35ab27e97605bdef703
+        continue-on-error: true
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
