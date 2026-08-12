@@ -201,6 +201,7 @@ jobs:
 
   sonarcloud:
     runs-on: ubuntu-latest
+    if: ${{ secrets.SONAR_TOKEN != '' }}
     needs: [coverage_client, coverage_server]
     steps:
       - uses: actions/checkout@v4
